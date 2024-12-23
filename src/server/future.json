@@ -1,0 +1,44 @@
+/*
+    appweb.json -- Appweb Configuration
+ */
+{
+    include: [ 'install.json' ],
+
+    http: {
+        server: {
+            account: {
+                user: 'HTTP',
+                group: 'HTTP',
+            },
+            log: {
+                location: 'error.log',
+                level: '2',
+            },
+            ssl: {
+                certificate: 'self.crt',
+                key: 'self.key',
+            },
+        },
+        pipeline: {
+            handlers: {
+                cgiHandler:  [ 'exe', 'cgi', 'cgi-nph', 'out', 'bat', 'cmd', 'pl', 'py' ],
+                ejsHandler:  [ 'ejs', 'es' ],
+                espHandler:  [ 'esp' ],
+                fileHandler: [ 'html', 'gif', 'jpg', 'png', 'pdf', 'ico', 'css', 'js', 'txt', '*' ],
+                phpHandler:  [ 'php' ],
+            },
+        },
+        limits: {
+            memory: '8MB',
+            processes: '10',
+            upload: '200MB',
+            depletion: 'restart',
+        },
+        aliases: {
+            '/cgi-bin/': 'cgi-bin',
+        },
+    },
+    esp: {
+        apps: 'apps/*/esp.json',
+    }
+}

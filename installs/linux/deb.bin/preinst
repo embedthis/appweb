@@ -1,0 +1,101 @@
+#!/bin/sh
+#
+# 	preinst -- Pre install script for appweb
+#
+#	Copyright (c) Embedthis Software. All Rights Reserved.
+#
+
+ME_PRODUCT=appweb
+ME_NAME="${settings.title}"
+
+ROOT_PREFIX="${prefixes.root}"
+BASE_PREFIX="${prefixes.base}"
+STATE_PREFIX="${prefixes.state}"
+APP_PREFIX="${prefixes.app}"
+VAPP_PREFIX="${prefixes.vapp}"
+
+BIN_PREFIX="${prefixes.bin}"
+SBIN_PREFIX="${prefixes.sbin}"
+ETC_PREFIX="${prefixes.etc}"
+INC_PREFIX="${prefixes.inc}"
+LIB_PREFIX="${prefixes.lib}"
+MAN_PREFIX="${prefixes.man}"
+WEB_PREFIX="${prefixes.web}"
+LOG_PREFIX="${prefixes.log}"
+SPL_PREFIX="${prefixes.spool}"
+CACHE_PREFIX="${prefixes.cache}"
+
+ABIN="${VAPP_PREFIX}/bin"
+AINC="${VAPP_PREFIX}/in"
+
+#
+#	Modify service. Usage:configureService stop|remove
+#
+configureService() {
+	local action=$1
+
+	case $action in
+	stop)
+        if [ -x "${BIN_PREFIX}/appman" ] ; then
+            "${BIN_PREFIX}/appman" stop >/dev/null 2>&1 ; true
+        fi
+        #   Keep this for earlier versions without appman
+		if [ -f /etc/rc.d/init.d/$ME_PRODUCT ] ; then
+			if which service >/dev/null 2>&1 ; then
+				service $ME_PRODUCT $action
+			elif which invoke-rc.d >/dev/null 2>&1  ; then
+				invoke-rc.d $ME_PRODUCT $action || true
+			fi
+        elif [ -f /etc/init.d/$ME_PRODUCT ] ; then
+            /etc/init.d/$ME_PRODUCT stop >/dev/null 2>&1
+		fi
+		if [ "`/bin/pidof ${prefixes.bin}/$ME_PRODUCT`" != "" ] ; then
+            kill -9 `/bin/pidof ${prefixes.bin}/$ME_PRODUCT`
+        fi
+		rm -rf /var/lock/subsys/$ME_PRODUCT /var/lock/$ME_PRODUCT "${LOG_PREFIX}" /var/run/$ME_PRODUCT
+		;;
+
+	remove)
+        if [ -x "${BIN_PREFIX}/appman" ] ; then
+            "${BIN_PREFIX}/appman" uninstall >/dev/null 2>&1
+        fi
+        #   Keep this for earlier versions without appman
+		if which chkconfig >/dev/null 2>&1 ; then
+			chkconfig --del $ME_PRODUCT
+			rm /etc/rc.d/init.d/$ME_PRODUCT
+		elif which update-rc.d >/dev/null 2>&1 ; then
+			rm -f /etc/init.d/$ME_PRODUCT
+			update-rc.d $ME_PRODUCT remove >/dev/null || true
+        elif [ -f /etc/init.d/$ME_PRODUCT ] ; then
+            ( cd /etc/init.d ; /etc/init.d/$ME_PRODUCT disable )
+		fi
+		;;
+	esac
+}
+
+###############################################################################
+#
+#	Main
+#
+cd /
+action=$1
+
+case $action in
+	remove|install)					# when new
+		# or conflictor's prerm remove in-favor package new-version
+		oldVersion=$2
+		configureService stop
+		configureService remove
+		;;
+	upgrade)				# when old
+		newVersion=$2
+		configureService stop
+		;;
+	failed-upgrade)			# when new
+		oldVersion=$2
+		;;
+	deconfigure)			# when old
+		# 	deconfigure in-favor package-being-installed version removing 
+		#	conflicting-package version
+esac
+exit 0

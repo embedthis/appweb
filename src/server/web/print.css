@@ -1,0 +1,15 @@
+pre { 
+	font-size: 110%;
+	line-height: 140%; 
+	font-family: Consolas, Monaco, Courier, Courier New, Courier, monospace; 
+	padding: 10px 15px 10px 15px;
+	margin: 16px 0 20px 0;
+	background-color: #EEEEFF;
+	color: #000000;
+    border: 1px solid #444455;
+}
+
+pre b {
+    color: #000;
+    font-weight: bold;
+}

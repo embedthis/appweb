@@ -1,0 +1,6 @@
+<% {
+    static int counter = 0;
+
+    setHeader("Content-Type", "text/plain");
+    render("{ number: %d, uri: '%s', query: '%s' }\r\n", counter++, getUri(), getQuery()); 
+} %>

@@ -1,0 +1,15 @@
+/*
+    libappweb.me -- MakeMe file for the Appweb library
+ */
+
+Me.load({
+    targets: {
+        libappweb: {
+            type: 'lib',
+            headers: [ '*.h' ],
+            sources: [ '*.c', 'modules/*.c*' ],
+            // for c+: libraries: [ 'c++' ],
+            depends: [ 'libesp', 'libhttp', 'libmpr', 'libmpr-version' ],
+        }
+	}
+})

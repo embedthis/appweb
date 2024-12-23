@@ -1,0 +1,126 @@
+#! /bin/sh
+
+### BEGIN INIT INFO
+# Provides:          appweb
+# Required-Start:    $local_fs $remote_fs $network $syslog
+# Required-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:
+# Short-Description: Appweb Embedded Web Server
+# Description:       Appweb Embedded Web Server
+### END INIT INFO
+
+#
+#   Startup script for Embedthis Appweb
+#   Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+#
+#   chkconfig: - 81 15
+#   description: Embedthis Appweb Embeddable Web Server
+#   processname: appman
+#   pidfile: /var/run/appweb.pid
+#
+###############################################################################
+
+NAME=appweb
+APPWEB_NAME="Embedthis Appweb"
+APPWEB_CMD="/usr/local/bin/${NAME}"
+APPWEB_DIR="/etc/appweb"
+
+PATH=/sbin:$PATH
+PIDFILE=${PIDFILE-/var/run/$NAME.pid}
+LOCKFILE=${LOCKFILE-/var/lock/$NAME}
+
+MANAGER_CMD=/usr/local/bin/appman
+MANAGER_SWITCHES="--daemon --program $APPWEB_CMD --home $APPWEB_DIR --pidfile $PIDFILE run"
+
+#
+#   Source utility functions
+#
+# SYSTEMCTL_SKIP_REDIRECT=1
+if [ -f /etc/init.d/functions ] ; then
+    #   Red-Hat
+    . /etc/init.d/functions
+    . /etc/sysconfig/network
+elif [ -f /lib/lsb/init-functions ] ; then
+    #   Debian
+    . /lib/lsb/init-functions
+    [ -f /etc/default/rcS ] && . /etc/default/rcS
+fi
+
+start() {
+    local RETVAL=0
+    echo -n "Starting ${APPWEB_NAME}: "
+    if type daemon >/dev/null 2>&1 ; then
+        eval daemon --pidfile=${PIDFILE} ${MANAGER_CMD} ${MANAGER_SWITCHES}
+        RETVAL=$?
+        [ ${RETVAL} = 0 ] && touch $LOCKFILE
+    elif type start-stop-daemon >/dev/null 2>&1 ; then
+        eval start-stop-daemon --pidfile ${PIDFILE} --oknodo --start --quiet --exec "${MANAGER_CMD}" -- ${MANAGER_SWITCHES}
+        RETVAL=$?
+        [ ${RETVAL} = 0 ] && touch $LOCKFILE
+    fi
+    if [ ${RETVAL} = 0 ] ; then
+        echo "OK"
+    else
+        echo "FAILED"
+    fi
+    return ${RETVAL}
+}
+
+stop() {
+    local RETVAL=0
+    if type start-stop-daemon >/dev/null 2>&1 ; then
+        echo -n "Stopping ${APPWEB_NAME}: "
+        if [ -f /etc/SuSE-release ] ; then
+            start-stop-daemon --stop --pidfile ${PIDFILE} --quiet --oknodo --exec "${MANAGER_CMD}"
+        else
+            start-stop-daemon --stop --retry=2 --pidfile ${PIDFILE} --quiet --oknodo --exec "${MANAGER_CMD}"
+        fi
+        RETVAL=$?
+        [ ${RETVAL} = 0 ] && rm -f $LOCKFILE
+    elif type killproc >/dev/null 2>&1 ; then
+        # Note: killproc exists on debian also.
+        echo -n $"Stopping ${APPWEB_NAME}: "
+        killproc -p ${PIDFILE} ${MANAGER_CMD}
+        RETVAL=$?
+        [ ${RETVAL} = 0 ] && rm -f $LOCKFILE $PIDFILE
+    fi
+    if [ ${RETVAL} = 0 ] ; then
+        echo "OK"
+    else
+        echo "FAILED"
+    fi
+    return ${RETVAL}
+}
+
+
+#
+#   Main script
+#
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        // TODO status ${MANAGER_CMD}
+        ;;
+    restart|reload|force-reload)
+        stop
+        start
+        ;;
+    condrestart)
+        if [ -f $LOCKFILE ]; then
+            stop
+            start
+        fi
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart|condrestart|status}"
+        exit 1
+esac
+exit $?
+
+################################################################################

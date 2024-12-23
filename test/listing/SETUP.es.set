@@ -1,0 +1,4 @@
+
+if (!thas('ME_DIR')) {
+    tskip("DIR not enabled")
+}

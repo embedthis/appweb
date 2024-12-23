@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="eng">
+<head>
+<title>Http Man Page</title>
+</head>
+<HTML>
+<BODY>
+<PRE>
+<!-- Manpage converted by man2html 3.0.1 -->
+           --auth basic|digest
+           --benchmark
+           --cert file
+           --chunk size
+           --continue
+           --cookie cookieString
+           --data
+           --debugger
+           --delete
+           --form string
+           --header 'key: value'
+           --host hostName
+           --iterations count
+           --key file
+           --log logSpec
+           --method METHOD
+           --nofollow
+           --noout
+           --out file
+           --password pass
+           --post
+           --printable
+           --protocol version
+           --provider name
+           --put
+           --range byteRanges
+           --retries count
+           --sequence
+           --showHeaders
+           --showStatus
+           --single
+           --threads count
+           --timeout seconds
+           --upload
+           --user name
+           --verify
+           --verbose
+           --workers count
+           --zero
+           [files] url
+
+DESCRIPTION
+       The http command issues HTTP commands to retrieve files from a web
+       server. If "files" are provided on the command line these are included
+       in the request body data.
+
+OPTIONS
+       --auth basic|digest
+              Set the type of authentication to use. Defaults to basic.
+
+       --benchmark
+              Output timing results after retrieving URLs.
+              other web servers.
+
+       --continue
+              Continue on errors. Default is to stop on the first error.
+
+       --cookie cookieString
+              Define a cookie string to send with the request. Multiple uses
+              okay.
+
+       --debugger
+              Run in debug mode and disable all timeouts. Useful when running
+              a server in the debugger to prevent the client from retrying or
+              killing the request.
+
+       --data String of raw body data to send with the request.
+
+       --delete
+              Issue a DELETE request. This is an alias for --method DELETE.
+
+       --form formData
+              String of body data to send with the request. Assumed to be URL
+              encoded. ie. "name=paul&amp;;address=uk".  You cannot use this switch
+              with either the --datafile or --form switches.
+
+       --header "key: value"
+              Add a custom header to send with the request. Multiple --header
+              switches can be supplied.
+
+       --host name
+              Prepend all URLs with the specified host. For example if '-h
+              www.myHost.com:8888" were used with the URL "/", then http will
+              retrieve http://www.myHost.com:8888.
+
+       --iterations count
+              Retrieve the URLs iterations times. Useful for load testing.
+              This switch can also be abbreviated as -i.
+
+       --key file
+              Private key file to use with the certificate file specified via
+              --cert.
+
+       --log logSpec
+              Specify a file to log messages.  The syntax is: "--log
+              logFile[:logLevel]".  Level 3 will trace the request and
+              response headers.
+
+       --method method
+              Set the HTTP method. Values may be "GET", "PUT", "OPTIONS",
+              "TRACE".
+
+       --nofollow
+              Don't automatically follow redirects. Normal behaviour is to
+
+       --post Issue a POST request. This is an alias for --method POST.
+
+       --printable
+              Make binary output printable by printing hex digits for each
+              character.
+
+       --protocol HTTP_VERSION
+              Use the specified HTTP protocol. httpVersion should be either
+              '0' for HTTP/1.0 or 1 for HTTP/1.1.
+
+       --provider est|openssl
+              Select the SSL stack provider.
+
+       --put  Issue a PUT request. This is an alias for --method PUT.
+
+       --range byteRange
+              Request that only the specified byte range of data be returned
+              with the response. This will add a "Range" header to the
+              request.  The range format  is:  Range: bytes=n1-n2,n3-n4,...
+              where n1 is first byte position and n2 is last byte position.
+              Multiple --range switches can be supplied.  Examples:
+
+              0-49             first 50 bytes
+              50-99,200-249    Two 50 byte ranges from 50 and 200
+              -50              Last 50 bytes
+              1-               Skip first byte then emit the rest
+
+       --retries retryCount
+              Retry failed requests this number of times.
+
+       --showHeaders
+              Output HTTP headers to stdout. Useful for debugging.
+
+       --showStatus
+              Output the HTTP response code to stdout.  If this switch is
+              used, the command will always exit with zero status.
+
+       --single
+              Single step between requests by pausing for user input before
+              proceeding.
+
+       --threads loadThreads
+              Number of threads to use. Each URL will be retrieved by all
+              threads. Useful only for load testing.
+
+       --timeout seconds
+              Specifies a timeout to use for each request in seconds.
+
+       --upload
+              Issue a POST request with multipart mime encoding for the files
+              specified on the command line. This is an alias for --method
+              POST with files on the command line.
+
+       --verbose
+              Verbose mode. Trace activity to stdout. Can by specified
+              multiple times for more verbose tracing.  This switch can also
+              be abbreviated as -v.
+
+       --workers count
+              Specify the number of worker threads to use. Worker threads
+              temporarily assigned to process callbacks.
+
+       --zero Exit with a zero status for any valid HTTP response. Normally
+              returns a non-zero status if the HTTP response code is not a 2XX
+              or 3XX series response code.
+
+REPORTING BUGS
+       Report bugs to dev@embedthis.com.
+
+COPYRIGHT
+       Copyright © Embedthis Software.
+
+http                               July 2014                           <B>HTTP(1)</B>
+</PRE>
+<HR>
+<ADDRESS>
+Man(1) output converted with
+<a href="http://www.oac.uci.edu/indiv/ehood/man2html.html">man2html</a>
+</ADDRESS>
+</BODY>
+</HTML>
+</html>

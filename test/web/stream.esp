@@ -1,0 +1,27 @@
+<html>
+<head>
+    <title>Test Page for Streaming Stress Test</title>
+</head>
+<body>
+    <%^global 
+        static void streamPageCallback(HttpConn *conn, int event, int arg)
+        {
+            HttpPacket      *packet;
+
+            setConn(conn);
+            if (event == HTTP_EVENT_READABLE) {
+                while ((packet = httpGetPacket(conn->readq)) != 0) {
+                    if (packet->flags & HTTP_PACKET_END) {
+                        render("-done-\n");
+                        finalize();
+                    }
+                }
+            }
+        }
+    %>
+    <%
+        dontAutoFinalize();
+        httpSetConnNotifier(getConn(), streamPageCallback);
+    %>
+</body>
+</html>

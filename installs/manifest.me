@@ -1,0 +1,340 @@
+/*
+    manifest.me - MakeMe Manifest for Appweb
+ */
+
+Me.load({
+    manifest: {
+        home: me.dir.bin,
+        root: true,
+        packages:   {
+            install: {
+                inherit:        'package-manifest',
+                prefixes:       [ 'root', 'app', 'vapp', 'bin', 'inc', 'man', 'etc', 'web', 'log', 'spool', 'cache'],
+                sets:           [ 'core', 'libs', 'web', 'service', 'esp', 'utils', 'test', 'dev', 'doc' ],
+                'sets-cross':   [ 'core', 'libs' ],
+                platforms:      [ 'unix', 'windows' ],
+            },
+            binary: {
+                inherit:    'package-manifest',
+                prefixes:   [ 'root', 'app', 'vapp', 'bin', 'inc', 'man', 'etc', 'web', 'log', 'spool', 'cache'],
+                formats:    [ 'native', 'tar' ],
+                sets:       [ 'core', 'libs', 'web', 'service', 'esp', 'utils', 'test', 'dev', 'doc', 'package' ],
+                platforms:  [ 'freebsd', 'linux', 'macosx', 'windows' ]
+            },
+            source: {
+                inherit:    'package-manifest',
+                prefixes:   [ 'root', 'src' ],
+                formats:    [ 'tar' ],
+                sets:       [ 'source' ],
+            },
+            pak: {
+                inherit:    'package-manifest',
+                prefixes:   [ 'src' ],
+                formats:    [ 'tar' ],
+                sets:       [ 'pak' ],
+            },
+        },
+
+        sets: {
+            core: [
+                {
+                    mkdir:      [ '${man}/man1' ],
+                    permissions: 0755,
+
+                }, {
+                    mkdir:      [ '${log}', '${cache}' ],
+                    user:       '${settings.webUser}',
+                    group:      '${settings.webGroup}',
+                    permissions: 0755,
+
+                }, {
+                    from:       'appweb${EXE}',
+                    to:         '${abin}/',
+                    symlink:    '${bin}/',
+                    permissions: 0755,
+
+                }, {
+                    from:       '${TOP}/certs/roots.crt',
+                    to:         '${abin}/',
+                    ifdef:      'ssl',
+
+                }, {
+                    from:       '${TOP}/src/server/mime.types',
+                    to:         '${etc}/',
+
+                }, {
+                    from:       '${TOP}/src/server/appweb.local',
+                    to:         '${etc}/appweb.conf',
+                    enable:     "Path('${TOP}/src/server/appweb.local').exists"
+
+                }, {
+                    from:       '${TOP}/src/server/appweb.conf',
+                    to:         '${etc}/appweb.conf',
+                    enable:     "!Path('${TOP}/src/server/appweb.local').exists"
+
+                }, {
+                    from:       '${TOP}/src/server/esp.json',
+                    to:         '${etc}/esp.json',
+
+                }, {
+                    from:       '${TOP}/src/server/sample.conf',
+                    to:         '${etc}/sample.conf',
+
+                }, {
+                    write:      'set LOG_DIR "${prefixes.log}"\nset CACHE_DIR "${prefixes.cache}"\nDocuments "${prefixes.web}"\nListen 80\n<if SSL_MODULE>\nListenSecure 443\n</if>\n'
+                    to:         '${etc}/install.conf'
+
+                }
+            ],
+            dev: [
+                {
+                    from: [
+                                '${INC}/me.h',
+                                '${TOP}/src/osdep/osdep.h',
+                                '${TOP}/src/appweb.h',
+                                '${TOP}/src/customize.h',
+                                '${TOP}/src/http/http.h',
+                                '${TOP}/src/mpr/mpr.h',
+                                '${TOP}/src/pcre/pcre.h'
+                    ],
+                    to:         '${vapp}/inc/',
+                    symlink:    '${inc}/appweb/',
+
+                }, {
+                    from:       '${TOP}/src/esp/esp.h',
+                    to:         '${vapp}/inc/',
+                    symlink:    '${inc}/appweb/',
+                    ifdef:      'esp',
+                }
+            ],
+            doc: [
+                {
+                    from:       '${TOP}/doc/man/*.1',
+                    to:         '${adoc}/man1/',
+                    enable:     "me.platform.like == 'unix'",
+                    symlink:    '${man}/man1/',
+                }
+            ],
+            esp: [
+                {
+                    from:       'appweb-esp${EXE}',
+                    to:         '${abin}/appesp${EXE}',
+                    symlink:    '${bin}/',
+                    ifdef:      'esp',
+                    enable:     "me.platform.arch == Config.CPU",
+                    permissions: 0755,
+
+                }, {
+                    from:       'appweb-esp${EXE}',
+                    to:         '${abin}/appweb-esp${EXE}',
+                    symlink:    '${bin}/',
+                    ifdef:      'esp',
+                    enable:     "me.platform.arch == Config.CPU",
+                    permissions: 0755,
+
+                }, {
+
+                    perform: function(ignored, to, options) {
+                        for each (pak in Path(me.dir.paks).files(['angular', 'esp-*'])) {
+                            let version = pak.join('pak.json').readJSON().version || '0.0.0'
+                            let dir = me.globals.abin.join('../esp', pak.basename, version)
+                            makeDirectory(dir)
+                            for each (from in pak.files('**')) {
+                                let base = from.relativeTo(me.dir.paks)
+                                let stem = base.components.slice(1).join(from.separator)
+                                let to = dir.join(stem)
+                                if (from.isDir) {
+                                    makeDirectory(to)
+                                } else {
+                                    options.filelist.push(to)
+                                    copyFile(from.relative, to)
+                                }
+                            }
+                        }
+                    },
+                    home:       '${TOP}',
+                    ifdef:      'esp',
+
+                }, {
+                    from:       [ 'esp-compile.json', 'vcvars.bat' ],
+                    to:         '${abin}/',
+                    ifdef:      'esp',
+                }
+            ],
+            libs: [
+                {
+                    from: [
+                                'libappweb${SHOBJ}',
+                                'libesp${SHOBJ}',
+                                'libhttp${SHOBJ}',
+                                'libmpr${SHOBJ}',
+                                'libpcre${SHOBJ}',
+                    ],
+                    to:         '${abin}/',
+                    enable:     "!me.settings.static",
+
+                }, {
+                    from: [
+                                /* Windows needs the libs to be able to compile esp programs */
+                                'libappweb${SHLIB}',
+                                'libesp${SHLIB}',
+                                'libpcre${SHLIB}',
+                                'libhttp${SHLIB}',
+                                'libmpr${SHLIB}',
+                    ],
+                    to:         '${abin}/',
+                    enable:     "me.platform.os == 'windows' && !me.settings.static",
+                },
+                {
+                    from:       'libsql${SHOBJ}'
+                    to:         '${abin}/',
+                    enable:     "me.targets.sqlite.enable && !me.settings.static",
+
+                }, {
+                    from:       'libsql${SHLIB}',
+                    to:         '${abin}/',
+                    enable:     "me.targets.sqlite.enable && me.platform.os == 'windows' && !me.settings.static",
+                },
+            ],
+            service: [
+                {
+                    from:       'appman${EXE}',
+                    to:         '${abin}/',
+                    symlink:    '${bin}/',
+                    permissions: 0755,
+                }, {
+                    from: [
+                                'appwebMonitor${EXE}',
+                                'appwebMonitor.ico',
+                    ],
+                    to:         '${abin}/',
+                    permissions: 0755,
+                    enable:     "me.platform.os == 'windows'",
+
+                }, {
+                    name:        'Launch daemon script'
+                    from:        '${TOP}/installs/macosx/com.embedthis.appweb.plist',
+                    to:          '${root}/Library/LaunchDaemons/com.embedthis.appweb.plist',
+                    permissions: 0644,
+                    user:        'root',
+                    group:       'wheel',
+                    root:        true,
+                    enable:      "me.platform.os == 'macosx'",
+
+                }, {
+                    name:        'Init script'
+                    from:        '${TOP}/installs/linux/appweb.init',
+                    to:          '${root}/etc/init.d/appweb',
+                    permissions: 0755,
+                    user:        'root',
+                    group:       'root',
+                    root:        true,
+                    enable:      "me.platform.os == 'linux'",
+
+                }, {
+                    name:        'Upstart script'
+                    from:        '${TOP}/installs/linux/appweb.upstart',
+                    to:          '${root}/etc/init/appweb.conf',
+                    permissions: 0644,
+                    user:        'root',
+                    group:       'root',
+                    root:        true,
+                    enable:      "false && me.platform.os == 'linux'",
+                }
+            ],
+            source: [
+                {
+                    home:       '${TOP}',
+                    from: [
+                                'Makefile',
+                                'make.bat',
+                                'main.me',
+                                'pak.json'
+                    ],
+                    to:         '${src}/',
+
+                }, {
+                    from:       '${TOP}/*.md',
+                    to:         '${src}/',
+                    fold:       true,
+                    patch:      true,
+
+                }, {
+                    from:       '${TOP}/configure',
+                    to:         '${src}/',
+                    permissions: 0755,
+
+                }, {
+                    home:       '${TOP}',
+                    from: [
+                                'src',
+                                'test',
+                                'doc',
+                                'projects',
+                                'certs',
+                                'installs',
+                    ],
+                    to:         '${src}/',
+                    exclude:    /\.old$|\.tmp$|xcshared|xcuserdata|xcworkspace|project.guid|-mine|\/cache\/|10M.txt|1M.txt|\/tmp\//,
+                    flatten:    false,
+                }
+            ],
+            utils: [
+                {
+                    from:       'http${EXE}',
+                    to:         '${abin}/',
+                    symlink:    '${bin}',
+                    permissions: 0755,
+                }
+            ],
+            web: [
+                {
+                    home:       '${TOP}/src/server/web',
+                    from:       '**',
+                    to:         '${web}/',
+                    flatten:    false,
+                    exclude:    /mgmt/,
+
+                }, {
+                    home:       '${TOP}/src/server/web/test',
+                    from:       '*',
+                    to:         '${web}/test/',
+                    flatten:    false,
+                    include:    /.cgi|test.pl|test.py/,
+                    permissions: 0755,
+                }
+            ],
+            pak: [
+                {
+                    from:       '${TOP}/installs/appweb.me',
+                    to:         '${src}/dist/appweb.me',
+
+                }, {
+                    from:       '${TOP}/src/appweb.h',
+                    to:         '${src}/dist/appweb.h',
+                    append:     true,
+                    filter:     /^#inc.*customize.*$/mg,
+
+                }, {
+                    from:       [
+                        '${TOP}/src/*.c',
+                        '${TOP}/src/modules/**.c',
+                    ],
+                    exclude:    /\/server\/|\/utils\//,
+                    to:         '${src}/dist/appwebLib.c',
+                    append:     true,
+                    header:     '/*\n * ${settings.title} Library Source\n */\n\n#include \"appweb.h\"\n\n#if ME_COM_APPWEB',
+                    divider:    true,
+                    footer:     '#endif /* ME_COM_APPWEB */',
+                    filter:     /^#inc.*appweb.*$|^#inc.*esp.*$|^#inc.*customize.*$/mg,
+
+                }, {
+                    home:       '${TOP}',
+                    from:       ['${TOP}/doc/api/appweb.html', '${TOP}/doc/api/appweb.tags', '${TOP}/doc/api/appweb.dtags'],
+                    to:         '${src}/doc/api/',
+                    relative:   'doc/api',
+                },
+            ],
+        },
+    },
+})

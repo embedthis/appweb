@@ -1,0 +1,40 @@
+/*
+    chat.json - Chat ESP configuration file
+ */
+{
+    name: 'chat',
+    description: 'WebSockets Chat test',
+    version: '0.2.0',
+    esp: {
+        app: true,
+        update: false,
+    },
+    http: {
+        routes: [
+            {
+                pattern: '/{controller}/{action}$',
+                autoFinalize: false,
+                source: 'switchboard.c',
+                target: '$1/$2',
+                pipeline: {
+                    filters: [ 'webSocketFilter' ],
+                    handlers: 'espHandler',
+                },
+                limits: {
+                    webSockets: 20,
+                    webSocketsMessage: '40MB',
+                    webSocketsPacket: '40MB',
+                    webSocketsProtocol: 'chat',
+                    requestTimeout: 'unlimited',
+                    inactivityTimeout: 'unlimited',
+                    rxBody: 'unlimited',
+                    txBody: 'unlimited',
+                },
+                timeouts: {
+                    inactivity: '10mins',
+                    request: 'never',
+                },
+            }
+        ]
+    }
+}

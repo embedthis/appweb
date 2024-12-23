@@ -1,0 +1,15 @@
+{
+   "options": {"failByDrop": false},
+   "outdir": "./ws",
+ 
+   "servers": [
+                {"agent": "AutobahnPython",
+                 "url": "ws://localhost:4100/autobahn/basic/echo",
+                 "options": {"version": 18}}
+              ],
+ 
+   "cases": ["*"],
+   "_cases": ["9.3.1"],
+   "exclude-cases": [],
+   "exclude-agent-cases": {}
+}

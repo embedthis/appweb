@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="eng">
+<head>
+<title>Appweb Man Page</title>
+</head>
+<HTML>
+<BODY>
+<PRE>
+<!-- Manpage converted by man2html 3.0.1 -->
+       appweb [options] [IP][:port] [documentRoot]
+
+       appweb
+           --config configFile
+           --chroot directory
+           --debugger
+           --exe path
+           --home directory
+           --log logSpec
+           --name uniqueName
+           --threads threads
+           --trace traceSpec
+           --version
+           --verbose
+           [IP][:port] [documentRoot]
+
+DESCRIPTION
+       Appweb is a compact embedded HTTP web server.  It is a fast, small-
+       footprint, multi-threaded, standards-based, portable server developed
+       for use by embedded devices and applications.  It can run as a stand-
+       alone web server or the Appweb library can be embedded in applications.
+
+       Appweb supports HTTP/1.1, SSL, digest and basic authentication, virtual
+       hosting, ranged requests, chunked transfers, file upload and security
+       limits.  Appweb has an Apache style configuration file and supports the
+       ESP and PHP web frameworks.
+
+       Appweb normally reads the appweb.conf file for configuration
+       directives. However, if appweb is invoked with an IP address or port
+       number on the command line, Appweb will not read the configuration
+       file. Rather it will listen for requests on the specified IP:PORT
+       address. If the PORT component is omitted, Appweb will listen on port
+       80. If the IP address is omitted and a port is supplied, Appweb will
+       listen on all network interfaces.
+
+       Appweb responds to the SIGUSR2 signal and toggles the trace level from
+       2 to 4 and vice-versa. Appweb responds to the SIGINFO|SIGPWR signal and
+       emits operational stats to the trace log.
+
+OPTIONS
+       --config filename
+              Define the name of the Appweb configuration file. This is by
+              default appweb.
+
+       --chroot directory
+              Change the system root directory for Appweb. This creates a
+              chroot jail so that the Appweb process cannot access any files
+              outside the given directory.
+
+       --debugger
+              Run Appweb in debug mode and disable all timeouts. This disables
+              request and session timeouts.  The -d option is an alias for
+              directive in the configuration file. The syntax is:
+
+              --log logName[:logLevel]
+
+       --name NAME
+              Define a unique name for this instance of Appweb. Useful for ps
+              -ef listings.
+
+       --trace traceSpec
+              Name the Appweb request trace file. This will override the
+              TraceLog directive in the configuration file.  The syntax is:
+
+              --trace traceName[:traceLevel]
+
+       --verbose
+              Shorthand for --log stdout:4. The -v option is an alias for
+              --verbose.
+
+       --version
+              Output the product version number.
+
+FILES
+       /etc/appweb/appweb.conf
+       /var/www/appweb-default
+       /usr/local/lib/appweb
+       /var/log/appweb
+
+REPORTING BUGS
+       Report bugs to dev@embedthis.com.
+
+COPYRIGHT
+       Copyright © Embedthis Software.
+
+SEE ALSO
+       appman authpass esp http
+
+appweb                            March 2014                         <B>APPWEB(1)</B>
+</PRE>
+<HR>
+<ADDRESS>
+Man(1) output converted with
+<a href="http://www.oac.uci.edu/indiv/ehood/man2html.html">man2html</a>
+</ADDRESS>
+</BODY>
+</HTML>
+</html>

@@ -1,0 +1,25 @@
+<html>
+<head>
+    <title>ESP Directives</title>
+</head>
+<body>
+<%^start
+    char    *msg = "Hello World";
+    int     x = 42;
+
+    espSetParam(stream, "message", msg);
+    espSetIntParam(stream, "number", x);
+-%>
+    <h1>ESP Directives</h1>
+    Today's Message: %$message
+    Lucky Number: %$number
+    Hostname: <%= mprGetDomainName() %>.<%= %s mprGetHostName() %>
+    Time: <%= mprGetDate(0) %>
+    Formatted Number: <%= %,d 12345678 %>
+    Safe Strings: <%= %S "<bold>" %>
+    Safe Variables: %$exploit
+    Weather: %$weather
+</body>
+</html>
+
+<%^end espSetStatus(stream, 200); %>

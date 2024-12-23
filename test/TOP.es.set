@@ -1,0 +1,50 @@
+/*
+    TOP.es.set - Server-side test setup
+ */
+
+require ejs.unix
+
+if (tphase() == 'Setup') {
+    tset('libraries', 'http mpr')
+    let conf = Path('appweb.conf').readString()
+    tset('TM_HTTP',       'http://'  + conf.replace(/.*Listen *([\.:0-9]+) *# <HTTPv4>.*/ms, '$1'))
+    tset('TM_HTTPV6',     'http://'  + conf.replace(/.*Listen *([\[\]:0-9]+) *# <HTTPv6>.*/ms, '$1'))
+    tset('TM_HTTPS',      'https://' + conf.replace(/.*ListenSecure *([\.:0-9]+) *# <HTTPSv4>.*/ms, '$1'))
+    tset('TM_SELFCERT',   'https://' + conf.replace(/.*ListenSecure *([\.:0-9]+) *# <SELFCERT>.*/ms, '$1'))
+    tset('TM_CLIENTCERT', 'https://' + conf.replace(/.*ListenSecure *([\.:0-9]+) *# <CLIENTCERT>.*/ms, '$1'))
+    tset('TM_TESTCERT',   'https://' + conf.replace(/.*ListenSecure *([\.:0-9]+) *# <TESTCERT>.*/ms, '$1'))
+    tset('TM_NAMED',      'http://'  + conf.replace(/.*Listen *([\.:0-9]+) *# <NAMED>.*/ms, '$1'))
+    tset('TM_VIRT',       'http://'  + conf.replace(/.*Listen *([\.:0-9]+) *# <IPHOST>.*/ms, '$1'))
+    tset('TM_HTTP_PORT',  conf.replace(/.*Listen *([\.:0-9]+) *# <HTTPv4>.*/ms, '$1').split(':')[1])
+
+    // Cmd.run('rm -f *.log')
+
+    /*
+        This will remove all files in cache/.  If Appweb is running outside of this script, you must restart it otherwise
+        Appweb espHandler will need to unload modules which is slow.
+     */
+    if (!Path('.test-prepared').exists) {
+        Cmd.run('me prep-test')
+    }
+    Cmd.run('killall fastProgram', {exceptions: false})
+    Cmd.run('killall proxyServer', {exceptions: false})
+
+} else if (tphase() == 'Finalize') {
+    Cmd.run('killall fastProgram', {exceptions: false})
+    let appwebs = Cmd.ps('appweb')
+    let proxies = appwebs.filter(function(c) { return c.command.contains('--config proxy.conf') })
+    for each (let proxy in proxies) {
+        Cmd.kill(proxy.pid)
+    }
+    if (appwebs.length == 0) {
+        twrite('\n\n')
+        twrite('Appweb not running\n')
+        twrite('Errors', Path('error.log').readString())
+        twrite('Trace', Path('trace.log').readString())
+        twrite('Proxy Connection Trace', Path('proxy.log').readString())
+        twrite('Proxy App Errors', Path('proxy-app-error.log').readString())
+        twrite('Proxy App Trace', Path('proxy-app-trace.log').readString())
+    }
+}
+
+startStopService('appweb', {address: tget('TM_HTTP')})

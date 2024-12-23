@@ -1,0 +1,29 @@
+<html>
+    <head>
+    </head>
+    <body>
+        <script>
+        /*
+            This will do a CORS request to /app/test/cors.
+            This page should be served from: http://localhost:4400/cors.html
+
+            See the CrossOrigin header that configures the appweb.conf
+         */
+        var http = new XMLHttpRequest();
+        var url = 'http://localhost:4100/app/test/cors';
+            
+        http.onerror = function() {
+            console.log('There was an error!');
+        };
+        http.onload = function() {
+            console.log(http.responseText);
+        };
+        http.open('POST', url, true);
+        http.withCredentials = true;
+        http.setRequestHeader('X-CORS-HEADER', 'pingpong');
+        http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        http.send(); 
+
+        </script>
+    </body>
+</html>

@@ -1,0 +1,122 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "monitorResources.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "windows.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+ICON                    ICON                    "appwebMonitor.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+monitorMenu MENU 
+BEGIN
+    POPUP "Embedthis Appweb Monitor"
+    BEGIN
+        MENUITEM "Appweb Running",              MA_MENU_STATUS, CHECKED
+        MENUITEM SEPARATOR
+        MENUITEM "Appweb Documentation ...",    MA_MENU_DOC
+        MENUITEM SEPARATOR
+        MENUITEM "Start Appweb",                MA_MENU_START
+        MENUITEM "Stop Appweb",                 MA_MENU_STOP
+        MENUITEM SEPARATOR
+        MENUITEM "About Appweb ...",            MA_MENU_ABOUT
+        MENUITEM "Exit Appweb Monitor",         MA_MENU_EXIT
+    END
+END
+
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDB_GO                  BITMAP                  "go.bmp"
+IDB_STOP                BITMAP                  "stop.bmp"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_EXIT DIALOGEX 0, 0, 262, 147
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Embedthis Appweb Monitor"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "Yes",IDYES,68,124,50,14
+    PUSHBUTTON      "No",IDNO,134,124,50,14
+    LTEXT           "Are you sure you want to quit Embedthis Appweb?",IDC_EXIT_QUERY,39,19,160,8
+    LTEXT           "If you quit this Monitor, Embedthis Appweb will continue to run",IDC_EXIT_LINE1,39,40,198,8
+    CONTROL         "",IDC_PIC,"Static",SS_BLACKFRAME,7,7,20,20
+    LTEXT           "in the background.",IDC_EXIT_LINE2,39,50,61,8
+    LTEXT           "You can restart Embedthis Appweb or the Appweb Monitor from",IDC_EXIT_LINE4,39,70,208,8
+    LTEXT           "the start menu.",IDC_EXIT_LINE5,39,80,51,8
+    CONTROL         " Start the appweb Monitor when the system restarts.",IDC_EXIT_CHECK1,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,38,103,181,10
+END
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

@@ -1,0 +1,17 @@
+Package: ${settings.name}
+Version: ${settings.version}
+Section: web
+Priority: optional
+Architecture: ${platform.mappedCpu}
+Depends: libc6
+Provides: appweb
+Replaces: appweb, appweb-dev, appweb-bin
+Conflicts: appweb, appweb-dev, appweb-bin
+Installed-Size: 10
+Maintainer: Embedthis Development <dev@embedthis.com>
+Description: Embedthis Appweb Web Server
+ Appweb is a compact and powerful web server suitable for dynamic web applications.
+ .
+ more information about Appweb can be found at:
+ <URL:https://www.embedthis.com/appweb/>
+ <URL:https://www.embedthis.com>

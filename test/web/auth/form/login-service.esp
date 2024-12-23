@@ -1,0 +1,12 @@
+<html><head><title>login-service.esp</title></head>
+<body>
+<%
+    if (smatch(stream->rx->method, "POST") && httpLogin(stream, param("username"), param("password"))) {
+        cchar *referrer = getReferrer();
+        redirect(referrer ? referrer : "/index.html");
+    } else {
+        redirect("/auth/form/login.esp");
+    }
+%>
+</body>
+</html>

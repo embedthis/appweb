@@ -1,0 +1,4 @@
+if (!thas('ME_PROXY')) {
+    tskip("PROXY not enabled")
+}
+// tskip("PROXY not enabled")

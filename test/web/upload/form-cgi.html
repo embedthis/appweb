@@ -1,0 +1,18 @@
+<html>
+<head>
+<title>FORM ONLY</title>
+</head>
+<body>
+    <h2>File Upload to CGI</h2>
+    <form method="post" action="/upload/cgiProgram.cgi">
+        <input type="hidden" name="MAX_FILE_SIZE" value="30000">
+        <table border="0">
+            <tr><td>Name</td><td><input type="text" name="Name"></td></tr>
+            <tr><td>Address</td><td><input type="text" name="Address"></td></tr>
+        </table>
+        <input type="submit" value="send">
+        <input type="reset" value="cancel">
+    </form>
+</body>
+</html>
+

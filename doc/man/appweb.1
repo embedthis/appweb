@@ -1,0 +1,101 @@
+.TH APPWEB "1" "March 2014" "appweb" "User Commands"
+.SH NAME
+appweb\- Embedded HTTP Web Server
+.SH SYNOPSIS
+.B appweb [options]
+.br
+.B appweb [options] [IP][:port] [documentRoot]
+.P
+.B appweb
+    \fB--config configFile\fR
+    \fB--chroot directory\fR
+    \fB--debugger\fR
+    \fB--exe path\fR
+    \fB--home directory\fR
+    \fB--log logSpec\fR
+    \fB--name uniqueName\fR
+    \fB--threads threads\fR
+    \fB--trace traceSpec\fR
+    \fB--version\fR
+    \fB--verbose\fR
+    \fB[IP][:port] [documentRoot]\fR
+.SH DESCRIPTION
+Appweb is a compact embedded HTTP web server.  It is a fast, small-footprint, multi-threaded, standards-based,
+portable server developed for use by embedded devices and applications.  It can run as a stand-alone
+web server or the Appweb library can be embedded in applications.
+.P
+Appweb supports HTTP/1.1, SSL, digest and basic authentication, virtual hosting, ranged requests, chunked transfers,
+file upload and security limits.  Appweb has an Apache style configuration file and supports the ESP and PHP web frameworks. 
+.P
+Appweb normally reads the \fBappweb.conf\fR file for configuration directives. However, if appweb is invoked with
+an IP address or port number on the command line, Appweb will not read the configuration file. Rather it will
+listen for requests on the specified IP:PORT address. If the PORT component is omitted, Appweb will listen
+on port 80. If the IP address is omitted and a port is supplied, Appweb will listen on all network interfaces.
+.P
+Appweb responds to the SIGUSR2 signal and toggles the trace level from 2 to 4 and vice-versa. Appweb responds to the
+SIGINFO|SIGPWR signal and emits operational stats to the trace log.
+.SH OPTIONS
+.TP
+\fB\--config filename\fR
+Define the name of the Appweb configuration file. This is by default \fBappweb\fR.
+.TP
+\fB\--chroot directory\fR
+Change the system root directory for Appweb. This creates a chroot jail so that the Appweb process cannot access
+any files outside the given directory.
+.TP
+\fB\--debugger\fR
+Run Appweb in debug mode and disable all timeouts. This disables request and session timeouts.
+The \fB-d\fR option is an alias for --debug.
+.TP
+\fB\--exe path\fR
+Set the path to the appweb.exe executable image. This may be required on VxWorks so that Appweb can
+load modules which are located at "appweb.exe/../lib". This is necessary because VxWorks cannot determine
+the path to the executable image at runtime.
+.TP
+\fB\--home directory\fR
+Define the server home directory for Appweb.
+.TP
+\fB\--log logSpec\fR
+Name the Appweb log file. This will override the ErrorLog directive
+in the configuration file. The syntax is:
+.PP
+.RS 6
+ --log logName[:logLevel]
+.RE
+.TP
+\fB\--name NAME\fR
+Define a unique name for this instance of Appweb. Useful for ps -ef listings.
+.TP
+\fB\--trace traceSpec\fR
+Name the Appweb request trace file. This will override the TraceLog directive
+in the configuration file.
+The syntax is:
+.PP
+.RS 6
+ --trace traceName[:traceLevel]
+.RE
+.TP
+\fB\--verbose\fR
+Shorthand for --log stdout:4. The \fB-v\fR option is an alias for --verbose.
+.TP
+\fB\--version\fR
+Output the product version number.
+.PP
+.SH FILES
+.PD 0
+.B /etc/appweb/appweb.conf
+.br
+.B /var/www/appweb-default
+.br
+.B /usr/local/lib/appweb
+.br
+.B /var/log/appweb
+.br
+.PD
+.SH "REPORTING BUGS"
+Report bugs to dev@embedthis.com.
+.SH COPYRIGHT
+Copyright \(co Embedthis Software.
+.br
+.SH "SEE ALSO"
+appman authpass esp http

@@ -1,0 +1,29 @@
+{
+    esp: {
+        app: true,
+        update: false,
+    },
+    http: {
+        pipeline: {
+            handlers: 'espHandler'
+        },
+        routes: {
+            pattern: '/{controller}/{action}$',
+            target:  '$1/$2',
+            pipeline: {
+                filters: "webSocketFilter"
+            },
+            source:  'websockets.c'
+        },
+        limits: {
+            webSockets:         '20',
+            webSocketsMessage:  '40MB',
+            webSocketsPacket:   '40MB',
+            webSocketsFrame:    '8K'
+        },
+        timeouts: {
+            request:    '1min',
+            inactivity: '30secs'
+        }
+    }
+}

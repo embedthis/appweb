@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<form action="upload.php" name="myupload" id="myupload" method="post">
+    Click on the button and static filedata will be send as post request 
+   <br/>
+  <input type="hidden" name="fileName" value="webauth_header.gif"/>
+  <input type="hidden" name="csrf_token" value="a61f466379eb7e0198bee81a1d7334cf"/>
+  <input type="hidden" name="key" value="1"/>
+  <input type="hidden" name="csize" value="4798"/> 
+  <input type="hidden" name="filedata" value="data:image/gif;base64,R0lGODlhEAAUAOMOADFKY0L/QpSlvZylvZytxqW11qm92r3GxrXI48bGxsbS59Te8efv9+vz/////////yH5BAEAAA8ALAAAAAAQABQAAARN8MkpE70462e3/90nSgthDoMgHBnhvG/DAC0MyAqNuS/ALAbdZeAAGI1BzkXgkAEWioKQIpAtAAqENCNgZA2F8HRyOJpZo1EonV6zKREAOw=="/>
+  <input type="submit" value="Upload Image" name="submit" id="submit">
+</form>
+<script src="jquery.js"></script>
+
+<script type="text/javascript">
+$(document).ready(function(e){
+    // Submit form data via Ajax
+    $("#myupload").on('submit', function(e){
+        e.preventDefault();
+        $.ajax({
+            type: 'POST',
+            url: 'upload.php',
+            data: new FormData(this),
+            contentType: false,
+            cache: false,
+            processData:false,
+            beforeSend: function(){
+                $('.submitBtn').attr("disabled","disabled");
+                $('#fupForm').css("opacity",".5");
+            },
+            success: function(response){
+                console.log(response);
+            }
+        });
+    });
+});
+</script>
+
+</body>
+</html>

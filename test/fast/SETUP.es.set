@@ -1,0 +1,4 @@
+
+if (!thas('ME_FAST')) {
+    tskip("FAST not enabled")
+}

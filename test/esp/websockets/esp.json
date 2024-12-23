@@ -1,0 +1,34 @@
+{
+    directories: {
+        controllers: '.'
+    },
+    esp: {
+        app: true,
+        update: false,
+    },
+    http: {
+        limits: {
+            webSockets:         '25',
+            webSocketsMessage:  '10MB',
+            webSocketsPacket:   '8K',
+            webSocketsFrame:    '4K',
+            rxBody:             'unlimited',
+            txBody:             'unlimited',
+        },
+        pipeline: {
+            handlers: 'espHandler'
+        },
+        timeouts: {
+            request:    'never',
+            inactivity: '2mins'
+        },
+        routes: {
+            pattern: '/{controller}/{action}$',
+            target:  '$1/$2',
+            pipeline: {
+                filters: "webSocketFilter"
+            },
+            source:  'websockets.c'
+        }
+    }
+}

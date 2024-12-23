@@ -1,0 +1,19 @@
+/*
+    install.json - Local configuration for running in the local source tree
+ */
+
+{
+    http: {
+        documents: 'web',
+        server: {
+            listen: [
+                '127.0.0.1:4100'
+            ]
+        }
+    }
+}
+    
+/*
+Set LOG_DIR .
+Set CACHE_DIR cache
+*/

@@ -1,0 +1,4 @@
+<body>
+<% redirect("/index.esp"); %>
+
+

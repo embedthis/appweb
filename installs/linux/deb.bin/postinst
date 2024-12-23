@@ -1,0 +1,72 @@
+#!/bin/sh
+#
+# 	postinst -- Post installation script for appweb
+#
+#	Copyright (c) Embedthis Software. All Rights Reserved.
+#
+
+ME_PRODUCT=appweb
+ME_NAME="${settings.title}"
+ME_APP_PREFIX="${prefixes.app}"
+ME_VAPP_PREFIX="${prefixes.vapp}"
+ME_BIN_PREFIX="${prefixes.bin}"
+ME_LIB_PREFIX="${prefixes.lib}"
+ME_LOG_PREFIX="${prefixes.log}"
+ME_SPOOL_PREFIX="${prefixes.spool}"
+ME_CACHE_PREFIX="${prefixes.cache}"
+
+###############################################################################
+setPerms() {
+	local g u
+
+	for u in nobody www-data _www Administrator ; do
+		grep "$u" /etc/passwd >/dev/null
+		if [ $? = 0 ] ; then
+			username=$u
+			break
+		fi
+	done
+	for g in nobody www-data _www nogroup Administrator ; do
+		grep "$g" /etc/group >/dev/null
+		if [ $? = 0 ] ; then
+			groupname=$g
+			break
+		fi
+	done
+	if [ "$username" = "" -o "$groupname" = "" ] ; then
+		echo "Can't find a suitable user/group for $ME_PRODUCT" 1>&2
+		exit 255
+	fi
+    mkdir -p "$ME_SPOOL_PREFIX" "$ME_CACHE_PREFIX" "$ME_LOG_PREFIX"
+    chown $username "$ME_SPOOL_PREFIX" "$ME_CACHE_PREFIX" "$ME_LOG_PREFIX"
+    chgrp $groupname "$ME_SPOOL_PREFIX" "$ME_CACHE_PREFIX" "$ME_LOG_PREFIX"
+    chmod 755 "$ME_SPOOL_PREFIX" "$ME_CACHE_PREFIX" "$ME_LOG_PREFIX"
+}
+
+###############################################################################
+#
+#	Main
+#
+
+cd /
+action=$1
+
+case $action in
+	configure)							# when new
+        setPerms
+		oldVersion=$2
+        appman -v install
+        if [ "$APPWEB_DONT_START" != 1 ] ; then
+            appman enable
+            appman start
+        fi
+        echo
+		echo "$ME_NAME installation successful."
+		;;
+	abort-upgrade)						# when old
+		;;
+	abort-remove)
+		# 	sometimes conflictor's-postinst abort-remove in-favor package new-version
+		;;
+esac
+exit 0

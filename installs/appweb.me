@@ -1,0 +1,33 @@
+/*
+    appweb.me -- MakeMe File to build the Appweb library when embedded in another product
+ */
+
+Me.load({
+    blend: [ 'http' ],
+
+    targets: {
+        appweb: {
+            configurable: true,
+            depends: [ 'libappweb' ],
+        },
+        libappweb: {
+            type: 'lib',
+            sources: [ 'appwebLib.c' ],
+            headers: [ '*.h' ],
+            depends: [ 'libesp', 'libhttp', 'libpcre', 'libmpr' ],
+            ifdef: [ 'appweb' ],
+        },
+        authpass: {
+            type: 'exe',
+            sources: [ 'authpass.c' ],
+            depends: [ 'libappweb' ],
+            platforms: [ 'local' ],
+            postblend: function (target) {
+                if (target.static && me.targets.ssl.enable) {
+                    target.depends += [ 'libmprssl' ]
+                }
+            },
+            enable: 'me.settings.appweb && me.settings.appweb.authpass',
+        }
+    }
+})

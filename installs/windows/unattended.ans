@@ -1,0 +1,5 @@
+[Setup]
+Lang=default
+Group=Embedthis Appweb
+NoIcons=0
+Components=bin,doc,dev

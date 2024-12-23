@@ -1,0 +1,4 @@
+
+if (!thas('ME_CGI')) {
+    tskip("CGI not enabled")
+}

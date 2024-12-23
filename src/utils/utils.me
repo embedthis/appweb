@@ -1,0 +1,32 @@
+/*
+    utils.me -- MakeMe file for Utilities
+ */
+
+Me.load({
+    targets: {
+        authpass: {
+            type: 'exe',
+            sources: [ 'authpass.c' ],
+            depends: [ 'libappweb' ],
+            platforms: [ 'local' ],
+        },
+
+        'cgiProgram': {
+            type:   'exe',
+            sources: [ 'cgiProgram.c' ],
+            ifdef: [ 'cgi' ],
+            action: true,
+            generate: false,
+        },
+
+        'fastProgram': {
+            type:   'exe',
+            sources: [ 'fastProgram.c' ],
+            ifdef: [ 'fast' ],
+            includes: [ '/usr/local/include' ],
+            libraries: [ 'fcgi' ],
+            action: true,
+            generate: false,
+        },
+    },
+})

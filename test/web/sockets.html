@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset=utf-8>
+</head>
+
+<body>
+    <script>
+
+    // var ws = new WebSocket('ws://html5rocks.websocket.org/echo', ['soap', 'xmpp']);
+    // ws = new WebSocket('ws://echo.websocket.org/', "");
+    // ws = new WebSocket('ws://node.remysharp.com:8001');
+    ws = new WebSocket('ws://localhost:4100/websockets/basic/echo', ['chat']);
+
+    //  TODO - can't send here until handshake received
+    // ws.send(JSON.stringify('Hello WebSockets World'));
+
+    ws.onopen = function (event) {
+        console.log("OPEN");
+        ws.send("Thanks for opening");
+        console.log(event.data);
+    };
+    ws.onmessage = function (event) {
+        console.log("MSG", event.data);
+    };
+    ws.onclose = function (event) {
+        console.log("CLOSED");
+    };
+    ws.onerror = function (event) {
+        console.log("Error " + event);
+    };
+    // ws.close();
+    </script>
+</body>
+</html>

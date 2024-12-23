@@ -1,0 +1,10 @@
+<html>
+<head>
+    <title>ESP Test Program</title>
+</head>
+<body>
+    <h1>ESP Test Program</h1>
+    <h3>Server Time: <%= mprGetDate(0) %></h3>
+    <h3>Product Name: <%= mprGetAppName() %></h3>
+</body>
+</html>

@@ -1,0 +1,428 @@
+/*
+    Appweb documentation style sheet
+ */
+
+html {
+	min-width: 700px;
+	background-color: #20344D;
+}
+
+body {
+	max-width: 1000px;
+	margin: 0 auto;
+	padding: 0;
+	font-family: Verdana, Arial, Helvetica, sans-serif; 
+	font-size: small;
+	background-image: url(images/shadow.jpg);
+	background-position: left top;
+	background-repeat: repeat-y;
+}
+
+
+/*
+ * 	Top banner section
+ */
+div.top {
+	height: 125px;
+	width: 900px;
+	margin-left: 40px;
+	background-image: url("images/banner.jpg");
+	background-position: top right;
+	background-repeat: no-repeat;
+}
+
+div.bottom {
+	background-image: url(images/bottomShadow.jpg);
+	background-repeat: no-repeat;
+	text-align: center;
+}
+
+a.logo {
+	position: absolute;
+	height: 50px;
+	width: 200px;
+	text-decoration: none;
+}
+
+/*
+ * 	Search and version
+ */
+div.topRight {
+	float: right;
+	padding: 23px 18px 0 0;
+	font-size: 90%;
+	text-align: right;
+	color: #000000; 
+}
+
+div.search {
+	padding: 4px 0px 24px 0;
+}
+
+div.search input {
+	text-align: right;
+}
+
+div.search p {
+    margin: 0;
+    padding: 0;
+}
+
+div.search label {
+	vertical-align: middle;
+	color: #FFFFFF;
+	font-weight: normal;
+}
+
+div.search form {
+	margin: 0;
+	padding: 0;
+}
+
+div.search form #q, div.search form #q {
+	background: #EEEEEE;
+}
+
+div.search form #q:hover, div.search form #q:focus {
+	background: #FFFFFF;
+}
+
+/*
+ *	Navigation history line (crumbs)
+ */
+div.crumbs { 
+	float: left;
+	margin: 74px 0 0 20px;
+	color: #FFFFFF; 
+	text-decoration: none;
+}
+
+div.crumbs a:link, div.crumbs a:visited { 
+	color: #EEEEFF; 
+	text-decoration: none;
+}
+
+div.crumbs a:hover { 
+	text-decoration: underline; 
+	color: #FFFFFF;
+}
+
+/*
+ *	Body content
+ */
+div.content {
+	width: 850px;
+	min-height: 400px;
+	margin: -30px 0 0 40px;
+	padding: 0 10px 40px 40px;
+	color: #000000;
+	background-color: #FFFFFF;
+	text-decoration: none;
+}
+
+div.content a {
+	color: #284898; 
+	text-decoration: none; 
+}
+
+div.content a:hover { 
+	color: #CC4477; 
+	text-decoration: underline; 
+}
+
+div.content ul li {
+	font-size: 100%;
+	line-height: 140%; 
+	margin: 0;
+}
+
+div.content ol li {
+	font-size: 100%;
+	line-height: 140%; 
+	margin: 0;
+	padding: 10px 0 0 0;
+}
+
+
+/*
+ *  Home page
+ */
+div.homeLeft {
+	width: 33%;
+	float: left;
+	padding-right: 10px;
+}
+
+div.homeMiddle {
+	min-height: 300px;
+}
+
+div.homeRight { 
+	width: 31%;
+	float: right;
+	margin: 0 0 0 10px;
+	padding: 0 10px 0 20px;
+	text-decoration: none;
+	min-height: 300px;
+	min-width: 150px;
+    background-color: #FFFFFF;
+}
+
+
+/*
+ *  Content pages (everything else)
+ */
+div.contentLeft {
+	width: 76%;
+	margin: 0;
+	padding: 8px 10px 0 0;
+	text-decoration: none;
+	min-height: 470px;
+	background-color: #FFFFFF;
+}
+
+div.contentRight { 
+	width: 20%;
+	float: right;
+	margin: 0 0 0 10px;
+	padding: 0 10px 100px 20px;
+	text-decoration: none;
+	min-width: 150px;
+    background-color: #FFFFFF;
+	font-size: 100%;
+	line-height: 145%;
+	text-decoration: none;
+}
+
+div.contentRight ul {
+    padding: 0;
+    margin: 0;
+	list-style-type: none;
+}
+
+div.contentRight h2 {
+	font-size: 120%;
+	position: relative; 
+	left: -11px;
+	margin: 20px 0 4px 0px;
+	padding: 2px 4px 3px 10px;
+	color: #284898; 
+	background-color: #f2f2f2;
+}
+
+
+/*
+ * 	Generic styles
+ */
+p { 
+	line-height: 130%; 
+	margin-bottom: 5px;
+}
+
+b {
+    font-weigth: bold;
+    color: #222;
+}
+
+h1 {
+	padding: 20px 0 10px 0;
+	margin: 0;
+	color: #284898; 
+	font-size: 150%;
+	font-weight: bold;
+}
+
+h2 {
+	padding: 12px 0 4px 0;
+	margin: 0;
+	color: #284898; 
+	font-size: 120%;
+}
+
+h2.section {
+	border-bottom: 2px solid #AAAAAA;
+    border-color: #DDDDFF;
+	padding: 14px 0 2px 0;
+}
+
+h3 {
+    padding: 10px 0 4px 0;
+    margin: 0px;
+    color: #284898; 
+    font-size: 100%;
+    font-weight: bold;
+}
+
+h4 {
+    font-size: 90%;
+    font-style: italic;
+    color: #000000; 
+}
+
+hr {
+	margin: 0 0 0 0;
+	border-style: none;
+	border: 0;
+	height: 0px;
+	width: 0px;
+}
+
+ul { 
+	font-size: 100%;
+    margin-top: 2px;
+    margin-bottom: 6px;
+}
+
+ul.bare {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+ol { 
+	font-size: 100%;
+    margin-top: 2px;
+    margin-bottom: 6px;
+}
+
+pre { 
+	font-size: 110%;
+	line-height: 140%; 
+	font-family: Consolas, Monaco, Courier, Courier New, Courier, monospace; 
+	padding: 10px 15px 10px 15px;
+	margin: 16px 0 20px 0;
+	background-color: #20344D;
+	color: #FFFFFF;
+	-moz-border-radius: 7px;
+	-webkit-border-radius: 7px;
+	-webkit-box-shadow: 5px 5px 9px #888;
+}
+
+pre a {
+	color: #FFFFFF;
+}
+
+pre a:link, pre a:visited, pre a:hover {
+	color: #FFFFFF;
+}
+
+pre.paper { 
+	font-size: 130%;
+	line-height: 130%; 
+	font-family: Consolas, Monaco, Courier, Courier New, Courier, monospace; 
+	padding: 10px 15px 10px 15px;
+	margin: 10px 0 10px 0;
+	background-color: #FFFFFF;
+	color: #102070; 
+	-moz-border-radius: 0px;
+	-webkit-border-radius: 0px;
+	-webkit-box-shadow: 0px 0px 0px #FFF;
+}
+
+pre b {
+    color: #FFFF00;
+    font-weight: normal;
+}
+
+code {
+	font-size: 120%;
+}
+
+table {
+	margin: 10px 0 20px 0;
+	font-size: 100%;
+	border: 1px solid #AAAAAA;
+	border-collapse: collapse;
+	-webkit-box-shadow: 2px 2px 4px #BBB;
+}
+
+thead {
+	background-color: #7090C0;
+	color: #FFFFFF;
+	font-weight: bold;
+	font-size: 110%;
+}
+
+th {
+    padding: 4px 8px 4px 4px;
+	text-align: left;
+}
+
+td {
+	border: 1px solid #AAAAAA;
+	padding: 4px;
+}
+
+p.finePrint { 
+	font-size: 80%;
+	color: #313131; 
+}
+
+a:link { 
+	color: #284898; 
+	text-decoration: none; 
+}
+
+a:visited { 
+	color: #000000;
+	text-decoration: none; 
+}
+
+a:hover { 
+	color: #CC4477; 
+}
+
+div.questions {
+	color: #31699C; 
+	text-decoration: none; 
+	margin: 4px 0px 0px 20px;
+	padding: 0px 0px 0px 0px;
+	line-height: 110%; 
+}
+
+div.questions p a:link, div.questions p a:visited {
+	color: #31699C; 
+	text-decoration: none; 
+}
+
+div.questions p a:hover {
+	color: #993366; 
+	text-decoration: underline; 
+}
+
+p.question {
+	margin: 15px 0px 0px 0px;
+	color: #CC1122; 
+	font-style: bold;
+    font-size: 110%;
+}
+
+div.answer, p.answer {
+	margin: 4px 0px 20px 25px;
+}
+
+p.footnote {
+	height: 50px;
+	margin: 0;
+	padding: 30px 0 0 0;
+	font-size: 85%;
+	color: #AAAAAA; 
+	line-height: 70%; 
+}
+
+p.footnote a:link, p.footnote a:visited { 
+	color: #AAAAAA; 
+	text-decoration: none;
+}
+
+p.footnote a:hover { 
+	color: #FFFFFF; 
+}
+
+img.screen {
+    margin: 8px 0 4px 0;
+	border: 1px solid #AAA;
+	-moz-border-radius: 7px;
+	-webkit-border-radius: 7px;
+	-webkit-box-shadow: 9px 9px 9px #AAA;
+}

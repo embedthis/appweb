@@ -1,0 +1,19 @@
+{
+    directories: {
+        controllers: '.'
+    },
+    esp: {
+        app: true,
+        update: false,
+    },
+    http: {
+        pipeline: {
+            handlers: 'espHandler'
+        },
+        routes: {
+            pattern: "/{action}$",
+            target: "session/$1",
+            source: "session.c"
+        }
+    }
+}

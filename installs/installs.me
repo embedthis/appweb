@@ -1,0 +1,82 @@
+/*
+    package.me - MakeMe for Appweb package targets
+ */
+
+Me.load({
+    scripts: {
+        loaded: `
+            let s = me.settings
+            if (makeme.generating) {
+                s.webUser = '$(WEB_USER)'
+                s.webGroup = '$(WEB_GROUP)'
+            } else {
+                let os = me.platform.os
+                s.webUser = {macosx: '_www', windows: 'Administrator', linux: 'nobody', freebsd: 'nobody'}[os]
+                s.webGroup = {macosx: '_www', windows: 'Administrator', linux: 'nogroup', freebsd: 'nogroup'}[os]
+                s.webUser ||= ''
+                s.webGroup ||= ''
+            }
+        `,
+        gencustom: `
+            if (me.platform.os != 'windows') {
+                genWriteLine(\"WEB_USER              ?= $(shell egrep 'www-data|_www|nobody' /etc/passwd | sed 's^:.*^^' |  tail -1)\")
+                genWriteLine(\"WEB_GROUP             ?= $(shell egrep 'www-data|_www|nobody|nogroup' /etc/group | sed 's^:.*^^' |  tail -1)\")
+            }
+        `,
+    },
+
+    targets: {
+        start: {
+            enable: "me.platform.like == 'unix' || me.platform.like == 'windows'",
+            home: '${TOP}',
+            action: "startService()",
+            depends: ['compile', 'stop'],
+            generate: "${BIN}/appman install enable start",
+        },
+
+        stop: {
+            enable: "me.platform.like == 'unix' || me.platform.like == 'windows'",
+            home: '${TOP}',
+            action: "stopService()",
+            depends: ['compile'],
+            generate: "@${BIN}/appman stop disable uninstall >/dev/null 2>&1 ; true"
+        },
+
+        install: {
+            home: '${TOP}',
+            depends: [ 'installPrep', 'compile', 'stop', 'installBinary', 'start' ],
+            action: `
+                trace('Info', me.settings.title + ' installed at ' + me.prefixes.vapp)
+                trace('Info', 'Configuration directory ' + me.prefixes.etc)
+                trace('Info', 'Documents directory ' + me.prefixes.web)
+                trace('Info', 'Executables directory ' + me.prefixes.vapp.join('bin'))
+                trace('Info', 'Use "man appweb" for usage')
+                let pid = Cmd.ps(/bin.appweb$/)
+                if (pid && pid.length > 0) {
+                    trace('Info', me.settings.title + ' PID: ' + pid[0].pid)
+                }
+                trace('Info', 'Use appman [start|stop|restart] to control')
+                let config = me.prefixes.etc.join('install.conf').readString()
+                let [,port] = RegExp('Listen *(.*)').exec(config)
+                let address = ('http://localhost:' + port).replace(':80')
+                trace('Info', 'Browse to ' + address)
+            `,
+            generate: ' ',
+        },
+
+        uninstall: {
+            depends: [ 'build', 'stop' ],
+            action: `
+                for each (f in me.prefixes.cache.files()) {
+                    removeFile(f)
+                }
+                removeFile(me.prefixes.etc.join('appweb.conf'))
+                removeFile(me.prefixes.etc.join('esp.conf'))
+                removeFile(me.prefixes.etc.join('mine.types'))
+                removeFile(me.prefixes.etc.join('install.conf'))
+                removeDir(me.prefixes.inc.join(me.settings.name))
+            `,
+            generate: true,
+        },
+    },
+})

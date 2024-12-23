@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+#   vxrun address image
+#
+
+ADDRESS=${1:-192.168.200.1}
+IMAGE=${2:-../../out/i586-wrs-vxworks/bin/appweb.out}
+SIM=vxsim0
+MEMSIZE=134217728
+
+cat >vxargs <<!EOF
+ld < $IMAGE
+taskSpawn "appweb",100,0,200000,appweb
+!EOF
+
+/WindRiver/vxworks-6.8/host/x86-linux2/bin/vxsim \
+    -f /WindRiver/vxworks-6.8/target/proj/linux_diab/default/vxWorks \
+    -d simnet -tn $SIM -e $ADDRESS -size $MEMSIZE -s vxargs
+
+rm -f vxargs

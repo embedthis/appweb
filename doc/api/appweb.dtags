@@ -1,0 +1,99 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<tagfile doxygen_version="1.9.6">
+  <compound kind="group">
+    <name>MaState</name>
+    <title>MaState</title>
+    <filename>group___ma_state.html</filename>
+    <member kind="typedef">
+      <type>int()</type>
+      <name>MaDirective</name>
+      <anchorfile>group___ma_state.html</anchorfile>
+      <anchor>ga77e98d350eaa12e72d0caee671b4d0d2</anchor>
+      <arglist>(MaState *state, cchar *key, cchar *value)</arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>maAddDirective</name>
+      <anchorfile>group___ma_state.html</anchorfile>
+      <anchor>ga0625b7b754d921353acac4505eb9de02</anchor>
+      <arglist>(cchar *directive, MaDirective proc)</arglist>
+    </member>
+    <member kind="function">
+      <type>int</type>
+      <name>maConfigureServer</name>
+      <anchorfile>group___ma_state.html</anchorfile>
+      <anchor>ga3a076271dc5d0227cf3e4c79dcb3f026</anchor>
+      <arglist>(cchar *configFile, cchar *home, cchar *documents, cchar *ip, int port)</arglist>
+    </member>
+    <member kind="function">
+      <type>char *</type>
+      <name>maGetNextArg</name>
+      <anchorfile>group___ma_state.html</anchorfile>
+      <anchor>ga2fa468906087c5703a5b71b6b2612ba6</anchor>
+      <arglist>(char *s, char **tok)</arglist>
+    </member>
+    <member kind="function">
+      <type>int</type>
+      <name>maLoadModule</name>
+      <anchorfile>group___ma_state.html</anchorfile>
+      <anchor>ga94cd7d8346894055cff0fc79dcd09a48</anchor>
+      <arglist>(cchar *name, cchar *libname)</arglist>
+    </member>
+    <member kind="function">
+      <type>int</type>
+      <name>maLoadModules</name>
+      <anchorfile>group___ma_state.html</anchorfile>
+      <anchor>gaa70fb4c9b9835739719c049af17180ef</anchor>
+      <arglist>(void)</arglist>
+    </member>
+    <member kind="function">
+      <type>int</type>
+      <name>maParseConfig</name>
+      <anchorfile>group___ma_state.html</anchorfile>
+      <anchor>gae9c5d28320c9ebe7f2a6e810215be37c</anchor>
+      <arglist>(cchar *path)</arglist>
+    </member>
+    <member kind="function">
+      <type>int</type>
+      <name>maParseFile</name>
+      <anchorfile>group___ma_state.html</anchorfile>
+      <anchor>gaf65d5f6135abce2b2cbf625e02a5d1f4</anchor>
+      <arglist>(MaState *state, cchar *path)</arglist>
+    </member>
+    <member kind="function">
+      <type>MaState *</type>
+      <name>maPopState</name>
+      <anchorfile>group___ma_state.html</anchorfile>
+      <anchor>gaa57a0e83512cf5b3602fdf16753b54cb</anchor>
+      <arglist>(MaState *state)</arglist>
+    </member>
+    <member kind="function">
+      <type>MaState *</type>
+      <name>maPushState</name>
+      <anchorfile>group___ma_state.html</anchorfile>
+      <anchor>ga7ffec8dc7add955aa09bc22b8edbd9c0</anchor>
+      <arglist>(MaState *state)</arglist>
+    </member>
+    <member kind="function">
+      <type>int</type>
+      <name>maRunSimpleWebServer</name>
+      <anchorfile>group___ma_state.html</anchorfile>
+      <anchor>ga88a2bd1d0f26f024e6cb2d693c13e4f7</anchor>
+      <arglist>(cchar *ip, int port, cchar *home, cchar *documents)</arglist>
+    </member>
+    <member kind="function">
+      <type>int</type>
+      <name>maRunWebServer</name>
+      <anchorfile>group___ma_state.html</anchorfile>
+      <anchor>ga4994c273e87409b094418dd7bd370ee4</anchor>
+      <arglist>(cchar *configFile)</arglist>
+    </member>
+    <member kind="function">
+      <type>bool</type>
+      <name>maTokenize</name>
+      <anchorfile>group___ma_state.html</anchorfile>
+      <anchor>gabb856e86d408307d5e31ad0ff2d2f69a</anchor>
+      <arglist>(MaState *state, cchar *str, cchar *fmt,...)</arglist>
+    </member>
+  </compound>
+</tagfile>

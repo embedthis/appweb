@@ -1,0 +1,14 @@
+FILE=200M.txt
+# SITE=http://127.0.0.1:4100
+SITE=https://127.0.0.1:4443
+DEST=/dev/null
+COUNT=40
+
+let count=${COUNT}
+
+time while [ $count -gt 0 ] ; 
+do
+    echo iter ${count}
+    curl -k -s ${SITE}/${FILE} >${DEST}
+    count=$((count - 1))
+done

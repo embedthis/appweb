@@ -1,0 +1,56 @@
+/*
+    server.me -- MakeMe file for appweb server
+ */
+
+Me.load({
+    targets: {
+        appweb: {
+            type: 'exe',
+            depends: [ 'libappweb' ],
+            sources: [ 'appweb.c' ],
+        },
+
+        appwebMonitor: {
+            enable: "me.platform.like == 'windows'",
+            type: 'exe',
+            rule: 'gui',
+            depends: [ 'libappweb' ],
+            sources: [ 'windows/appwebMonitor.c' ],
+            headers: [ 'windows/*.h' ],
+            libraries: [ 'shell32.lib' ],
+            resources: [ 'windows/appwebMonitor.rc' ],
+        },
+
+        'appwebMonitor.ico': {
+            type: 'file',
+            files: [ 'windows/appwebMonitor.ico' ],
+            enable: "me.platform.like == 'windows'",
+        },
+
+        'server-cache': {
+            path: 'cache',
+            build: `makeDir('cache')`,
+        },
+
+        run: {
+            depends: [ 'compile' ],
+            run: '${BIN}/appweb --log stdout:2',
+            generate: '${LBIN}/appweb --log stdout:2',
+            'generate-nmake': '..\\..\\build\\${CONFIG}\\bin\\appweb --log stdout:2',
+        },
+
+        rom: {
+            action: `
+                /* Expect "configure --rom --static", then compile esp files with "esp -combine" */
+                let files = [ '.', 'web' ]
+                files += Path('web').files('**')
+                files.push('rom.conf')
+                files += Path('certs').files('**')
+                let path = Path('${SRC}/rom.c')
+                trace('Create', path)
+                strace('Run', (['makerom', '--mount', me.settings.mpr.romMount] + files).join(' '))
+                path.write(Cmd.run(['makerom', '--mount', me.settings.mpr.romMount] + files))
+            `,
+        },
+    },
+})

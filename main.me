@@ -1,0 +1,209 @@
+/*
+    main.me -- Main MakeMe File for Appweb
+ */
+
+Me.load({
+    makeme: '>=1.0.0',
+
+    plugins: [ 'installs' ],
+
+    blend: [
+        'src/**.me',
+        'certs/**.me',
+        '?doc/doc.me',
+        '?test/test.me',
+        '?samples/samples.me',
+        '?installs/installs.me',
+        '?local.me',
+    ],
+
+    modules: [ 'installs/service.es' ],
+
+    configure: {
+        requires:  [ 'osdep', 'http', 'mpr', 'pcre'],
+        discovers: [ 'ssl', 'watchdog', 'esp', 'mdb' ],
+        extras:    [ 'cgi', 'dir', 'ejs', 'fast', 'php', 'proxy', 'sqlite' ],
+    },
+
+    customize: [
+        /*
+            The optional custom.me file is loaded after main.me is fully processed. It can
+            thus override any setting. Feel free to create and customize.
+         */
+        'custom.me',
+    ],
+
+    settings: {
+        /*
+            Set compat to true to enable compatibility defines to assist migrating pre Appweb 8 handlers/modules
+         */
+        compat: true,
+
+        /*
+            Set to true to emit warnings about deprecated APIs
+         */
+        deprecatedWarnings: false,
+
+        integrate: true,
+
+        /*
+            Installation prefix set
+         */
+        prefixes: 'install-prefixes',
+        manifest: 'installs/manifest.me',
+
+        /*
+            Name and path of the appweb config file. Defaults to './appweb.conf' if empty.
+         */
+        configFile: 'appweb.conf',
+
+        /*
+            Local main program code to include in appweb.c. Typically put in local.me.
+
+            localMain: '/path/main.c',
+         */
+
+        /* Must build locally to build tools */
+        platforms: [ 'local' ],
+
+        certs: {
+            gendh: true
+        },
+
+        compiler: {
+            fortify: true,
+        },
+
+        esp: {
+            cmd:    true,
+            name:   'appweb-esp',
+            legacy: false,
+            module: false,
+        },
+
+        http: {
+            basic: true,
+            cache: true,
+            cmd: true,
+            defense: true,
+            digest: true,
+            dir: true,
+            http2: true,
+            pam: true,
+            sendfile: true,
+            upload: true,
+            webSockets: true,
+        },
+
+        mbedtls: {
+            compact: true,              /* Compact edition - Disable non-essential ciphers and features */
+        },
+
+        openssl: {
+            version: '1.0',             /* Base edition */
+        },
+
+        mpr: {
+            alloc: {
+                // quota: 204800,       /* Amount of memory to allocate before a GC */
+                // cache: 0,            /* Amount of memory to buffer for quick allocations */
+                // check: false,        /* Memory allocation debug and stats (slow) */
+            },
+            /*
+                Enable logging via mprLog to the log file
+                The default is to enable logging for both debug and release builds.
+             */
+            logging: true,              /* Enable application logging */
+            oslog: false,               /* Write to the O/S log file */
+            romMount: "/rom",           /* Virtual mount point for a rom file system */
+            ssl: {
+                cache: 512,             /* Set the session cache size (items) */
+                logLevel: 6,            /* Starting logging level for SSL messages */
+                handshakes: 3,          /* Set maximum number of renegotiations (zero means infinite) */
+                ticket: true,           /* Enable session resumption via ticketing - client side session caching */
+                timeout: 86400,         /* Session and ticketing duration in seconds */
+            },
+            threadStack: 0,             /* Use the default system stack size */
+            threadLimitByCores: true,   /* Limit number of active threads to CPU core count */
+        },
+
+        /*
+            Build without a file system (from ROM)
+         */
+        rom: false,
+
+        watchdog: {
+            name: 'appman',
+        },
+
+        /*
+            Tailor the optimization for size|balanced|speed
+         */
+        tune: 'size',
+
+        /*
+            Initial home directory for the server
+         */
+        serverRoot: '.',
+    },
+
+    usage: {
+        'configFile':           'Path of the appweb.conf file',
+        'mpr.logging':          'Enable application logging (true|false)',
+        'serverRoot':           'Home directory for the server ',
+    },
+
+    targets: {
+        cgi: {
+            configurable: true,
+            description: 'Common Gateway Interface Module',
+            path: 'src/modules/cgiHandler.c',
+            depends: [ 'libmod_cgi' ],
+        },
+
+        dir: {
+            configurable: true,
+            description: 'Directory Listing Module',
+        },
+
+        fast: {
+            configurable: true,
+            description: 'FastCGI Module',
+            path: 'src/modules/fastHandler.c',
+            depends: [ 'libmod_fast' ],
+        },
+
+        proxy: {
+            configurable: true,
+            description: 'Proxy Module',
+            path: 'src/modules/proxyHandler.c',
+            depends: [ 'libmod_proxy' ],
+        },
+
+        /*
+            See src/server/server.me for the appweb targets
+            See src/libappweb.me for the appweb library target
+            See installs/installs.me for the install targets
+         */
+        projects: {
+            action: `
+                genProjects('--with esp --with mdb --with cgi --with fast --with proxy', 'default')
+            `,
+        },
+
+        publish: {
+            action: `publish()`,
+        },
+
+        mine: {
+            action: `
+                genProjects('--with openssl --with cgi --with esp --with fast --with proxy', 'mine', ['macosx-arm64'])
+            `,
+        },
+
+    },
+
+    usage: {
+        'rom': 'Build without a file system (true|false)',
+    }
+})

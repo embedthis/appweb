@@ -1,0 +1,40 @@
+#!/bin/sh
+#
+# 	prerm -- Pre removal script for appweb
+#
+#	Copyright (c) Embedthis Software. All Rights Reserved.
+#
+
+ME_PRODUCT=appweb
+ME_NAME="${settings.title}"
+ME_ETC_PREFIX="${prefixes.etc}"
+
+###############################################################################
+#
+#	Main
+#
+cd /
+action=$1
+case $action in
+	remove)					# when new
+		# or conflictor's prerm remove in-favor package new-version
+		oldVersion=$2
+		appman stop >/dev/null 2>&1 ; true
+		appman disable >/dev/null 2>&1 ; true
+		appman uninstall >/dev/null 2>&1 ; true
+		pid=`/bin/pidof ${prefixes.bin}/$ME_PRODUCT; true`
+		[ "$pid" != "" ] && kill -9 $pid
+		rm -rf /var/lock/subsys/$ME_PRODUCT /var/lock/$ME_PRODUCT /var/log/$ME_PRODUCT /var/run/$ME_PRODUCT
+		;;
+	upgrade)				# when old
+		newVersion=$2
+		appman uninstall
+		;;
+	failed-upgrade)			# when new
+		oldVersion=$2
+		;;
+	deconfigure)			# when old
+		# 	deconfigure in-favor package-being-installed version removing 
+		#	conflicting-package version
+esac
+exit 0

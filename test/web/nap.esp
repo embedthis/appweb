@@ -1,0 +1,11 @@
+<html>
+<head><title>ESP Nap Page</title></head>
+<body>
+<% 	
+    render("Napping 15 seconds .. " );
+    flush();
+    mprSleep(15 * 1000);
+    render("Awake");
+%>
+</body>
+</html>

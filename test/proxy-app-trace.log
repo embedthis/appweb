@@ -1,0 +1,523 @@
+
+12/19/24 10:52:10 INCOMING (rx.http.request)
+
+POST /index.html HTTP/1.1
+
+12/19/24 10:52:10 INCOMING (rx.http.headers)
+
+Content-Type: text/html
+Accept: */*
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+X-Client: 127.0.0.1
+Host: localhost:4100
+X-Canonical: http://127.0.0.1:4100
+User-Agent: Embedthis-http
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 OUTGOING (tx.http.status)
+
+HTTP/1.1 200 OK
+
+12/19/24 10:52:10 OUTGOING (tx.http.headers)
+
+Vary: Accept-Encoding
+Keep-Alive: timeout=300, max=399
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html
+X-Content-Type-Options: nosniff
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+ETag: 1651040671
+Content-Length: 84
+X-XSS-Protection: 1; mode=block
+Last-Modified: Tue, 29 Mar 2022 06:19:26 GMT
+Connection: Keep-Alive
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 INCOMING (rx.http.request)
+
+GET /index.html HTTP/1.1
+
+12/19/24 10:52:10 INCOMING (rx.http.headers)
+
+Content-Type: text/html
+Accept: */*
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+X-Client: 127.0.0.1
+Host: localhost:4100
+X-Canonical: http://127.0.0.1:4100
+User-Agent: Embedthis-http
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 OUTGOING (tx.http.status)
+
+HTTP/1.1 200 OK
+
+12/19/24 10:52:10 OUTGOING (tx.http.headers)
+
+Vary: Accept-Encoding
+Keep-Alive: timeout=300, max=398
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html
+X-Content-Type-Options: nosniff
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+ETag: 1651040671
+Content-Length: 84
+X-XSS-Protection: 1; mode=block
+Last-Modified: Tue, 29 Mar 2022 06:19:26 GMT
+Connection: Keep-Alive
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 INCOMING (rx.http.request)
+
+GET /index.html HTTP/1.1
+
+12/19/24 10:52:10 INCOMING (rx.http.headers)
+
+Content-Type: text/html
+Accept: */*
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+X-Client: 127.0.0.1
+Host: localhost:4100
+X-Canonical: http://127.0.0.1:4100
+User-Agent: Embedthis-http
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 OUTGOING (tx.http.status)
+
+HTTP/1.1 200 OK
+
+12/19/24 10:52:10 OUTGOING (tx.http.headers)
+
+Vary: Accept-Encoding
+Keep-Alive: timeout=300, max=397
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html
+X-Content-Type-Options: nosniff
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+ETag: 1651040671
+Content-Length: 84
+X-XSS-Protection: 1; mode=block
+Last-Modified: Tue, 29 Mar 2022 06:19:26 GMT
+Connection: Keep-Alive
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 INCOMING (rx.http.request)
+
+GET /index.html HTTP/1.1
+
+12/19/24 10:52:10 INCOMING (rx.http.headers)
+
+Content-Type: text/html
+Accept: */*
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+X-Client: 127.0.0.1
+Host: localhost:4100
+X-Canonical: http://127.0.0.1:4100
+User-Agent: Embedthis-http
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 OUTGOING (tx.http.status)
+
+HTTP/1.1 200 OK
+
+12/19/24 10:52:10 OUTGOING (tx.http.headers)
+
+Vary: Accept-Encoding
+Keep-Alive: timeout=300, max=396
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html
+X-Content-Type-Options: nosniff
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+ETag: 1651040671
+Content-Length: 84
+X-XSS-Protection: 1; mode=block
+Last-Modified: Tue, 29 Mar 2022 06:19:26 GMT
+Connection: Keep-Alive
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 INCOMING (rx.http.request)
+
+GET /index.html HTTP/1.1
+
+12/19/24 10:52:10 INCOMING (rx.http.headers)
+
+Content-Type: text/html
+Accept: */*
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+X-Client: 127.0.0.1
+Content-Length: 30
+Host: localhost:4100
+X-Canonical: http://127.0.0.1:4100
+User-Agent: Embedthis-http
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 OUTGOING (tx.http.status)
+
+HTTP/1.1 200 OK
+
+12/19/24 10:52:10 OUTGOING (tx.http.headers)
+
+Vary: Accept-Encoding
+Keep-Alive: timeout=300, max=395
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html
+X-Content-Type-Options: nosniff
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+ETag: 1651040671
+Content-Length: 84
+X-XSS-Protection: 1; mode=block
+Last-Modified: Tue, 29 Mar 2022 06:19:26 GMT
+Connection: Keep-Alive
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 INCOMING (rx.http.request)
+
+POST /form.esp HTTP/1.1
+
+12/19/24 10:52:10 INCOMING (rx.http.headers)
+
+Content-Type: text/html
+Accept: */*
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+X-Client: 127.0.0.1
+Content-Length: 9
+Host: localhost:4100
+X-Canonical: http://127.0.0.1:4100
+User-Agent: Embedthis-http
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 OUTGOING (tx.http.status)
+
+HTTP/1.1 200 OK
+
+12/19/24 10:52:10 OUTGOING (tx.http.headers)
+
+Vary: Accept-Encoding
+Keep-Alive: timeout=300, max=394
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html
+X-Content-Type-Options: nosniff
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+ETag: 1625796470
+Cache-Control: no-cache
+Content-Length: 1342
+X-XSS-Protection: 1; mode=block
+Connection: Keep-Alive
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 INCOMING (rx.http.request)
+
+POST /form.esp HTTP/1.1
+
+12/19/24 10:52:10 INCOMING (rx.http.headers)
+
+Content-Type: application/x-www-form-urlencoded
+Accept: */*
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+X-Client: 127.0.0.1
+Content-Length: 30
+Host: localhost:4100
+X-Canonical: http://127.0.0.1:4100
+User-Agent: Embedthis-http
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 OUTGOING (tx.http.status)
+
+HTTP/1.1 200 OK
+
+12/19/24 10:52:10 OUTGOING (tx.http.headers)
+
+Vary: Accept-Encoding
+Keep-Alive: timeout=300, max=393
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html
+X-Content-Type-Options: nosniff
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+ETag: 1625796470
+Cache-Control: no-cache
+Content-Length: 1498
+X-XSS-Protection: 1; mode=block
+Connection: Keep-Alive
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 INCOMING (rx.http.request)
+
+PUT /tmp/test.dat?r1 HTTP/1.1
+
+12/19/24 10:52:10 INCOMING (rx.http.headers)
+
+Content-Type: text/html
+Accept: */*
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+X-Client: 127.0.0.1
+Content-Length: 40
+Host: localhost:4100
+X-Canonical: http://127.0.0.1:4100
+User-Agent: Embedthis-http
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 OUTGOING (tx.http.status)
+
+HTTP/1.1 201 Created
+
+12/19/24 10:52:10 OUTGOING (tx.http.headers)
+
+Vary: Accept-Encoding
+Keep-Alive: timeout=300, max=392
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html
+X-Content-Type-Options: nosniff
+Location: /tmp/test.dat
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+ETag: 1941481436
+Content-Length: 0
+X-XSS-Protection: 1; mode=block
+Connection: Keep-Alive
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 INCOMING (rx.http.request)
+
+PUT /tmp/test.dat?r3 HTTP/1.1
+
+12/19/24 10:52:10 INCOMING (rx.http.headers)
+
+Content-Type: text/html
+Accept: */*
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+X-Client: 127.0.0.1
+Content-Length: 40
+Host: localhost:4100
+X-Canonical: http://127.0.0.1:4100
+User-Agent: Embedthis-http
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 OUTGOING (tx.http.status)
+
+HTTP/1.1 204 No Content
+
+12/19/24 10:52:10 OUTGOING (tx.http.headers)
+
+Vary: Accept-Encoding
+Keep-Alive: timeout=300, max=391
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html
+X-Content-Type-Options: nosniff
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+ETag: 1941481436
+X-XSS-Protection: 1; mode=block
+Connection: Keep-Alive
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 INCOMING (rx.http.request)
+
+GET /index.html HTTP/1.1
+
+12/19/24 10:52:10 INCOMING (rx.http.headers)
+
+Content-Type: text/html
+Accept: */*
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+X-Client: 127.0.0.1
+Host: localhost:4100
+X-Canonical: http://127.0.0.1:4100
+User-Agent: Embedthis-http
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 OUTGOING (tx.http.status)
+
+HTTP/1.1 200 OK
+
+12/19/24 10:52:10 OUTGOING (tx.http.headers)
+
+Vary: Accept-Encoding
+Keep-Alive: timeout=300, max=390
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html
+X-Content-Type-Options: nosniff
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+ETag: 1651040671
+Content-Length: 84
+X-XSS-Protection: 1; mode=block
+Last-Modified: Tue, 29 Mar 2022 06:19:26 GMT
+Connection: Keep-Alive
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 INCOMING (rx.http.request)
+
+POST /upload/upload.esp HTTP/1.1
+
+12/19/24 10:52:10 INCOMING (rx.http.headers)
+
+Content-Type: multipart/form-data; boundary=<<Upload Boundary - b6e4f4e7d6206e7f59d4b5389577cf0d>>
+Accept: */*
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+X-Client: 127.0.0.1
+Content-Length: 244
+Host: localhost:4100
+X-Canonical: http://127.0.0.1:4100
+User-Agent: Embedthis-http
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 OUTGOING (tx.http.status)
+
+HTTP/1.1 200 OK
+
+12/19/24 10:52:10 OUTGOING (tx.http.headers)
+
+Vary: Accept-Encoding
+Keep-Alive: timeout=300, max=399
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html
+X-Content-Type-Options: nosniff
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+ETag: 1625797273
+Cache-Control: no-cache
+Content-Length: 2071
+X-XSS-Protection: 1; mode=block
+Connection: Keep-Alive
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 INCOMING (rx.http.request)
+
+POST /upload/upload.esp HTTP/1.1
+
+12/19/24 10:52:10 INCOMING (rx.http.headers)
+
+Content-Type: multipart/form-data; boundary=<<Upload Boundary - dcd6bea7b4aaf8ddbdb5ccf1235fa5cb>>
+Accept: */*
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+X-Client: 127.0.0.1
+Content-Length: 576
+Host: localhost:4100
+X-Canonical: http://127.0.0.1:4100
+User-Agent: Embedthis-http
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 OUTGOING (tx.http.status)
+
+HTTP/1.1 200 OK
+
+12/19/24 10:52:10 OUTGOING (tx.http.headers)
+
+Vary: Accept-Encoding
+Keep-Alive: timeout=300, max=398
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html
+X-Content-Type-Options: nosniff
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+ETag: 1625797273
+Cache-Control: no-cache
+Content-Length: 2120
+X-XSS-Protection: 1; mode=block
+Connection: Keep-Alive
+Accept-Ranges: bytes
+
+
+12/19/24 10:52:10 INCOMING (rx.http.request)
+
+GET /websockets/basic/send HTTP/1.1
+
+12/19/24 10:52:10 INCOMING (rx.http.headers)
+
+Sec-WebSocket-Protocol: chat
+X-Inactivity-Timeout: 30
+Content-Type: text/html
+X-Request-Timeout: 9223372036854775
+Accept: */*
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+X-Client: 127.0.0.1
+Sec-WebSocket-Key: 3q0R6InIgWywd23DjnR0Ng==
+Sec-WebSocket-Version: 13
+Host: 127.0.0.1:4100
+X-Canonical: http://127.0.0.1:4100
+User-Agent: Embedthis-http
+Accept-Ranges: bytes
+Upgrade: websocket
+
+
+12/19/24 10:52:10 OUTGOING (tx.http.status)
+
+HTTP/1.1 101 Switching Protocols
+
+12/19/24 10:52:10 OUTGOING (tx.http.headers)
+
+Sec-WebSocket-Protocol: chat
+X-Inactivity-Timeout: 120
+Vary: Accept-Encoding
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html
+X-Content-Type-Options: nosniff
+X-Request-Timeout: 9223372036854775
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+Sec-WebSocket-Accept: 9ggJxHajW69Hm+j3yMjb/W5zEg8=
+X-XSS-Protection: 1; mode=block
+Connection: Upgrade
+Accept-Ranges: bytes
+Upgrade: WebSocket
+
+
+12/19/24 10:52:10 INCOMING (rx.http.request)
+
+GET /websockets/basic/len HTTP/1.1
+
+12/19/24 10:52:10 INCOMING (rx.http.headers)
+
+Sec-WebSocket-Protocol: chat
+X-Inactivity-Timeout: 30
+Content-Type: text/html
+X-Request-Timeout: 9223372036854775
+Accept: */*
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+X-Client: 127.0.0.1
+Sec-WebSocket-Key: Sg/LG5n60NT0AcY8s615NA==
+Sec-WebSocket-Version: 13
+Host: 127.0.0.1:4100
+X-Canonical: http://127.0.0.1:4100
+User-Agent: Embedthis-http
+Accept-Ranges: bytes
+Upgrade: websocket
+
+
+12/19/24 10:52:10 OUTGOING (tx.http.status)
+
+HTTP/1.1 101 Switching Protocols
+
+12/19/24 10:52:10 OUTGOING (tx.http.headers)
+
+Sec-WebSocket-Protocol: chat
+X-Inactivity-Timeout: 120
+Vary: Accept-Encoding
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html
+X-Content-Type-Options: nosniff
+X-Request-Timeout: 9223372036854775
+Date: Wed, 18 Dec 2024 23:52:10 GMT
+Sec-WebSocket-Accept: //8u2uEYss87OT5mjEk4LZeqtds=
+X-XSS-Protection: 1; mode=block
+Connection: Upgrade
+Accept-Ranges: bytes
+Upgrade: WebSocket
+

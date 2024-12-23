@@ -1,0 +1,58 @@
+/*
+    http.me -- MakeMe file for Http
+ */
+
+Me.load({
+    __blend: [ 'mpr', 'pcre' ],
+
+    targets: {
+        http: {
+            configurable: true,
+            depends:      [ 'libhttp' ],
+            requires:     [ 'pcre' ],
+            uses:         [ 'ssl' ],
+        },
+
+        libhttp: {
+            type: 'lib',
+            sources: [ 'httpLib.c' ],
+            headers: [ '*.h' ],
+            depends: [ 'libmpr', 'libpcre' ],
+            ifdef:   [ 'http' ],
+            scripts: {
+                postblend: `
+                    let s = me.settings
+                    if (s && s.compiler && s.compiler.hasPam && s.http && s.http.pam) {
+                        me.target.libraries.push('pam')
+                    }
+                `,
+            },
+        },
+        
+        server: {
+            type: 'exe',
+            depends: [ 'libhttp' ],
+            sources: [ 'server.c' ],
+        },
+
+        httpcmd: {
+            pname:   'http',
+            path:    '${BIN}/http${EXE}',
+            type:    'exe',
+            sources: [ 'http.c' ],
+            depends: [ 'libhttp' ],
+            ifdef:   [ 'http' ],
+            enable:  'me.settings.http.cmd',
+        }
+	},
+
+    usage: {
+        'http.basic':       'Enable basic authentication',
+        'http.digest':      'Enable digest authentication',
+        'http.dir':         'Enable directory listings',
+        'http.pam':         'Enable PAM authentication',
+        'http.http2':       'Enable HTTP/2 protocol',
+        'http.upload':      'Enable file upload',
+        'http.websockets':  'Enable Web Sockets',
+    },
+})

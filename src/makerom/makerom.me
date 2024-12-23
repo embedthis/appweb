@@ -1,0 +1,13 @@
+/*
+    makerom.me -- MakeMe file for the makerom library
+ */
+
+Me.load({
+    targets: {
+        makerom: {
+            type: 'exe',
+            sources: [ 'makerom.c' ],
+            depends: [ 'libmpr' ],
+        },
+	},
+})

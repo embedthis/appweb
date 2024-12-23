@@ -1,0 +1,11 @@
+#!/usr/local/bin/node
+
+var http = require('http');
+
+const PORT = 9999
+
+console.log('Listening on', PORT)
+http.createServer(function (req, res) {
+  res.write('Hello World!\n');
+  res.end();
+}).listen(PORT);
