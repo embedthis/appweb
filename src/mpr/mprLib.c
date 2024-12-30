@@ -27590,6 +27590,22 @@ PUBLIC void serase(char *str)
     }
 }
 
+//  Legacy wide char adaption
+PUBLIC wchar *amtow(cchar *src, ssize *len)
+{
+    if (len) {
+        *len = slen(src);
+    }
+    return (wchar*) sclone(src);
+}
+
+PUBLIC char *awtom(wchar *src, ssize *len)
+{
+    if (len) {
+        *len = slen((char*) src);
+    }
+    return sclone((char*) src);
+}
 
 /*
     Copyright (c) Embedthis Software. All Rights Reserved.

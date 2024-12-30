@@ -228,6 +228,12 @@ struct  MprXml;
  */
 #define MPR_MIN_TIME_FOR_GC     2       /**< Wait till 2 milliseconds of idle time possible */
 
+//  Legacy unicode 
+#define wide(s) (s)
+#define multi(s) (s)
+PUBLIC wchar *amtow(cchar *src, ssize *len);
+PUBLIC char  *awtom(wchar *src, ssize *len);
+
 /************************************ Error Codes *****************************/
 
 /* Prevent collisions with 3rd party software */
