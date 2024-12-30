@@ -1,5 +1,5 @@
 /*
-    me.h -- MakeMe Configure Header for linux-x64-default
+    me.h -- MakeMe Configure Header for freebsd-arm-default
  */
 
 /* Settings */
@@ -37,7 +37,7 @@
     #define ME_COMPILER_HAS_LIB_EDIT 0
 #endif
 #ifndef ME_COMPILER_HAS_LIB_RT
-    #define ME_COMPILER_HAS_LIB_RT 1
+    #define ME_COMPILER_HAS_LIB_RT 0
 #endif
 #ifndef ME_COMPILER_HAS_MMU
     #define ME_COMPILER_HAS_MMU 1
@@ -52,25 +52,25 @@
     #define ME_COMPILER_HAS_STACK_PROTECTOR 1
 #endif
 #ifndef ME_COMPILER_HAS_SYNC
-    #define ME_COMPILER_HAS_SYNC 1
+    #define ME_COMPILER_HAS_SYNC 0
 #endif
 #ifndef ME_COMPILER_HAS_SYNC64
-    #define ME_COMPILER_HAS_SYNC64 1
+    #define ME_COMPILER_HAS_SYNC64 0
 #endif
 #ifndef ME_COMPILER_HAS_SYNC_CAS
-    #define ME_COMPILER_HAS_SYNC_CAS 1
+    #define ME_COMPILER_HAS_SYNC_CAS 0
 #endif
 #ifndef ME_COMPILER_HAS_UNNAMED_UNIONS
     #define ME_COMPILER_HAS_UNNAMED_UNIONS 1
 #endif
 #ifndef ME_COMPILER_NOEXECSTACK
-    #define ME_COMPILER_NOEXECSTACK 1
+    #define ME_COMPILER_NOEXECSTACK 0
 #endif
 #ifndef ME_COMPILER_WARN64TO32
     #define ME_COMPILER_WARN64TO32 0
 #endif
 #ifndef ME_COMPILER_WARN_UNUSED
-    #define ME_COMPILER_WARN_UNUSED 1
+    #define ME_COMPILER_WARN_UNUSED 0
 #endif
 #ifndef ME_CONFIG_FILE
     #define ME_CONFIG_FILE "appweb.conf"
@@ -286,7 +286,7 @@
 
 /* Profile */
 #ifndef ME_CONFIG_CMD
-    #define ME_CONFIG_CMD "me -d -q -platform linux-x64-default -configure . --with esp --with mdb --with cgi -gen make"
+    #define ME_CONFIG_CMD "me -d -q -platform freebsd-arm-default -configure . --with esp --with mdb --with cgi -gen make"
 #endif
 #ifndef ME_APPWEB_PRODUCT
     #define ME_APPWEB_PRODUCT 1

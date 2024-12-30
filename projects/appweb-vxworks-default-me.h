@@ -1,5 +1,5 @@
 /*
-    me.h -- MakeMe Configure Header for linux-x64-default
+    me.h -- MakeMe Configure Header for vxworks-arm-default
  */
 
 /* Settings */
@@ -22,13 +22,13 @@
     #define ME_COMPILER_FORTIFY 1
 #endif
 #ifndef ME_COMPILER_HAS_ATOMIC
-    #define ME_COMPILER_HAS_ATOMIC 1
+    #define ME_COMPILER_HAS_ATOMIC 0
 #endif
 #ifndef ME_COMPILER_HAS_ATOMIC64
-    #define ME_COMPILER_HAS_ATOMIC64 1
+    #define ME_COMPILER_HAS_ATOMIC64 0
 #endif
 #ifndef ME_COMPILER_HAS_DOUBLE_BRACES
-    #define ME_COMPILER_HAS_DOUBLE_BRACES 1
+    #define ME_COMPILER_HAS_DOUBLE_BRACES 0
 #endif
 #ifndef ME_COMPILER_HAS_DYN_LOAD
     #define ME_COMPILER_HAS_DYN_LOAD 1
@@ -37,13 +37,13 @@
     #define ME_COMPILER_HAS_LIB_EDIT 0
 #endif
 #ifndef ME_COMPILER_HAS_LIB_RT
-    #define ME_COMPILER_HAS_LIB_RT 1
+    #define ME_COMPILER_HAS_LIB_RT 0
 #endif
 #ifndef ME_COMPILER_HAS_MMU
     #define ME_COMPILER_HAS_MMU 1
 #endif
 #ifndef ME_COMPILER_HAS_MTUNE
-    #define ME_COMPILER_HAS_MTUNE 1
+    #define ME_COMPILER_HAS_MTUNE 0
 #endif
 #ifndef ME_COMPILER_HAS_PAM
     #define ME_COMPILER_HAS_PAM 0
@@ -52,25 +52,22 @@
     #define ME_COMPILER_HAS_STACK_PROTECTOR 1
 #endif
 #ifndef ME_COMPILER_HAS_SYNC
-    #define ME_COMPILER_HAS_SYNC 1
+    #define ME_COMPILER_HAS_SYNC 0
 #endif
 #ifndef ME_COMPILER_HAS_SYNC64
-    #define ME_COMPILER_HAS_SYNC64 1
+    #define ME_COMPILER_HAS_SYNC64 0
 #endif
 #ifndef ME_COMPILER_HAS_SYNC_CAS
-    #define ME_COMPILER_HAS_SYNC_CAS 1
+    #define ME_COMPILER_HAS_SYNC_CAS 0
 #endif
 #ifndef ME_COMPILER_HAS_UNNAMED_UNIONS
     #define ME_COMPILER_HAS_UNNAMED_UNIONS 1
-#endif
-#ifndef ME_COMPILER_NOEXECSTACK
-    #define ME_COMPILER_NOEXECSTACK 1
 #endif
 #ifndef ME_COMPILER_WARN64TO32
     #define ME_COMPILER_WARN64TO32 0
 #endif
 #ifndef ME_COMPILER_WARN_UNUSED
-    #define ME_COMPILER_WARN_UNUSED 1
+    #define ME_COMPILER_WARN_UNUSED 0
 #endif
 #ifndef ME_CONFIG_FILE
     #define ME_CONFIG_FILE "appweb.conf"
@@ -205,77 +202,74 @@
     #define ME_WATCHDOG_NAME "appman"
 #endif
 #ifndef ME_WEB_GROUP
-    #define ME_WEB_GROUP "nogroup"
+    #define ME_WEB_GROUP ""
 #endif
 #ifndef ME_WEB_USER
-    #define ME_WEB_USER "nobody"
+    #define ME_WEB_USER ""
 #endif
 
 /* Prefixes */
 #ifndef ME_ROOT_PREFIX
-    #define ME_ROOT_PREFIX "/"
+    #define ME_ROOT_PREFIX "deploy"
 #endif
 #ifndef ME_BASE_PREFIX
-    #define ME_BASE_PREFIX "/usr/local"
+    #define ME_BASE_PREFIX "deploy"
 #endif
 #ifndef ME_DATA_PREFIX
-    #define ME_DATA_PREFIX "/"
+    #define ME_DATA_PREFIX "deploy"
 #endif
 #ifndef ME_STATE_PREFIX
-    #define ME_STATE_PREFIX "/var"
-#endif
-#ifndef ME_APP_PREFIX
-    #define ME_APP_PREFIX "/usr/local/lib/appweb"
-#endif
-#ifndef ME_VAPP_PREFIX
-    #define ME_VAPP_PREFIX "/usr/local/lib/appweb/9.0.4"
+    #define ME_STATE_PREFIX "deploy"
 #endif
 #ifndef ME_BIN_PREFIX
-    #define ME_BIN_PREFIX "/usr/local/bin"
+    #define ME_BIN_PREFIX "deploy"
 #endif
 #ifndef ME_INC_PREFIX
-    #define ME_INC_PREFIX "/usr/local/include"
+    #define ME_INC_PREFIX "deploy/inc"
 #endif
 #ifndef ME_LIB_PREFIX
-    #define ME_LIB_PREFIX "/usr/local/lib"
+    #define ME_LIB_PREFIX "deploy"
 #endif
 #ifndef ME_MAN_PREFIX
-    #define ME_MAN_PREFIX "/usr/local/share/man"
+    #define ME_MAN_PREFIX "deploy"
 #endif
 #ifndef ME_SBIN_PREFIX
-    #define ME_SBIN_PREFIX "/usr/local/sbin"
+    #define ME_SBIN_PREFIX "deploy"
 #endif
 #ifndef ME_ETC_PREFIX
-    #define ME_ETC_PREFIX "/etc/appweb"
+    #define ME_ETC_PREFIX "deploy"
 #endif
 #ifndef ME_WEB_PREFIX
-    #define ME_WEB_PREFIX "/var/www/appweb"
+    #define ME_WEB_PREFIX "deploy/web"
 #endif
 #ifndef ME_LOG_PREFIX
-    #define ME_LOG_PREFIX "/var/log/appweb"
-#endif
-#ifndef ME_VLIB_PREFIX
-    #define ME_VLIB_PREFIX "/var/lib/appweb"
+    #define ME_LOG_PREFIX "deploy"
 #endif
 #ifndef ME_SPOOL_PREFIX
-    #define ME_SPOOL_PREFIX "/var/spool/appweb"
+    #define ME_SPOOL_PREFIX "deploy"
 #endif
 #ifndef ME_CACHE_PREFIX
-    #define ME_CACHE_PREFIX "/var/spool/appweb/cache"
+    #define ME_CACHE_PREFIX "deploy"
+#endif
+#ifndef ME_APP_PREFIX
+    #define ME_APP_PREFIX "deploy"
+#endif
+#ifndef ME_VAPP_PREFIX
+    #define ME_VAPP_PREFIX "deploy"
 #endif
 #ifndef ME_SRC_PREFIX
-    #define ME_SRC_PREFIX "appweb-9.0.4"
+    #define ME_SRC_PREFIX "/usr/src/appweb-9.0.4"
 #endif
 
 /* Suffixes */
 #ifndef ME_EXE
-    #define ME_EXE ""
+    #define ME_EXE ".out"
 #endif
 #ifndef ME_SHLIB
-    #define ME_SHLIB ".so"
+    #define ME_SHLIB ".out"
 #endif
 #ifndef ME_SHOBJ
-    #define ME_SHOBJ ".so"
+    #define ME_SHOBJ ".out"
 #endif
 #ifndef ME_LIB
     #define ME_LIB ".a"
@@ -286,7 +280,7 @@
 
 /* Profile */
 #ifndef ME_CONFIG_CMD
-    #define ME_CONFIG_CMD "me -d -q -platform linux-x64-default -configure . --with esp --with mdb --with cgi -gen make"
+    #define ME_CONFIG_CMD "me -d -q -platform vxworks-arm-default -configure . --with esp --with mdb --with cgi -gen make"
 #endif
 #ifndef ME_APPWEB_PRODUCT
     #define ME_APPWEB_PRODUCT 1
@@ -336,6 +330,9 @@
 #endif
 #ifndef ME_COM_LIB
     #define ME_COM_LIB 1
+#endif
+#ifndef ME_COM_LINK
+    #define ME_COM_LINK 1
 #endif
 #ifndef ME_COM_MBEDTLS
     #define ME_COM_MBEDTLS 0
