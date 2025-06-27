@@ -8902,7 +8902,19 @@ static void incomingHttp1Service(HttpQueue *q)
 
 static void outgoingHttp1(HttpQueue *q, HttpPacket *packet)
 {
-    httpPutForService(q, packet, 1);
+    HttpStream  *stream;
+
+    stream = q->stream;
+    stream->lastActivity = stream->net->lastActivity = stream->http->now;
+
+    /*
+        Optimize and skip service if downstream can already accept
+     */
+    if (httpWillQueueAcceptPacket(q, q->net->socketq, packet)) {
+        httpPutPacket(q->net->socketq, packet);
+    } else {
+        httpPutForService(q, packet, HTTP_SCHEDULE_QUEUE);
+    }
 }
 
 
@@ -14674,7 +14686,15 @@ static void netOutgoing(HttpQueue *q, HttpPacket *packet)
     assert(q == q->net->socketq);
 
     if (q->net->socketq) {
-        httpPutForService(q->net->socketq, packet, HTTP_SCHEDULE_QUEUE);
+        /*
+            Optimize and directly call netOutgoingService if queue is empty
+         */
+        if (!q->net->socketq->first) {
+            httpPutForService(q->net->socketq, packet, 0);
+            netOutgoingService(q->net->socketq);
+        } else {
+            httpPutForService(q->net->socketq, packet, HTTP_SCHEDULE_QUEUE);
+        }
     }
 }
 
@@ -24008,7 +24028,15 @@ static void outgoingTail(HttpQueue *q, HttpPacket *packet)
                 "Http transmission aborted. Exceeded transmission max body of %lld bytes", stream->limits->txBodySize);
         }
     }
-    httpPutForService(q, packet, HTTP_SCHEDULE_QUEUE);
+    /*
+        Optimization if the http filter is empty to process immediately
+     */
+    if (q->count == 0 && willQueueAcceptPacket(q, packet)) {
+        //  Onto the HttpFilter
+        httpPutPacket(q->net->outputq, packet);
+    } else {
+        httpPutForService(q, packet, HTTP_SCHEDULE_QUEUE);
+    }
 }
 
 
