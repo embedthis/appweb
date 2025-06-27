@@ -7831,10 +7831,10 @@ static void incomingFile(HttpQueue *q, HttpPacket *packet)
 
 
 /*
-    The service callback will be invoked to service outgoing packets on the service queue. It will only be called
-    once all incoming data has been received and then when the downstream queues drain sufficiently to absorb
-    more data. This routine may flow control if the downstream stage cannot accept all the file data. It will
-    then be re-called as required to send more data.
+    The service callback will be invoked to service outgoing packets on the service queue. It may be called
+    before all incoming data has been received and will be called again when the downstream queues drain
+    sufficiently to absorb more data. This routine may flow control if the downstream stage cannot accept
+    all the file data. It will then be re-called as required to send more data.
  */
 static void outgoingFileService(HttpQueue *q)
 {
@@ -8813,6 +8813,8 @@ PUBLIC MprKeyValue *httpGetPackedHeader(HttpHeaderTable *headers, int index)
 #define TOKEN_NUMBER            0x8     /* Validate token as a number */
 #define TOKEN_WORD              0x10    /* Validate token as single word with no spaces */
 #define TOKEN_LINE              0x20    /* Validate token as line with no newlines */
+
+#define isWhite(c) ((c) == ' ' || (c) == '\t')
 
 /********************************** Forwards **********************************/
 
@@ -18866,8 +18868,6 @@ PUBLIC void httpRouteRequest(HttpStream *stream)
     if (tx->finalized || tx->pendingFinalize) {
         /* Pass handler can transmit the message */
         tx->handler = stream->http->passHandler;
-    } else {
-        assert(!stream->error);
     }
     if (tx->handler->module) {
         tx->handler->module->lastActivity = stream->lastActivity;
@@ -23731,6 +23731,9 @@ static void invokeWrapper(HttpInvoke *invoke, MprEvent *event)
 {
     HttpStream  *stream;
 
+    /*
+        httpFindStream will check if stream->destroyed
+     */
     if (event && (stream = httpFindStream(invoke->seqno, NULL, NULL)) != NULL) {
         invoke->callback(stream, invoke->data);
     } else {
