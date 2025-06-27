@@ -15022,8 +15022,16 @@ static HttpPacket *getPacket(HttpNet *net, ssize *lenp)
     size = net->inputq ? net->inputq->packetSize : ME_PACKET_SIZE;
 #endif
     /*
+        Conservatively handle pipelined requests if HTTP/1 and we have a content length
+        This avoids over-reading the next request headers
+     */
+    if (net->protocol < 2 && net->stream && net->stream->rx->remainingContent > 0 && size > net->stream->rx->remainingContent) {
+        size = min(size, net->stream->rx->remainingContent);
+    }
+
+    /*
         Must use queued buffer and append if we haven't yet sleuthed the protocol
-    */
+     */
     if (net->protocol < 0 && net->inputq) {
         //  This will remove the packet from the queue. Should not be any other packets on the queue.
         packet = httpGetPacket(net->inputq);
