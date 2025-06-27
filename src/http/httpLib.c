@@ -23789,7 +23789,9 @@ static void manageInvoke(HttpInvoke *invoke, int flags)
 
 static void createInvokeEvent(HttpStream *stream, void *data)
 {
-    mprCreateLocalEvent(stream->dispatcher, "httpEvent", 0, (MprEventProc) invokeWrapper, data, MPR_EVENT_ALWAYS);
+    if (!stream->destroyed && !stream->net->destroyed) {
+        mprCreateLocalEvent(stream->dispatcher, "httpEvent", 0, (MprEventProc) invokeWrapper, data, MPR_EVENT_ALWAYS);
+    }
 }
 
 
