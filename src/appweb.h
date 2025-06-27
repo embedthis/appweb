@@ -55,6 +55,9 @@ extern "C" {
 #ifndef ME_COM_TEST
     #define ME_COM_TEST 1
 #endif
+#ifndef ME_COM_TEST_WEBSOCKETS
+    #define ME_COM_TEST_WEBSOCKETS 1
+#endif
 
 /******************************************************************************/
 /*
@@ -278,6 +281,9 @@ PUBLIC int maWriteAuthFile(HttpAuth *auth, char *path);
 #endif
 #if ME_COM_TEST
     PUBLIC int httpTestInit(Http *http, MprModule *mp);
+#endif
+#if ME_COM_TEST_WEBSOCKETS
+    PUBLIC int httpTestWebSocketsInit(Http *http, MprModule *mp);
 #endif
 
 PUBLIC int maTraceDirective(MaState *state, HttpTrace *trace, cchar *key, cchar *value);

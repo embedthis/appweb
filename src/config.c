@@ -54,6 +54,9 @@ PUBLIC int maLoadModules(void)
 #if ME_COM_TEST
     rc += httpTestInit(HTTP, mprCreateModule("test", NULL, NULL, HTTP));
 #endif
+#if ME_COM_TEST_WEBSOCKETS
+    rc += httpTestWebSocketsInit(HTTP, mprCreateModule("testWebSockets", NULL, NULL, HTTP));
+#endif
     return rc;
 }
 
