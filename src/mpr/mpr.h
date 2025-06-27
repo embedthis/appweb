@@ -228,11 +228,13 @@ struct  MprXml;
  */
 #define MPR_MIN_TIME_FOR_GC     2       /**< Wait till 2 milliseconds of idle time possible */
 
+#if UNUSED
 //  Legacy unicode 
 #define wide(s) (s)
 #define multi(s) (s)
 PUBLIC wchar *amtow(cchar *src, ssize *len);
 PUBLIC char  *awtom(wchar *src, ssize *len);
+#endif
 
 /************************************ Error Codes *****************************/
 
@@ -2457,6 +2459,157 @@ PUBLIC char *strim(cchar *str, cchar *set, int where);
  */
 PUBLIC char *supper(cchar *str);
 
+/************************************ Unicode *********************************/
+/*
+    Low-level unicode wide string support. Unicode characters are build-time configurable to be 1, 2 or 4 bytes
+
+    This API is not yet public
+ */
+/* Allocating */
+PUBLIC wchar   *amtow(cchar *src, ssize *len);
+PUBLIC char    *awtom(wchar *src, ssize *len);
+
+#if ME_CHAR_LEN > 1
+#define multi(s) awtom(s, 0)
+#define wide(s)  amtow(s, 0)
+#else
+#define multi(s) (s)
+#define wide(s)  (s)
+#endif
+
+#if ME_CHAR_LEN > 1
+PUBLIC ssize   wtom(char *dest, ssize count, wchar *src, ssize len);
+PUBLIC ssize   mtow(wchar *dest, ssize count, cchar *src, ssize len);
+
+#if FUTURE
+PUBLIC wchar    *wfmt(wchar *fmt, ...);
+PUBLIC wchar    *itow(wchar *buf, ssize bufCount, int64 value, int radix);
+PUBLIC wchar    *wchr(wchar *s, int c);
+PUBLIC int      wcasecmp(wchar *s1, wchar *s2);
+PUBLIC wchar    *wclone(wchar *str);
+PUBLIC int      wcmp(wchar *s1, wchar *s2);
+PUBLIC wchar    *wcontains(wchar *str, wchar *pattern, ssize limit);
+PUBLIC ssize    wcopy(wchar *dest, ssize destMax, wchar *src);
+PUBLIC int      wends(wchar *str, wchar *suffix);
+PUBLIC wchar    *wfmtv(wchar *fmt, va_list arg);
+PUBLIC uint     whash(wchar *name, ssize len);
+PUBLIC uint     whashlower(wchar *name, ssize len);
+PUBLIC wchar    *wjoin(wchar *sep, ...);
+PUBLIC wchar    *wjoinv(wchar *sep, va_list args);
+PUBLIC ssize    wlen(wchar *s);
+#endif
+
+PUBLIC wchar    *wlower(wchar *s);
+PUBLIC int      wncaselesscmp(wchar *s1, wchar *s2, ssize len);
+PUBLIC int      wncmp(wchar *s1, wchar *s2, ssize len);
+PUBLIC ssize    wncopy(wchar *dest, ssize destCount, wchar *src, ssize len);
+PUBLIC wchar    *wpbrk(wchar *str, wchar *set);
+PUBLIC wchar    *wrchr(wchar *s, int c);
+PUBLIC wchar    *wrejoin(wchar *buf, wchar *sep, ...);
+PUBLIC wchar    *wrejoinv(wchar *buf, wchar *sep, va_list args);
+PUBLIC ssize    wspn(wchar *str, wchar *set);
+PUBLIC int      wstarts(wchar *str, wchar *prefix);
+PUBLIC wchar    *wsub(wchar *str, ssize offset, ssize len);
+PUBLIC int64    wtoi(wchar *str);
+PUBLIC int64    wtoiradix(wchar *str, int radix, int *err);
+PUBLIC wchar    *wtok(wchar *str, wchar *delim, wchar **last);
+PUBLIC wchar    *wtrim(wchar *str, wchar *set, int where);
+PUBLIC wchar    *wupper(wchar *s);
+
+#else
+
+/* CHAR_LEN == 1 */
+
+#define wtom(dest, count, src, len)         sncopy(dest, count, src, len)
+#define mtow(dest, count, src, len)         sncopy(dest, count, src, len)
+#define itowbuf(buf, bufCount, value, radix) itosbuf(buf, bufCount, value, radix)
+#define wchr(str, c)                        schr(str, c)
+#define wclone(str)                         sclone(str)
+#define wcasecmp(s1, s2)                    scaselesscmp(s1, s2)
+#define wcmp(s1, s2)                        scmp(s1, s2)
+#define wcontains(str, pattern)             scontains(str, pattern)
+#define wncontains(str, pattern, limit)     sncontains(str, pattern, limit)
+#define wcopy(dest, count, src)             scopy(dest, count, src)
+#define wends(str, suffix)                  sends(str, suffix)
+#define wfmt                                sfmt
+#define wfmtv(fmt, arg)                     sfmtv(fmt, arg)
+#define whash(name, len)                    shash(name, len)
+#define whashlower(name, len)               shashlower(name, len)
+#define wjoin                               sjoin
+#define wjoinv(sep, args)                   sjoinv(sep, args)
+#define wlen(str)                           slen(str)
+#define wlower(str)                         slower(str)
+#define wncmp(s1, s2, len)                  sncmp(s1, s2, len)
+#define wncaselesscmp(s1, s2, len)          sncaselesscmp(s1, s2, len)
+#define wncopy(dest, count, src, len)       sncopy(dest, count, src, len)
+#define wpbrk(str, set)                     spbrk(str, set)
+#define wrchr(str, c)                       srchr(str, c)
+#define wrejoin                             srejoin
+#define wrejoinv(buf, sep, args)            srejoinv(buf, sep, args)
+#define wspn(str, set)                      sspn(str, set)
+#define wstarts(str, prefix)                sstarts(str, prefix)
+#define wsub(str, offset, len)              ssub(str, offset, len)
+#define wtoi(str)                           stoi(str)
+#define wtoiradix(str, radix, err)          stoiradix(str, radix, err)
+#define wtok(str, delim, last)              stok(str, delim, last)
+#define wtrim(str, set, where)              strim(str, set, where)
+#define wupper(str)                         supper(str)
+
+#endif /* ME_CHAR_LEN > 1 */
+
+/********************************* Mixed Strings ******************************/
+/*
+    These routines operate on wide strings mixed with a multibyte/ascii operand
+    This API is not yet public
+ */
+#if ME_CHAR_LEN > 1
+#if FUTURE
+PUBLIC int      mcaselesscmp(wchar *s1, cchar *s2);
+PUBLIC int      mcmp(wchar *s1, cchar *s2);
+PUBLIC wchar    *mcontains(wchar *str, cchar *pattern);
+PUBLIC wchar    *mncontains(wchar *str, cchar *pattern, ssize limit);
+PUBLIC ssize    mcopy(wchar *dest, ssize destMax, cchar *src);
+PUBLIC int      mends(wchar *str, cchar *suffix);
+PUBLIC wchar    *mfmt(cchar *fmt, ...);
+PUBLIC wchar    *mfmtv(cchar *fmt, va_list arg);
+PUBLIC wchar    *mjoin(cchar *str, ...);
+PUBLIC wchar    *mjoinv(wchar *buf, va_list args);
+PUBLIC int      mncmp(wchar *s1, cchar *s2, ssize len);
+PUBLIC int      mncaselesscmp(wchar *s1, cchar *s2, ssize len);
+PUBLIC ssize    mncopy(wchar *dest, ssize destMax, cchar *src, ssize len);
+PUBLIC wchar    *mpbrk(wchar *str, cchar *set);
+PUBLIC wchar    *mrejoin(wchar *buf, cchar *sep, ...);
+PUBLIC wchar    *mrejoinv(wchar *buf, cchar *sep, va_list args);
+PUBLIC ssize    mspn(wchar *str, cchar *set);
+PUBLIC int      mstarts(wchar *str, cchar *prefix);
+PUBLIC wchar    *mtok(wchar *str, cchar *delim, wchar **last);
+PUBLIC wchar    *mtrim(wchar *str, cchar *set, int where);
+#endif
+
+#else /* ME_CHAR_LEN <= 1 */
+
+#define mcaselesscmp(s1, s2)            scaselesscmp(s1, s2)
+#define mcmp(s1, s2)                    scmp(s1, s2)
+#define mcontains(str, pattern)         scontains(str, pattern)
+#define mncontains(str, pattern, limit) sncontains(str, pattern, limit)
+#define mcopy(dest, count, src)         scopy(dest, count, src)
+#define mends(str, suffix)              sends(str, suffix)
+#define mfmt                            sfmt
+#define mfmtv(fmt, arg)                 sfmtv(fmt, arg)
+#define mjoin                           sjoin
+#define mjoinv(sep, args)               sjoinv(sep, args)
+#define mncmp(s1, s2, len)              sncmp(s1, s2, len)
+#define mncaselesscmp(s1, s2, len)      sncaselesscmp(s1, s2, len)
+#define mncopy(dest, count, src, len)   sncopy(dest, count, src, len)
+#define mpbrk(str, set)                 spbrk(str, set)
+#define mrejoin                         srejoin
+#define mrejoinv(buf, sep, args)        srejoinv(buf, sep, args)
+#define mspn(str, set)                  sspn(str, set)
+#define mstarts(str, prefix)            sstarts(str, prefix)
+#define mtok(str, delim, last)          stok(str, delim, last)
+#define mtrim(str, set, where)          strim(str, set, where)
+
+#endif /* ME_CHAR_LEN <= 1 */
 /************************************ Formatting ******************************/
 /**
     Print a formatted message to the standard error channel
@@ -2975,6 +3128,62 @@ PUBLIC void mprSetBufRefillProc(MprBuf *buf, MprBufProc fn, void *arg);
     @stability Stable.
  */
 PUBLIC int mprSetBufSize(MprBuf *buf, ssize size, ssize maxSize);
+
+#if DOXYGEN || ME_CHAR_LEN > 1
+#if KEEP
+/**
+    Add a wide null character to the buffer contents.
+    @description Add a null character but do not change the buffer content lengths. The null is added outside the
+        "official" content length. This is useful when calling #mprGetBufStart and using the returned pointer
+        as a string pointer.
+    @param buf Buffer created via mprCreateBuf
+    @ingroup MprBuf
+    @stability Prototype
+  */
+PUBLIC void mprAddNullToWideBuf(MprBuf *buf);
+
+/**
+    Put a wide character to the buffer.
+    @description Append a wide character to the buffer at the end position and increment the end pointer.
+    @param buf Buffer created via mprCreateBuf
+    @param c Character to append
+    @returns Zero if successful and otherwise a negative error code
+    @ingroup MprBuf
+    @stability Prototype
+  */
+PUBLIC int mprPutCharToWideBuf(MprBuf *buf, int c);
+
+/**
+    Put a wide string to the buffer.
+    @description Append a null terminated wide string to the buffer at the end position and increment the end pointer.
+    @param buf Buffer created via mprCreateBuf
+    @param str String to append
+    @returns Count of bytes written and otherwise a negative error code
+    @ingroup MprBuf
+    @stability Prototype
+*/
+PUBLIC ssize mprPutStringToWideBuf(MprBuf *buf, cchar *str);
+
+/**
+    Put a formatted wide string to the buffer.
+    @description Format a string and append to the buffer at the end position and increment the end pointer.
+    @param buf Buffer created via mprCreateBuf
+    @param fmt Printf style format string
+    @param ... Variable arguments for the format string
+    @returns Count of bytes written and otherwise a negative error code
+    @ingroup MprBuf
+    @stability Prototype
+ */
+PUBLIC ssize mprPutFmtToWideBuf(MprBuf *buf, cchar *fmt, ...) PRINTF_ATTRIBUTE(2,3);
+
+#endif /* KEEP */
+#else /* ME_CHAR_LEN == 1 */
+
+#define mprAddNullToWideBuf     mprAddNullToBuf
+#define mprPutCharToWideBuf     mprPutCharToBuf
+#define mprPutStringToWideBuf   mprPutStringToBuf
+#define mprPutFmtToWideBuf      mprPutFmtToBuf
+#endif
 
 /*
     Macros for speed
