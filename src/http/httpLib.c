@@ -23815,7 +23815,7 @@ PUBLIC HttpStream *httpFindStream(uint64 seqno, HttpEventProc proc, void *data)
         that networks and streams are not destroyed while traversing the lists. 
      */
     stream = 0;
-    lock(HTTP->networks);
+    mprGlobalLock();
     for (ITERATE_ITEMS(HTTP->networks, net, nextNet)) {
         for (ITERATE_ITEMS(net->streams, stream, nextStream)) {
             if (net->destroyed) continue;
@@ -23823,22 +23823,20 @@ PUBLIC HttpStream *httpFindStream(uint64 seqno, HttpEventProc proc, void *data)
                 if (proc && !stream->destroyed) {
                     /*
                         Defer invoking the proc so we can release the networks lock.
-                        Preserve net/stream memory till proc returns. 
+                        Preserve net and all stream memory till proc returns.
+                        Streams may be closed, but memory will be valid.
                      */
                     mprAddRoot(net);
-                    mprAddRoot(stream);
                 }
                 nextNet = HTTP->networks->length;
                 break;
             }
         }
     }
-    unlock(HTTP->networks);
+    mprGlobalUnlock();
 
-    if (stream && proc) {
-        //  Proc should test Net.destroyed and Stream.destroyed incase the connection is closed.
+    if (stream && !stream->destroyed && proc) {
         (proc)(stream, data);
-        mprRemoveRoot(stream);
         mprRemoveRoot(stream->net);
     }
     return stream;
