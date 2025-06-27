@@ -76,5 +76,6 @@ test/web/big*.txt
 test/web/huge*.txt
 test/web/many
 test/web/tmp/
+test/web/upload/cgiProgram.cgi
 testme/
 XCBuildData/

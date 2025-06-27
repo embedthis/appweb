@@ -7,7 +7,8 @@ const HTTP = (tget('TM_HTTP') || "127.0.0.1:4100") + '/proxy'
 let http: Http = new Http
 
 if (thas('ME_ESP')) {
-    http.post(HTTP + "/form.esp", "Some data")
+    //  Fix for streaming
+    http.form(HTTP + "/form.esp", {data: "Some data"})
     ttrue(http.status == 200)
     http.close()
 

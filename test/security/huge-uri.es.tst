@@ -27,7 +27,7 @@ try {
 
 response = new ByteArray
 s.read(response, -1)
-ttrue(response.toString().contains('413 -- Request Entity Too Large'))
+ttrue(response.toString().contains('413 Request Entity Too Large'))
 s.close()
 
 //  Check server still up

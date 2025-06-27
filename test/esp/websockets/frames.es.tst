@@ -34,7 +34,7 @@ ws.onclose = function (event) {
     ws.close()
 }
 ws.onerror = function (event) {
-    print("ON ERROR")
+    print("ON ERROR", event)
 }
 
 ws.wait(WebSocket.OPEN, TIMEOUT)
