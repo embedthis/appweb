@@ -112,6 +112,7 @@
     <ClCompile Include="..\..\src\modules\fastHandler.c" />
     <ClCompile Include="..\..\src\modules\proxyHandler.c" />
     <ClCompile Include="..\..\src\modules\testHandler.c" />
+    <ClCompile Include="..\..\src\modules\testWebSocketsHandler.c" />
     <ClCompile Include="..\..\src\rom.c" />
   </ItemGroup>
 
