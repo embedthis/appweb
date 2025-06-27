@@ -9220,14 +9220,14 @@ static char *validateToken(char *token, char *endToken, int validation)
         if (token < endToken) {
             /* Trim white space */
             for (t = endToken - 1; t >= token; t--) {
-                if (isspace((uchar) *t)) {
+                if (isWhite(*t)) {
                     *t = '\0';
                 } else {
                     break;
                 }
             }
         }
-        while (isspace((uchar) *token)) {
+        while (isWhite(*token)) {
             token++;
         }
         for (t = token; *t; t++) {
