@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload File with FormData</title>
+</head>
+<body>
+  <h2>Select a file to upload</h2>
+  <form id="uploadForm">
+    <input type="file" id="fileInput" name="file" required />
+    <button type="submit">Upload</button>
+  </form>
+
+  <script>
+    document.getElementById('uploadForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert('Please select a file first.');
+        return;
+      }
+
+      // Create a FormData object and append the file
+      const formData = new FormData();
+      formData.append('file', file, file.name); // Ensures the filename is included
+
+      try {
+        const response = await fetch('/upload/uploadComplete.html', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          const result = await response.text();
+          alert('Upload successful: ' + result);
+        } else {
+          alert('Upload failed with status: ' + response.status);
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        alert('An error occurred during the upload.');
+      }
+    });
+  </script>
+</body>
+</html>

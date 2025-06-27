@@ -52,6 +52,7 @@ test/.testme-pidfile
 test/*.log
 test/app/
 test/cache/
+test/cgiProgram.cgi
 test/cgi-bin/.prepared
 test/cgi-bin/*cgi*
 test/cgi-bin/cgiProgram

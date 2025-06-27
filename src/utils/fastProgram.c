@@ -188,7 +188,7 @@ static void *worker(State *state)
         FCGX_FPrintF(request.out, "\r\n");
 
         if ((state->outputLines + state->outputArgs + state->outputEnv + state->outputQuery +
-                state->outputPost + state->outputLocation + state->responseStatus) == 0) {
+                state->outputPost + (state->outputLocation ? 1 : 0) + state->responseStatus) == 0) {
             state->outputArgs++;
             state->outputEnv++;
             state->outputQuery++;

@@ -282,7 +282,7 @@ int main(int argc, char **argv, char **envp)
     }
     printf("\r\n");
 
-    if ((outputLines + outputArgs + outputEnv + outputQuery + outputPost + outputLocation + responseStatus) == 0) {
+    if ((outputLines + outputArgs + outputEnv + outputQuery + outputPost + (outputLocation ? 1 : 0) + responseStatus) == 0) {
         outputArgs++;
         outputEnv++;
         outputQuery++;
