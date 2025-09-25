@@ -1,10 +1,23 @@
-/*
-    http.h -- Header for the Embedthis Http Library.
+/**
+    @file http.h
+    @brief Embedthis HTTP Library
+    @description Complete HTTP/1.0, HTTP/1.1, and HTTP/2 protocol implementation with client and server APIs.
 
-    The http program is a client to issue HTTP requests. It is also a test platform for loading and testing web servers.
-    Do NOT use this program as a sample for creating a simple http client.
+    This library provides a full-featured HTTP implementation including:
+    - HTTP client and server functionality
+    - HTTP/1.0, HTTP/1.1, and HTTP/2 protocol support
+    - WebSocket support
+    - Authentication (Basic, Digest, PAM)
+    - TLS/SSL encryption
+    - Request/response filtering pipeline
+    - Monitoring and defense mechanisms
+    - Cross-platform portability
+
+    The HTTP library is designed for embedded applications and provides both high-level convenience APIs
+    and low-level control for advanced use cases.
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+    @stability Stable
  */
 
 #ifndef _h_HTTP
@@ -421,6 +434,9 @@ typedef void (*HttpTimeoutCallback)(struct HttpStream *stream);
 
 /**
     Set the fork callback.
+    @description Sets a callback function to be invoked when the HTTP library creates a new process fork.
+        This is primarily used for server applications that need to perform cleanup or initialization
+        in child processes.
     @param proc Fork callback procedure
     @param arg Argument to supply when the callback is invoked.
     @ingroup HttpStream
@@ -540,6 +556,9 @@ PUBLIC int64 httpMonitorNetEvent(struct HttpNet *net, int counter, int64 adj);
 
 /**
     Add a monitor
+    @description Adds a resource monitor to track and limit specified system counters. When the counter
+        exceeds the defined limit over the specified time period, the configured defenses will be invoked.
+        This provides protection against denial-of-service attacks and resource exhaustion.
     @param counter Name of counter to monitor. Some of the standard counter names are:
         ActiveClients, ActiveConnections, ActiveRequests, ActiveProcesses, BadRequestErrors, LimitErrors, Memory,
         NotFoundErrors, NetworkIO, Requests, SSLErrors, TotalErrors
@@ -555,6 +574,8 @@ PUBLIC int httpAddMonitor(cchar *counter, cchar *expr, uint64 limit, MprTicks pe
 
 /**
     Add a defense
+    @description Defines a defensive remedy that can be invoked by monitors when resource limits are exceeded.
+        Defenses provide automated responses to potential security threats or resource exhaustion conditions.
     @param name Name of defensive policy
     @param remedy Remedy action to invoke. Standard remedies include: ban, cmd, delay, email, http and log.
         This can be null and the remedy can be specified via REMEDY=remedy in the args.
@@ -567,6 +588,9 @@ PUBLIC int httpAddDefense(cchar *name, cchar *remedy, cchar *args);
 
 /**
     Add a defense using JSON arguments
+    @description Defines a defensive remedy using JSON arguments that can be invoked by monitors when resource
+        limits are exceeded. This is similar to httpAddDefense but accepts structured JSON arguments instead
+        of a string.
     @param name Name of defensive policy
     @param remedy Remedy action to invoke. Standard remedies include: ban, cmd, delay, email, http and log.
         This can be null and the remedy can be specified via REMEDY=remedy in the args.
@@ -579,6 +603,8 @@ PUBLIC int httpAddDefenseFromJson(cchar *name, cchar *remedy, MprJson *jargs);
 
 /**
     Add a counter to be monitored
+    @description Registers a new counter for monitoring by the HTTP defense system. Counters track various
+        metrics that can be monitored by httpAddMonitor to detect and respond to resource abuse patterns.
     @param name Name of the counter
     @return The counter index in HttpAddress.counters[] to use
     @ingroup HttpMonitor
@@ -588,6 +614,9 @@ PUBLIC int httpAddCounter(cchar *name);
 
 /**
     Add a remedy
+    @description Registers a custom remedy callback function that can be invoked by the defense system
+        when monitors detect resource limit violations. This allows applications to define custom
+        defensive responses beyond the built-in remedies.
     @param name Name of the remedy
     @param remedy Remedy callback function
     @return Zero if successful, otherwise a negative MPR error code.
@@ -4696,6 +4725,8 @@ PUBLIC bool httpLogin(HttpStream *stream, cchar *username, cchar *password);
 
 /**
     Logout the user.
+    @description This will logout the user and remove the user identity from the session state.
+        Subsequent requests will be treated as unauthenticated until the user logs in again.
     @param stream HttpStream stream object
     @ingroup HttpAuth
     @stability Stable
@@ -4705,7 +4736,9 @@ PUBLIC void httpLogout(HttpStream *stream);
 
 /***************************** Auth Route ************************************/
 /**
-    Allow access by a client IP IP address
+    Allow access by a client IP address
+    @description Configures the authorization object to allow access from the specified client IP address.
+        This provides IP-based access control as part of the authentication framework.
     @param auth Authorization object allocated by #httpCreateAuth.
     @param ip Client IP address to allow.
     @ingroup HttpAuth
@@ -4724,6 +4757,8 @@ PUBLIC void httpSetAuthAnyValidUser(HttpAuth *auth);
 
 /**
     Deny access by a client IP address
+    @description Configures the authorization object to deny access from the specified client IP address.
+        This provides IP-based access denial as part of the authentication framework.
     @param auth Authorization object allocated by #httpCreateAuth.
     @param ip Client IP address to deny. This must be an IP address string.
     @ingroup HttpAuth
@@ -7721,6 +7756,9 @@ PUBLIC int httpRemoveHeader(HttpStream *stream, cchar *key);
 
 /**
     Issue a http request
+    @description Convenience function to issue a HTTP request and return a stream object for reading the response.
+        This is a high-level API that handles connection establishment, request transmission, and returns a stream
+        for reading the response. Use this for simple HTTP client requests.
     @param method HTTP method to use
     @param uri URI to request
     @param data Optional data to send with request. Set to null for GET requests.

@@ -563,6 +563,13 @@ static int getVars(char ***cgiKeys, char *buf, size_t buflen)
         Crack the input into name/value pairs
      */
     keyList = malloc((keyCount * 2) * sizeof(char**));
+    if (keyList == 0) {
+        error("Cannot allocate memory for CGI variables");
+        if (buflen > 0) {
+            free(buf);
+        }
+        return 0;
+    }
 
     i = 0;
     for (pp = strtok(buf, "&"); pp; pp = strtok(0, "&")) {
@@ -639,7 +646,8 @@ static void error(char *fmt, ...)
 
     if (responseMsg == 0) {
         va_start(args, fmt);
-        vsprintf(buf, fmt, args);
+        vsnprintf(buf, sizeof(buf), fmt, args);
+        buf[sizeof(buf)-1] = '\0';
         responseStatus = 400;
         responseMsg = strdup(buf);
         va_end(args);

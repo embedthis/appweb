@@ -1,99 +1,307 @@
 <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <tagfile doxygen_version="1.9.6">
-  <compound kind="group">
-    <name>MaState</name>
-    <title>MaState</title>
-    <filename>group___ma_state.html</filename>
+  <compound kind="file">
+    <name>appweb.h</name>
+    <path>/Users/mob/c/appweb/src/</path>
+    <filename>appweb_8h.html</filename>
+    <class kind="struct">MaState</class>
+    <member kind="define">
+      <type>#define</type>
+      <name>MA_PARSE_NON_SERVER</name>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a3b315098fc2d1fc56d9d2832902dacff</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MA_UNLOAD_TIMEOUT</name>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>aba0a3eb51d76651562bc5c0bb2c0f424</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>ME_COM_ESP</name>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a60c99d1c1454634714995f965027d05c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>ME_COM_FAST</name>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a8425eadea77fb7634a65c3595350bfc5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>ME_COM_MDB</name>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>ae24165a29ce55f431fb2da06d5ea42b3</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>ME_COM_PROXY</name>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>ad5eaf4ec738b801f70bf994704571540</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>ME_COM_SDB</name>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a55e783380c0fed6b99bb58717b4ef1c1</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>ME_COM_SSL</name>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a1ca1c79e0d604c5798914362405d03a2</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>ME_COM_TEST</name>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a7238a3a7f93f8ab30fe9ec16a5a44569</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>ME_COM_TEST_WEBSOCKETS</name>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a361974098efe03a6b0c06191f17d6aca</anchor>
+      <arglist></arglist>
+    </member>
     <member kind="typedef">
       <type>int()</type>
       <name>MaDirective</name>
-      <anchorfile>group___ma_state.html</anchorfile>
-      <anchor>ga77e98d350eaa12e72d0caee671b4d0d2</anchor>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a77e98d350eaa12e72d0caee671b4d0d2</anchor>
       <arglist>(MaState *state, cchar *key, cchar *value)</arglist>
+    </member>
+    <member kind="function">
+      <type>int</type>
+      <name>httpCgiInit</name>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a38bb895e832d5e4da727510b895f46da</anchor>
+      <arglist>(Http *http, MprModule *mp)</arglist>
     </member>
     <member kind="function">
       <type>void</type>
       <name>maAddDirective</name>
-      <anchorfile>group___ma_state.html</anchorfile>
-      <anchor>ga0625b7b754d921353acac4505eb9de02</anchor>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a0625b7b754d921353acac4505eb9de02</anchor>
       <arglist>(cchar *directive, MaDirective proc)</arglist>
     </member>
     <member kind="function">
       <type>int</type>
       <name>maConfigureServer</name>
-      <anchorfile>group___ma_state.html</anchorfile>
-      <anchor>ga3a076271dc5d0227cf3e4c79dcb3f026</anchor>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a3a076271dc5d0227cf3e4c79dcb3f026</anchor>
       <arglist>(cchar *configFile, cchar *home, cchar *documents, cchar *ip, int port)</arglist>
     </member>
     <member kind="function">
       <type>char *</type>
       <name>maGetNextArg</name>
-      <anchorfile>group___ma_state.html</anchorfile>
-      <anchor>ga2fa468906087c5703a5b71b6b2612ba6</anchor>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a2fa468906087c5703a5b71b6b2612ba6</anchor>
       <arglist>(char *s, char **tok)</arglist>
     </member>
     <member kind="function">
       <type>int</type>
       <name>maLoadModule</name>
-      <anchorfile>group___ma_state.html</anchorfile>
-      <anchor>ga94cd7d8346894055cff0fc79dcd09a48</anchor>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a94cd7d8346894055cff0fc79dcd09a48</anchor>
       <arglist>(cchar *name, cchar *libname)</arglist>
     </member>
     <member kind="function">
       <type>int</type>
       <name>maLoadModules</name>
-      <anchorfile>group___ma_state.html</anchorfile>
-      <anchor>gaa70fb4c9b9835739719c049af17180ef</anchor>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>aa70fb4c9b9835739719c049af17180ef</anchor>
       <arglist>(void)</arglist>
     </member>
     <member kind="function">
       <type>int</type>
       <name>maParseConfig</name>
-      <anchorfile>group___ma_state.html</anchorfile>
-      <anchor>gae9c5d28320c9ebe7f2a6e810215be37c</anchor>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>ae9c5d28320c9ebe7f2a6e810215be37c</anchor>
       <arglist>(cchar *path)</arglist>
     </member>
     <member kind="function">
       <type>int</type>
       <name>maParseFile</name>
-      <anchorfile>group___ma_state.html</anchorfile>
-      <anchor>gaf65d5f6135abce2b2cbf625e02a5d1f4</anchor>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>af65d5f6135abce2b2cbf625e02a5d1f4</anchor>
       <arglist>(MaState *state, cchar *path)</arglist>
     </member>
     <member kind="function">
       <type>MaState *</type>
       <name>maPopState</name>
-      <anchorfile>group___ma_state.html</anchorfile>
-      <anchor>gaa57a0e83512cf5b3602fdf16753b54cb</anchor>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>aa57a0e83512cf5b3602fdf16753b54cb</anchor>
       <arglist>(MaState *state)</arglist>
     </member>
     <member kind="function">
       <type>MaState *</type>
       <name>maPushState</name>
-      <anchorfile>group___ma_state.html</anchorfile>
-      <anchor>ga7ffec8dc7add955aa09bc22b8edbd9c0</anchor>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a7ffec8dc7add955aa09bc22b8edbd9c0</anchor>
       <arglist>(MaState *state)</arglist>
     </member>
     <member kind="function">
       <type>int</type>
       <name>maRunSimpleWebServer</name>
-      <anchorfile>group___ma_state.html</anchorfile>
-      <anchor>ga88a2bd1d0f26f024e6cb2d693c13e4f7</anchor>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a88a2bd1d0f26f024e6cb2d693c13e4f7</anchor>
       <arglist>(cchar *ip, int port, cchar *home, cchar *documents)</arglist>
     </member>
     <member kind="function">
       <type>int</type>
       <name>maRunWebServer</name>
-      <anchorfile>group___ma_state.html</anchorfile>
-      <anchor>ga4994c273e87409b094418dd7bd370ee4</anchor>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a4994c273e87409b094418dd7bd370ee4</anchor>
       <arglist>(cchar *configFile)</arglist>
     </member>
     <member kind="function">
       <type>bool</type>
       <name>maTokenize</name>
-      <anchorfile>group___ma_state.html</anchorfile>
-      <anchor>gabb856e86d408307d5e31ad0ff2d2f69a</anchor>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>abb856e86d408307d5e31ad0ff2d2f69a</anchor>
       <arglist>(MaState *state, cchar *str, cchar *fmt,...)</arglist>
+    </member>
+    <member kind="function">
+      <type>int</type>
+      <name>maTraceDirective</name>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>ab9ca39c44d32b5584a7c50b1e31b679e</anchor>
+      <arglist>(MaState *state, HttpTrace *trace, cchar *key, cchar *value)</arglist>
+    </member>
+    <member kind="function">
+      <type>int</type>
+      <name>maTraceLogDirective</name>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a4133c42c6d33689799eebe3393d1b13b</anchor>
+      <arglist>(MaState *state, HttpTrace *trace, cchar *key, cchar *value)</arglist>
+    </member>
+    <member kind="function">
+      <type>int</type>
+      <name>maWriteAuthFile</name>
+      <anchorfile>appweb_8h.html</anchorfile>
+      <anchor>a125d43a26297a6cd53871c147773c4dd</anchor>
+      <arglist>(HttpAuth *auth, char *path)</arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>MaState</name>
+    <filename>struct_ma_state.html</filename>
+    <member kind="variable">
+      <type>HttpAuth *</type>
+      <name>auth</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>ac618a58e77d3c66f79106c80edb6e4d7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>configDir</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>ae9b752ca24756ab94321e8e3590f69c7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>struct MaState *</type>
+      <name>current</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>a7a7ea3723ec18cb12bf02821ad19c81a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>data</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>a968a2571b85d0c9ffa131a81f60a7730</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>enabled</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>a4bc8fddf48a91cdf94bd379f5132e6d8</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>endpoints</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>a892824e4845ae7d303761dca05111b81</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>MprFile *</type>
+      <name>file</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>a8bf995b0915537b5155bf1bb46328dcf</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>filename</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>ad7a527ed5675d97c50c367db7fca9a1d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>flags</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>abb40dcf1dbd9ab707b4823b72d258ecb</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>HttpHost *</type>
+      <name>host</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>a34b491da3f5b5a38989a4576a129c550</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>key</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>a8f5b899a9b31d1e46e3acc44c6667401</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>lineNumber</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>a90d526f770098b69e01135d385dbfd41</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>struct MaState *</type>
+      <name>prev</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>a176428cf708c61931693453d7cf1388c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>HttpRoute *</type>
+      <name>route</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>ab8ad2be38a2b0738c61bbd6fa2652791</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>struct MaState *</type>
+      <name>top</name>
+      <anchorfile>struct_ma_state.html</anchorfile>
+      <anchor>adfbd24b6f1e5ecae7761d3a5296f3fd5</anchor>
+      <arglist></arglist>
     </member>
   </compound>
 </tagfile>

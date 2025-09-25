@@ -354,7 +354,9 @@ PUBLIC void mprBreakpoint(void);
 #undef assert
 #if DOXYGEN
 /**
-    Assert that a condition is true
+    Assert that a condition is true.
+    @description Assert that a condition is true. If the condition is false, the program will abort.
+        This is used for debugging and testing purposes.
     @param cond Boolean result of a conditional test
     @ingroup Mpr
     @stability Stable
@@ -376,7 +378,6 @@ PUBLIC void assert(bool cond);
         mprInitSpinLock mprLock mprResetCond mprSignalCond mprSignalMultiCond mprSpinLock mprSpinUnlock mprTryLock
         mprTrySpinLock mprUnlock mprWaitForCond mprWaitForMultiCond
     @stability Internal.
-    @defgroup MprSync MprSync
  */
 typedef struct MprSync { int dummy; } MprSync;
 
@@ -410,6 +411,7 @@ typedef struct MprCond {
 /**
     Create a condition lock variable.
     @description This call creates a condition variable object that can be used in #mprWaitForCond and #mprSignalCond calls.
+    @return Returns a new condition variable object.
     @ingroup MprSync
     @stability Stable.
  */
@@ -539,6 +541,7 @@ typedef struct MprSpin {
 /**
     Create a Mutex lock object.
     @description This call creates a Mutex lock object that can be used in mprLock #mprTryLock and mprUnlock calls.
+    @return Returns a new mutex lock object.
     @ingroup MprSync
     @stability Stable.
  */
@@ -549,7 +552,7 @@ PUBLIC MprMutex *mprCreateLock(void);
     @description This call initialized a Mutex lock object without allocation. The object can then be used used
         in mprLock mprTryLock and mprUnlock calls.
     @param mutex Reference to an MprMutex structure to initialize
-    @returns A reference to the supplied mutex. Returns null on errors.
+    @return A reference to the supplied mutex. Returns null on errors.
     @ingroup MprSync
     @stability Stable.
  */
@@ -559,7 +562,7 @@ PUBLIC MprMutex *mprInitLock(MprMutex *mutex);
     Attempt to lock access.
     @description This call attempts to assert a lock on the given \a lock mutex so that other threads calling
         mprLock or mprTryLock will block until the current thread calls mprUnlock.
-    @returns Returns zero if the successful in locking the mutex. Returns a negative MPR error code if unsuccessful.
+    @return Returns zero if the successful in locking the mutex. Returns a negative MPR error code if unsuccessful.
     @ingroup MprSync
     @stability Stable.
  */
@@ -569,6 +572,7 @@ PUBLIC bool mprTryLock(MprMutex *lock);
     Create a spin lock lock object.
     @description This call creates a spinlock object that can be used in mprSpinLock, and mprSpinUnlock calls. Spin locks
         using MprSpin are much faster than MprMutex based locks on some systems.
+    @return Returns a new spinlock object.
     @ingroup MprSync
     @stability Stable.
  */
@@ -579,7 +583,7 @@ PUBLIC MprSpin *mprCreateSpinLock(void);
     @description This call initialized a spinlock lock object without allocation. The object can then be used used
         in mprSpinLock and mprSpinUnlock calls.
     @param lock Reference to a static #MprSpin  object.
-    @returns A reference to the MprSpin object. Returns null on errors.
+    @return A reference to the MprSpin object. Returns null on errors.
     @ingroup MprSync
  */
 PUBLIC MprSpin *mprInitSpinLock(MprSpin *lock);
@@ -588,7 +592,7 @@ PUBLIC MprSpin *mprInitSpinLock(MprSpin *lock);
     Attempt to lock access on a spin lock
     @description This call attempts to assert a lock on the given \a spin lock so that other threads calling
         mprSpinLock or mprTrySpinLock will block until the current thread calls mprSpinUnlock.
-    @returns Returns zero if the successful in locking the spinlock. Returns a negative MPR error code if unsuccessful.
+    @return Returns zero if the successful in locking the spinlock. Returns a negative MPR error code if unsuccessful.
     @ingroup MprSync
     @stability Stable.
  */
@@ -710,14 +714,17 @@ PUBLIC void mprGlobalUnlock(void);
 #endif
 
 /**
-    Open and initialize the atomic subystem
+    Open and initialize the atomic subsystem.
+    @description Initialize the atomic operations subsystem. This must be called before using atomic operations.
     @ingroup MprSync
     @stability Stable.
  */
 PUBLIC void mprAtomicOpen(void);
 
 /**
-    Apply a full (read+write) memory barrier
+    Apply a full (read+write) memory barrier.
+    @description Apply a memory barrier to ensure memory operations are synchronized across threads.
+        This prevents memory reordering by the compiler and CPU.
     @param model Memory model. Set to MPR_ATOMIC_RELAXED, MPR_ATOMIC_CONSUME, MPR_ATOMIC_ACQUIRE,
         MPR_ATOMIC_RELEASE, MPR_ATOMIC_ACQREL, MPR_ATOMIC_SEQUENTIAL
     @ingroup MprSync
@@ -908,7 +915,6 @@ PUBLIC void mprAtomicAdd64(volatile int64 *target, int64 value);
     user threads are resumed and the garbage sweeper frees unused blocks in parallel with user threads.
 
     @stability Internal
-    @defgroup MprMem MprMem
     @see MprFreeMem MprHeap MprManager MprMemNotifier MprRegion mprAddRoot mprAlloc mprAllocMem mprAllocObj
         mprAllocZeroed mprCreateMemService mprDestroyMemService mprEnableGC mprGetBlockSize mprGetMem
         mprGetMemStats mprGetMpr mprGetPageSize mprHasMemError mprHold mprIsPathContained mprIsValid mprMark
@@ -1272,7 +1278,7 @@ PUBLIC void *mprAllocMem(size_t size, int flags);
 
 /**
     Return the process CPU usage.
-    @returns The total number of ticks of cpu usage since process tart
+    @return The total number of ticks of cpu usage since process tart
     @ingroup MprMem
     @stability Stable
  */
@@ -1280,7 +1286,7 @@ PUBLIC uint64 mprGetCPU(void);
 
 /**
     Return the current allocation memory statistics block
-    @returns a reference to the allocation memory statistics. Do not modify its contents.
+    @return a reference to the allocation memory statistics. Do not modify its contents.
     @ingroup MprMem
     @stability Internal.
  */
@@ -1290,7 +1296,7 @@ PUBLIC MprMemStats *mprGetMemStats(void);
     Return the amount of memory currently used by the application. On Unix, this returns the total application memory
     size including code, stack, data and heap. On Windows, VxWorks and other operatings systems, it returns the
     amount of allocated heap memory.
-    @returns the amount of memory used by the application in bytes.
+    @return the amount of memory used by the application in bytes.
     @ingroup MprMem
     @stability Stable.
  */
@@ -1298,7 +1304,7 @@ PUBLIC size_t mprGetMem(void);
 
 /**
     Get the current O/S virtual page size
-    @returns the page size in bytes
+    @return the page size in bytes
     @ingroup MprMem
     @stability Stable.
  */
@@ -1307,7 +1313,7 @@ PUBLIC int mprGetPageSize(void);
 /**
     Get the allocated size of a memory block
     @param ptr Any memory allocated by mprAlloc
-    @returns the block size in bytes
+    @return the block size in bytes
     @ingroup MprMem
     @stability Internal.
  */
@@ -1793,7 +1799,6 @@ PUBLIC int  mprSyncThreads(MprTicks timeout);
     Safe String Module
     @description The MPR provides a suite of safe ascii string manipulation routines to help prevent buffer overflows
         and other potential security traps.
-    @defgroup MprString MprString
     @see MprString itos itosradix itosbuf mprEprintf mprPrintf scamel scaselesscmp scaselessmatch schr
         sclone scmp scontains scopy sends sfmt sfmtv shash shashlower sjoin sjoinv slen slower smatch sncaselesscmp snclone
         sncmp sncopy snumber sfnumber shnumber stitle spbrk srchr srejoin srejoinv sreplace sspn sstarts ssub stemplate
@@ -2674,7 +2679,6 @@ PUBLIC char *mprPrintfCore(char *buf, ssize maxsize, cchar *fmt, va_list args);
     Floating Point Services
     @stability Stable
     @see mprDota mprIsInfinite mprIsNan mprIsZero
-    @defgroup MprFloat MprFloat
     @stability Internal
   */
 typedef struct MprFloat { int dummy; } MprFloat;
@@ -2713,7 +2717,7 @@ PUBLIC int mprIsNan(double value);
     @description Function to call when the buffer is depleted and needs more data.
     @param bp Instance of an MprBuf
     @param arg Data argument supplied to #mprSetBufRefillProc
-    @returns The callback should return 0 if successful, otherwise a negative error code.
+    @return The callback should return 0 if successful, otherwise a negative error code.
     @ingroup MprBuf
     @stability Stable
  */
@@ -2736,7 +2740,6 @@ typedef int (*MprBufProc)(struct MprBuf* bp, void *arg);
         mprPutCharToWideBuf mprPutToBuf mprPutFmtToWideBuf mprPutIntToBuf mprPutPadToBuf mprPutStringToBuf
         mprPutStringToWideBuf mprPutSubStringToBuf mprRefillBuf mprResetBufIfEmpty mprSetBufMax mprSetBufRefillProc
         mprSetBufSize
-    @defgroup MprBuf MprBuf
     @stability Internal.
  */
 typedef struct MprBuf {
@@ -2791,7 +2794,7 @@ PUBLIC void mprAdjustBufStart(MprBuf *buf, ssize count);
 /**
     Convert the buffer contents to a string
     @param buf Buffer created via mprCreateBuf
-    @returns Allocated string
+    @return Allocated string
     @ingroup MprBuf
     @stability Stable.
 */
@@ -2868,7 +2871,7 @@ PUBLIC ssize mprGetBlockFromBuf(MprBuf *buf, char *blk, ssize count);
     Get a reference to the end of the buffer contents
     @description Get a pointer to the location immediately after the end of the buffer contents.
     @param buf Buffer created via mprCreateBuf
-    @returns Pointer to the end of the buffer data contents. Points to the location one after the last data byte.
+    @return Pointer to the end of the buffer data contents. Points to the location one after the last data byte.
     @ingroup MprBuf
     @stability Stable.
  */
@@ -2878,7 +2881,7 @@ PUBLIC char *mprGetBufEnd(MprBuf *buf);
     Get the buffer content length.
     @description Get the length of the buffer contents. This is not the same as the buffer size which may be larger.
     @param buf Buffer created via mprCreateBuf
-    @returns The length of the content stored in the buffer in bytes
+    @return The length of the content stored in the buffer in bytes
     @ingroup MprBuf
     @stability Stable.
  */
@@ -2888,7 +2891,7 @@ PUBLIC ssize mprGetBufLength(MprBuf *buf);
     Get the buffer refill procedure
     @description Return the buffer refill callback function.
     @param buf Buffer created via mprCreateBuf
-    @returns The refill call back function if defined.
+    @return The refill call back function if defined.
     @ingroup MprBuf
     @stability Stable.
  */
@@ -2898,7 +2901,7 @@ PUBLIC MprBufProc mprGetBufRefillProc(MprBuf *buf);
     Get the origin of the buffer content storage.
     @description Get a pointer to the start of the buffer content storage. This is always and allocated block.
     @param buf Buffer created via mprCreateBuf
-    @returns A pointer to the buffer content storage.
+    @return A pointer to the buffer content storage.
     @ingroup MprBuf
     @stability Stable.
  */
@@ -2908,7 +2911,7 @@ PUBLIC char *mprGetBuf(MprBuf *buf);
     Get the current size of the buffer content storage.
     @description This returns the size of the memory block allocated for storing the buffer contents.
     @param buf Buffer created via mprCreateBuf
-    @returns The size of the buffer content storage.
+    @return The size of the buffer content storage.
     @ingroup MprBuf
     @stability Stable.
  */
@@ -2918,7 +2921,7 @@ PUBLIC ssize mprGetBufSize(MprBuf *buf);
     Get the space available to store content
     @description Get the number of bytes available to store content in the buffer
     @param buf Buffer created via mprCreateBuf
-    @returns The number of bytes available
+    @return The number of bytes available
     @ingroup MprBuf
     @stability Stable.
  */
@@ -2929,7 +2932,7 @@ PUBLIC ssize mprGetBufSpace(MprBuf *buf);
     @description Get a pointer to the start of the buffer contents. Use #mprGetBufLength to determine the length
         of the content. Use #mprGetBufEnd to get a pointer to the location after the end of the content.
     @param buf Buffer created via mprCreateBuf
-    @returns Pointer to the start of the buffer data contents
+    @return Pointer to the start of the buffer data contents
     @ingroup MprBuf
     @stability Stable.
  */
@@ -2951,7 +2954,7 @@ PUBLIC int mprGetCharFromBuf(MprBuf *buf);
         limit specified via #mprCreateBuf or #mprSetBufSize.
     @param buf Buffer created via mprCreateBuf
     @param count Count of bytes by which to grow the buffer content size.
-    @returns Zero if successful and otherwise a negative error code
+    @return Zero if successful and otherwise a negative error code
     @ingroup MprBuf
     @stability Stable.
  */
@@ -2962,7 +2965,7 @@ PUBLIC int mprGrowBuf(MprBuf *buf, ssize count);
     @description Insert a character into to the buffer prior to the current buffer start point.
     @param buf Buffer created via mprCreateBuf
     @param c Character to append.
-    @returns Zero if successful and otherwise a negative error code
+    @return Zero if successful and otherwise a negative error code
     @ingroup MprBuf
     @stability Stable.
  */
@@ -2973,7 +2976,7 @@ PUBLIC int mprInsertCharToBuf(MprBuf *buf, int c);
     @description Non-destructively return the next character from the start position in the buffer.
         The character is returned and the start position is not altered.
     @param buf Buffer created via mprCreateBuf
-    @returns Zero if successful and otherwise a negative error code
+    @return Zero if successful and otherwise a negative error code
     @ingroup MprBuf
     @stability Stable.
  */
@@ -2984,7 +2987,7 @@ PUBLIC int mprLookAtNextCharInBuf(MprBuf *buf);
     @description Non-destructively return the last character from just prior to the end position in the buffer.
         The character is returned and the end position is not altered.
     @param buf Buffer created via mprCreateBuf
-    @returns Zero if successful and otherwise a negative error code
+    @return Zero if successful and otherwise a negative error code
     @ingroup MprBuf
     @stability Stable.
  */
@@ -2996,7 +2999,7 @@ PUBLIC int mprLookAtLastCharInBuf(MprBuf *buf);
     @param buf Buffer created via mprCreateBuf
     @param ptr Block to append
     @param size Size of block to append
-    @returns Zero if successful and otherwise a negative error code
+    @return Zero if successful and otherwise a negative error code
     @ingroup MprBuf
     @stability Stable.
  */
@@ -3007,7 +3010,7 @@ PUBLIC ssize mprPutBlockToBuf(MprBuf *buf, cchar *ptr, ssize size);
     @description Append a character to the buffer at the end position and increment the end pointer.
     @param buf Buffer created via mprCreateBuf
     @param c Character to append
-    @returns Zero if successful and otherwise a negative error code
+    @return Zero if successful and otherwise a negative error code
     @ingroup MprBuf
     @stability Stable.
  */
@@ -3019,7 +3022,7 @@ PUBLIC int mprPutCharToBuf(MprBuf *buf, int c);
     @param buf Buffer created via mprCreateBuf
     @param fmt Printf style format string
     @param ... Variable arguments for the format string
-    @returns Zero if successful and otherwise a negative error code
+    @return Zero if successful and otherwise a negative error code
     @ingroup MprBuf
     @stability Stable.
  */
@@ -3030,7 +3033,7 @@ PUBLIC ssize mprPutToBuf(MprBuf *buf, cchar *fmt, ...) PRINTF_ATTRIBUTE(2,3);
     @description Append a integer to the buffer at the end position and increment the end pointer.
     @param buf Buffer created via mprCreateBuf
     @param i Integer to append to the buffer
-    @returns Number of characters added to the buffer, otherwise a negative error code
+    @return Number of characters added to the buffer, otherwise a negative error code
     @ingroup MprBuf
     @stability Stable.
  */
@@ -3042,7 +3045,7 @@ PUBLIC ssize mprPutIntToBuf(MprBuf *buf, int64 i);
     @param buf Buffer created via mprCreateBuf
     @param c Character to append
     @param count Count of pad characters to put
-    @returns Zero if successful and otherwise a negative error code
+    @return Zero if successful and otherwise a negative error code
     @ingroup MprBuf
     @stability Stable
  */
@@ -3053,7 +3056,7 @@ PUBLIC ssize mprPutPadToBuf(MprBuf *buf, int c, ssize count);
     @description Append a null terminated string to the buffer at the end position and increment the end pointer.
     @param buf Buffer created via mprCreateBuf
     @param str String to append
-    @returns Zero if successful and otherwise a negative error code
+    @return Zero if successful and otherwise a negative error code
     @ingroup MprBuf
     @stability Stable.
  */
@@ -3065,7 +3068,7 @@ PUBLIC ssize mprPutStringToBuf(MprBuf *buf, cchar *str);
     @param buf Buffer created via mprCreateBuf
     @param str String to append
     @param count Put at most count characters to the buffer
-    @returns Zero if successful and otherwise a negative error code
+    @return Zero if successful and otherwise a negative error code
     @ingroup MprBuf
     @stability Stable.
  */
@@ -3075,7 +3078,7 @@ PUBLIC ssize mprPutSubStringToBuf(MprBuf *buf, cchar *str, ssize count);
     Refill the buffer with data
     @description Refill the buffer by calling the refill procedure specified via #mprSetBufRefillProc
     @param buf Buffer created via mprCreateBuf
-    @returns Zero if successful and otherwise a negative error code
+    @return Zero if successful and otherwise a negative error code
     @ingroup MprBuf
     @stability Stable.
  */
@@ -3123,7 +3126,7 @@ PUBLIC void mprSetBufRefillProc(MprBuf *buf, MprBufProc fn, void *arg);
     @param size Size to immediately make the buffer. If size is less than the current buffer size, it will be ignored.
         Set to -1 to ignore this parameter.
     @param maxSize Maximum size the buffer contents can grow to.
-    @returns Zero if successful and otherwise a negative error code
+    @return Zero if successful and otherwise a negative error code
     @ingroup MprBuf
     @stability Stable.
  */
@@ -3147,7 +3150,7 @@ PUBLIC void mprAddNullToWideBuf(MprBuf *buf);
     @description Append a wide character to the buffer at the end position and increment the end pointer.
     @param buf Buffer created via mprCreateBuf
     @param c Character to append
-    @returns Zero if successful and otherwise a negative error code
+    @return Zero if successful and otherwise a negative error code
     @ingroup MprBuf
     @stability Prototype
   */
@@ -3158,7 +3161,7 @@ PUBLIC int mprPutCharToWideBuf(MprBuf *buf, int c);
     @description Append a null terminated wide string to the buffer at the end position and increment the end pointer.
     @param buf Buffer created via mprCreateBuf
     @param str String to append
-    @returns Count of bytes written and otherwise a negative error code
+    @return Count of bytes written and otherwise a negative error code
     @ingroup MprBuf
     @stability Prototype
 */
@@ -3170,7 +3173,7 @@ PUBLIC ssize mprPutStringToWideBuf(MprBuf *buf, cchar *str);
     @param buf Buffer created via mprCreateBuf
     @param fmt Printf style format string
     @param ... Variable arguments for the format string
-    @returns Count of bytes written and otherwise a negative error code
+    @return Count of bytes written and otherwise a negative error code
     @ingroup MprBuf
     @stability Prototype
  */
@@ -3244,7 +3247,6 @@ PUBLIC void mprPutUint32ToBuf(MprBuf *buf, uint32 num);
     @see MprTime mprCompareTime mprCreateTimeService mprDecodeLocalTime mprDecodeUniversalTime mprFormatLocalTime
         mprFormatTm mprGetDate mprGetElapsedTicks mprGetRemainingTicks mprGetHiResTicks mprGetTimeZoneOffset mprMakeTime
         mprMakeUniversalTime mprParseTime
-    @defgroup MprTime MprTime
  */
 typedef Time MprTime;
 
@@ -3262,7 +3264,7 @@ PUBLIC int mprCreateTimeService(void);
     @description compare two times and return a code indicating which is greater, less or equal
     @param t1 First time
     @param t2 Second time
-    @returns Zero if equal, -1 if t1 is less than t2 otherwise one.
+    @return Zero if equal, -1 if t1 is less than t2 otherwise one.
     @ingroup MprTime
     @stability Stable
  */
@@ -3522,7 +3524,7 @@ PUBLIC MprTicks mprGetRemainingTicks(MprTicks mark, MprTicks timeout);
 /**
     Get the elapsed time since a ticks mark. Create the ticks mark with mprGetTicks()
     @param mark Starting time stamp
-    @returns the time elapsed since the mark was taken.
+    @return the time elapsed since the mark was taken.
     @ingroup MprTime
     @stability Stable
  */
@@ -3531,7 +3533,7 @@ PUBLIC MprTicks mprGetElapsedTicks(MprTicks mark);
 /**
     Get the elapsed time since a starting time mark.
     @param mark Starting time created via mprGetTime()
-    @returns the time elapsed since the mark was taken.
+    @return the time elapsed since the mark was taken.
     @ingroup MprTime
     @stability Stable
  */
@@ -3583,7 +3585,7 @@ PUBLIC MprTime mprMakeUniversalTime(struct tm *tm);
     @param dateString String to parse
     @param timezone Timezone in which to interpret the date
     @param defaults Date default values to use for missing components
-    @returns Zero if successful
+    @return Zero if successful
     @ingroup MprTime
     @stability Stable
 
@@ -3594,7 +3596,7 @@ PUBLIC int mprParseTime(MprTime *time, cchar *dateString, int timezone, struct t
     Get the current timezone offset for a given time
     @description Calculate the current timezone (including DST)
     @param when Time to examine to extract the timezone
-    @returns Returns a timezone offset in msec.  Local time == (UTC + offset).
+    @return Returns a timezone offset in msec.  Local time == (UTC + offset).
     @ingroup MprTime
     @stability Stable
  */
@@ -3616,7 +3618,6 @@ PUBLIC int mprGetTimeZoneOffset(MprTime when);
         mprGetNextItem mprGetPrevItem mprInitList mprInsertItemAtPos mprLookupItem mprLookupStringItem mprPopItem
         mprPushItem mprRemoveItem mprRemoveItemAtPos mprRemoveRangeOfItems mprRemoveStringItem mprSetItem
         mprSetListLimits mprSortList
-    @defgroup MprList MprList
     @stability Internal.
  */
 typedef struct MprList {
@@ -3633,7 +3634,7 @@ typedef struct MprList {
     @description Callback function signature used by #mprSortList
     @param arg1 First list item to compare
     @param arg2 Second list item to compare
-    @returns Return zero if the items are equal. Return -1 if the first arg is less than the second. Otherwise return 1.
+    @return Return zero if the items are equal. Return -1 if the first arg is less than the second. Otherwise return 1.
     @ingroup MprList
     @stability Stable.
  */
@@ -4010,7 +4011,7 @@ typedef struct MprKeyValue {
     @param key Key string
     @param value Key value string
     @param flags Flags value
-    @returns An initialized MprKeyValue
+    @return An initialized MprKeyValue
     @ingroup MprList
     @stability Stable
  */
@@ -4046,7 +4047,6 @@ PUBLIC int mprPushItem(MprList *list, cvoid *item);
 /********************************** Logging ***********************************/
 /**
     Logging Services
-    @defgroup MprLog MprLog
     @see MprLogHandler mprAssert mprError mprGetLogFile mprGetLogHandler mprInfo mprLog mprRawLog mprDebug
         mprSetLogFile mprSetLogHandler mprSetLogLevel mprStaticError mprUsingDefaultLogHandler mprWarn
     @stability Internal
@@ -4119,7 +4119,7 @@ PUBLIC void mprError(cchar *fmt, ...) PRINTF_ATTRIBUTE(1,2);
 /**
     Get the log file object
     @description Returns the MprFile object used for logging
-    @returns An MprFile object for logging
+    @return An MprFile object for logging
     @ingroup MprLog
     @stability Stable
  */
@@ -4128,7 +4128,7 @@ PUBLIC struct MprFile *mprGetLogFile(void);
 /**
     Get the current MPR debug log handler.
     @description Get the log handler defined via #mprSetLogHandler
-    @returns A function of the signature #MprLogHandler
+    @return A function of the signature #MprLogHandler
     @ingroup MprLog
     @stability Stable
  */
@@ -4244,7 +4244,7 @@ PUBLIC void mprLogProc(cchar *tags, int level, cchar *fmt, ...) PRINTF_ATTRIBUTE
 /**
     Determine if the app is using the default MPR log handler.
     @description Returns true if no custom log handler has been installed.
-    @returns True if using the default log handler
+    @return True if using the default log handler
     @ingroup MprLog
     @stability Stable
  */
@@ -4270,7 +4270,6 @@ PUBLIC int mprUsingDefaultLogHandler(void);
     @see MprKey MprHashProc MprHash mprAddDuplicateHash mprAddKey mprAddKeyFmt mprCloneHash mprCreateHash
         mprGetFirstKey mprGetHashLength mprGetKeyBits mprGetNextKey mprLookupKey mprLookupKeyEntry mprRemoveKey
         mprSetKeyBits mprBlendHash
-    @defgroup MprHash MprHash
     @stability Internal.
  */
 typedef struct MprKey {
@@ -4555,7 +4554,6 @@ typedef struct MprFile* (*MprOpenFileProc)(struct MprFileSystem *fs, cchar *path
         will be invoked by the various MPR file routines.
     @see MprRomInode mprAddFileSystem mprCreateDiskFileSystem mprCreateFileSystem mprCreateRomFileSystem
         mprLookupFileSystem mprSetPathNewline mprSetPathSeparators
-    @defgroup MprFileSystem MprFileSystem
     @stability Internal
  */
 typedef struct MprFileSystem {
@@ -4693,7 +4691,6 @@ PUBLIC MprList *mprGetDirList(cchar *path);
         mprPeekFileChar mprPutFileChar mprPutFileString mprReadFile mprReadLine mprSeekFile mprTruncateFile mprWriteFile
         mprWriteFileFmt mprWriteFileString
         mprGetFileFd
-    @defgroup MprFile MprFile
  */
 typedef struct MprFile {
     char            *path;              /**< Filename */
@@ -4796,7 +4793,7 @@ PUBLIC int mprGetFileFd(MprFile *file);
     Return the current file position
     @description Return the current read/write file position.
     @param file A file object returned from #mprOpenFile
-    @returns The current file offset position if successful. Returns a negative MPR error code on errors.
+    @return The current file offset position if successful. Returns a negative MPR error code on errors.
     @ingroup MprFile
  */
 PUBLIC MprOff mprGetFilePosition(MprFile *file);
@@ -4805,7 +4802,7 @@ PUBLIC MprOff mprGetFilePosition(MprFile *file);
     Get the size of the file
     @description Return the current file size
     @param file A file object returned from #mprOpenFile
-    @returns The current file size if successful. Returns a negative MPR error code on errors.
+    @return The current file size if successful. Returns a negative MPR error code on errors.
     @ingroup MprFile
     @stability Stable
  */
@@ -4813,7 +4810,7 @@ PUBLIC MprOff mprGetFileSize(MprFile *file);
 
 /**
     Return a file object for the Stderr I/O channel
-    @returns A file object
+    @return A file object
     @ingroup MprFile
     @stability Stable
  */
@@ -4821,7 +4818,7 @@ PUBLIC MprFile *mprGetStderr(void);
 
 /**
     Return a file object for the Stdin I/O channel
-    @returns A file object
+    @return A file object
     @ingroup MprFile
     @stability Stable
  */
@@ -4829,7 +4826,7 @@ PUBLIC MprFile *mprGetStdin(void);
 
 /**
     Return a file object for the Stdout I/O channel
-    @returns A file object
+    @return A file object
     @ingroup MprFile
     @stability Stable
  */
@@ -4938,7 +4935,7 @@ PUBLIC MprOff mprSeekFile(MprFile *file, int seekType, MprOff distance);
     @description Truncate a file to a given size. Note this works on a path and not on an open file.
     @param path File to truncate
     @param size New maximum size for the file.
-    @returns Zero if successful.
+    @return Zero if successful.
     @ingroup MprFile
     @stability Stable
  */
@@ -4990,7 +4987,6 @@ PUBLIC ssize mprWriteFileString(MprFile *file, cchar *str);
         mprIsRelPath mprJoinPath mprJoinPaths mprJoinPathExt mprMakeDir mprMakeLink mprMapSeparators mprNormalizePath
         mprPathExists mprReadPathContents mprReplacePathExt mprResolvePath mprSamePath mprSamePathCount mprSearchPath
         mprTransformPath mprTrimPathExt mprTruncatePath
-    @defgroup MprPath MprPath
  */
 typedef struct MprPath {
     MprTime         atime;              /**< Access time */
@@ -5041,7 +5037,7 @@ typedef struct MprDirEntry {
     @param from Path of the existing file to copy
     @param to Name of the new file copy
     @param omode Posix style file open mode mask. See #mprOpenFile for the various modes.
-    @returns True if the file exists and can be accessed
+    @return True if the file exists and can be accessed
     @ingroup MprPath
     @stability Stable
  */
@@ -5065,7 +5061,7 @@ PUBLIC int mprDeletePath(cchar *path);
         cygwin filesystem (outside c:/cygwin), the path will have a /cygdrive/DRIVE prefix. To get a windows style
         path on *NIX, use mprGetWinPath.
     @param path Path to examine
-    @returns An absolute path.
+    @return An absolute path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5102,7 +5098,7 @@ PUBLIC cchar *mprGetLastPathSeparator(cchar *path);
     @description Get an equivalent absolute path formatted using the directory separators native to the O/S platform.
     On Windows, it will use backward slashes ("\") as the directory separator and will contain a drive specification.
     @param path Path name to examine
-    @returns An allocated string containing the new path.
+    @return An allocated string containing the new path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5112,7 +5108,7 @@ PUBLIC char *mprGetNativePath(cchar *path);
     Get the base portion of a path
     @description Get the base portion of a path by stripping off all directory components
     @param path Path name to examine
-    @returns A path without any directory portion.
+    @return A path without any directory portion.
     @ingroup MprPath
     @stability Stable
  */
@@ -5123,7 +5119,7 @@ PUBLIC char *mprGetPathBase(cchar *path);
     @description Get the base portion of a path by stripping off all directory components. This returns a reference
         into the original path.
     @param path Path name to examine
-    @returns A path without any directory portion. The path is a reference into the original file string.
+    @return A path without any directory portion. The path is a reference into the original file string.
     @ingroup MprPath
     @stability Stable
  */
@@ -5133,7 +5129,7 @@ PUBLIC cchar *mprGetPathBaseRef(cchar *path);
     Get the directory portion of a path
     @description Get the directory portion of a path by stripping off the base name.
     @param path Path name to examine
-    @returns A new string containing the directory name.
+    @return A new string containing the directory name.
     @ingroup MprPath
     @stability Stable
  */
@@ -5144,7 +5140,7 @@ PUBLIC char *mprGetPathDir(cchar *path);
     @description Get the file extension portion of a path. The file extension is the portion starting with the last "."
         in the path. It thus does not include the "." as the first charcter.
     @param path Path name to examine
-    @returns A path extension without the ".". Returns null if no extension exists.
+    @return A path extension without the ".". Returns null if no extension exists.
     @ingroup MprPath
     @stability Stable
  */
@@ -5167,7 +5163,7 @@ PUBLIC char *mprGetPathExt(cchar *path);
         '**' to the path. Set #MPR_PATH_NO_DIRS to exclude directories from the results. Set to MPR_PATH_HIDDEN
         to include hidden files that start with ".". Set to MPR_PATH_DEPTH_FIRST to do a depth-first traversal,
         i.e. traverse subdirectories before considering adding the directory to the list.
-    @returns A list (MprList) of MprDirEntry objects.
+    @return A list (MprList) of MprDirEntry objects.
     @ingroup MprPath
     @stability Stable
  */
@@ -5185,7 +5181,7 @@ PUBLIC MprList *mprGetPathFiles(cchar *dir, int flags);
     @param flags Set to MPR_PATH_HIDDEN to include hidden files that start with ".". Set to MPR_PATH_DEPTH_FIRST to do a
         depth-first traversal, i.e. traverse subdirectories before considering adding the directory to the list.
         Set MPR_PATH_RELATIVE to return files relative to the given path. Set MPR_PATH_NO_DIRS to omit directories.
-    @returns A list (MprList) of filenames.
+    @return A list (MprList) of filenames.
     @ingroup MprPath
     @stability Stable
  */
@@ -5194,7 +5190,7 @@ PUBLIC MprList *mprGlobPathFiles(cchar *path, cchar *patterns, int flags);
 /**
     Get the first directory portion of a path
     @param path Path name to examine
-    @returns A new string containing the directory name.
+    @return A new string containing the directory name.
     @ingroup MprPath
     @stability Stable
  */
@@ -5215,7 +5211,7 @@ PUBLIC int mprGetPathInfo(cchar *path, MprPath *info);
     Get the target of a symbolic link.
     @description Return the path pointed to by a symbolic link. Not all platforms support symbolic links.
     @param path Path name to examine
-    @returns A path representing the target of the symbolic link.
+    @return A path representing the target of the symbolic link.
     @ingroup MprPath
     @stability Stable
  */
@@ -5225,7 +5221,7 @@ PUBLIC char *mprGetPathLink(cchar *path);
     Get the file newline character string for a given path.
     Return the character string used to delimit new lines in text files.
     @param path Use this path to specify either the root of the file system or a file on the file system.
-    @returns A string used to delimit new lines. This is typically "\n" or "\r\n"
+    @return A string used to delimit new lines. This is typically "\n" or "\r\n"
     @ingroup MprPath
     @stability Stable
  */
@@ -5234,7 +5230,7 @@ PUBLIC cchar *mprGetPathNewline(cchar *path);
 /**
     Get the parent directory of a path
     @param path Path name to examine
-    @returns An allocated string containing the parent directory.
+    @return An allocated string containing the parent directory.
     @ingroup MprPath
     @stability Stable
  */
@@ -5245,7 +5241,7 @@ PUBLIC char *mprGetPathParent(cchar *path);
     Return the directory separator characters used to separate directories on a given file system. Typically "/" or "\"
         The first entry is the default separator.
     @param path Use this path to specify either the root of the file system or a file on the file system.
-    @returns The string of path separators. The first entry is the default separator.
+    @return The string of path separators. The first entry is the default separator.
     @ingroup MprPath
     @stability Stable
  */
@@ -5256,7 +5252,7 @@ PUBLIC cchar *mprGetPathSeparators(cchar *path);
     Return the default directory separator character used to separate directories on a given file system.
         Typically "/" or "\".
     @param path Use this path to specify either the root of the file system or a file on the file system.
-    @returns Character path separator
+    @return Character path separator
     @ingroup MprPath
     @stability Stable
  */
@@ -5267,7 +5263,7 @@ PUBLIC char mprGetPathSeparator(cchar *path);
     @description Get an equivalent absolute path that is somewhat portable.
         This means it will use forward slashes ("/") as the directory separator. This call will not remove drive specifiers.
     @param path Path name to examine
-    @returns An allocated string containing the new path.
+    @return An allocated string containing the new path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5280,7 +5276,7 @@ PUBLIC char *mprGetPortablePath(cchar *path);
     @param dest Destination file
     @param origin Starting location from which to compute a relative path to the destination
         If the origin is null, use the application's current working directory as the origin.
-    @returns An allocated string containing the relative directory.
+    @return An allocated string containing the relative directory.
     @ingroup MprPath
     @stability Stable
  */
@@ -5302,7 +5298,7 @@ PUBLIC char *mprGetTempPath(cchar *tmpDir);
         have back-slash delimiters and a drive specifier. On non-windows systems, this returns an absolute path using
         mprGetAbsPath.
     @param path Path to examine
-    @returns A windows-style absolute path.
+    @return A windows-style absolute path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5312,7 +5308,7 @@ PUBLIC char *mprGetWinPath(cchar *path);
     Determine if a directory is the same as or a parent of a path.
     @param dir Directory to examine if it is a parent of path.
     @param path Path name to examine
-    @returns True if directory is a parent of the path or is the same as the given path.
+    @return True if directory is a parent of the path or is the same as the given path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5323,7 +5319,7 @@ PUBLIC bool mprIsPathContained(cchar *path, cchar *dir);
     Determine if a directory is the same as or a parent of a path.
     @param path Path name to examine
     @param dir Directory to examine if it is a parent of path or equal to path
-    @returns True if directory is a parent of the path or is the same as the given path.
+    @return True if directory is a parent of the path or is the same as the given path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5332,7 +5328,7 @@ PUBLIC bool mprIsAbsPathContained(cchar *path, cchar *dir);
 /**
     Determine if a path is absolute
     @param path Path name to examine
-    @returns True if the path is absolue
+    @return True if the path is absolue
     @ingroup MprPath
     @stability Stable
  */
@@ -5341,7 +5337,7 @@ PUBLIC bool mprIsPathAbs(cchar *path);
 /**
     Determine if a path is a directory
     @param path Path name to examine
-    @returns True if the path is a directory
+    @return True if the path is a directory
     @ingroup MprPath
     @stability Stable
  */
@@ -5350,7 +5346,7 @@ PUBLIC bool mprIsPathDir(cchar *path);
 /**
     Determine if a path is relative
     @param path Path name to examine
-    @returns True if the path is relative
+    @return True if the path is relative
     @ingroup MprPath
     @stability Stable
  */
@@ -5371,7 +5367,7 @@ PUBLIC bool mprIsPathSeparator(cchar *path, cchar c);
     @description Join a path to a base path. If path is absolute, it will be returned.
     @param base Directory path name to use as the base.
     @param path Other path name to join to the base path.
-    @returns Allocated string containing the resolved path.
+    @return Allocated string containing the resolved path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5382,7 +5378,7 @@ PUBLIC char *mprJoinPath(cchar *base, cchar *path);
     @description Join each given path in turn to the path. Calls mprJoinPath for each argument.
     @param base Directory path name to use as the base.
     @param ... Other paths to join to the base path. List of other paths must be NULL terminated.
-    @returns Allocated string containing the resolved path.
+    @return Allocated string containing the resolved path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5393,7 +5389,7 @@ PUBLIC char *mprJoinPaths(cchar *base, ...);
     @description Add an extension to a path if it does not already have one.
     @param path Path name to use as a base. Path is not modified.
     @param ext Extension to add. Must should not have a  period prefix.
-    @returns Allocated string containing the resolved path.
+    @return Allocated string containing the resolved path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5442,7 +5438,7 @@ PUBLIC void mprMapSeparators(char *path, int separator);
     @description A path is normalized by redundant segments such as "./" and "../dir" and duplicate
         path separators. Path separators are mapped. Paths are not converted to absolute paths.
     @param path First path to compare
-    @returns A newly allocated, clean path.
+    @return A newly allocated, clean path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5453,7 +5449,7 @@ PUBLIC char *mprNormalizePath(cchar *path);
     @description Test if a file can be accessed for a given mode
     @param path Path name to test
     @param omode Posix style file open mode mask. See #mprOpenFile for the various modes.
-    @returns True if the file exists and can be accessed
+    @return True if the file exists and can be accessed
     @ingroup MprPath
     @stability Stable
  */
@@ -5476,7 +5472,7 @@ PUBLIC char *mprReadPathContents(cchar *path, ssize *lenp);
     @description Remove any existing path extension and then add the given path extension.
     @param path Path filename to modify
     @param ext Extension to add. The extension should not have a period prefix.
-    @returns Allocated string containing the resolved path.
+    @return Allocated string containing the resolved path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5501,7 +5497,7 @@ PUBLIC char *mprReplacePathExt(cchar *path, cchar *ext);
     If path is absolute, then return path. If path is null, empty or "." then return path.
     @param base Base path to use as the base.
     @param path Path name to resolve against base.
-    @returns Allocated string containing the resolved path.
+    @return Allocated string containing the resolved path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5513,7 +5509,7 @@ PUBLIC char *mprResolvePath(cchar *base, cchar *path);
         comparing. It does handle case sensitivity appropriately.
     @param path1 First path to compare
     @param path2 Second path to compare
-    @returns True if the file exists and can be accessed
+    @return True if the file exists and can be accessed
     @ingroup MprPath
     @stability Stable
  */
@@ -5527,7 +5523,7 @@ PUBLIC int mprSamePath(cchar *path1, cchar *path2);
     @param path1 First path to compare
     @param path2 Second path to compare
     @param len How many characters to compare.
-    @returns True if the file exists and can be accessed
+    @return True if the file exists and can be accessed
     @ingroup MprPath
     @stability Stable
  */
@@ -5546,7 +5542,7 @@ PUBLIC int mprSamePathCount(cchar *path1, cchar *path2, ssize len);
     @param path Path name to locate. Must be an existing file or directory.
     @param flags Flags.
     @param search Variable number of directories to search.
-    @returns Allocated string containing the full path name of the located file.
+    @return Allocated string containing the full path name of the located file.
     @ingroup MprPath
     @stability Stable
  */
@@ -5565,7 +5561,7 @@ PUBLIC char *mprSearchPath(cchar *path, int flags, cchar *search, ...);
     @description A path is transformed by cleaning and then transforming according to the flags.
     @param path First path to compare
     @param flags Flags to modify the path representation.
-    @returns A newly allocated, clean path.
+    @return A newly allocated, clean path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5576,7 +5572,7 @@ PUBLIC char *mprTransformPath(cchar *path, int flags);
     @description Trim the requested number of path components from the front or end of a path
     @param path Path to examine
     @param count Number of components to trim. If negative, trim from the end.
-    @returns An allocated string with the trimmed path.
+    @return An allocated string with the trimmed path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5586,7 +5582,7 @@ PUBLIC char *mprTrimPathComponents(cchar *path, int count);
     Trim an extension from a path
     @description Trim a file extension (".ext") from a path name.
     @param path Path to examine
-    @returns An allocated string with the trimmed path.
+    @return An allocated string with the trimmed path.
     @ingroup MprPath
     @stability Stable
  */
@@ -5596,7 +5592,7 @@ PUBLIC char *mprTrimPathExt(cchar *path);
     Trim the drive from a path
     @description Trim a drive specifier ("c:") from the start of a path.
     @param path Path to examine
-    @returns An allocated string with the trimmed drive.
+    @return An allocated string with the trimmed drive.
     @ingroup MprPath
     @stability Stable
  */
@@ -5647,7 +5643,6 @@ PUBLIC void mprStopOsService(void);
 /**
     Loadable module service
     @see mprCreateModuleService mprStartModuleService mprStopModuleService
-    @defgroup MprModuleSerivce MprModuleService
     @stability Internal
  */
 typedef struct MprModuleService {
@@ -5685,7 +5680,7 @@ PUBLIC void mprStopModuleService(void);
 /**
     Module start/stop point function signature
     @param mp Module object reference returned from #mprCreateModule
-    @returns zero if successful, otherwise return a negative MPR error code.
+    @return zero if successful, otherwise return a negative MPR error code.
     @ingroup MprModule
     @stability Stable
  */
@@ -5706,7 +5701,6 @@ typedef int (*MprModuleProc)(struct MprModule *mp);
         mprLookupModule mprLookupModuleData mprSearchForModule mprSetModuleFinalizer mprSetModuleSearchPath
         mprSetModuleTimeout mprStartModule mprStopModule mprUnloadModule mprUnloadNativeModule
     @stability Stable.
-    @defgroup MprModule MprModule
     @stability Internal
  */
 typedef struct MprModule {
@@ -5746,7 +5740,7 @@ typedef int (*MprModuleEntry)(void *data, MprModule *mp);
     @param entry Name of function to invoke after loading the module.
     @param data Arbitrary data pointer. This will be defined in MprModule.data and passed into the module initialization
         entry point.
-    @returns A module object for this module
+    @return A module object for this module
     @ingroup MprModule
     @stability Stable
  */
@@ -5756,7 +5750,7 @@ PUBLIC MprModule *mprCreateModule(cchar *name, cchar *path, cchar *entry, void *
     Get the module search path
     @description Get the directory search path used by the MPR when loading dynamic modules. This is a colon separated (or
         semicolon on Windows) set of directories.
-    @returns The module search path.
+    @return The module search path.
     @ingroup MprModule
     @stability Stable
  */
@@ -5767,7 +5761,7 @@ PUBLIC cchar *mprGetModuleSearchPath(void);
     @description Load a module library. This will load a dynamic shared object (shared library) and call the
         modules library entry point. If the module is already loaded, this call will do nothing.
     @param mp Module object created via #mprCreateModule.
-    @returns Zero if successful, otherwise a negative MPR error code.
+    @return Zero if successful, otherwise a negative MPR error code.
     @ingroup MprModule
     @stability Stable
  */
@@ -5777,7 +5771,7 @@ PUBLIC int mprLoadModule(MprModule *mp);
 /**
     Load a native module
     @param mp Module object created via #mprCreateModule.
-    @returns Zero if successful, otherwise a negative MPR error code.
+    @return Zero if successful, otherwise a negative MPR error code.
     @ingroup MprModule
     @stability Stable
 */
@@ -5787,7 +5781,7 @@ PUBLIC int mprLoadNativeModule(MprModule *mp);
     Unload a native module
     @description WARNING: modules must be designed to be unloaded and must be quiesced before unloading.
     @param mp Module object created via #mprCreateModule.
-    @returns Zero if successful, otherwise a negative MPR error code.
+    @return Zero if successful, otherwise a negative MPR error code.
     @ingroup MprModule
     @stability Stable
 */
@@ -5798,7 +5792,7 @@ PUBLIC int mprUnloadNativeModule(MprModule *mp);
     Lookup a module
     @description Lookup a module by name and return the module object.
     @param name Name of the module specified to #mprCreateModule.
-    @returns A module object for this module created in the module entry point by calling #mprCreateModule
+    @return A module object for this module created in the module entry point by calling #mprCreateModule
     @ingroup MprModule
     @stability Stable
  */
@@ -5808,7 +5802,7 @@ PUBLIC MprModule *mprLookupModule(cchar *name);
     Lookup a module and return the module data
     @description Lookup a module by name and return the module specific data defined via #mprCreateModule.
     @param name Name of the module specified to #mprCreateModule.
-    @returns The module data.
+    @return The module data.
     @ingroup MprModule
     @stability Stable
  */
@@ -5912,7 +5906,6 @@ typedef void (*MprEventProc)(void *data, struct MprEvent *event);
         mprCreateTimerEvent mprDestroyDispatcher mprEnableContinuousEvent mprEnableDispatcher mprGetDispatcher
         mprQueueEvent mprRemoveEvent mprRescheduleEvent mprRestartContinuousEvent mprServiceEvents
         mprSignalDispatcher mprStopContinuousEvent mprWaitForEvent
-    @defgroup MprEvent MprEvent
     @stability Internal
  */
 typedef struct MprEvent {
@@ -5944,7 +5937,6 @@ typedef struct MprEvent {
 
 /**
     Event Dispatcher
-    @defgroup MprDispatcher MprDispatcher
     @stability Internal
  */
 typedef struct MprDispatcher {
@@ -5964,7 +5956,6 @@ typedef struct MprDispatcher {
 
 /**
     Event Service
-    @defgroup MprEvent MprEvent
     @stability Internal
  */
 typedef struct MprEventService {
@@ -5996,7 +5987,7 @@ PUBLIC void mprClearWaiting(void);
     @description Dispatchers are event queues that serialize the execution of work. Most of the MPR routines are not thread-safe and thus access to objects needs to be serialized by creating events to run on dispatchers. Resources such as connections will typically own a dispatcher that is used to serialize their work.
     @param name Useful name for debugging
     @param flags Dispatcher flags.
-    @returns a Dispatcher object that can manage events and be used with mprCreateEvent
+    @return a Dispatcher object that can manage events and be used with mprCreateEvent
     @ingroup MprDispatcher
     @stability Internal
  */
@@ -6013,7 +6004,7 @@ PUBLIC void mprDestroyDispatcher(MprDispatcher *dispatcher);
 
 /**
     Get the MPR primary dispatcher
-    @returns the MPR dispatcher object
+    @return the MPR dispatcher object
     @ingroup MprDispatcher
     @stability Internal
  */
@@ -6040,7 +6031,7 @@ PUBLIC MprDispatcher *mprGetDispatcher(void);
     @param delay Time in milliseconds to wait. Set to zero for no wait. Set to -1 to wait forever.
     @param flags If set to MPR_SERVICE_NO_BLOCK, this call will service all due events without blocking. Otherwise set
         to zero.
-    @returns The number of events serviced. Returns MPR_ERR_BUSY is another thread is servicing events.
+    @return The number of events serviced. Returns MPR_ERR_BUSY is another thread is servicing events.
         Returns when the MPR is stopping or if the timeout expires or if MPR_SERVICE_NO_BLOCK is specified and there are
         no more events to service.
     @ingroup MprDispatcher
@@ -6050,7 +6041,7 @@ PUBLIC MprDispatcher *mprGetDispatcher(void);
     Schedule events. An app should dedicate one thread to be an event service thread.
     @param timeout Time in milliseconds to wait. Set to zero for no wait. Set to -1 to wait forever.
     @param flags Set to MPR_SERVICE_NO_BLOCK for non-blocking.
-    @returns Number of events serviced.
+    @return Number of events serviced.
  */
 PUBLIC int mprServiceEvents(MprTicks delay, int flags);
 
@@ -6375,7 +6366,6 @@ typedef ssize (*MprXmlInputStream)(struct MprXml *xp, void *arg, char *buf, ssiz
 
 /**
     Per XML session structure
-    @defgroup MprXml MprXml
     @see MprXml MprXmlHandler MprXmlInputStream mprXmlGetErrorMsg mprXmlGetLineNumber mprXmlGetParseArg mprXmlOpen
         mprXmlParse mprXmlSetInputStraem mprXmlSetParseArg mprXmlSetParseHandler
     @stability Internal
@@ -6503,7 +6493,6 @@ PUBLIC void mprXmlSetParserHandler(MprXml *xp, MprXmlHandler h);
 
 /**
     JSON Object
-    @defgroup MprJson MprJson
     @stability Stable
     @see mprBlendJson mprGetJsonObj mprGetJson mprGetJsonLength mprLoadJson mprParseJson mprSetJsonError
         mprParseJsonEx mprParseJsonInto mprQueryJson mprRemoveJson mprSetJsonObj mprSetJson mprJsonToString mprLogJson
@@ -7072,7 +7061,6 @@ PUBLIC void mprStopThreadService(void);
         #MprCond - you can create cross platform multi-threaded applications.
     @see MprThread MprThreadProc MprThreadService mprCreateThread mprGetCurrentOsThread mprGetCurrentThread
         mprGetCurrentThreadName mprGetThreadName mprNeedYield mprResetYield mprStartThread mprYield
-    @defgroup MprThread MprThread
     @stability Internal
  */
 typedef struct MprThread {
@@ -7131,7 +7119,7 @@ typedef struct MprThreadLocal {
     @param data Thread private data stored in MprThread.data
     @param stackSize Stack size to use for the thread. On VM based systems, increasing this value, does not
         necessarily incurr a real memory (working-set) increase. Set to zero for a default stack size.
-    @returns A MprThread object
+    @return A MprThread object
     @ingroup MprThread
     @stability Stable
  */
@@ -7158,7 +7146,7 @@ PUBLIC MprThread *mprGetCurrentThread(void);
 
 /**
     Return the name of the current thread
-    @returns a static thread name.
+    @return a static thread name.
     @stability Stable
  */
 PUBLIC cchar *mprGetCurrentThreadName(void);
@@ -7363,7 +7351,7 @@ PUBLIC void mprWaitForIO(MprWaitService *ws, MprTicks timeout);
     @param fd File descriptor to examine
     @param mask Mask of events of interest (MPR_READABLE | MPR_WRITABLE)
     @param timeout Timeout in milliseconds to wait for an event.
-    @returns A count of events received.
+    @return A count of events received.
     @ingroup MprWaitHandler
     @stability Stable
  */
@@ -7383,7 +7371,6 @@ PUBLIC int mprWaitForSingleIO(int fd, int mask, MprTicks timeout);
         I/O file descriptors without requiring a thread per descriptor.
     @see MprEvent MprWaitHandler mprCreateWaitHandler mprQueueIOEvent mprRecallWaitHandler mprRecallWaitHandlerByFd
         mprDestroyWaitHandler mprWaitOn
-    @defgroup MprWaitHandler MprWaitHandler
     @stability Internal
  */
 typedef struct MprWaitHandler {
@@ -7412,7 +7399,7 @@ typedef struct MprWaitHandler {
     @param proc Callback function to invoke when an I/O event of interest has occurred.
     @param data Data item to pass to the callback
     @param flags Wait handler flags. Use MPR_WAIT_NEW_DISPATCHER to auto-create a new dispatcher for each I/O event.
-    @returns A new wait handler registered with the MPR event mechanism
+    @return A new wait handler registered with the MPR event mechanism
     @ingroup MprWaitHandler
     @stability Stable
  */
@@ -7544,7 +7531,7 @@ typedef struct MprSocketProvider {
         Preload SSL configuration
         @param ssl SSL configurations to use.
         @param flags Set to MPR_SOCKET_SERVER for server side use.
-        @returns Zero if successful, otherwise a negative MPR error code.
+        @return Zero if successful, otherwise a negative MPR error code.
         @stability Stable
      */
     int  (*preload)(struct MprSsl *ssl, int flags);
@@ -7581,7 +7568,7 @@ typedef struct MprSocketProvider {
         @param sp Socket to upgrade
         @param ssl SSL configurations to use. Set to NULL to use the default.
         @param peerName Required peer name in handshake with peer. Used by clients to verify the server hostname.
-        @returns Zero if successful, otherwise a negative MPR error code.
+        @return Zero if successful, otherwise a negative MPR error code.
         @stability Stable
      */
     int     (*upgradeSocket)(struct MprSocket *socket, struct MprSsl *ssl, cchar *peerName);
@@ -7631,7 +7618,7 @@ PUBLIC MprSocketService *mprCreateSocketService(void);
 
 /**
     Determine if SSL is available
-    @returns True if SSL is available
+    @return True if SSL is available
     @ingroup MprSocket
     @stability Stable
  */
@@ -7705,7 +7692,6 @@ PUBLIC void mprSetSocketPrebindCallback(MprSocketPrebind callback);
         mprSetSslCertFile mprSetSslCiphers mprSetSslKeyFile mprSetSslDhFile mprSetSslSslProtocols mprSetSslVerifySslClients
         mprWriteSocket mprWriteSocketString mprWriteSocketVector mprSocketHandshaking mprSocketHasBufferedRead
         mprSocketHasBufferedWrite mprUpgradeSocket
-    @defgroup MprSocket MprSocket
     @stability Internal
  */
 typedef struct MprSocket {
@@ -7747,7 +7733,7 @@ typedef struct MprIOVec {
 /**
     Accept an incoming connection
     @param listen Listening server socket
-    @returns A new socket connection. Windows can return NULL with error set to EAGAIN.
+    @return A new socket connection. Windows can return NULL with error set to EAGAIN.
     @ingroup MprSocket
     @stability Stable
  */
@@ -7763,7 +7749,7 @@ PUBLIC MprSocket *mprAcceptSocket(MprSocket *listen);
     @param proc Callback function to invoke when an I/O event of interest has occurred.
     @param data Data item to pass to the callback
     @param flags Socket handler flags
-    @returns A new wait handler registered with the MPR event mechanism
+    @return A new wait handler registered with the MPR event mechanism
     @ingroup MprSocket
     @stability Stable
  */
@@ -8168,7 +8154,7 @@ PUBLIC Socket mprStealSocketHandle(MprSocket *sp);
     @param sp Socket to upgrade
     @param ssl SSL configurations to use. Set to NULL to use the default.
     @param peerName Required peer name in handshake with peer. Used by clients to verify the server hostname.
-    @returns Zero if successful, otherwise a negative MPR error code.
+    @return Zero if successful, otherwise a negative MPR error code.
     @ingroup MprSocket
     @stability Stable
  */
@@ -8250,7 +8236,6 @@ typedef struct MprSsl *(*MprMatchSsl)(MprSocket *sp, cchar *hostname);
 
 /**
     SSL control structure
-    @defgroup MprSsl MprSsl
     @stability Internal
  */
 typedef struct MprSsl {
@@ -8565,7 +8550,7 @@ PUBLIC void mprSetWorkerStartCallback(MprWorkerProc start);
 /**
     Get the count of available worker threads
     Return the count of free threads in the worker thread pool.
-    @returns An integer count of worker threads.
+    @return An integer count of worker threads.
     @ingroup MprWorker
     @stability Stable
  */
@@ -8618,7 +8603,6 @@ PUBLIC int mprGetMaxWorkers(void);
 /**
     Worker thread structure. Worker threads are allocated and dedicated to tasks. When idle, they are stored in
     an idle worker pool. An idle worker pruner runs regularly and terminates idle workers to save memory.
-    @defgroup MprWorker MprWorker
     @see MPrWorkerProc MprWorkerService MprWorkerStats mprActivateWorker mprDedicateWorker mprGetCurrentWorker
         mprGetMaxWorkers mprGetWorkerServiceStats mprReleaseWorker mprSetMaxWorkers mprSetMinWorkers
         mprSetWorkerStackSize mprStartWorker
@@ -8652,7 +8636,7 @@ PUBLIC void mprDedicateWorker(MprWorker *worker);
 
 /**
     Get the worker object if the current thread is actually a worker thread.
-    @returns A worker thread object if the thread is a worker thread. Otherwise, NULL.
+    @return A worker thread object if the thread is a worker thread. Otherwise, NULL.
     @ingroup MprWorker
     @stability Stable
  */
@@ -8679,7 +8663,7 @@ PUBLIC void mprReleaseWorker(MprWorker *worker);
     @description Start a worker thread executing the given worker procedure callback.
     @param proc Worker procedure callback
     @param data Data parameter to the callback
-    @returns Zero if successful, otherwise a negative MPR error code.
+    @return Zero if successful, otherwise a negative MPR error code.
     @stability Internal
  */
 PUBLIC int mprStartWorker(MprWorkerProc proc, void *data);
@@ -8687,7 +8671,7 @@ PUBLIC int mprStartWorker(MprWorkerProc proc, void *data);
 /********************************** Crypto ************************************/
 /**
     Return a random number
-    @returns A random integer
+    @return A random integer
     @ingroup Mpr
     @stability Stable
  */
@@ -8697,7 +8681,7 @@ PUBLIC int mprRandom(void);
     Decode a null terminated string using base-46 encoding.
     @description Decoding will terminate at the first null or '='.
     @param str String to decode
-    @returns Buffer containing the encoded data
+    @return Buffer containing the encoded data
     @ingroup Mpr
     @stability Stable
  */
@@ -8713,7 +8697,7 @@ PUBLIC char *mprDecode64(cchar *str);
     @param buf String to decode
     @param len Return parameter with the Length of the decoded data
     @param flags Set to MPR_DECODE_TOKEQ to stop at the first '='
-    @returns Buffer containing the encoded data and returns length in len.
+    @return Buffer containing the encoded data and returns length in len.
     @ingroup Mpr
     @stability Stable
   */
@@ -8722,7 +8706,7 @@ PUBLIC char *mprDecode64Block(cchar *buf, ssize *len, int flags);
 /**
     Encode a string using base-46 encoding.
     @param str String to encode
-    @returns Buffer containing the encoded string.
+    @return Buffer containing the encoded string.
     @ingroup Mpr
     @stability Stable
  */
@@ -8735,7 +8719,7 @@ PUBLIC void mprEncodeGenerate(void);
     Encode buffer using base-46 encoding.
     @param buf Buffer to encode
     @param len Length of the buffer to encode
-    @returns Buffer containing the encoded string.
+    @return Buffer containing the encoded string.
     @ingroup Mpr
     @stability Stable
  */
@@ -8744,7 +8728,7 @@ PUBLIC char *mprEncode64Block(cchar *buf, ssize len);
 /**
     Get an MD5 checksum
     @param str String to examine
-    @returns An allocated MD5 checksum string.
+    @return An allocated MD5 checksum string.
     @ingroup Mpr
     @stability Stable
  */
@@ -8755,7 +8739,7 @@ PUBLIC char *mprGetMD5(cchar *str);
     @param buf Buffer to checksum
     @param len Size of the buffer
     @param prefix String prefix to insert at the start of the result
-    @returns An allocated MD5 checksum string.
+    @return An allocated MD5 checksum string.
     @ingroup Mpr
     @stability Stable
  */
@@ -8764,7 +8748,7 @@ PUBLIC char *mprGetMD5WithPrefix(cchar *buf, ssize len, cchar *prefix);
 /**
     Get an SHA1 checksum
     @param str String to examine
-    @returns An allocated SHA1 checksum string.
+    @return An allocated SHA1 checksum string.
     @ingroup Mpr
     @stability Stable
  */
@@ -8775,7 +8759,7 @@ PUBLIC char *mprGetSHA(cchar *str);
     @param buf Buffer to checksum
     @param len Size of the buffer
     @param prefix String prefix to insert at the start of the result
-    @returns An allocated string containing an SHA1 checksum.
+    @return An allocated string containing an SHA1 checksum.
     @ingroup Mpr
     @stability Stable
  */
@@ -8784,7 +8768,7 @@ PUBLIC char *mprGetSHAWithPrefix(cchar *buf, ssize len, cchar *prefix);
 /**
     Get an SHA1 checksum of a null terminated string
     @param str String to checksum
-    @returns An allocated string containing an SHA1 checksum.
+    @return An allocated string containing an SHA1 checksum.
     @ingroup Mpr
     @stability Stable
  */
@@ -8945,7 +8929,6 @@ typedef struct MprSignalInfo {
 
 /**
     Signal control structure
-    @defgroup MprSignal MprSignal
     @see MprSignalProc MprSignalService MprSingalInfo mprAddSignalHandler mprAddStandardSignals
     @stability Internal
  */
@@ -9082,7 +9065,6 @@ typedef struct MprCmdFile {
         mprFinalizeCmd mprGetCmdBuf mprGetCmdExitStatus mprGetCmdFd mprIsCmdComplete mprIsCmdRunning
         mprReadCmd mprReapCmd mprRunCmd mprRunCmdV mprSetCmdCallback mprSetCmdDir mprSetCmdEnv mprSetCmdSearchPath
         mprStartCmd mprStopCmd mprWaitForCmd mprWriteCmd mprWriteCmdBlock
-    @defgroup MprCmd MprCmd
     @stability Internal
  */
 typedef struct MprCmd {
@@ -9152,7 +9134,7 @@ PUBLIC void mprCloseCmdFd(MprCmd *cmd, int channel);
 
 /**
     Create a new Command object
-    @returns A newly allocated MprCmd object.
+    @return A newly allocated MprCmd object.
     @ingroup MprCmd
     @stability Stable
  */
@@ -9516,7 +9498,6 @@ typedef void (*MprCacheProc)(struct MprCache *cache, cchar *key, cchar *data, in
     In-memory caching. The MprCache provides a fast, in-memory caching of cache items. Cache items are string key / value
     pairs. Cache items have a configurable lifespan and the Cache manager will automatically prune expired items.
     Items also have an associated version number that can be used when writing to do transactional writes.
-    @defgroup MprCache MprCache
     @see mprCreateCache mprDestroyCache mprExpireCache mprIncCache mprReadCache mprRemoveCache mprSetCacheLimits
         mprWriteCache
     @stability Internal
@@ -9708,7 +9689,6 @@ PUBLIC ssize mprWriteCache(MprCache *cache, cchar *key, cchar *value, MprTime mo
 /**
     Mime Type hash table entry (the URL extension is the key)
     @stability Stable
-    @defgroup MprMime MprMime
     @see MprMime mprAddMime mprCreateMimeTypes mprGetMimeProgram mprLookupMime mprSetMimeProgram
     @stability Internal
  */
@@ -9752,7 +9732,7 @@ PUBLIC cchar *mprGetMimeProgram(MprHash *table, cchar *mimeType);
     This call will return the mime type from a limited internal set of mime types for the given path or extension.
     @param table Hash table of mime types to examine
     @param ext Path or extension to examine
-    @returns Mime type string. Returns null if mime type is not known.
+    @return Mime type string. Returns null if mime type is not known.
     @ingroup MprMime
     @stability Stable
  */
@@ -9829,7 +9809,6 @@ typedef void (*MprTerminator)(int state, int exitStrategy, int status);
     mprSetIpAddr mprSetLogLevel mprSetServerName mprSetSocketMessage mprShouldAbortRequests mprShouldDenyNewRequests
     mprSignalExit mprSleep mprStart mprStartEventsThread mprStartOsService mprStopOsService mprShutdown mprUriDecode
     mprUriDecodeBuf mprUriEncode mprWriteRegistry
-    @defgroup Mpr Mpr
     @stability Internal.
  */
 typedef struct Mpr {
@@ -9987,7 +9966,7 @@ PUBLIC Mpr *mprCreate(int argc, char **argv, int flags);
 /**
     Convert the process into a daemon on unix systems
     @description This converts the current process into a detached child without a parent.
-    @returns Zero if successful. Otherwise a negative MPR error code.
+    @return Zero if successful. Otherwise a negative MPR error code.
     @ingroup Mpr
     @stability Stable
  */
@@ -10035,7 +10014,7 @@ PUBLIC char *mprEmptyString(void);
 /**
     Get the application directory
     @description Get the directory containing the application executable.
-    @returns A string containing the application directory.
+    @return A string containing the application directory.
     @ingroup Mpr
     @stability Stable.
  */
@@ -10043,7 +10022,7 @@ PUBLIC cchar *mprGetAppDir(void);
 
 /**
     Get the application name defined via mprSetAppName
-    @returns the one-word lower case application name defined via mprSetAppName
+    @return the one-word lower case application name defined via mprSetAppName
     @ingroup Mpr
     @stability Stable.
  */
@@ -10051,7 +10030,7 @@ PUBLIC cchar *mprGetAppName(void);
 
 /**
     Get the application executable path
-    @returns A string containing the application executable path.
+    @return A string containing the application executable path.
     @ingroup Mpr
     @stability Stable.
  */
@@ -10059,7 +10038,7 @@ PUBLIC cchar *mprGetAppPath(void);
 
 /**
     Get the application title string
-    @returns A string containing the application title string.
+    @return A string containing the application title string.
     @ingroup Mpr
     @stability Stable.
  */
@@ -10067,7 +10046,7 @@ PUBLIC cchar *mprGetAppTitle(void);
 
 /**
     Get the application version string
-    @returns A string containing the application version string.
+    @return A string containing the application version string.
     @ingroup Mpr
     @stability Stable.
  */
@@ -10096,7 +10075,7 @@ PUBLIC bool mprGetDebugMode(void);
 
 /**
     Get the application domain name string
-    @returns A string containing the application domain name string.
+    @return A string containing the application domain name string.
     @ingroup Mpr
     @stability Stable.
  */
@@ -10132,7 +10111,7 @@ PUBLIC int mprGetExitStatus(void);
 
 /**
     Get the application host name string
-    @returns A string containing the application host name string.
+    @return A string containing the application host name string.
     @ingroup Mpr
     @stability Stable.
  */
@@ -10140,7 +10119,7 @@ PUBLIC cchar *mprGetHostName(void);
 
 /**
     Get the application IP address string
-    @returns A string containing the application IP address string.
+    @return A string containing the application IP address string.
     @ingroup Mpr
     @stability Stable.
  */
@@ -10193,7 +10172,7 @@ PUBLIC int mprGetOsError(void);
 
 /**
     Get the application server name string
-    @returns A string containing the application server name string.
+    @return A string containing the application server name string.
     @ingroup Mpr
     @stability Stable.
  */
@@ -10201,7 +10180,7 @@ PUBLIC cchar *mprGetServerName(void);
 
 /**
     Get the MPR execution state
-    @returns MPR_CREATED, MPR_STARTED, MPR_STOPPING, MPR_STOPPED, MPR_DESTROYING, or MPR_DESTROYED.
+    @return MPR_CREATED, MPR_STARTED, MPR_STOPPING, MPR_STOPPED, MPR_DESTROYING, or MPR_DESTROYED.
     @ingroup Mpr
     @stability Stable
   */
@@ -10211,7 +10190,7 @@ PUBLIC int mprGetState(void);
     Determine if the MPR has finished.
     @description This is true if the MPR services have been shutdown completely. This is typically
         used to determine if the App has been shutdown.
-    @returns True if the App has been instructed to exit and all the MPR services have been destroyed.
+    @return True if the App has been instructed to exit and all the MPR services have been destroyed.
     @ingroup Mpr
     @stability Stable.
  */
@@ -10333,7 +10312,7 @@ PUBLIC bool mprServicesAreIdle(bool traceRequests);
     @param name One word, lower case name for the app.
     @param title Pascal case multi-word descriptive name.
     @param version Version of the app. Major-Minor-Patch. E.g. 1.2.3.
-    @returns Zero if successful. Otherwise a negative MPR error code.
+    @return Zero if successful. Otherwise a negative MPR error code.
     @ingroup Mpr
     @stability Stable.
  */

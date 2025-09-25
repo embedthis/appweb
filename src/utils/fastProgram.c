@@ -562,8 +562,20 @@ static int getVars(State *state, char ***cgiKeys, char *buf, size_t buflen)
     /*
         Crack the input into name/value pairs
      */
-    keyList = malloc((keyCount * 2) * sizeof(char**));
-
+    if (keyCount > (SIZE_MAX / (2 * sizeof(char**)))) {
+        error(state, "Too many form parameters: %d", keyCount);
+        if (buflen > 0) {
+            free(newbuf);
+        }
+        return 0;
+    }
+    if ((keyList = malloc((keyCount * 2) * sizeof(char**))) == 0) {
+        error(state, "Cannot allocate memory");
+        if (buflen > 0) {
+            free(newbuf);
+        }
+        return 0;
+    }
     i = 0;
     for (pp = strtok(buf, "&"); pp; pp = strtok(0, "&")) {
         if ((eq = strchr(pp, '=')) != 0) {
@@ -639,7 +651,8 @@ static void error(State *state, char *fmt, ...)
 
     if (state->errorMsg == 0) {
         va_start(args, fmt);
-        vsprintf(buf, fmt, args);
+        vsnprintf(buf, sizeof(buf), fmt, args);
+        buf[sizeof(buf)-1] = '\0';
         if (state->request && state->request->err) {
             FCGX_FPrintF(state->request->err, "%s\n", buf);
         } else {

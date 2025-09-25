@@ -2272,7 +2272,7 @@ PUBLIC uint64 mprGetCPU()
 #if LINUX
     int fd;
     char path[ME_MAX_PATH];
-    sprintf(path, "/proc/%d/stat", getpid());
+    snprintf(path, sizeof(path), "/proc/%d/stat", getpid());
     if ((fd = open(path, O_RDONLY)) >= 0) {
         char buf[ME_BUFSIZE];
         int nbytes = read(fd, buf, sizeof(buf) - 1);
@@ -4577,7 +4577,7 @@ PUBLIC ssize mprPutToBuf(MprBuf *bp, cchar *fmt, ...)
 PUBLIC int mprGrowBuf(MprBuf *bp, ssize need)
 {
     char    *newbuf;
-    ssize   growBy;
+    ssize   growBy, newSize;
 
     if (bp->maxsize > 0 && bp->buflen >= bp->maxsize) {
         return MPR_ERR_TOO_MANY;
@@ -4590,7 +4590,14 @@ PUBLIC int mprGrowBuf(MprBuf *bp, ssize need)
     } else {
         growBy = bp->growBy;
     }
-    if ((newbuf = mprAlloc(bp->buflen + growBy)) == 0) {
+
+    // Check for integer overflow
+    if (bp->buflen > MAXSSIZE - growBy) {
+        return MPR_ERR_TOO_MANY;
+    }
+    newSize = bp->buflen + growBy;
+
+    if ((newbuf = mprAlloc(newSize)) == 0) {
         assert(!MPR_ERR_MEMORY);
         return MPR_ERR_MEMORY;
     }
@@ -10618,28 +10625,28 @@ PUBLIC char *mprEscapeHtml(cchar *html)
     while (*html != '\0') {
         if (charMatch[(uchar) *html] & MPR_ENCODE_HTML) {
             if (*html == '&') {
-                strcpy(op, "&amp;");
+                memcpy(op, "&amp;", 5);
                 op += 5;
             } else if (*html == '<') {
-                strcpy(op, "&lt;");
+                memcpy(op, "&lt;", 4);
                 op += 4;
             } else if (*html == '>') {
-                strcpy(op, "&gt;");
+                memcpy(op, "&gt;", 4);
                 op += 4;
             } else if (*html == '#') {
-                strcpy(op, "&#35;");
+                memcpy(op, "&#35;", 5);
                 op += 5;
             } else if (*html == '(') {
-                strcpy(op, "&#40;");
+                memcpy(op, "&#40;", 5);
                 op += 5;
             } else if (*html == ')') {
-                strcpy(op, "&#41;");
+                memcpy(op, "&#41;", 5);
                 op += 5;
             } else if (*html == '"') {
-                strcpy(op, "&quot;");
+                memcpy(op, "&quot;", 6);
                 op += 6;
             } else if (*html == '\'') {
-                strcpy(op, "&#39;");
+                memcpy(op, "&#39;", 5);
                 op += 5;
             }
             html++;
@@ -16159,11 +16166,7 @@ PUBLIC void mprAssert(cchar *loc, cchar *msg)
     char    buf[ME_MAX_LOGLINE];
 
     if (loc) {
-#if ME_UNIX_LIKE
         snprintf(buf, sizeof(buf), "Assertion %s, failed at %s", msg, loc);
-#else
-        sprintf(buf, "Assertion %s, failed at %s", msg, loc);
-#endif
     }
     mprLogProc("debug assert", 0, "%s", buf);
 #if ME_DEBUG_WATSON
@@ -18843,7 +18846,7 @@ static int configOss(MprSsl *ssl, int flags, char **errorMsg)
     /*
         CRIME attack targets compression
      */
-    cfg->clearFlags |= SSL_OP_NO_COMPRESSION;
+    cfg->setFlags |= SSL_OP_NO_COMPRESSION;
 #endif
 
 #if defined(SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION)
@@ -18924,7 +18927,7 @@ static int configOss(MprSsl *ssl, int flags, char **errorMsg)
     SSL_CTX_set_mode(ctx, SSL_MODE_RELEASE_BUFFERS);
 #endif
 #ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
-    SSL_CTX_set_mode(ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+    SSL_CTX_set_options(ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
 #endif
 
 #if defined(ME_MPR_SSL_CACHE)
@@ -23059,11 +23062,11 @@ static void outFloat(Format *fmt, char specChar, double value)
 
     result[0] = '\0';
     if (specChar == 'f') {
-        sprintf(result, "%.*f", fmt->precision, value);
+        snprintf(result, sizeof(result), "%.*f", fmt->precision, value);
     } else if (specChar == 'g') {
-        sprintf(result, "%*.*g", fmt->width, fmt->precision, value);
+        snprintf(result, sizeof(result), "%*.*g", fmt->width, fmt->precision, value);
     } else if (specChar == 'e') {
-        sprintf(result, "%*.*e", fmt->width, fmt->precision, value);
+        snprintf(result, sizeof(result), "%*.*e", fmt->width, fmt->precision, value);
     }
     len = (int) slen(result);
     fill = fmt->width - len;

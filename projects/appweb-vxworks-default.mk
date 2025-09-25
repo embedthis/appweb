@@ -3,7 +3,7 @@
 #
 
 NAME                  := appweb
-VERSION               := 9.0.4
+VERSION               := 9.0.5
 PROFILE               ?= default
 ARCH                  ?= $(shell echo $(WIND_HOST_TYPE) | sed 's/-.*$(ME_ROOT_PREFIX)/')
 CPU                   ?= $(subst X86,PENTIUM,$(shell echo $(ARCH) | tr a-z A-Z))
@@ -128,7 +128,7 @@ ME_ROM                ?= 0
 ME_SERVER_ROOT        ?= \".\"
 ME_TITLE              ?= \"Embedthis Appweb\"
 ME_TUNE               ?= \"size\"
-ME_VERSION            ?= \"9.0.4\"
+ME_VERSION            ?= \"9.0.5\"
 ME_WATCHDOG_NAME      ?= \"appman\"
 ME_WEB_GROUP          ?= \"$(WEB_GROUP)\"
 ME_WEB_USER           ?= \"$(WEB_USER)\"

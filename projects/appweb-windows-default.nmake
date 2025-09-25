@@ -3,7 +3,7 @@
 #
 
 NAME                  = appweb
-VERSION               = 9.0.4
+VERSION               = 9.0.5
 
 OS                    = windows
 PA                    = $(PROCESSOR_ARCHITECTURE)
@@ -329,7 +329,7 @@ ME_TITLE              = \"Embedthis Appweb\"
 ME_TUNE               = \"size\"
 !ENDIF
 !IF "$(ME_VERSION)" == ""
-ME_VERSION            = \"9.0.4\"
+ME_VERSION            = \"9.0.5\"
 !ENDIF
 !IF "$(ME_WATCHDOG_NAME)" == ""
 ME_WATCHDOG_NAME      = \"appman\"

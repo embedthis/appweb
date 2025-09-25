@@ -40,8 +40,9 @@ BIN 	:= $(OS)-$(ARCH)-$(PROFILE)/bin
 PATH	:= $(PWD)/build/$(BIN):$(PATH)
 
 .EXPORT_ALL_VARIABLES:
+.PHONY: build doc
 
-all compile:
+all build compile:
 	@if [ ! -f projects/$(NAME)-$(OS)-$(PROFILE).$(EXT) ] ; then \
 		echo "The build configuration projects/$(NAME)-$(OS)-$(PROFILE).$(EXT) is not supported" ; exit 255 ; \
 	fi
@@ -61,6 +62,9 @@ deploy:
 
 version:
 	@$(MAKE) -f projects/$(NAME)-$(OS)-$(PROFILE).$(EXT) $@
+
+doc:
+	@me doc
 
 help:
 	@echo '' >&2

@@ -1579,7 +1579,7 @@ PUBLIC bool httpCanUser(HttpStream *stream, cchar *abilities)
         return 0;
     }
     if (abilities) {
-        for (ability = stok(sclone(abilities), " \t,", &tok); abilities; abilities = stok(NULL, " \t,", &tok)) {
+        for (ability = stok(sclone(abilities), " \t,", &tok); ability; ability = stok(NULL, " \t,", &tok)) {
             if (!mprLookupKey(stream->user->roles, ability)) {
                 if (!mprLookupKey(stream->user->abilities, ability)) {
                     return 0;
@@ -11221,7 +11221,15 @@ static int decodeInt(HttpPacket *packet, uint bits)
                 return MPR_ERR_BAD_STATE;
             }
             done = (*bp & 0x80) != 0x80;
-            value += (*bp++ & 0x7f) << shift;
+
+            // Check for integer overflow before addition
+            uint addValue = (*bp & 0x7f) << shift;
+            if (value > (UINT_MAX - addValue)) {
+                return MPR_ERR_BAD_STATE;
+            }
+
+            value += addValue;
+            bp++;
             shift += 7;
         } while (!done);
         value += mask;
@@ -25893,7 +25901,6 @@ PUBLIC bool httpSetFilename(HttpStream *stream, cchar *filename, int flags)
         info->checked = info->valid = 0;
         return 0;
     }
-#if !ME_ROM
     if (!(tx->flags & HTTP_TX_NO_CHECK)) {
         if (!mprIsAbsPathContained(filename, stream->rx->route->documents)) {
             info->checked = 1;
@@ -25902,7 +25909,6 @@ PUBLIC bool httpSetFilename(HttpStream *stream, cchar *filename, int flags)
             return 0;
         }
     }
-#endif
     if (!tx->ext || tx->ext[0] == '\0') {
         tx->ext = httpGetPathExt(filename);
     }
@@ -26807,7 +26813,13 @@ static void renameUploadedFiles(HttpStream *stream)
         if (file->filename && rx->route) {
             if (rx->route->renameUploads) {
                 if (file->clientFilename) {
-                    path = mprJoinPath(uploadDir, file->clientFilename);
+                    // Extract just the filename component, removing any path separators
+                    cchar *basename = mprGetPathBase(file->clientFilename);
+                    if (!basename || *basename == '\0' || *basename == '.') {
+                        mprLog("http error", 0, "Invalid client filename: %s", file->clientFilename);
+                        continue;
+                    }
+                    path = mprJoinPath(uploadDir, basename);
                     if (rename(file->filename, path) != 0) {
                         mprLog("http error", 0, "Cannot rename %s to %s", file->filename, path);
                     }
@@ -26841,7 +26853,7 @@ static bool validUploadChars(cchar *uri)
     if (uri == 0) {
         return 1;
     }
-    pos = strspn(uri, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:/?#[]@!$&'()*+,;=% ");
+    pos = strspn(uri, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:?#[]@!$&'()*+,;=% ");
     if (pos < slen(uri)) {
         return 0;
     }
