@@ -4,7 +4,10 @@ Embedthis Appweb
 Appweb is a compact, fast and secure web server for embedded applications. It
 supports HTTP/1 and HTTP/2 with a web server and HTTP client utility.
 
-## Upgrading
+## Status
+
+Appweb is in a maintenance phase. It is actively supported and will receive
+security updates as required, but it will not have new features added. 
 
 If you are creating a new device or planning your upgrade path for the future,
 we recommend you consider the [Ioto Device
@@ -12,6 +15,20 @@ Agent](https://www.embedthis.com/ioto/). It incorporates everything we've
 learned from Appweb over 20 years of developing device management software.
 Talk to us about how to upgrade to Ioto at
 [Support](mailto:support@embedthis.com).
+
+## Security for Devices
+
+The European Union has introduced the Cyber Resilience Act (CRA), a regulation
+aimed at enhancing cybersecurity for IoT products. This legislation mandates
+that manufacturers ensure their products are secure throughout their entire
+lifecycle, from design to decommissioning. This requires that software updates
+are provided for the lifetime of the device.
+
+To meet this need, Appweb now includes the [Embedthis Updater](src/updater/)
+library and command line utility that can be used to automatically download and
+apply software updates to all your Appweb-enabled devices. The [EmbedThis
+Builder](https://www.embedthis.com/builder/) can be used to publish,
+distribute, manage and track software updates for your Appweb devices.
 
 ## Licensing
 
@@ -122,13 +139,6 @@ use without SSL. The test directory contains an appweb.conf that is fully
 configured for testing. When using the src/server/appweb.conf, change to the
 src/server directory to run. When using the test/appweb.conf, change to the
 test directory to run.
-
-
-## Samples
-
-A library of samples using Appweb are available at the GitHub repository:
-
-https://github.com/embedthis/appweb-doc/samples
 
 Resources
 ---
