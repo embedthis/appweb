@@ -9191,7 +9191,9 @@ static char *getToken(HttpPacket *packet, cchar *delim, int validation)
     /*
         Eat white space before token
      */
-    for (; token < endToken && (*token == ' ' || *token == '\t'); token++) {}
+    if (validation != TOKEN_HEADER_VALUE && validation != TOKEN_HEADER_KEY) {
+        for (; token < endToken && (*token == ' ' || *token == '\t'); token++) {}
+    }
 
     if (delim) {
         if ((endToken = sncontains(token, delim, endToken - token)) == NULL) {
