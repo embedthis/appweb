@@ -13,14 +13,14 @@
 /*
     Each version number portion is limited to 64K
  */
-#define MAX_VER         UINT64(0xFFFF)
-#define MAX_VER_STR     "65535"
-#define VER_FACTOR      UINT64(0x10000)
+#define MAX_VER      UINT64(0xFFFF)
+#define MAX_VER_STR  "65535"
+#define VER_FACTOR   UINT64(0x10000)
 
-#define SEM_STRICT      "(\\d+\\.\\d+\\.\\d+)(-.*)*$"
-#define SEM_VER         "(\\d[^.\\-]*\\.\\d[^.\\-]*\\.\\d[^.\\-]*)(-.*)*"
-#define SEM_CRITERIA    "((?:\\d[^.\\-]*|[xX*])\\.(?:\\d[^.\\-]*|[xX*])\\.(?:\\d[^.\\-]*|[xX*]))(-.*)*|(\\*)|(^$)"
-#define SEM_EXPR        "([~^]|<=|<|>=|>|==)*(.+)"
+#define SEM_STRICT   "(\\d+\\.\\d+\\.\\d+)(-.*)*$"
+#define SEM_VER      "(\\d[^.\\-]*\\.\\d[^.\\-]*\\.\\d[^.\\-]*)(-.*)*"
+#define SEM_CRITERIA "((?:\\d[^.\\-]*|[xX*])\\.(?:\\d[^.\\-]*|[xX*])\\.(?:\\d[^.\\-]*|[xX*]))(-.*)*|(\\*)|(^$)"
+#define SEM_EXPR     "([~^]|<=|<|>=|>|==)*(.+)"
 
 static void *semVer;        /* Parse SemVer version strings */
 static void *semCriteria;   /* Parse version criteria expressions */
@@ -44,8 +44,8 @@ static int64 versionToNumber(cchar *version);
 
 MprVersion *mprCreateVersion(cchar *version)
 {
-    MprVersion  *vp;
-    char        *all;
+    MprVersion *vp;
+    char       *all;
 
     if ((vp = mprAllocObj(MprVersion, manageVersion)) == 0) {
         return vp;
@@ -70,7 +70,7 @@ MprVersion *mprCreateVersion(cchar *version)
 }
 
 
-static void manageVersion(MprVersion *vp, int flags) 
+static void manageVersion(MprVersion *vp, int flags)
 {
     if (flags & MPR_MANAGE_MARK) {
         mprMark(vp->full);
@@ -114,7 +114,7 @@ static void versionTerminate()
 
 PUBLIC cchar *mprBumpVersion(cchar *version)
 {
-    MprVersion  *vp;
+    MprVersion *vp;
 
     if ((vp = mprCreateVersion(version)) == 0) {
         return 0;
@@ -125,7 +125,7 @@ PUBLIC cchar *mprBumpVersion(cchar *version)
 
 PUBLIC cchar *mprGetCompatibleVersion(cchar *version)
 {
-    MprVersion  *vp;
+    MprVersion *vp;
 
     if ((vp = mprCreateVersion(version)) == 0) {
         return 0;
@@ -136,7 +136,7 @@ PUBLIC cchar *mprGetCompatibleVersion(cchar *version)
 
 PUBLIC int mprGetMajorVersion(cchar *version)
 {
-    MprVersion  *vp;
+    MprVersion *vp;
 
     if ((vp = mprCreateVersion(version)) == 0) {
         return 0;
@@ -147,7 +147,7 @@ PUBLIC int mprGetMajorVersion(cchar *version)
 
 PUBLIC int mprGetMinorVersion(cchar *version)
 {
-    MprVersion  *vp;
+    MprVersion *vp;
 
     if ((vp = mprCreateVersion(version)) == 0) {
         return 0;
@@ -158,7 +158,7 @@ PUBLIC int mprGetMinorVersion(cchar *version)
 
 PUBLIC int mprGetPatchVersion(cchar *version)
 {
-    MprVersion  *vp;
+    MprVersion *vp;
 
     if ((vp = mprCreateVersion(version)) == 0) {
         return 0;
@@ -169,7 +169,7 @@ PUBLIC int mprGetPatchVersion(cchar *version)
 
 PUBLIC cchar *mprGetPrereleaseVersion(cchar *version)
 {
-    MprVersion  *vp;
+    MprVersion *vp;
 
     if ((vp = mprCreateVersion(version)) == 0) {
         return 0;
@@ -180,7 +180,7 @@ PUBLIC cchar *mprGetPrereleaseVersion(cchar *version)
 
 PUBLIC cchar *mprGetVersionBase(cchar *version)
 {
-    MprVersion  *vp;
+    MprVersion *vp;
 
     if ((vp = mprCreateVersion(version)) == 0) {
         return 0;
@@ -191,7 +191,7 @@ PUBLIC cchar *mprGetVersionBase(cchar *version)
 
 PUBLIC int64 mprGetVersionNumber(cchar *version)
 {
-    MprVersion  *vp;
+    MprVersion *vp;
 
     if ((vp = mprCreateVersion(version)) == 0) {
         return 0;
@@ -220,11 +220,11 @@ PUBLIC int64 mprGetVersionNumber(cchar *version)
     EXPR1 EXPR2 ...                 EXPR1 AND EXPR2
 
     Pre-release versions will only match if the criteria contains a "-.*" prerelease suffix
-*/
+ */
 PUBLIC bool mprIsVersionObjAcceptable(MprVersion *vp, cchar *criteria)
 {
-    char        *expr, *exprTok, *range, *rangeTok, *low, *high;
-    bool        allMatched;
+    char *expr, *exprTok, *range, *rangeTok, *low, *high;
+    bool allMatched;
 
     if (!vp->ok) {
         return 0;
@@ -256,7 +256,7 @@ PUBLIC bool mprIsVersionObjAcceptable(MprVersion *vp, cchar *criteria)
 
 PUBLIC bool mprIsVersionAcceptable(cchar *version, cchar *criteria)
 {
-    MprVersion  *vp;
+    MprVersion *vp;
 
     if ((vp = mprCreateVersion(version)) == 0) {
         return 0;
@@ -267,7 +267,7 @@ PUBLIC bool mprIsVersionAcceptable(cchar *version, cchar *criteria)
 
 PUBLIC bool mprIsVersionSame(cchar *version, cchar *other)
 {
-    MprVersion  *vp, *op;
+    MprVersion *vp, *op;
 
     if ((vp = mprCreateVersion(version)) == 0 || !vp->ok) {
         return 0;
@@ -281,7 +281,7 @@ PUBLIC bool mprIsVersionSame(cchar *version, cchar *other)
 
 PUBLIC bool mprIsVersionValid(cchar *version)
 {
-    MprVersion  *vp;
+    MprVersion *vp;
 
     if ((vp = mprCreateVersion(version)) == 0) {
         return 0;
@@ -292,7 +292,7 @@ PUBLIC bool mprIsVersionValid(cchar *version)
 
 static int sortVersions(MprVersion **v1, MprVersion **v2)
 {
-    MprVersion  *a, *b;
+    MprVersion *a, *b;
 
     a = *v1;
     b = *v2;
@@ -323,8 +323,8 @@ static int sortVersions(MprVersion **v1, MprVersion **v2)
 
 PUBLIC void mprSortVersions(MprVersion **versions, ssize nelt, int direction)
 {
-    MprVersion  *vtmp;
-    ssize       i, j;
+    MprVersion *vtmp;
+    ssize      i, j;
 
     mprSort(versions, nelt, sizeof(MprVersion*), (MprSortProc) sortVersions, 0);
     if (direction < 0) {
@@ -343,11 +343,11 @@ PUBLIC void mprSortVersions(MprVersion **versions, ssize nelt, int direction)
 
 static bool inRange(MprVersion *vp, cchar *expr)
 {
-    char    *cp, *ver, *op, *base, *pre, *all;
-    cchar   *high, *low;
-    uint64  factor, min, max, num;
+    char   *cp, *ver, *op, *base, *pre, *all;
+    cchar  *high, *low;
+    uint64 factor, min, max, num;
 
-    while (isspace((uchar) *expr)) expr++;
+    while (isspace((uchar) * expr)) expr++;
 
     if (srmatch(expr, semExpr, &all, &op, &ver, NULL) <= 0) {
         mprLog("error", 5, "Bad version expression: %s", expr);
@@ -369,7 +369,7 @@ static bool inRange(MprVersion *vp, cchar *expr)
                    inRange(vp, sjoin("<", high, NULL));
         }
         return inRange(vp, completeVersion(ver, "x"));
-    } 
+    }
     if (smatch(op, "^")) {
         /*
             ^VER  Compatible with VER at the most significant level.
@@ -381,7 +381,7 @@ static bool inRange(MprVersion *vp, cchar *expr)
         for (cp = ver, factor = VER_FACTOR * VER_FACTOR; *cp; cp++) {
             if (*cp == '.') {
                 factor /= VER_FACTOR;
-            } else if (isdigit((uchar) *cp) && *cp != '0') {
+            } else if (isdigit((uchar) * cp) && *cp != '0') {
                 num = (stoi(cp) + 1) * factor;
                 high = numberToVersion(num);
                 if ((cp = schr(ver, '-')) != 0) {
@@ -455,12 +455,14 @@ static bool inRange(MprVersion *vp, cchar *expr)
 
 static int64 versionToNumber(cchar *version)
 {
-    int     major, minor, patch;
+    int major, minor, patch;
 
     major = (int) stoi(version);
-    while (*version++ != '.') {}
+    while (*version++ != '.') {
+    }
     minor = (int) stoi(version);
-    while (*version++ != '.') {}
+    while (*version++ != '.') {
+    }
     patch = (int) stoi(version);
     return ((major * VER_FACTOR) + minor) * VER_FACTOR + patch;
 }
@@ -468,7 +470,7 @@ static int64 versionToNumber(cchar *version)
 
 static cchar *numberToVersion(uint64 num)
 {
-    int     major, minor, patch;
+    int major, minor, patch;
 
     patch = (int) num % VER_FACTOR;
     num /= VER_FACTOR;
@@ -479,9 +481,9 @@ static cchar *numberToVersion(uint64 num)
 }
 
 
-static char *cleanVersion(cchar *version) 
+static char *cleanVersion(cchar *version)
 {
-    char    *cp;
+    char *cp;
 
     cp = strim(version, " \tv=", 0);
     if (schr(cp, 'X')) {
@@ -496,8 +498,8 @@ static char *cleanVersion(cchar *version)
 
 static int partCount(cchar *version)
 {
-    cchar   *cp;
-    int     count;
+    cchar *cp;
+    int   count;
 
     for (cp = version, count = 1; *cp; cp++) {
         if (*cp == '.') {
@@ -513,8 +515,8 @@ static int partCount(cchar *version)
  */
 static char *completeVersion(cchar *version, cchar *fill)
 {
-    char    *pre, *result;
-    int     count;
+    char *pre, *result;
+    int  count;
 
     if (!version || smatch(version, "*")) {
         version = fill;
@@ -536,9 +538,9 @@ static char *completeVersion(cchar *version, cchar *fill)
 
 static void *srcompile(cchar *pattern)
 {
-    pcre    *pp;
-    cchar   *err;
-    int     column, options;
+    pcre  *pp;
+    cchar *err;
+    int   column, options;
 
     options = PCRE_JAVASCRIPT_COMPAT;
     if ((pp = pcre_compile2(pattern, options, 0, &err, &column, NULL)) == 0) {
@@ -551,10 +553,10 @@ static void *srcompile(cchar *pattern)
 
 static int srmatch(cchar *s, void *pattern, ...)
 {
-    va_list     ap;
-    char        **str;
-    ssize       len;
-    int         count, i, index, matches[64 * 2];
+    va_list ap;
+    char    **str;
+    ssize   len;
+    int     count, i, index, matches[64 * 2];
 
     va_start(ap, pattern);
     count = pcre_exec(pattern, NULL, s, (int) slen(s), 0, 0, matches, sizeof(matches) / sizeof(int));

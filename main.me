@@ -201,6 +201,10 @@ Me.load({
             `,
         },
 
+        format: {
+            shell: `uncrustify -q -c .uncrustify --replace --no-backup  src/*.{c,h} src/*/*.{c,h}`
+        },
+
     },
 
     usage: {

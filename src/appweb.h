@@ -22,7 +22,7 @@ extern "C" {
 
 /********************************* Tunables ***********************************/
 
-#define MA_UNLOAD_TIMEOUT       "5mins"     /**< Default module inactivity timeout */
+#define MA_UNLOAD_TIMEOUT "5mins"           /**< Default module inactivity timeout */
 
 /********************************** Defines ***********************************/
 
@@ -143,7 +143,7 @@ extern "C" {
     Indicates that the configuration file is being parsed by a utility program
     rather than the main server. This affects how certain directives are processed.
  */
-#define MA_PARSE_NON_SERVER     0x1     /**< Command file being parsed by a utility program */
+#define MA_PARSE_NON_SERVER 0x1         /**< Command file being parsed by a utility program */
 
 /**
     Current configuration parse state
@@ -154,18 +154,18 @@ extern "C" {
     @stability Internal
  */
 typedef struct MaState {
-    HttpHost    *host;                  /**< Current host */
-    HttpAuth    *auth;                  /**< Quick alias for route->auth */
-    HttpRoute   *route;                 /**< Current route */
-    MprFile     *file;                  /**< Config file handle */
-    char        *key;                   /**< Current directive being parsed */
-    char        *configDir;             /**< Directory containing config file */
-    char        *filename;              /**< Config file name */
-    char        *endpoints;             /**< Virtual host endpoints */
-    char        *data;                  /**< Config data (managed) */
-    int         lineNumber;             /**< Current line number */
-    int         enabled;                /**< True if the current block is enabled */
-    int         flags;                  /**< Parsing flags */
+    HttpHost *host;                     /**< Current host */
+    HttpAuth *auth;                     /**< Quick alias for route->auth */
+    HttpRoute *route;                   /**< Current route */
+    MprFile *file;                      /**< Config file handle */
+    char *key;                          /**< Current directive being parsed */
+    char *configDir;                    /**< Directory containing config file */
+    char *filename;                     /**< Config file name */
+    char *endpoints;                    /**< Virtual host endpoints */
+    char *data;                         /**< Config data (managed) */
+    int lineNumber;                     /**< Current line number */
+    int enabled;                        /**< True if the current block is enabled */
+    int flags;                          /**< Parsing flags */
     struct MaState *prev;               /**< Previous (inherited) state */
     struct MaState *top;                /**< Top level state */
     struct MaState *current;            /**< Current state */

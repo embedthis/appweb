@@ -42,29 +42,29 @@
 #define MAX_THREADS 16
 
 typedef struct State {
-    char         *argvList[MAX_ARGV];
-    int          delay;
-    int          hasError;
-    int          numPostKeys;
-    int          numQueryKeys;
-    int          outputArgs, outputEnv, outputPost, outputQuery;
-    int          outputLines, outputHeaderLines, responseStatus;
-    char         *outputLocation;
-    char         *postBuf;
-    size_t       postBufLen;
-    char         **postKeys;
-    char         *queryBuf;
-    size_t       queryLen;
-    char         **queryKeys;
+    char *argvList[MAX_ARGV];
+    int delay;
+    int hasError;
+    int numPostKeys;
+    int numQueryKeys;
+    int outputArgs, outputEnv, outputPost, outputQuery;
+    int outputLines, outputHeaderLines, responseStatus;
+    char *outputLocation;
+    char *postBuf;
+    size_t postBufLen;
+    char **postKeys;
+    char *queryBuf;
+    size_t queryLen;
+    char **queryKeys;
     FCGX_Request *request;
-    char         *errorMsg;
-    int          timeout;
+    char *errorMsg;
+    int timeout;
 } State;
 
 static pthread_mutex_t accept_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int       originalArgc;
-static char      **originalArgv;
+static int  originalArgc;
+static char **originalArgv;
 
 /***************************** Forward Declarations ***************************/
 
@@ -79,8 +79,8 @@ static int      parseArgs(State *state);
 static void     printEnv(State *state);
 static void     printQuery(State *state);
 static void     printPost(State *state);
-static char     *safeGetenv(State *state, char *key);
-static void     *worker(State *state);
+static char *safeGetenv(State *state, char *key);
+static void *worker(State *state);
 
 /******************************************************************************/
 /*
@@ -88,9 +88,9 @@ static void     *worker(State *state);
  */
 int main(int argc, char **argv, char **envp)
 {
-    pthread_t   ids[MAX_THREADS];
-    State       states[MAX_THREADS];
-    int         i;
+    pthread_t ids[MAX_THREADS];
+    State     states[MAX_THREADS];
+    int       i;
 
     originalArgc = argc;
     originalArgv = argv;
@@ -100,7 +100,8 @@ int main(int argc, char **argv, char **envp)
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-?") == 0) {
-            fprintf(stderr, "usage: fastProgram -aenp [-b bytes] [-h lines] [-l location] [-s status] [-t timeout] [endpoint]\n");
+            fprintf(stderr,
+                    "usage: fastProgram -aenp [-b bytes] [-h lines] [-l location] [-s status] [-t timeout] [endpoint]\n");
             exit(2);
         } else if (argv[i][0] != '-') {
             close(0);
@@ -117,9 +118,9 @@ int main(int argc, char **argv, char **envp)
 
 static void *worker(State *state)
 {
-    FCGX_Request    request;
-    char            *method;
-    int             l, i, rc;
+    FCGX_Request request;
+    char         *method;
+    int          l, i, rc;
 
     FCGX_InitRequest(&request, 0, 0);
 
@@ -154,7 +155,7 @@ static void *worker(State *state)
         if (state->hasError) {
             FCGX_FPrintF(request.out, "HTTP/1.0 %d %s\r\n\r\n", state->responseStatus, state->errorMsg);
             FCGX_FPrintF(request.out, "<HTML><BODY><p>Error: %d -- %s</p></BODY></HTML>\r\n",
-                state->responseStatus, state->errorMsg);
+                         state->responseStatus, state->errorMsg);
             error(state, "fastProgram: ERROR: %s\n", state->errorMsg);
             exit(2);
         }
@@ -166,7 +167,8 @@ static void *worker(State *state)
             if (state->responseStatus == 0) {
                 FCGX_FPrintF(request.out, "HTTP/1.0 200 OK\r\n");
             } else {
-                FCGX_FPrintF(request.out, "HTTP/1.0 %d %s\r\n", state->responseStatus, state->errorMsg ? state->errorMsg: "");
+                FCGX_FPrintF(request.out, "HTTP/1.0 %d %s\r\n", state->responseStatus,
+                             state->errorMsg ? state->errorMsg: "");
             }
             FCGX_FPrintF(request.out, "Connection: close\r\n");
             FCGX_FPrintF(request.out, "X-FAST-CustomHeader: Any value at all\r\n");
@@ -188,7 +190,7 @@ static void *worker(State *state)
         FCGX_FPrintF(request.out, "\r\n");
 
         if ((state->outputLines + state->outputArgs + state->outputEnv + state->outputQuery +
-                state->outputPost + (state->outputLocation ? 1 : 0) + state->responseStatus) == 0) {
+             state->outputPost + (state->outputLocation ? 1 : 0) + state->responseStatus) == 0) {
             state->outputArgs++;
             state->outputEnv++;
             state->outputQuery++;
@@ -225,9 +227,9 @@ static void *worker(State *state)
 
 static int parseArgs(State *state)
 {
-    char    **argv;
-    char    *cp;
-    int     argc, i, err;
+    char **argv;
+    char *cp;
+    int  argc, i, err;
 
     err = 0;
 
@@ -335,7 +337,7 @@ static int getArgv(State *state, int *pargc, char ***pargv, int originalArgc, ch
     switches = 0;
     for (i = 0; i < state->numQueryKeys; i += 2) {
         if (strcmp(state->queryKeys[i], "SWITCHES") == 0) {
-            switches = state->queryKeys[i+1];
+            switches = state->queryKeys[i + 1];
             break;
         }
     }
@@ -365,8 +367,8 @@ static int getArgv(State *state, int *pargc, char ***pargv, int originalArgc, ch
 
 static void printEnv(State *state)
 {
-    FCGX_Stream     *out;
-    char            **envp;
+    FCGX_Stream *out;
+    char        **envp;
 
     out = state->request->out;
 
@@ -401,8 +403,8 @@ static void printEnv(State *state)
     FCGX_FPrintF(out, "\r\n<H2>All Defined Environment Variables</H2>\r\n");
     envp = state->request->envp;
     if (envp) {
-        char    *p;
-        int     i;
+        char *p;
+        int  i;
         for (i = 0, p = envp[0]; envp[i]; i++) {
             p = envp[i];
             FCGX_FPrintF(out, "<P>%s</P>\r\n", p);
@@ -414,8 +416,8 @@ static void printEnv(State *state)
 
 static void printQuery(State *state)
 {
-    FCGX_Stream     *out;
-    int             i;
+    FCGX_Stream *out;
+    int         i;
 
     out = state->request->out;
 
@@ -424,10 +426,10 @@ static void printQuery(State *state)
     } else {
         FCGX_FPrintF(out, "<H2>Decoded Query String Variables</H2>\r\n");
         for (i = 0; i < (state->numQueryKeys * 2); i += 2) {
-            if (state->queryKeys[i+1] == 0) {
+            if (state->queryKeys[i + 1] == 0) {
                 FCGX_FPrintF(out, "<p>QVAR %s=</p>\r\n", state->queryKeys[i]);
             } else {
-                FCGX_FPrintF(out, "<p>QVAR %s=%s</p>\r\n", state->queryKeys[i], state->queryKeys[i+1]);
+                FCGX_FPrintF(out, "<p>QVAR %s=%s</p>\r\n", state->queryKeys[i], state->queryKeys[i + 1]);
             }
         }
     }
@@ -437,15 +439,15 @@ static void printQuery(State *state)
 
 static void printPost(State *state)
 {
-    FCGX_Stream     *out;
-    int             i;
+    FCGX_Stream *out;
+    int         i;
 
     out = state->request->out;
 
     if (state->numPostKeys) {
         FCGX_FPrintF(out, "<H2>Decoded Post Variables</H2>\r\n");
         for (i = 0; i < (state->numPostKeys * 2); i += 2) {
-            FCGX_FPrintF(out, "<p>PVAR %s=%s</p>\r\n", state->postKeys[i], state->postKeys[i+1]);
+            FCGX_FPrintF(out, "<p>PVAR %s=%s</p>\r\n", state->postKeys[i], state->postKeys[i + 1]);
         }
 
     } else if (state->postBuf) {
@@ -478,9 +480,9 @@ static int getQueryString(State *state)
 
 static int getPostData(State *state)
 {
-    FCGX_Stream     *in;
-    char            *contentLength, *buf;
-    ssize_t         bufsize, bytes, size, limit, len;
+    FCGX_Stream *in;
+    char        *contentLength, *buf;
+    ssize_t     bufsize, bytes, size, limit, len;
 
     in = state->request->in;
     if ((contentLength = FCGX_GetParam("CONTENT_LENGTH", state->request->envp)) != 0) {
@@ -531,8 +533,8 @@ static int getPostData(State *state)
 
 static int getVars(State *state, char ***cgiKeys, char *buf, size_t buflen)
 {
-    char    **keyList, *eq, *cp, *pp, *newbuf;
-    int     i, keyCount;
+    char **keyList, *eq, *cp, *pp, *newbuf;
+    int  i, keyCount;
 
     if (buflen > 0) {
         if ((newbuf = malloc(buflen + 1)) == 0) {
@@ -597,7 +599,7 @@ static int getVars(State *state, char ***cgiKeys, char *buf, size_t buflen)
 
 static char hex2Char(char *s)
 {
-    char    c;
+    char c;
 
     if (*s >= 'A') {
         c = toupper(*s & 0xFF) - 'A' + 10;
@@ -617,12 +619,12 @@ static char hex2Char(char *s)
 
 static void descape(char *src)
 {
-    char    *dest;
+    char *dest;
 
     dest = src;
     while (*src) {
         if (*src == '%') {
-            *dest++ = hex2Char(++src) ;
+            *dest++ = hex2Char(++src);
             src += 2;
         } else {
             *dest++ = *src++;
@@ -634,7 +636,7 @@ static void descape(char *src)
 
 static char *safeGetenv(State *state, char *key)
 {
-    char    *cp;
+    char *cp;
 
     cp = FCGX_GetParam(key, state->request->envp);
     if (cp == 0) {
@@ -652,7 +654,7 @@ static void error(State *state, char *fmt, ...)
     if (state->errorMsg == 0) {
         va_start(args, fmt);
         vsnprintf(buf, sizeof(buf), fmt, args);
-        buf[sizeof(buf)-1] = '\0';
+        buf[sizeof(buf) - 1] = '\0';
         if (state->request && state->request->err) {
             FCGX_FPrintF(state->request->err, "%s\n", buf);
         } else {
@@ -669,9 +671,9 @@ static void error(State *state, char *fmt, ...)
 #if KEEP
 static int waitForData(int fd, int timeout)
 {
-    fd_set          read_fds;
-    struct timeval  tval = { 0, timeout * 1000 };
-    int             rc;
+    fd_set         read_fds;
+    struct timeval tval = { 0, timeout * 1000 };
+    int            rc;
 
     FD_ZERO(&read_fds);
     FD_SET(0, &read_fds);

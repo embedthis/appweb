@@ -9,8 +9,9 @@
         CanonicalName https://example.com
         SetHandler proxyHandler
         Prefix /proxy
-        ProxyConnect 127.0.0.1:9991 launch="program args" min=0 max=2 maxRequests=unlimited timeout=5mins multiplex=unlimited
-        # min/max are number of proxies to keep
+        ProxyConnect 127.0.0.1:9991 launch="program args" min=0 max=2 maxRequests=unlimited timeout=5mins
+           multiplex=unlimited
+ # min/max are number of proxies to keep
     </Route>
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
@@ -23,92 +24,92 @@
 #if ME_COM_PROXY && ME_UNIX_LIKE
 /************************************ Locals ***********************************/
 
-#define PROXY_DEBUG              0           //  For debugging (keeps files open in Proxy for debug output)
+#define PROXY_DEBUG            0             //  For debugging (keeps files open in Proxy for debug output)
 
 /*
     Default constants
  */
-#define PROXY_MAX_PROXIES        1           //  Max of one proxy
-#define PROXY_MIN_PROXIES        0           //  Min of zero proxies to keep running if inactive
-#define PROXY_MAX_REQUESTS       MAXINT64    //  Max number of requests per proxy instance
-#define PROXY_MAX_MULTIPLEX      1           //  Max number of concurrent requests per proxy instance
-#define PROXY_PACKET_SIZE        8           //  Size of minimal Proxy packet
+#define PROXY_MAX_PROXIES      1             //  Max of one proxy
+#define PROXY_MIN_PROXIES      0             //  Min of zero proxies to keep running if inactive
+#define PROXY_MAX_REQUESTS     MAXINT64      //  Max number of requests per proxy instance
+#define PROXY_MAX_MULTIPLEX    1             //  Max number of concurrent requests per proxy instance
+#define PROXY_PACKET_SIZE      8             //  Size of minimal Proxy packet
 
-#define PROXY_Q_SIZE             ((PROXY_PACKET_SIZE + 65535 + 8) * 2)
+#define PROXY_Q_SIZE           ((PROXY_PACKET_SIZE + 65535 + 8) * 2)
 
 #ifndef PROXY_WAIT_TIMEOUT
-#define PROXY_WAIT_TIMEOUT       (10 * TPS)  //  Time to wait for a proxy
+#define PROXY_WAIT_TIMEOUT     (10 * TPS)    //  Time to wait for a proxy
 #endif
 
 #ifndef PROXY_CONNECT_TIMEOUT
-#define PROXY_CONNECT_TIMEOUT    (10 * TPS)  //  Time to wait for Proxy to respond to a connect
+#define PROXY_CONNECT_TIMEOUT  (10 * TPS)    //  Time to wait for Proxy to respond to a connect
 #endif
 
 #ifndef PROXY_PROXY_TIMEOUT
-#define PROXY_PROXY_TIMEOUT      (300 * TPS) //  Default inactivity time to preserve idle proxy
+#define PROXY_PROXY_TIMEOUT    (300 * TPS)   //  Default inactivity time to preserve idle proxy
 #endif
 
 #ifndef PROXY_WATCHDOG_TIMEOUT
-#define PROXY_WATCHDOG_TIMEOUT   (60 * TPS)  //  Frequence to check on idle proxies
+#define PROXY_WATCHDOG_TIMEOUT (60 * TPS)    //  Frequence to check on idle proxies
 #endif
 
-#define PROXY_MAGIC              0x71629A03
+#define PROXY_MAGIC            0x71629A03
 
 
 /*
     Top level Proxy structure per route
  */
 typedef struct Proxy {
-    uint            magic;                  //  Magic identifier
-    cchar           *endpoint;              //  App listening endpoint
-    cchar           *launch;                //  Launch path
-    cchar           *name;                  //  Proxy name
-    int             multiplex;              //  Maximum number of requests to send to each app
-    int             minApps;                //  Minumum number of proxies to maintain
-    int             maxApps;                //  Maximum number of proxies to spawn
-    uint64          maxRequests;            //  Maximum number of requests for launched apps before respawning
-    MprTicks        proxyTimeout;           //  Timeout for an idle proxy to be maintained
-    MprList         *apps;                  //  List of active apps
-    MprList         *idleApps;              //  Idle apps
-    MprMutex        *mutex;                 //  Multithread sync
-    MprCond         *cond;                  //  Condition to wait for available app
-    HttpLimits      *limits;                //  Proxy connection limits
-    MprSsl          *ssl;                   //  SSL configuration
-    MprEvent        *timer;                 //  Timer to check for idle apps
-    HttpTrace       *trace;                 //  Tracing object for proxy side trace
-    cchar           *ip;                    //  Listening IP address
-    int             port;                   //  Listening port
-    int             protocol;               //  HTTP/1 or HTTP/2 protocol
+    uint magic;                             //  Magic identifier
+    cchar *endpoint;                        //  App listening endpoint
+    cchar *launch;                          //  Launch path
+    cchar *name;                            //  Proxy name
+    int multiplex;                          //  Maximum number of requests to send to each app
+    int minApps;                            //  Minumum number of proxies to maintain
+    int maxApps;                            //  Maximum number of proxies to spawn
+    uint64 maxRequests;                     //  Maximum number of requests for launched apps before respawning
+    MprTicks proxyTimeout;                  //  Timeout for an idle proxy to be maintained
+    MprList *apps;                          //  List of active apps
+    MprList *idleApps;                      //  Idle apps
+    MprMutex *mutex;                        //  Multithread sync
+    MprCond *cond;                          //  Condition to wait for available app
+    HttpLimits *limits;                     //  Proxy connection limits
+    MprSsl *ssl;                            //  SSL configuration
+    MprEvent *timer;                        //  Timer to check for idle apps
+    HttpTrace *trace;                       //  Tracing object for proxy side trace
+    cchar *ip;                              //  Listening IP address
+    int port;                               //  Listening port
+    int protocol;                           //  HTTP/1 or HTTP/2 protocol
 } Proxy;
 
 /*
     Per app instance
  */
 typedef struct ProxyApp {
-    Proxy           *proxy;                 // Parent proxy pointer
-    HttpTrace       *trace;                 // Default tracing configuration
-    MprTicks        lastActive;             // When last active
-    MprSignal       *signal;                // Mpr signal handler for child death
-    bool            destroy;                // Must destroy app
-    bool            destroyed;              // App has been destroyed
-    int             inUse;                  // In use counter
-    int             pid;                    // Process ID of the app
-    int             seqno;                  // App seqno for trace
-    uint64          nextID;                 // Next request ID for this app
-    MprList         *networks;              // Open network connections
-    MprList         *requests;              // Current requests
+    Proxy *proxy;                           // Parent proxy pointer
+    HttpTrace *trace;                       // Default tracing configuration
+    MprTicks lastActive;                    // When last active
+    MprSignal *signal;                      // Mpr signal handler for child death
+    bool destroy;                           // Must destroy app
+    bool destroyed;                         // App has been destroyed
+    int inUse;                              // In use counter
+    int pid;                                // Process ID of the app
+    int seqno;                              // App seqno for trace
+    uint64 nextID;                          // Next request ID for this app
+    MprList *networks;                      // Open network connections
+    MprList *requests;                      // Current requests
 } ProxyApp;
 
 /*
     Per request instance
  */
 typedef struct ProxyRequest {
-    Proxy           *proxy;                 // Parent proxy pointer
-    ProxyApp        *app;                   // Owning app
-    HttpStream      *stream;                // Client request stream
-    HttpNet         *proxyNet;              // Network to the proxy backend
-    HttpStream      *proxyStream;           // Stream to the proxy backend for the current request
-    HttpTrace       *trace;                 // Default tracing configuration
+    Proxy *proxy;                           // Parent proxy pointer
+    ProxyApp *app;                          // Owning app
+    HttpStream *stream;                     // Client request stream
+    HttpNet *proxyNet;                      // Network to the proxy backend
+    HttpStream *proxyStream;                // Stream to the proxy backend for the current request
+    HttpTrace *trace;                       // Default tracing configuration
 } ProxyRequest;
 
 /*********************************** Forwards *********************************/
@@ -149,7 +150,7 @@ static void transferClientHeaders(HttpStream *stream, HttpStream *proxyStream);
 static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream);
 
 #if ME_DEBUG
-    static void proxyInfo(void *ignored, MprSignal *sp);
+static void proxyInfo(void *ignored, MprSignal *sp);
 #endif
 
 /************************************* Code ***********************************/
@@ -158,7 +159,8 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream);
  */
 PUBLIC int httpProxyInit(Http *http, MprModule *module)
 {
-    HttpStage   *handler;
+    HttpStage *handler;
+
     /*
         Add configuration file directives
      */
@@ -193,11 +195,11 @@ PUBLIC int httpProxyInit(Http *http, MprModule *module)
  */
 static int proxyOpenRequest(HttpQueue *q)
 {
-    HttpNet         *proxyNet;
-    HttpStream      *stream;
-    Proxy           *proxy;
-    ProxyApp        *app;
-    ProxyRequest    *req;
+    HttpNet      *proxyNet;
+    HttpStream   *stream;
+    Proxy        *proxy;
+    ProxyApp     *app;
+    ProxyRequest *req;
 
     stream = q->stream;
 
@@ -212,17 +214,21 @@ static int proxyOpenRequest(HttpQueue *q)
         it will launch a new Proxy app if within limits. Otherwise it will wait until one becomes available.
      */
     if ((app = getProxyApp(proxy, stream)) == 0) {
-        httpError(stream, HTTP_CODE_SERVICE_UNAVAILABLE, "Cannot allocate ProxyApp for route %s", stream->rx->route->pattern);
+        httpError(stream, HTTP_CODE_SERVICE_UNAVAILABLE, "Cannot allocate ProxyApp for route %s",
+                  stream->rx->route->pattern);
         return MPR_ERR_CANT_OPEN;
     }
 
     /*
         Get or allocate a network connection to the proxy
-        Use the streams dispatcher so that events on the proxy network are serialized with respect to the client network.
-        This means we don't need locking to serialize access from the client network events to the proxy network and vice versa.
+        Use the streams dispatcher so that events on the proxy network are serialized with respect to the client
+           network.
+        This means we don't need locking to serialize access from the client network events to the proxy network and
+           vice versa.
      */
     if ((proxyNet = getProxyNetwork(app, stream->dispatcher)) == 0) {
-        httpError(stream, HTTP_CODE_SERVICE_UNAVAILABLE, "Cannot allocate network for proxy %s", stream->rx->route->pattern);
+        httpError(stream, HTTP_CODE_SERVICE_UNAVAILABLE, "Cannot allocate network for proxy %s",
+                  stream->rx->route->pattern);
         return MPR_ERR_CANT_OPEN;
     }
     proxyNet->trace = proxy->trace;
@@ -231,7 +237,8 @@ static int proxyOpenRequest(HttpQueue *q)
         Allocate a per-request instance
      */
     if ((req = allocProxyRequest(app, proxyNet, stream)) == 0) {
-        httpError(stream, HTTP_CODE_SERVICE_UNAVAILABLE, "Cannot allocate proxy request for proxy %s", stream->rx->route->pattern);
+        httpError(stream, HTTP_CODE_SERVICE_UNAVAILABLE, "Cannot allocate proxy request for proxy %s",
+                  stream->rx->route->pattern);
         httpDestroyNet(proxyNet);
         return MPR_ERR_CANT_OPEN;
     }
@@ -250,10 +257,10 @@ static int proxyOpenRequest(HttpQueue *q)
  */
 static void proxyCloseRequest(HttpQueue *q)
 {
-    Proxy           *proxy;
-    ProxyRequest    *req;
-    ProxyApp        *app;
-    cchar           *msg;
+    Proxy        *proxy;
+    ProxyRequest *req;
+    ProxyApp     *app;
+    cchar        *msg;
 
     req = q->queueData;
     proxy = req->proxy;
@@ -284,9 +291,9 @@ static void proxyCloseRequest(HttpQueue *q)
             releaseAppNetworks(app);
         }
         httpLog(proxy->trace, "proxy", "context",
-            "msg:%s, pid:%d, idle:%d, active:%d, id:%lld, maxRequests:%lld, destroy:%d, nextId:%lld",
-            msg, app->pid, mprGetListLength(proxy->idleApps), mprGetListLength(proxy->apps),
-            app->nextID, proxy->maxRequests, app->destroy, app->nextID);
+                "msg:%s, pid:%d, idle:%d, active:%d, id:%lld, maxRequests:%lld, destroy:%d, nextId:%lld",
+                msg, app->pid, mprGetListLength(proxy->idleApps), mprGetListLength(proxy->apps),
+                app->nextID, proxy->maxRequests, app->destroy, app->nextID);
         mprSignalCond(proxy->cond);
     }
     unlock(proxy);
@@ -295,9 +302,9 @@ static void proxyCloseRequest(HttpQueue *q)
 
 static void proxyStartRequest(HttpQueue *q)
 {
-    ProxyRequest    *req;
-    HttpStream      *stream;
-    HttpRx          *rx;
+    ProxyRequest *req;
+    HttpStream   *stream;
+    HttpRx       *rx;
 
     req = q->queueData;
     stream = q->stream;
@@ -314,7 +321,7 @@ static void proxyStartRequest(HttpQueue *q)
 
 static Proxy *allocProxy(HttpRoute *route)
 {
-    Proxy    *proxy;
+    Proxy *proxy;
 
     proxy = mprAllocObj(Proxy, manageProxy);
     proxy->magic = PROXY_MAGIC;
@@ -335,7 +342,7 @@ static Proxy *allocProxy(HttpRoute *route)
     proxy->limits = route->limits;
     proxy->trace = httpCreateTrace(route->trace);
     proxy->timer = mprCreateTimerEvent(NULL, "proxy-watchdog", PROXY_WATCHDOG_TIMEOUT,
-        proxyMaintenance, proxy, MPR_EVENT_QUICK);
+                                       proxyMaintenance, proxy, MPR_EVENT_QUICK);
     return proxy;
 }
 
@@ -361,9 +368,9 @@ static void manageProxy(Proxy *proxy, int flags)
 
 static void proxyMaintenance(Proxy *proxy)
 {
-    ProxyApp    *app;
-    MprTicks    now;
-    int         count, next;
+    ProxyApp *app;
+    MprTicks now;
+    int      count, next;
 
     now = mprGetTicks();
 
@@ -386,7 +393,7 @@ static void proxyMaintenance(Proxy *proxy)
  */
 static Proxy *getProxy(HttpRoute *route)
 {
-    Proxy        *proxy;
+    Proxy *proxy;
 
     if ((proxy = route->extended) == 0) {
         mprGlobalLock();
@@ -406,8 +413,8 @@ static Proxy *getProxy(HttpRoute *route)
  */
 static void proxyFrontNotifier(HttpStream *stream, int event, int arg)
 {
-    ProxyRequest    *req;
-    HttpStream      *proxyStream;
+    ProxyRequest *req;
+    HttpStream   *proxyStream;
 
     assert(stream->net->endpoint);
 
@@ -480,8 +487,8 @@ static void proxyFrontNotifier(HttpStream *stream, int event, int arg)
  */
 static void proxyBackNotifier(HttpStream *proxyStream, int event, int arg)
 {
-    ProxyRequest    *req;
-    HttpNet         *net;
+    ProxyRequest *req;
+    HttpNet      *net;
 
     net = proxyStream->net;
     assert(net->endpoint == 0);
@@ -539,7 +546,7 @@ static void proxyBackNotifier(HttpStream *proxyStream, int event, int arg)
 
 static void proxyNetCallback(HttpNet *net, int event)
 {
-    ProxyApp    *app;
+    ProxyApp *app;
 
     app = net->data;
     if (!app) {
@@ -563,16 +570,17 @@ static void proxyNetCallback(HttpNet *net, int event)
 
 /*
     When we get an IO event on a network, service the associated other network on the same proxy request.
-*/
+ */
 static void proxyIO(HttpNet *net, int event)
 {
-    HttpNet     *n;
-    int         more, next;
+    HttpNet *n;
+    int     more, next;
 
     do {
         more = 0;
         for (ITERATE_ITEMS(HTTP->networks, n, next)) {
-            if (n->dispatcher && n->dispatcher == net->dispatcher && n->serviceq->scheduleNext != n->serviceq && !n->destroyed) {
+            if (n->dispatcher && n->dispatcher == net->dispatcher && n->serviceq->scheduleNext != n->serviceq &&
+                !n->destroyed) {
                 httpServiceNet(n);
                 more = 1;
             }
@@ -586,9 +594,9 @@ static void proxyIO(HttpNet *net, int event)
  */
 static void proxyClientIncoming(HttpQueue *q, HttpPacket *packet)
 {
-    HttpStream      *stream;
-    HttpStream      *proxyStream;
-    ProxyRequest    *req;
+    HttpStream   *stream;
+    HttpStream   *proxyStream;
+    ProxyRequest *req;
 
     assert(q);
     assert(packet);
@@ -618,9 +626,9 @@ static void proxyClientIncoming(HttpQueue *q, HttpPacket *packet)
  */
 static void proxyClientOutgoingService(HttpQueue *q)
 {
-    HttpPacket      *packet;
-    HttpStream      *proxyStream;
-    ProxyRequest    *req;
+    HttpPacket   *packet;
+    HttpStream   *proxyStream;
+    ProxyRequest *req;
 
     req = q->queueData;
     for (packet = httpGetPacket(q); packet; packet = httpGetPacket(q)) {
@@ -632,7 +640,7 @@ static void proxyClientOutgoingService(HttpQueue *q)
     }
     /*
         Manual flow control to the proxy stream. Back enable the proxy stream to resume transferring data to this queue
-    */
+     */
     if ((proxyStream = req->proxyStream) == 0) {
         return;
     }
@@ -649,9 +657,9 @@ static void proxyClientOutgoingService(HttpQueue *q)
  */
 static void proxyStreamIncoming(HttpQueue *q)
 {
-    HttpPacket      *packet;
-    HttpStream      *stream;
-    ProxyRequest    *req;
+    HttpPacket   *packet;
+    HttpStream   *stream;
+    ProxyRequest *req;
 
     req = q->queueData;
     if (req == 0) {
@@ -693,11 +701,11 @@ static void proxyStreamIncoming(HttpQueue *q)
  */
 static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
 {
-    Proxy       *proxy;
-    MprKey      *kp;
-    HttpUri     *target, *proxyApp, *uri;
-    bool        local;
-    cchar       *hval, *location;
+    Proxy   *proxy;
+    MprKey  *kp;
+    HttpUri *target, *proxyApp, *uri;
+    bool    local;
+    cchar   *hval, *location;
 
     assert(stream);
     assert(proxyStream);
@@ -709,7 +717,7 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
     }
     /*
         Remove Connection: Keep-Alive. Keep Connection: Close.
-    */
+     */
     if ((hval = httpGetTxHeader(stream, "Connection")) != 0) {
         httpRemoveHeader(stream, "Connection");
         if (scaselesscontains(hval, "Close")) {
@@ -722,8 +730,8 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
     httpSetHeaderString(stream, "X-Proxied", "true");
 
     /*
-        Handle redirects for internal or external resources. For internal resources, 
-        modify the location to use the Canonical domain or if not defined, the Host header 
+        Handle redirects for internal or external resources. For internal resources,
+        modify the location to use the Canonical domain or if not defined, the Host header
         from the initial request. Handle 127.0.0.1 and localhost equality intelligently.
      */
     if ((location = httpGetTxHeader(stream, "Location")) != 0) {
@@ -736,15 +744,15 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
         target = httpCreateUri(location, 0);
 
         /*
-            The redirection is local if the location is relative (no host), or the "host" matches 
+            The redirection is local if the location is relative (no host), or the "host" matches
             the proxy, is set to "localhost" or "12.7.0.0.1".
-            If the redirection is for a local resource use the ext, ref and query, but 
+            If the redirection is for a local resource use the ext, ref and query, but
             prefix the path with the route prefix. Use the current request IP or Canonical domain
             for the scheme, host and port.
          */
         local = (smatch(target->host, proxyApp->host) ||
-            (((!target->host || smatch(target->host, "localhost") || smatch(target->host, "127.0.0.1")) &&
-            (!proxyApp->host || smatch(proxyApp->host, "localhost") || smatch(proxyApp->host, "127.0.0.1")))));
+                 (((!target->host || smatch(target->host, "localhost") || smatch(target->host, "127.0.0.1")) &&
+                   (!proxyApp->host || smatch(proxyApp->host, "localhost") || smatch(proxyApp->host, "127.0.0.1")))));
 
         if (local && (!target->port || target->port == proxyApp->port)) {
             /*
@@ -784,9 +792,9 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
  */
 static void transferClientHeaders(HttpStream *stream, HttpStream *proxyStream)
 {
-    MprKey      *kp;
-    HttpHost    *host;
-    cchar       *hval;
+    MprKey   *kp;
+    HttpHost *host;
+    cchar    *hval;
 
     assert(stream);
     assert(proxyStream);
@@ -798,7 +806,7 @@ static void transferClientHeaders(HttpStream *stream, HttpStream *proxyStream)
     }
     /*
         Keep Connection: Upgrade
-    */
+     */
     if ((hval = httpGetTxHeader(proxyStream, "Connection")) != 0) {
         httpRemoveHeader(proxyStream, "Connection");
         if (scaselesscontains(hval, "Upgrade")) {
@@ -811,13 +819,15 @@ static void transferClientHeaders(HttpStream *stream, HttpStream *proxyStream)
     httpSetHeaderString(stream, "X-Proxied", "true");
 
     if (stream->rx->route->canonical) {
-        httpSetHeaderString(proxyStream, "X-Canonical", httpUriToString(stream->rx->route->canonical, HTTP_COMPLETE_URI));
+        httpSetHeaderString(proxyStream, "X-Canonical",
+                            httpUriToString(stream->rx->route->canonical, HTTP_COMPLETE_URI));
     } else if (host->hostname) {
         httpSetHeaderString(proxyStream, "X-Hostname", host->hostname);
     }
 }
 
-/************************************************ ProxyApp ***************************************************************/
+/************************************************ ProxyApp
+ ***************************************************************/
 /*
     The ProxyApp represents the connection to a single Proxy app instance
  */
@@ -840,8 +850,8 @@ static ProxyApp *allocProxyApp(Proxy *proxy)
 //  Should be called with proxy locked
 static void closeAppNetworks(ProxyApp *app)
 {
-    HttpNet     *net;
-    int         next;
+    HttpNet *net;
+    int     next;
 
     for (ITERATE_ITEMS(app->networks, net, next)) {
         httpDestroyNet(net);
@@ -851,8 +861,8 @@ static void closeAppNetworks(ProxyApp *app)
 
 static void releaseAppNetworks(ProxyApp *app)
 {
-    HttpNet     *net;
-    int         next;
+    HttpNet *net;
+    int     next;
 
     for (ITERATE_ITEMS(app->networks, net, next)) {
         //  Reassign to use the MPR dispatcher and not any associated stream dispatcher
@@ -877,9 +887,9 @@ static void manageProxyApp(ProxyApp *app, int flags)
 
 static ProxyApp *getProxyApp(Proxy *proxy, HttpStream *stream)
 {
-    ProxyApp    *app, *bestApp;
-    MprTicks    timeout;
-    int         bestCount, count, next;
+    ProxyApp *app, *bestApp;
+    MprTicks timeout;
+    int      bestCount, count, next;
 
     timeout = mprGetTicks() +  PROXY_WAIT_TIMEOUT;
     app = NULL;
@@ -931,7 +941,8 @@ static ProxyApp *getProxyApp(Proxy *proxy, HttpStream *stream)
 
                 mprResetYield();
                 lock(proxy);
-                mprLog("proxy", 0, "Waiting for Proxy app to become available, running %d", mprGetListLength(proxy->apps));
+                mprLog("proxy", 0, "Waiting for Proxy app to become available, running %d", mprGetListLength(
+                           proxy->apps));
             }
         }
     }
@@ -948,10 +959,10 @@ static ProxyApp *getProxyApp(Proxy *proxy, HttpStream *stream)
 
 static HttpNet *getProxyNetwork(ProxyApp *app, MprDispatcher *dispatcher)
 {
-    HttpNet     *net;
-    Proxy       *proxy;
-    MprTicks    timeout;
-    int         connected, backoff, level, protocol;
+    HttpNet  *net;
+    Proxy    *proxy;
+    MprTicks timeout;
+    int      connected, backoff, level, protocol;
 
     proxy = app->proxy;
 
@@ -1027,9 +1038,9 @@ static HttpNet *getProxyNetwork(ProxyApp *app, MprDispatcher *dispatcher)
  */
 static ProxyApp *startProxyApp(Proxy *proxy, HttpStream *stream)
 {
-    ProxyApp    *app;
-    cchar       **argv, *command;
-    int         i;
+    ProxyApp *app;
+    cchar    **argv, *command;
+    int      i;
 
     app = allocProxyApp(proxy);
 
@@ -1048,7 +1059,8 @@ static ProxyApp *startProxyApp(Proxy *proxy, HttpStream *stream)
 
         } else if (app->pid == 0) {
             /*
-                CHILD: When debugging, keep stdout/stderr open so printf/fprintf from the Proxy app will show in the console.
+                CHILD: When debugging, keep stdout/stderr open so printf/fprintf from the Proxy app will show in the
+                   console.
              */
             for (i = PROXY_DEBUG ? 3 : 1; i < 128; i++) {
                 close(i);
@@ -1072,17 +1084,17 @@ static ProxyApp *startProxyApp(Proxy *proxy, HttpStream *stream)
  */
 static void proxyDeath(ProxyApp *app, MprSignal *sp)
 {
-    HttpNet         *net;
-    Proxy           *proxy;
-    ProxyRequest    *req;
-    int             next, status;
+    HttpNet      *net;
+    Proxy        *proxy;
+    ProxyRequest *req;
+    int          next, status;
 
     proxy = app->proxy;
 
     lock(proxy);
     if (app->pid && waitpid(app->pid, &status, WNOHANG) == app->pid) {
         httpLog(app->trace, "proxy", WEXITSTATUS(status) == 0 ? "context" : "error",
-            "msg:Proxy exited, pid:%d, status:%d", app->pid, WEXITSTATUS(status));
+                "msg:Proxy exited, pid:%d, status:%d", app->pid, WEXITSTATUS(status));
         if (app->signal) {
             mprRemoveSignalHandler(app->signal);
             app->signal = 0;
@@ -1120,7 +1132,7 @@ static void proxyDestroyNet(HttpNet *net)
  */
 static void proxyAbortRequest(ProxyRequest *req)
 {
-    HttpStream  *stream;
+    HttpStream *stream;
 
     stream = req->stream;
     if (stream->state <= HTTP_STATE_BEGIN || stream->rx->route == NULL) {
@@ -1146,11 +1158,12 @@ static void killProxyApp(ProxyApp *app)
     unlock(app->proxy);
 }
 
-/************************************************ ProxyRequest ***********************************************************/
+/************************************************ ProxyRequest
+ ***********************************************************/
 
 static ProxyRequest *allocProxyRequest(ProxyApp *app, HttpNet *proxyNet, HttpStream *stream)
 {
-    ProxyRequest    *req;
+    ProxyRequest *req;
 
     req = mprAllocObj(ProxyRequest, manageProxyRequest);
     req->stream = stream;
@@ -1168,10 +1181,10 @@ static ProxyRequest *allocProxyRequest(ProxyApp *app, HttpNet *proxyNet, HttpStr
 
 static HttpStream *proxyCreateStream(ProxyRequest *req)
 {
-    HttpStream      *proxyStream, *stream;
-    HttpRx          *rx;
-    Proxy           *proxy;
-    cchar           *prefix, *uri;
+    HttpStream *proxyStream, *stream;
+    HttpRx     *rx;
+    Proxy      *proxy;
+    cchar      *prefix, *uri;
 
     stream = req->stream;
     rx = stream->rx;
@@ -1233,17 +1246,17 @@ static int proxyConfigDirective(MaState *state, cchar *key, cchar *value)
  */
 static int proxyCloseConfigDirective(MaState *state, cchar *key, cchar *value)
 {
-    Proxy   *proxy;
+    Proxy *proxy;
 
     proxy = getProxy(state->route);
     if (state->route != state->prev->route) {
         /*
             Extract SSL and limit configuration
          */
-         if (state->route->ssl) {
-             proxy->ssl = state->route->ssl;
-         }
-         proxy->limits = state->route->limits;
+        if (state->route->ssl) {
+            proxy->ssl = state->route->ssl;
+        }
+        proxy->limits = state->route->limits;
     }
     maPopState(state);
     return 0;
@@ -1252,9 +1265,9 @@ static int proxyCloseConfigDirective(MaState *state, cchar *key, cchar *value)
 
 static int proxyConnectDirective(MaState *state, cchar *key, cchar *value)
 {
-    Proxy   *proxy;
-    cchar   *endpoint, *args;
-    char    *option, *ovalue, *tok;
+    Proxy *proxy;
+    cchar *endpoint, *args;
+    char  *option, *ovalue, *tok;
 
     proxy = getProxy(state->route);
 
@@ -1339,7 +1352,7 @@ static int proxyConnectDirective(MaState *state, cchar *key, cchar *value)
 
 static int proxyLogDirective(MaState *state, cchar *key, cchar *value)
 {
-    Proxy   *proxy;
+    Proxy *proxy;
 
     proxy = getProxy(state->route);
     proxy->trace = httpCreateTrace(proxy->trace);
@@ -1350,7 +1363,7 @@ static int proxyLogDirective(MaState *state, cchar *key, cchar *value)
 
 static int proxyTraceDirective(MaState *state, cchar *key, cchar *value)
 {
-    Proxy   *proxy;
+    Proxy *proxy;
 
     proxy = getProxy(state->route);
     if (proxy->trace == 0) {
@@ -1366,14 +1379,14 @@ static int proxyTraceDirective(MaState *state, cchar *key, cchar *value)
 #if ME_DEBUG
 static void proxyInfo(void *ignored, MprSignal *sp)
 {
-    Proxy           *proxy;
-    ProxyApp        *app;
-    ProxyRequest    *req;
-    Http            *http;
-    HttpHost        *host;
-    HttpRoute       *route;
-    HttpStream      *stream;
-    int             nextHost, nextRoute, nextApp, nextReq;
+    Proxy        *proxy;
+    ProxyApp     *app;
+    ProxyRequest *req;
+    Http         *http;
+    HttpHost     *host;
+    HttpRoute    *route;
+    HttpStream   *stream;
+    int          nextHost, nextRoute, nextApp, nextReq;
 
     http = HTTP;
     print("\nProxy Report:");
@@ -1385,12 +1398,14 @@ static void proxyInfo(void *ignored, MprSignal *sp)
             print("\nRoute %-40s ip %s:%d", route->pattern, proxy->ip, proxy->port);
             for (ITERATE_ITEMS(proxy->apps, app, nextApp)) {
                 print("\n    App free networks %d, requests %d, seqno %d\n",
-                    app->networks->length, app->requests->length, app->seqno);
+                      app->networks->length, app->requests->length, app->seqno);
                 for (ITERATE_ITEMS(app->requests, req, nextReq)) {
                     stream = req->stream;
-                    print("        Req %p network %p mask 0x%x, req eof %d, state %d, finalized output %d, input %d, error %d, netMask 0x%x",
+                    print(
+                        "        Req %p network %p mask 0x%x, req eof %d, state %d, finalized output %d, input %d, error %d, netMask 0x%x",
                         req, req->proxyNet, req->proxyNet->eventMask, req->proxyNet->eof, stream->state,
-                        stream->tx->finalizedOutput, stream->tx->finalizedInput, stream->error, stream->net->eventMask);
+                        stream->tx->finalizedOutput, stream->tx->finalizedInput, stream->error,
+                        stream->net->eventMask);
                 }
             }
         }

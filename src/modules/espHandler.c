@@ -17,11 +17,11 @@
  */
 static int espAppDirective(MaState *state, cchar *key, cchar *value)
 {
-    HttpRoute   *route, *saveRoute;
-    MprList     *files;
-    cchar       *path, *prefix;
-    char        *option, *ovalue, *tok;
-    int         next, rc;
+    HttpRoute *route, *saveRoute;
+    MprList   *files;
+    cchar     *path, *prefix;
+    char      *option, *ovalue, *tok;
+    int       next, rc;
 
     rc = 0;
     saveRoute = state->route;

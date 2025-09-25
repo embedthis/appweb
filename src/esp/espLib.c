@@ -28,7 +28,7 @@ static bool validateField(Edi *edi, EdiRec *rec, cchar *columnName, cchar *value
 
 PUBLIC EdiService *ediCreateService()
 {
-    EdiService      *es;
+    EdiService *es;
 
     if ((es = mprAllocObj(EdiService, manageEdiService)) == 0) {
         return 0;
@@ -70,7 +70,7 @@ PUBLIC int ediAddIndex(Edi *edi, cchar *tableName, cchar *columnName, cchar *ind
 
 PUBLIC void ediAddProvider(EdiProvider *provider)
 {
-    EdiService  *es;
+    EdiService *es;
 
     es = MPR->ediService;
     mprAddKey(es->providers, provider->name, provider);
@@ -79,7 +79,7 @@ PUBLIC void ediAddProvider(EdiProvider *provider)
 
 static EdiProvider *lookupProvider(cchar *providerName)
 {
-    EdiService  *es;
+    EdiService *es;
 
     es = MPR->ediService;
     return mprLookupKey(es->providers, providerName);
@@ -106,11 +106,11 @@ static void manageValidation(EdiValidation *vp, int flags)
 
 PUBLIC int ediAddValidation(Edi *edi, cchar *name, cchar *tableName, cchar *columnName, cvoid *data)
 {
-    EdiService          *es;
-    EdiValidation       *prior, *vp;
-    MprList             *validations;
-    cchar               *errMsg, *vkey;
-    int                 column, next;
+    EdiService    *es;
+    EdiValidation *prior, *vp;
+    MprList       *validations;
+    cchar         *errMsg, *vkey;
+    int           column, next;
 
     es = MPR->ediService;
     if ((vp = mprAllocObj(EdiValidation, manageValidation)) == 0) {
@@ -155,11 +155,11 @@ PUBLIC int ediAddValidation(Edi *edi, cchar *name, cchar *tableName, cchar *colu
 
 static bool validateField(Edi *edi, EdiRec *rec, cchar *columnName, cchar *value)
 {
-    EdiValidation   *vp;
-    MprList         *validations;
-    cchar           *error, *vkey;
-    int             next;
-    bool            pass;
+    EdiValidation *vp;
+    MprList       *validations;
+    cchar         *error, *vkey;
+    int           next;
+    bool          pass;
 
     assert(edi);
     assert(rec);
@@ -226,7 +226,7 @@ PUBLIC int ediDelete(Edi *edi, cchar *path)
 PUBLIC void ediDumpGrid(cchar *message, EdiGrid *grid)
 {
     mprLog("info esp edi", 0, "%s: Grid: %s\nschema: %s,\ndata: %s", message, grid->tableName,
-        ediGetTableSchemaAsJson(grid->edi, grid->tableName), ediGridAsJson(grid, MPR_JSON_PRETTY));
+           ediGetTableSchemaAsJson(grid->edi, grid->tableName), ediGridAsJson(grid, MPR_JSON_PRETTY));
 }
 
 
@@ -238,9 +238,9 @@ PUBLIC void ediDumpRec(cchar *message, EdiRec *rec)
 
 PUBLIC EdiGrid *ediFilterGridFields(EdiGrid *grid, cchar *fields, int include)
 {
-    EdiRec      *first, *rec;
-    MprList     *fieldList;
-    int         f, r, inlist;
+    EdiRec  *first, *rec;
+    MprList *fieldList;
+    int     f, r, inlist;
 
     if (!grid || grid->nrecords == 0) {
         return grid;
@@ -254,7 +254,7 @@ PUBLIC EdiGrid *ediFilterGridFields(EdiGrid *grid, cchar *fields, int include)
         if ((inlist && !include) || (!inlist && include)) {
             for (r = 0; r < grid->nrecords; r++) {
                 rec = grid->records[r];
-                memmove(&rec->fields[f], &rec->fields[f+1], (rec->nfields - f - 1) * sizeof(EdiField));
+                memmove(&rec->fields[f], &rec->fields[f + 1], (rec->nfields - f - 1) * sizeof(EdiField));
                 rec->nfields--;
                 /* Ensure never saved to database */
                 rec->id = 0;
@@ -268,8 +268,8 @@ PUBLIC EdiGrid *ediFilterGridFields(EdiGrid *grid, cchar *fields, int include)
 
 PUBLIC EdiRec *ediFilterRecFields(EdiRec *rec, cchar *fields, int include)
 {
-    MprList     *fieldList;
-    int         f, inlist;
+    MprList *fieldList;
+    int     f, inlist;
 
     if (rec == 0 || rec->nfields == 0) {
         return rec;
@@ -279,7 +279,7 @@ PUBLIC EdiRec *ediFilterRecFields(EdiRec *rec, cchar *fields, int include)
     for (f = 0; f < rec->nfields; f++) {
         inlist = mprLookupStringItem(fieldList, rec->fields[f].name) >= 0;
         if ((inlist && !include) || (!inlist && include)) {
-            memmove(&rec->fields[f], &rec->fields[f+1], (rec->nfields - f - 1) * sizeof(EdiField));
+            memmove(&rec->fields[f], &rec->fields[f + 1], (rec->nfields - f - 1) * sizeof(EdiField));
             rec->nfields--;
             /* Ensure never saved to database */
             rec->id = 0;
@@ -333,7 +333,7 @@ PUBLIC EdiField *ediGetNextField(EdiRec *rec, EdiField *fp, int offset)
 
 PUBLIC EdiRec *ediGetNextRec(EdiGrid *grid, EdiRec *rec)
 {
-    int     index;
+    int index;
 
     if (grid == 0 || grid->nrecords <= 0) {
         return 0;
@@ -356,10 +356,10 @@ PUBLIC EdiRec *ediGetNextRec(EdiGrid *grid, EdiRec *rec)
 
 PUBLIC cchar *ediGetTableSchemaAsJson(Edi *edi, cchar *tableName)
 {
-    MprBuf      *buf;
-    MprList     *columns;
-    cchar       *schema, *s;
-    int         c, type, flags, cid, ncols, next;
+    MprBuf  *buf;
+    MprList *columns;
+    cchar   *schema, *s;
+    int     c, type, flags, cid, ncols, next;
 
     if (tableName == 0 || *tableName == '\0') {
         return 0;
@@ -374,7 +374,7 @@ PUBLIC cchar *ediGetTableSchemaAsJson(Edi *edi, cchar *tableName)
     for (c = 0; c < ncols; c++) {
         ediGetColumnSchema(edi, tableName, mprGetItem(columns, c), &type, &flags, &cid);
         mprPutToBuf(buf, "      \"%s\": {\n        \"type\": \"%s\"\n      },\n",
-            (char*) mprGetItem(columns, c), ediGetTypeString(type));
+                    (char*) mprGetItem(columns, c), ediGetTypeString(type));
     }
     if (ncols > 0) {
         mprAdjustBufEnd(buf, -2);
@@ -421,9 +421,9 @@ PUBLIC MprHash *ediGetRecErrors(EdiRec *rec)
 
 PUBLIC MprList *ediGetGridColumns(EdiGrid *grid)
 {
-    MprList     *cols;
-    EdiRec      *rec;
-    EdiField    *fp;
+    MprList  *cols;
+    EdiRec   *rec;
+    EdiField *fp;
 
     cols = mprCreateList(0, 0);
     rec = grid->records[0];
@@ -436,7 +436,7 @@ PUBLIC MprList *ediGetGridColumns(EdiGrid *grid)
 
 PUBLIC EdiField *ediGetField(EdiRec *rec, cchar *fieldName)
 {
-    EdiField    *fp;
+    EdiField *fp;
 
     if (rec == 0) {
         return 0;
@@ -452,7 +452,7 @@ PUBLIC EdiField *ediGetField(EdiRec *rec, cchar *fieldName)
 
 PUBLIC cchar *ediGetFieldValue(EdiRec *rec, cchar *fieldName)
 {
-    EdiField    *fp;
+    EdiField *fp;
 
     if (rec == 0) {
         return 0;
@@ -468,7 +468,7 @@ PUBLIC cchar *ediGetFieldValue(EdiRec *rec, cchar *fieldName)
 
 PUBLIC int ediGetFieldType(EdiRec *rec, cchar *fieldName)
 {
-    int     type;
+    int type;
 
     if (ediGetColumnSchema(rec->edi, rec->tableName, fieldName, &type, NULL, NULL) < 0) {
         return 0;
@@ -519,11 +519,11 @@ PUBLIC char *ediGetTypeString(int type)
 
 PUBLIC cchar *ediGridAsJson(EdiGrid *grid, int flags)
 {
-    EdiRec      *rec;
-    EdiField    *fp;
-    MprBuf      *buf;
-    bool        pretty;
-    int         r, f;
+    EdiRec   *rec;
+    EdiField *fp;
+    MprBuf   *buf;
+    bool     pretty;
+    int      r, f;
 
     pretty = flags & MPR_JSON_PRETTY;
     buf = mprCreateBuf(0, 0);
@@ -543,12 +543,12 @@ PUBLIC cchar *ediGridAsJson(EdiGrid *grid, int flags)
                     mprPutCharToBuf(buf, ':');
                 }
                 formatFieldForJson(buf, fp, flags);
-                if ((f+1) < rec->nfields) {
+                if ((f + 1) < rec->nfields) {
                     mprPutStringToBuf(buf, ",");
                 }
             }
             mprPutStringToBuf(buf, "}");
-            if ((r+1) < grid->nrecords) {
+            if ((r + 1) < grid->nrecords) {
                 mprPutCharToBuf(buf, ',');
             }
             if (pretty) mprPutCharToBuf(buf, '\n');
@@ -587,8 +587,8 @@ PUBLIC EdiProvider *ediLookupProvider(cchar *providerName)
 
 PUBLIC Edi *ediOpen(cchar *path, cchar *providerName, int flags)
 {
-    EdiProvider     *provider;
-    Edi             *edi;
+    EdiProvider *provider;
+    Edi         *edi;
 
     if ((provider = lookupProvider(providerName)) == 0) {
         mprLog("error esp edi", 0, "Cannot find EDI provider '%s'", providerName);
@@ -603,7 +603,7 @@ PUBLIC Edi *ediOpen(cchar *path, cchar *providerName, int flags)
 
 PUBLIC Edi *ediClone(Edi *edi)
 {
-    Edi     *cloned;
+    Edi *cloned;
 
     if (!edi || !edi->provider) {
         return 0;
@@ -624,9 +624,10 @@ PUBLIC EdiGrid *ediQuery(Edi *edi, cchar *cmd, int argc, cchar **argv, va_list v
 }
 
 
-PUBLIC cchar *ediReadFieldValue(Edi *edi, cchar *fmt, cchar *tableName, cchar *key, cchar *columnName, cchar *defaultValue)
+PUBLIC cchar *ediReadFieldValue(Edi *edi, cchar *fmt, cchar *tableName, cchar *key, cchar *columnName,
+                                cchar *defaultValue)
 {
-    EdiField    field;
+    EdiField field;
 
     field = ediReadField(edi, tableName, key, columnName);
     if (!field.valid) {
@@ -638,7 +639,7 @@ PUBLIC cchar *ediReadFieldValue(Edi *edi, cchar *fmt, cchar *tableName, cchar *k
 
 PUBLIC EdiField ediReadField(Edi *edi, cchar *tableName, cchar *key, cchar *fieldName)
 {
-    EdiField    field;
+    EdiField field;
 
     if (!edi || !edi->provider) {
         memset(&field, 0, sizeof(EdiField));
@@ -659,7 +660,7 @@ PUBLIC EdiGrid *ediFindGrid(Edi *edi, cchar *tableName, cchar *select)
 
 PUBLIC EdiRec *ediFindRec(Edi *edi, cchar *tableName, cchar *select)
 {
-    EdiGrid     *grid;
+    EdiGrid *grid;
 
     if (!edi || !edi->provider) {
         return 0;
@@ -720,10 +721,10 @@ PUBLIC EdiGrid *ediReadTable(Edi *edi, cchar *tableName)
 
 PUBLIC cchar *ediRecAsJson(EdiRec *rec, int flags)
 {
-    MprBuf      *buf;
-    EdiField    *fp;
-    bool        pretty;
-    int         f;
+    MprBuf   *buf;
+    EdiField *fp;
+    bool     pretty;
+    int      f;
 
     pretty = flags & MPR_JSON_PRETTY;
     buf = mprCreateBuf(0, 0);
@@ -738,7 +739,7 @@ PUBLIC cchar *ediRecAsJson(EdiRec *rec, int flags)
                 mprPutCharToBuf(buf, ':');
             }
             formatFieldForJson(buf, fp, flags);
-            if ((f+1) < rec->nfields) {
+            if ((f + 1) < rec->nfields) {
                 mprPutStringToBuf(buf, ",");
             }
         }
@@ -772,7 +773,7 @@ PUBLIC int ediRemoveIndex(Edi *edi, cchar *tableName, cchar *indexName)
 #if KEEP
 PUBLIC int ediRemoveRec(Edi *edi, cchar *tableName, cchar *query)
 {
-    EdiRec  *rec;
+    EdiRec *rec;
 
     if (!edi || !edi->provider) {
         return MPR_ERR_BAD_STATE;
@@ -847,8 +848,8 @@ PUBLIC int ediUpdateField(Edi *edi, cchar *tableName, cchar *key, cchar *fieldNa
 
 PUBLIC int ediUpdateFieldFmt(Edi *edi, cchar *tableName, cchar *key, cchar *fieldName, cchar *fmt, ...)
 {
-    va_list     ap;
-    cchar       *value;
+    va_list ap;
+    cchar   *value;
 
     if (!edi || !edi->provider) {
         return MPR_ERR_BAD_STATE;
@@ -871,9 +872,9 @@ PUBLIC int ediUpdateRec(Edi *edi, EdiRec *rec)
 
 PUBLIC bool ediValidateRec(EdiRec *rec)
 {
-    EdiField    *fp;
-    bool        pass;
-    int         c;
+    EdiField *fp;
+    bool     pass;
+    int      c;
 
     assert(rec->edi);
     if (rec == 0 || rec->edi == 0) {
@@ -899,7 +900,7 @@ PUBLIC bool ediValidateRec(EdiRec *rec)
  */
 PUBLIC EdiGrid *ediCreateBareGrid(Edi *edi, cchar *tableName, int nrows)
 {
-    EdiGrid  *grid;
+    EdiGrid *grid;
 
     if ((grid = mprAllocBlock(sizeof(EdiGrid) + sizeof(EdiRec*) * nrows, MPR_ALLOC_MANAGER | MPR_ALLOC_ZERO)) == 0) {
         return 0;
@@ -918,7 +919,7 @@ PUBLIC EdiGrid *ediCreateBareGrid(Edi *edi, cchar *tableName, int nrows)
  */
 PUBLIC EdiRec *ediCreateBareRec(Edi *edi, cchar *tableName, int nfields)
 {
-    EdiRec      *rec;
+    EdiRec *rec;
 
     if ((rec = mprAllocBlock(sizeof(EdiRec) + sizeof(EdiField) * nfields, MPR_ALLOC_MANAGER | MPR_ALLOC_ZERO)) == 0) {
         return 0;
@@ -933,7 +934,7 @@ PUBLIC EdiRec *ediCreateBareRec(Edi *edi, cchar *tableName, int nfields)
 
 PUBLIC cchar *ediFormatField(cchar *fmt, EdiField *fp)
 {
-    MprTime     when;
+    MprTime when;
 
     if (fp->value == 0) {
         return "null";
@@ -980,8 +981,8 @@ PUBLIC cchar *ediFormatField(cchar *fmt, EdiField *fp)
 
 static void formatFieldForJson(MprBuf *buf, EdiField *fp, int flags)
 {
-    MprTime     when;
-    cchar       *value;
+    MprTime when;
+    cchar   *value;
 
     value = fp->value;
 
@@ -1025,10 +1026,10 @@ static void formatFieldForJson(MprBuf *buf, EdiField *fp, int flags)
 
 
 typedef struct Col {
-    EdiGrid     *grid;          /* Source grid for this column */
-    EdiField    *fp;            /* Field definition for this column */
-    int         joinField;      /* Foreign key field index */
-    int         field;          /* Field index in the foreign table */
+    EdiGrid *grid;              /* Source grid for this column */
+    EdiField *fp;               /* Field definition for this column */
+    int joinField;              /* Foreign key field index */
+    int field;                  /* Field index in the foreign table */
 } Col;
 
 
@@ -1038,11 +1039,11 @@ typedef struct Col {
  */
 static MprList *joinColumns(MprList *cols, EdiGrid *grid, MprHash *grids, int joinField, int follow)
 {
-    EdiGrid     *foreignGrid;
-    EdiRec      *rec;
-    EdiField    *fp;
-    Col         *col;
-    cchar       *tableName;
+    EdiGrid  *foreignGrid;
+    EdiRec   *rec;
+    EdiField *fp;
+    Col      *col;
+    cchar    *tableName;
 
     if (grid->nrecords == 0) {
         return cols;
@@ -1090,15 +1091,15 @@ static MprList *joinColumns(MprList *cols, EdiGrid *grid, MprHash *grids, int jo
  */
 PUBLIC EdiGrid *ediJoin(Edi *edi, ...)
 {
-    EdiGrid     *primary, *grid, *result, *current;
-    EdiRec      *rec;
-    EdiField    *dest, *fp;
-    MprList     *cols, *rows;
-    MprHash     *grids;
-    Col         *col;
-    va_list     vgrids;
-    cchar       *keyValue;
-    int         r, next, nfields, nrows;
+    EdiGrid  *primary, *grid, *result, *current;
+    EdiRec   *rec;
+    EdiField *dest, *fp;
+    MprList  *cols, *rows;
+    MprHash  *grids;
+    Col      *col;
+    va_list  vgrids;
+    cchar    *keyValue;
+    int      r, next, nfields, nrows;
 
     va_start(vgrids, edi);
     if ((primary = va_arg(vgrids, EdiGrid*)) == 0) {
@@ -1169,7 +1170,7 @@ PUBLIC EdiGrid *ediJoin(Edi *edi, ...)
 
 PUBLIC void ediManageEdiRec(EdiRec *rec, int flags)
 {
-    int     fid;
+    int fid;
 
     if (flags & MPR_MANAGE_MARK) {
         mprMark(rec->edi);
@@ -1187,7 +1188,7 @@ PUBLIC void ediManageEdiRec(EdiRec *rec, int flags)
 
 static void manageEdiGrid(EdiGrid *grid, int flags)
 {
-    int     r;
+    int r;
 
     if (flags & MPR_MANAGE_MARK) {
         mprMark(grid->edi);
@@ -1207,11 +1208,11 @@ static void manageEdiGrid(EdiGrid *grid, int flags)
  */
 PUBLIC EdiGrid *ediMakeGrid(cchar *json)
 {
-    MprJson     *obj, *row, *rp, *cp;
-    EdiGrid     *grid;
-    EdiRec      *rec;
-    EdiField    *fp;
-    int         col, r, nrows, nfields;
+    MprJson  *obj, *row, *rp, *cp;
+    EdiGrid  *grid;
+    EdiRec   *rec;
+    EdiField *fp;
+    int      col, r, nrows, nfields;
 
     if ((obj = mprParseJson(json)) == 0) {
         assert(0);
@@ -1267,8 +1268,8 @@ PUBLIC EdiGrid *ediMakeGrid(cchar *json)
 
 PUBLIC MprJson *ediMakeJson(cchar *fmt, ...)
 {
-    MprJson     *obj;
-    va_list     args;
+    MprJson *obj;
+    va_list args;
 
     va_start(args, fmt);
     obj = mprParseJson(sfmtv(fmt, args));
@@ -1282,11 +1283,11 @@ PUBLIC MprJson *ediMakeJson(cchar *fmt, ...)
  */
 PUBLIC EdiRec *ediMakeRec(cchar *json)
 {
-    MprHash     *obj;
-    MprKey      *kp;
-    EdiRec      *rec;
-    EdiField    *fp;
-    int         f, nfields;
+    MprHash  *obj;
+    MprKey   *kp;
+    EdiRec   *rec;
+    EdiField *fp;
+    int      f, nfields;
 
     if ((obj = mprDeserialize(json)) == 0) {
         return 0;
@@ -1312,10 +1313,10 @@ PUBLIC EdiRec *ediMakeRec(cchar *json)
 
 PUBLIC EdiRec *ediMakeRecFromJson(cchar *tableName, MprJson *fields)
 {
-    MprJson     *field;
-    EdiRec      *rec;
-    EdiField    *fp;
-    int         f, fid;
+    MprJson  *field;
+    EdiRec   *rec;
+    EdiField *fp;
+    int      f, fid;
 
     if ((rec = ediCreateBareRec(NULL, tableName, (int) mprGetJsonLength(fields))) == 0) {
         return 0;
@@ -1366,10 +1367,10 @@ PUBLIC int ediParseTypeString(cchar *type)
  */
 PUBLIC EdiGrid *ediPivotGrid(EdiGrid *grid, int flags)
 {
-    EdiGrid     *result;
-    EdiRec      *rec, *first;
-    EdiField    *src, *fp;
-    int         r, c, nfields, nrows;
+    EdiGrid  *result;
+    EdiRec   *rec, *first;
+    EdiField *src, *fp;
+    int      r, c, nfields, nrows;
 
     if (grid->nrecords == 0) {
         return grid;
@@ -1398,10 +1399,10 @@ PUBLIC EdiGrid *ediPivotGrid(EdiGrid *grid, int flags)
 
 PUBLIC EdiGrid *ediCloneGrid(EdiGrid *grid)
 {
-    EdiGrid     *result;
-    EdiRec      *rec;
-    EdiField    *src, *dest;
-    int         r, c;
+    EdiGrid  *result;
+    EdiRec   *rec;
+    EdiField *src, *dest;
+    int      r, c;
 
     if (grid->nrecords == 0) {
         return grid;
@@ -1428,7 +1429,7 @@ PUBLIC EdiGrid *ediCloneGrid(EdiGrid *grid)
 
 static cchar *mapEdiValue(cchar *value, int type)
 {
-    MprTime     time;
+    MprTime time;
 
     if (value == 0) {
         return value;
@@ -1463,7 +1464,7 @@ static cchar *mapEdiValue(cchar *value, int type)
 
 PUBLIC EdiRec *ediSetField(EdiRec *rec, cchar *fieldName, cchar *value)
 {
-    EdiField    *fp;
+    EdiField *fp;
 
     if (rec == 0) {
         return 0;
@@ -1483,7 +1484,7 @@ PUBLIC EdiRec *ediSetField(EdiRec *rec, cchar *fieldName, cchar *value)
 
 PUBLIC EdiRec *ediSetFieldFmt(EdiRec *rec, cchar *fieldName, cchar *fmt, ...)
 {
-    va_list     ap;
+    va_list ap;
 
     va_start(ap, fmt);
     ediSetField(rec, fieldName, sfmtv(fmt, ap));
@@ -1494,8 +1495,8 @@ PUBLIC EdiRec *ediSetFieldFmt(EdiRec *rec, cchar *fieldName, cchar *fmt, ...)
 
 PUBLIC EdiRec *ediSetFields(EdiRec *rec, MprJson *params)
 {
-    MprJson     *param;
-    int         i;
+    MprJson *param;
+    int     i;
 
     if (rec == 0) {
         return 0;
@@ -1512,14 +1513,14 @@ PUBLIC EdiRec *ediSetFields(EdiRec *rec, MprJson *params)
 
 
 typedef struct GridSort {
-    int     sortColumn;         /**< Column to sort on */
-    int     sortOrder;          /**< Sort order: ascending == 1, descending == -1 */
+    int sortColumn;             /**< Column to sort on */
+    int sortOrder;              /**< Sort order: ascending == 1, descending == -1 */
 } GridSort;
 
 static int sortRec(EdiRec **r1, EdiRec **r2, GridSort *gs)
 {
-    EdiField    *f1, *f2;
-    int64       v1, v2;
+    EdiField *f1, *f2;
+    int64    v1, v2;
 
     f1 = &(*r1)->fields[gs->sortColumn];
     f2 = &(*r2)->fields[gs->sortColumn];
@@ -1527,7 +1528,7 @@ static int sortRec(EdiRec **r1, EdiRec **r2, GridSort *gs)
         v1 = stoi(f1->value);
         v2 = stoi(f2->value);
         if (v1 < v2) {
-            return - gs->sortOrder;
+            return -gs->sortOrder;
         } else if (v1 > v2) {
             return gs->sortOrder;
         }
@@ -1540,8 +1541,8 @@ static int sortRec(EdiRec **r1, EdiRec **r2, GridSort *gs)
 
 static int lookupGridField(EdiGrid *grid, cchar *name)
 {
-    EdiRec      *rec;
-    EdiField    *fp;
+    EdiRec   *rec;
+    EdiField *fp;
 
     if (grid->nrecords == 0) {
         return MPR_ERR_CANT_FIND;
@@ -1558,7 +1559,7 @@ static int lookupGridField(EdiGrid *grid, cchar *name)
 
 PUBLIC EdiGrid *ediSortGrid(EdiGrid *grid, cchar *sortColumn, int sortOrder)
 {
-    GridSort    gs;
+    GridSort gs;
 
     if (grid->nrecords == 0) {
         return grid;
@@ -1586,7 +1587,7 @@ static cchar *checkBoolean(EdiValidation *vp, EdiRec *rec, cchar *fieldName, cch
 
 static cchar *checkDate(EdiValidation *vp, EdiRec *rec, cchar *fieldName, cchar *value)
 {
-    MprTime     time;
+    MprTime time;
 
     if (value && *value) {
         if (mprParseTime(&time, value, MPR_UTC_TIMEZONE, NULL) < 0) {
@@ -1599,7 +1600,7 @@ static cchar *checkDate(EdiValidation *vp, EdiRec *rec, cchar *fieldName, cchar 
 
 static cchar *checkFormat(EdiValidation *vp, EdiRec *rec, cchar *fieldName, cchar *value)
 {
-    int     matched[ME_MAX_ROUTE_MATCHES * 2];
+    int matched[ME_MAX_ROUTE_MATCHES * 2];
 
     if (pcre_exec(vp->mdata, NULL, value, (int) slen(value), 0, 0, matched, sizeof(matched) / sizeof(int)) > 0) {
         return 0;
@@ -1610,7 +1611,7 @@ static cchar *checkFormat(EdiValidation *vp, EdiRec *rec, cchar *fieldName, ccha
 
 static cchar *checkBanned(EdiValidation *vp, EdiRec *rec, cchar *fieldName, cchar *value)
 {
-    int     matched[ME_MAX_ROUTE_MATCHES * 2];
+    int matched[ME_MAX_ROUTE_MATCHES * 2];
 
     if (pcre_exec(vp->mdata, NULL, value, (int) slen(value), 0, 0, matched, sizeof(matched) / sizeof(int)) > 0) {
         return "contains banned content";
@@ -1652,7 +1653,7 @@ static cchar *checkPresent(EdiValidation *vp, EdiRec *rec, cchar *fieldName, cch
 
 static cchar *checkUnique(EdiValidation *vp, EdiRec *rec, cchar *fieldName, cchar *value)
 {
-    EdiRec  *other;
+    EdiRec *other;
 
     if ((other = ediReadRec(rec->edi, rec->tableName, sfmt("%s == %s", fieldName, value))) == 0) {
         return 0;
@@ -1666,7 +1667,7 @@ static cchar *checkUnique(EdiValidation *vp, EdiRec *rec, cchar *fieldName, ccha
 
 PUBLIC void ediAddFieldError(EdiRec *rec, cchar *field, cchar *fmt, ...)
 {
-    va_list     args;
+    va_list args;
 
     va_start(args, fmt);
     if (rec->errors == 0) {
@@ -1679,7 +1680,7 @@ PUBLIC void ediAddFieldError(EdiRec *rec, cchar *field, cchar *fmt, ...)
 
 PUBLIC void ediDefineValidation(cchar *name, EdiValidationProc vfn)
 {
-    EdiService  *es;
+    EdiService *es;
 
     es = MPR->ediService;
     mprAddKey(es->validations, name, vfn);
@@ -1713,7 +1714,7 @@ PUBLIC void ediSetReadonly(Edi *edi, bool on)
 
 static void addValidations()
 {
-    EdiService  *es;
+    EdiService *es;
 
     es = MPR->ediService;
     /* Thread safe */
@@ -1750,8 +1751,8 @@ static void addValidations()
 
 PUBLIC void addHeader(cchar *key, cchar *fmt, ...)
 {
-    va_list     args;
-    cchar       *value;
+    va_list args;
+    cchar   *value;
 
     va_start(args, fmt);
     value = sfmtv(fmt, args);
@@ -1778,7 +1779,7 @@ PUBLIC cchar *body(cchar *key)
 
 PUBLIC bool canUser(cchar *abilities, bool warn)
 {
-    HttpStream    *stream;
+    HttpStream *stream;
 
     stream = getStream();
     if (httpCanUser(stream, abilities)) {
@@ -1851,7 +1852,7 @@ PUBLIC void dumpRec(cchar *message, EdiRec *rec)
 
 PUBLIC bool feedback(cchar *kind, cchar *fmt, ...)
 {
-    va_list     args;
+    va_list args;
 
     va_start(args, fmt);
     espSetFeedbackv(getStream(), kind, fmt, args);
@@ -1872,10 +1873,10 @@ PUBLIC void finalize()
 
 PUBLIC cchar *findParams()
 {
-    MprJson     *fields, *key;
-    MprBuf      *buf;
-    cchar       *filter, *limit, *offset;
-    int         index;
+    MprJson *fields, *key;
+    MprBuf  *buf;
+    cchar   *filter, *limit, *offset;
+    int     index;
 
     buf = mprCreateBuf(0, 0);
 
@@ -1905,7 +1906,7 @@ PUBLIC cchar *findParams()
 #if DEPRECATED
 PUBLIC void flash(cchar *kind, cchar *fmt, ...)
 {
-    va_list     args;
+    va_list args;
 
     va_start(args, fmt);
     espSetFeedbackv(getStream(), kind, fmt, args);
@@ -1939,8 +1940,8 @@ PUBLIC MprList *getColumns(EdiRec *rec)
 
 PUBLIC cchar *getConfig(cchar *field)
 {
-    HttpRoute   *route;
-    cchar       *value;
+    HttpRoute *route;
+    cchar     *value;
 
     route = getStream()->rx->route;
     if ((value = mprGetJson(route->config, field)) == 0) {
@@ -1952,12 +1953,12 @@ PUBLIC cchar *getConfig(cchar *field)
 
 PUBLIC HttpStream *getStream()
 {
-    HttpStream    *stream;
+    HttpStream *stream;
 
     stream = mprGetThreadData(((Esp*) MPR->espService)->local);
     if (stream == 0) {
         mprLog("error esp", 0, "Stream is not defined in thread local storage.\n"
-        "If using a callback, make sure you invoke espSetStream with the connection before using the ESP abbreviated API");
+               "If using a callback, make sure you invoke espSetStream with the connection before using the ESP abbreviated API");
     }
     return stream;
 }
@@ -1995,7 +1996,7 @@ PUBLIC Edi *getDatabase()
 
 PUBLIC MprDispatcher *getDispatcher()
 {
-    HttpStream    *stream;
+    HttpStream *stream;
 
     if ((stream = getStream()) == 0) {
         return 0;
@@ -2169,8 +2170,8 @@ PUBLIC EdiGrid *makeGrid(cchar *contents)
 
 PUBLIC MprHash *makeHash(cchar *fmt, ...)
 {
-    va_list     args;
-    cchar       *str;
+    va_list args;
+    cchar   *str;
 
     va_start(args, fmt);
     str = sfmtv(fmt, args);
@@ -2181,8 +2182,8 @@ PUBLIC MprHash *makeHash(cchar *fmt, ...)
 
 PUBLIC MprJson *makeJson(cchar *fmt, ...)
 {
-    va_list     args;
-    cchar       *str;
+    va_list args;
+    cchar   *str;
 
     va_start(args, fmt);
     str = sfmtv(fmt, args);
@@ -2211,7 +2212,7 @@ PUBLIC cchar *md5(cchar *str)
 
 PUBLIC bool modeIs(cchar *kind)
 {
-    HttpRoute   *route;
+    HttpRoute *route;
 
     route = getStream()->rx->route;
     return smatch(route->mode, kind);
@@ -2337,9 +2338,9 @@ PUBLIC void removeSessionVar(cchar *key)
 
 PUBLIC ssize render(cchar *fmt, ...)
 {
-    va_list     args;
-    ssize       count;
-    cchar       *msg;
+    va_list args;
+    ssize   count;
+    cchar   *msg;
 
     va_start(args, fmt);
     msg = sfmtv(fmt, args);
@@ -2363,8 +2364,8 @@ PUBLIC ssize renderConfig()
 
 PUBLIC void renderError(int status, cchar *fmt, ...)
 {
-    va_list     args;
-    cchar       *msg;
+    va_list args;
+    cchar   *msg;
 
     va_start(args, fmt);
     msg = sfmt(fmt, args);
@@ -2387,9 +2388,9 @@ PUBLIC void renderFeedback(cchar *kind)
 
 PUBLIC ssize renderSafe(cchar *fmt, ...)
 {
-    va_list     args;
-    ssize       count;
-    cchar       *msg;
+    va_list args;
+    ssize   count;
+    cchar   *msg;
 
     va_start(args, fmt);
     msg = sfmtv(fmt, args);
@@ -2413,10 +2414,11 @@ PUBLIC void renderView(cchar *view)
 
 PUBLIC int runCmd(cchar *command, char *input, char **output, char **error, MprTime timeout, int flags)
 {
-    MprCmd  *cmd;
+    MprCmd *cmd;
 
     cmd = mprCreateCmd(getDispatcher());
-    return mprRunCmd(cmd, command, NULL, input, output, error, timeout, MPR_CMD_IN  | MPR_CMD_OUT | MPR_CMD_ERR | flags);
+    return mprRunCmd(cmd, command, NULL, input, output, error, timeout,
+                     MPR_CMD_IN  | MPR_CMD_OUT | MPR_CMD_ERR | flags);
 }
 
 
@@ -2492,8 +2494,8 @@ PUBLIC EdiGrid *setGrid(EdiGrid *grid)
 
 PUBLIC void setHeader(cchar *key, cchar *fmt, ...)
 {
-    va_list     args;
-    cchar       *value;
+    va_list args;
+    cchar   *value;
 
     va_start(args, fmt);
     value = sfmtv(fmt, args);
@@ -2576,8 +2578,8 @@ PUBLIC bool updateField(cchar *tableName, cchar *key, cchar *fieldName, cchar *v
 
 PUBLIC bool updateFields(cchar *tableName, MprJson *params)
 {
-    EdiRec  *rec;
-    cchar   *key;
+    EdiRec *rec;
+    cchar  *key;
 
     key = mprReadJson(params, "id");
     if ((rec = ediSetFields(ediReadRec(getDatabase(), tableName, key), params)) == 0) {
@@ -2613,8 +2615,8 @@ PUBLIC bool updateRecFromParams(cchar *table)
 
 PUBLIC cchar *uri(cchar *target, ...)
 {
-    va_list     args;
-    cchar       *uri;
+    va_list args;
+    cchar   *uri;
 
     va_start(args, target);
     uri = sfmtv(target, args);
@@ -2625,8 +2627,8 @@ PUBLIC cchar *uri(cchar *target, ...)
 
 PUBLIC cchar *absuri(cchar *target, ...)
 {
-    va_list     args;
-    cchar       *uri;
+    va_list args;
+    cchar   *uri;
 
     va_start(args, target);
     uri = sfmtv(target, args);
@@ -2643,13 +2645,13 @@ PUBLIC cchar *absuri(cchar *target, ...)
  */
 PUBLIC void stylesheets(cchar *patterns)
 {
-    HttpStream  *stream;
-    HttpRx      *rx;
-    HttpRoute   *route;
-    EspRoute    *eroute;
-    MprList     *files;
-    cchar       *filename, *ext, *uri, *path, *kind, *version, *clientDir;
-    int         next;
+    HttpStream *stream;
+    HttpRx     *rx;
+    HttpRoute  *route;
+    EspRoute   *eroute;
+    MprList    *files;
+    cchar      *filename, *ext, *uri, *path, *kind, *version, *clientDir;
+    int        next;
 
     stream = getStream();
     rx = stream->rx;
@@ -2721,14 +2723,14 @@ PUBLIC void stylesheets(cchar *patterns)
  */
 PUBLIC void scripts(cchar *patterns)
 {
-    HttpStream  *stream;
-    HttpRx      *rx;
-    HttpRoute   *route;
-    EspRoute    *eroute;
-    MprList     *files;
-    MprJson     *cscripts, *script;
-    cchar       *uri, *path, *version;
-    int         next, ci;
+    HttpStream *stream;
+    HttpRx     *rx;
+    HttpRoute  *route;
+    EspRoute   *eroute;
+    MprList    *files;
+    MprJson    *cscripts, *script;
+    cchar      *uri, *path, *version;
+    int        next, ci;
 
     stream = getStream();
     rx = stream->rx;
@@ -2757,7 +2759,7 @@ PUBLIC void scripts(cchar *patterns)
         return;
     }
     if ((files = mprGlobPathFiles(httpGetDir(route, "client"), patterns, MPR_PATH_RELATIVE)) == 0 ||
-            mprGetListLength(files) == 0) {
+        mprGetListLength(files) == 0) {
         files = mprCreateList(0, 0);
         mprAddItem(files, patterns);
     }
@@ -2792,17 +2794,18 @@ PUBLIC void scripts(cchar *patterns)
 /************************************* Locals *********************************/
 
 #define ITERATE_CONFIG(route, obj, child, index) \
-    index = 0, child = obj ? obj->children: 0; obj && index < obj->length && !route->error; child = child->next, index++
+        index = 0, child = obj ? obj->children: 0; obj && index < obj->length && !route->error; \
+        child = child->next, index++
 static void defineEnv(HttpRoute *route, cchar *key, cchar *value);
 
 /************************************** Code **********************************/
 
 static void loadApp(HttpRoute *parent, MprJson *prop)
 {
-    HttpRoute   *route;
-    MprList     *files;
-    cchar       *config, *prefix;
-    int         next;
+    HttpRoute *route;
+    MprList   *files;
+    cchar     *config, *prefix;
+    int       next;
 
     if (prop->type & MPR_JSON_OBJ) {
         prefix = mprGetJson(prop, "prefix");
@@ -2831,7 +2834,7 @@ static void loadApp(HttpRoute *parent, MprJson *prop)
 
 static void parseEsp(HttpRoute *route, cchar *key, MprJson *prop)
 {
-    EspRoute    *eroute;
+    EspRoute *eroute;
 
     eroute = route->eroute;
     httpParseAll(route, key, prop);
@@ -2865,7 +2868,7 @@ static void parseEsp(HttpRoute *route, cchar *key, MprJson *prop)
  */
 static void parseApp(HttpRoute *route, cchar *key, MprJson *prop)
 {
-    EspRoute    *eroute;
+    EspRoute *eroute;
 
     eroute = route->eroute;
 
@@ -2904,8 +2907,8 @@ static void parseApp(HttpRoute *route, cchar *key, MprJson *prop)
  */
 static void parseApps(HttpRoute *route, cchar *key, MprJson *prop)
 {
-    MprJson     *child;
-    int         ji;
+    MprJson *child;
+    int     ji;
 
     if (prop->type & MPR_JSON_STRING) {
         loadApp(route, prop);
@@ -2923,7 +2926,7 @@ static void parseApps(HttpRoute *route, cchar *key, MprJson *prop)
 
 static void parseCombine(HttpRoute *route, cchar *key, MprJson *prop)
 {
-    EspRoute    *eroute;
+    EspRoute *eroute;
 
     eroute = route->eroute;
     if (smatch(prop->value, "true")) {
@@ -2936,7 +2939,7 @@ static void parseCombine(HttpRoute *route, cchar *key, MprJson *prop)
 
 static void parseCompile(HttpRoute *route, cchar *key, MprJson *prop)
 {
-    EspRoute    *eroute;
+    EspRoute *eroute;
 
     eroute = route->eroute;
     eroute->compile = (prop->type & MPR_JSON_TRUE) ? 1 : 0;
@@ -2946,8 +2949,8 @@ static void parseCompile(HttpRoute *route, cchar *key, MprJson *prop)
 #if ME_WIN_LIKE
 PUBLIC cchar *espGetVisualStudio()
 {
-    cchar   *path;
-    int     v;
+    cchar *path;
+    int   v;
 
     if ((path = getenv("VSINSTALLDIR")) != 0) {
         return path;
@@ -2971,9 +2974,9 @@ PUBLIC cchar *espGetVisualStudio()
  */
 PUBLIC int getVisualStudioEnv(Esp *esp)
 {
-    char    *error, *output, *next, *line, *key, *value;
-    cchar   *arch, *cpu, *command, *vs;
-    bool    yielding;
+    char  *error, *output, *next, *line, *key, *value;
+    cchar *arch, *cpu, *command, *vs;
+    bool  yielding;
 
     /*
         Get the real system architecture, not whether this app is 32 or 64 bit.
@@ -3028,18 +3031,18 @@ PUBLIC int getVisualStudioEnv(Esp *esp)
 
 static void defineEnv(HttpRoute *route, cchar *key, cchar *value)
 {
-    EspRoute    *eroute;
-    MprJson     *child, *set;
-    cchar       *arch;
-    int         ji;
+    EspRoute *eroute;
+    MprJson  *child, *set;
+    cchar    *arch;
+    int      ji;
 
     eroute = route->eroute;
     if (smatch(key, "set")) {
         httpParsePlatform(HTTP->platform, NULL, &arch, NULL);
 #if ME_WIN_LIKE
         if (smatch(value, "VisualStudio")) {
-            Esp     *esp;
-            MprKey  *kp;
+            Esp    *esp;
+            MprKey *kp;
 
             /*
                 Already set in users environment
@@ -3095,10 +3098,10 @@ static void defineEnv(HttpRoute *route, cchar *key, cchar *value)
 
 static void parseBuild(HttpRoute *route, cchar *key, MprJson *prop)
 {
-    EspRoute    *eroute;
-    MprJson     *child, *env, *rules;
-    cchar       *buildType, *os, *rule, *stem;
-    int         ji;
+    EspRoute *eroute;
+    MprJson  *child, *env, *rules;
+    cchar    *buildType, *os, *rule, *stem;
+    int      ji;
 
     eroute = route->eroute;
     buildType = HTTP->staticLink ? "static" : "dynamic";
@@ -3133,7 +3136,7 @@ static void parseBuild(HttpRoute *route, cchar *key, MprJson *prop)
 
 static void parseKeep(HttpRoute *route, cchar *key, MprJson *prop)
 {
-    EspRoute    *eroute;
+    EspRoute *eroute;
 
     eroute = route->eroute;
     eroute->keep = (prop->type & MPR_JSON_TRUE) ? 1 : 0;
@@ -3142,7 +3145,7 @@ static void parseKeep(HttpRoute *route, cchar *key, MprJson *prop)
 
 static void parseOptimize(HttpRoute *route, cchar *key, MprJson *prop)
 {
-    EspRoute    *eroute;
+    EspRoute *eroute;
 
     eroute = route->eroute;
     eroute->compileMode = smatch(prop->value, "true") ? ESP_COMPILE_OPTIMIZED : ESP_COMPILE_SYMBOLS;
@@ -3151,7 +3154,7 @@ static void parseOptimize(HttpRoute *route, cchar *key, MprJson *prop)
 
 static void parseUpdate(HttpRoute *route, cchar *key, MprJson *prop)
 {
-    EspRoute    *eroute;
+    EspRoute *eroute;
 
     eroute = route->eroute;
     eroute->update = (prop->type & MPR_JSON_TRUE) ? 1 : 0;
@@ -3228,7 +3231,8 @@ PUBLIC int espInitParser()
 /************************************* Locals *********************************/
 
 #define ITERATE_CONFIG(route, obj, child, index) \
-    index = 0, child = obj ? obj->children: 0; obj && index < obj->length && !route->error; child = child->next, index++
+        index = 0, child = obj ? obj->children: 0; obj && index < obj->length && !route->error; \
+        child = child->next, index++
 
 /*********************************** Fowards **********************************/
 
@@ -3252,7 +3256,7 @@ PUBLIC void espAddPak(HttpRoute *route, cchar *name, cchar *version)
  */
 PUBLIC void espAddHeader(HttpStream *stream, cchar *key, cchar *fmt, ...)
 {
-    va_list     vargs;
+    va_list vargs;
 
     assert(key && *key);
     assert(fmt && *fmt);
@@ -3286,7 +3290,7 @@ PUBLIC void espAddParam(HttpStream *stream, cchar *var, cchar *value)
  */
 PUBLIC void espAppendHeader(HttpStream *stream, cchar *key, cchar *fmt, ...)
 {
-    va_list     vargs;
+    va_list vargs;
 
     assert(key && *key);
     assert(fmt && *fmt);
@@ -3309,7 +3313,7 @@ PUBLIC void espAppendHeaderString(HttpStream *stream, cchar *key, cchar *value)
 
 PUBLIC void espAutoFinalize(HttpStream *stream)
 {
-    EspReq  *req;
+    EspReq *req;
 
     req = stream->reqData;
     if (req->autoFinalize) {
@@ -3348,8 +3352,8 @@ PUBLIC void espDefineAction(HttpRoute *route, cchar *target, EspProc callback)
 
 PUBLIC void espAction(HttpRoute *route, cchar *target, cchar *abilities, EspProc callback)
 {
-    EspRoute    *eroute;
-    EspAction   *action;
+    EspRoute  *eroute;
+    EspAction *action;
 
     assert(route);
     assert(target && *target);
@@ -3389,7 +3393,7 @@ static void manageAction(EspAction *action, int flags)
 
 static EspAction *createAction(cchar *target, cchar *abilities, void *callback)
 {
-    EspAction   *action;
+    EspAction *action;
 
     if ((action = mprAllocObj(EspAction, manageAction)) == 0) {
         return NULL;
@@ -3407,9 +3411,9 @@ static EspAction *createAction(cchar *target, cchar *abilities, void *callback)
  */
 PUBLIC void espDefineBase(HttpRoute *route, EspLegacyProc baseProc)
 {
-    HttpRoute   *rp;
-    EspRoute    *eroute;
-    int         next;
+    HttpRoute *rp;
+    EspRoute  *eroute;
+    int       next;
 
     for (ITERATE_ITEMS(route->host->routes, rp, next)) {
         if ((eroute = rp->eroute) != 0) {
@@ -3427,9 +3431,9 @@ PUBLIC void espDefineBase(HttpRoute *route, EspLegacyProc baseProc)
  */
 PUBLIC void espController(HttpRoute *route, EspProc baseProc)
 {
-    HttpRoute   *rp;
-    EspRoute    *eroute;
-    int         next;
+    HttpRoute *rp;
+    EspRoute  *eroute;
+    int       next;
 
     for (ITERATE_ITEMS(route->host->routes, rp, next)) {
         if ((eroute = rp->eroute) != 0) {
@@ -3446,7 +3450,7 @@ PUBLIC void espController(HttpRoute *route, EspProc baseProc)
  */
 PUBLIC void espDefineView(HttpRoute *route, cchar *path, void *view)
 {
-    EspRoute    *eroute;
+    EspRoute *eroute;
 
     assert(path && *path);
     assert(view);
@@ -3493,7 +3497,7 @@ PUBLIC HttpAuth *espGetAuth(HttpStream *stream)
 
 PUBLIC cchar *espGetConfig(HttpRoute *route, cchar *key, cchar *defaultValue)
 {
-    cchar       *value;
+    cchar *value;
 
     if (sstarts(key, "app.")) {
         mprLog("warn esp", 0, "Using legacy \"app\" configuration property");
@@ -3531,7 +3535,7 @@ PUBLIC cchar *espGetCookies(HttpStream *stream)
 
 PUBLIC void *espGetData(HttpStream *stream)
 {
-    EspReq  *req;
+    EspReq *req;
 
     req = stream->reqData;
     return req->data;
@@ -3540,10 +3544,10 @@ PUBLIC void *espGetData(HttpStream *stream)
 
 PUBLIC Edi *espGetDatabase(HttpStream *stream)
 {
-    HttpRx      *rx;
-    EspReq      *req;
-    EspRoute    *eroute;
-    Edi         *edi;
+    HttpRx   *rx;
+    EspReq   *req;
+    EspRoute *eroute;
+    Edi      *edi;
 
     rx = stream->rx;
     req = stream->reqData;
@@ -3575,9 +3579,9 @@ PUBLIC EspRoute *espGetEspRoute(HttpStream *stream)
 
 PUBLIC cchar *espGetFeedback(HttpStream *stream, cchar *kind)
 {
-    EspReq      *req;
-    MprKey      *kp;
-    cchar       *msg;
+    EspReq *req;
+    MprKey *kp;
+    cchar  *msg;
 
     req = stream->reqData;
     if (kind == 0 || req == 0 || req->feedback == 0 || mprGetHashLength(req->feedback) == 0) {
@@ -3671,7 +3675,7 @@ PUBLIC HttpRoute *espGetRoute(HttpStream *stream)
 
 PUBLIC Edi *espGetRouteDatabase(HttpRoute *route)
 {
-    EspRoute    *eroute;
+    EspRoute *eroute;
 
     eroute = route->eroute;
     if (eroute == 0 || eroute->edi == 0) {
@@ -3739,7 +3743,7 @@ PUBLIC bool espHasGrid(HttpStream *stream)
 
 PUBLIC bool espHasRec(HttpStream *stream)
 {
-    EdiRec  *rec;
+    EdiRec *rec;
 
     rec = stream->record;
     return (rec && rec->id) ? 1 : 0;
@@ -3801,8 +3805,8 @@ PUBLIC void espRedirectBack(HttpStream *stream)
 
 PUBLIC ssize espRender(HttpStream *stream, cchar *fmt, ...)
 {
-    va_list     vargs;
-    char        *buf;
+    va_list vargs;
+    char    *buf;
 
     va_start(vargs, fmt);
     buf = sfmtv(fmt, vargs);
@@ -3829,9 +3833,9 @@ PUBLIC ssize espRenderCached(HttpStream *stream)
 
 static void copyMappings(HttpRoute *route, MprJson *dest, MprJson *obj)
 {
-    MprJson     *child, *job, *jvalue;
-    cchar       *key, *value;
-    int         ji;
+    MprJson *child, *job, *jvalue;
+    cchar   *key, *value;
+    int     ji;
 
     for (ITERATE_CONFIG(route, obj, child, ji)) {
         if (child->type & MPR_JSON_OBJ) {
@@ -3857,8 +3861,8 @@ static void copyMappings(HttpRoute *route, MprJson *dest, MprJson *obj)
 
 static cchar *getClientConfig(HttpStream *stream)
 {
-    HttpRoute   *route;
-    MprJson     *mappings, *obj;
+    HttpRoute *route;
+    MprJson   *mappings, *obj;
 
     stream = getStream();
     for (route = stream->rx->route; route; route = route->parent) {
@@ -3879,7 +3883,7 @@ static cchar *getClientConfig(HttpStream *stream)
 
 PUBLIC ssize espRenderConfig(HttpStream *stream)
 {
-    cchar       *config;
+    cchar *config;
 
     if ((config = getClientConfig(stream)) != 0) {
         return renderString(config);
@@ -3890,17 +3894,17 @@ PUBLIC ssize espRenderConfig(HttpStream *stream)
 
 PUBLIC ssize espRenderError(HttpStream *stream, int status, cchar *fmt, ...)
 {
-    va_list     args;
-    HttpRx      *rx;
-    ssize       written;
-    cchar       *msg, *title, *text;
+    va_list args;
+    HttpRx  *rx;
+    ssize   written;
+    cchar   *msg, *title, *text;
 
     va_start(args, fmt);
 
     rx = stream->rx;
     if (rx->route->json) {
         mprLog("warn esp", 0, "Calling espRenderFeedback in JSON app");
-        return 0 ;
+        return 0;
     }
     written = 0;
 
@@ -3911,7 +3915,7 @@ PUBLIC ssize espRenderError(HttpStream *stream, int status, cchar *fmt, ...)
         title = sfmt("Request Error for \"%s\"", rx->pathInfo);
         msg = mprEscapeHtml(sfmtv(fmt, args));
         if (rx->route->flags & HTTP_ROUTE_SHOW_ERRORS) {
-            text = sfmt(\
+            text = sfmt( \
                 "<!DOCTYPE html>\r\n<html>\r\n<head><title>%s</title></head>\r\n" \
                 "<body>\r\n<h1>%s</h1>\r\n" \
                 "    <pre>%s</pre>\r\n" \
@@ -3931,9 +3935,9 @@ PUBLIC ssize espRenderError(HttpStream *stream, int status, cchar *fmt, ...)
 
 PUBLIC ssize espRenderFile(HttpStream *stream, cchar *path)
 {
-    MprFile     *from;
-    ssize       count, written, nbytes;
-    char        buf[ME_BUFSIZE];
+    MprFile *from;
+    ssize   count, written, nbytes;
+    char    buf[ME_BUFSIZE];
 
     if ((from = mprOpenFile(path, O_RDONLY | O_BINARY, 0)) == 0) {
         return MPR_ERR_CANT_OPEN;
@@ -3952,10 +3956,10 @@ PUBLIC ssize espRenderFile(HttpStream *stream, cchar *path)
 
 PUBLIC ssize espRenderFeedback(HttpStream *stream, cchar *kinds)
 {
-    EspReq      *req;
-    MprKey      *kp;
-    cchar       *msg;
-    ssize       written;
+    EspReq *req;
+    MprKey *kp;
+    cchar  *msg;
+    ssize  written;
 
     req = stream->reqData;
     if (req->route->json) {
@@ -3979,8 +3983,8 @@ PUBLIC ssize espRenderFeedback(HttpStream *stream, cchar *kinds)
 
 PUBLIC ssize espRenderSafe(HttpStream *stream, cchar *fmt, ...)
 {
-    va_list     args;
-    cchar       *s;
+    va_list args;
+    cchar   *s;
 
     va_start(args, fmt);
     s = mprEscapeHtml(sfmtv(fmt, args));
@@ -4007,7 +4011,7 @@ PUBLIC ssize espRenderString(HttpStream *stream, cchar *s)
  */
 PUBLIC ssize espRenderVar(HttpStream *stream, cchar *name)
 {
-    cchar   *value;
+    cchar *value;
 
     if ((value = espGetParam(stream, name, 0)) == 0) {
         value = httpGetSessionVar(stream, name, "");
@@ -4034,8 +4038,8 @@ PUBLIC void espRemoveSessionVar(HttpStream *stream, cchar *var)
 
 PUBLIC void espRemoveCookie(HttpStream *stream, cchar *name)
 {
-    HttpRoute   *route;
-    cchar       *url;
+    HttpRoute *route;
+    cchar     *url;
 
     route = stream->rx->route;
     url = (route->prefix && *route->prefix) ? route->prefix : "/";
@@ -4051,7 +4055,7 @@ PUBLIC void espSetStream(HttpStream *stream)
 
 static void espNotifier(HttpStream *stream, int event, int arg)
 {
-    EspReq      *req;
+    EspReq *req;
 
     if ((req = stream->reqData) != 0) {
         espSetStream(stream);
@@ -4062,7 +4066,7 @@ static void espNotifier(HttpStream *stream, int event, int arg)
 
 PUBLIC void espSetNotifier(HttpStream *stream, HttpNotifier notifier)
 {
-    EspReq      *req;
+    EspReq *req;
 
     if ((req = stream->reqData) != 0) {
         req->notifier = notifier;
@@ -4074,7 +4078,7 @@ PUBLIC void espSetNotifier(HttpStream *stream, HttpNotifier notifier)
 #if DEPRECATED
 PUBLIC int espSaveConfig(HttpRoute *route)
 {
-    cchar       *path;
+    cchar *path;
 
     path = mprJoinPath(route->home, "esp.json");
 #if KEEP
@@ -4090,8 +4094,8 @@ PUBLIC int espSaveConfig(HttpRoute *route)
  */
 PUBLIC ssize espSendGrid(HttpStream *stream, EdiGrid *grid, int flags)
 {
-    HttpRoute   *route;
-    EspRoute    *eroute;
+    HttpRoute *route;
+    EspRoute  *eroute;
 
     route = stream->rx->route;
 
@@ -4101,7 +4105,7 @@ PUBLIC ssize espSendGrid(HttpStream *stream, EdiGrid *grid, int flags)
             eroute = route->eroute;
             flags = flags | (eroute->encodeTypes ? MPR_JSON_ENCODE_TYPES : 0);
             return espRender(stream, "{\n  \"data\": %s, \"count\": %d, \"schema\": %s}\n",
-                ediGridAsJson(grid, flags), grid->count, ediGetGridSchemaAsJson(grid));
+                             ediGridAsJson(grid, flags), grid->count, ediGetGridSchemaAsJson(grid));
         }
         return espRender(stream, "{data:[]}");
     }
@@ -4111,8 +4115,8 @@ PUBLIC ssize espSendGrid(HttpStream *stream, EdiGrid *grid, int flags)
 
 PUBLIC ssize espSendRec(HttpStream *stream, EdiRec *rec, int flags)
 {
-    HttpRoute   *route;
-    EspRoute    *eroute;
+    HttpRoute *route;
+    EspRoute  *eroute;
 
     route = stream->rx->route;
     if (route->json) {
@@ -4120,7 +4124,9 @@ PUBLIC ssize espSendRec(HttpStream *stream, EdiRec *rec, int flags)
         if (rec) {
             eroute = route->eroute;
             flags = flags | (eroute->encodeTypes ? MPR_JSON_ENCODE_TYPES : 0);
-            return espRender(stream, "{\n  \"data\": %s, \"schema\": %s}\n", ediRecAsJson(rec, flags), ediGetRecSchemaAsJson(rec));
+            return espRender(stream, "{\n  \"data\": %s, \"schema\": %s}\n", ediRecAsJson(rec,
+                                                                                          flags),
+                             ediGetRecSchemaAsJson(rec));
         }
         return espRender(stream, "{}");
     }
@@ -4130,9 +4136,9 @@ PUBLIC ssize espSendRec(HttpStream *stream, EdiRec *rec, int flags)
 
 PUBLIC ssize espSendResult(HttpStream *stream, bool success)
 {
-    EspReq      *req;
-    EdiRec      *rec;
-    ssize       written;
+    EspReq *req;
+    EdiRec *rec;
+    ssize  written;
 
     req = stream->reqData;
     written = 0;
@@ -4140,11 +4146,11 @@ PUBLIC ssize espSendResult(HttpStream *stream, bool success)
         rec = getRec();
         if (rec && rec->errors) {
             written = espRender(stream, "{\"error\": %d, \"feedback\": %s, \"fieldErrors\": %s}", !success,
-                req->feedback ? mprSerialize(req->feedback, MPR_JSON_QUOTES) : "{}",
-                mprSerialize(rec->errors, MPR_JSON_QUOTES));
+                                req->feedback ? mprSerialize(req->feedback, MPR_JSON_QUOTES) : "{}",
+                                mprSerialize(rec->errors, MPR_JSON_QUOTES));
         } else {
             written = espRender(stream, "{\"error\": %d, \"feedback\": %s}", !success,
-                req->feedback ? mprSerialize(req->feedback, MPR_JSON_QUOTES) : "{}");
+                                req->feedback ? mprSerialize(req->feedback, MPR_JSON_QUOTES) : "{}");
         }
         espFinalize(stream);
     } else {
@@ -4156,8 +4162,8 @@ PUBLIC ssize espSendResult(HttpStream *stream, bool success)
 
 PUBLIC bool espSetAutoFinalizing(HttpStream *stream, bool on)
 {
-    EspReq  *req;
-    bool    old;
+    EspReq *req;
+    bool   old;
 
     req = stream->reqData;
     old = req->autoFinalize;
@@ -4178,8 +4184,9 @@ PUBLIC void espSetContentLength(HttpStream *stream, MprOff length)
 }
 
 
-PUBLIC void espSetCookie(HttpStream *stream, cchar *name, cchar *value, cchar *path, cchar *cookieDomain, MprTicks lifespan,
-        bool isSecure)
+PUBLIC void espSetCookie(HttpStream *stream, cchar *name, cchar *value, cchar *path, cchar *cookieDomain,
+                         MprTicks lifespan,
+                         bool isSecure)
 {
     httpSetCookie(stream, name, value, path, cookieDomain, lifespan, isSecure);
 }
@@ -4193,7 +4200,7 @@ PUBLIC void espSetContentType(HttpStream *stream, cchar *mimeType)
 
 PUBLIC void espSetData(HttpStream *stream, void *data)
 {
-    EspReq  *req;
+    EspReq *req;
 
     req = stream->reqData;
     req->data = data;
@@ -4202,7 +4209,7 @@ PUBLIC void espSetData(HttpStream *stream, void *data)
 
 PUBLIC void espSetFeedback(HttpStream *stream, cchar *kind, cchar *fmt, ...)
 {
-    va_list     args;
+    va_list args;
 
     va_start(args, fmt);
     espSetFeedbackv(stream, kind, fmt, args);
@@ -4212,8 +4219,8 @@ PUBLIC void espSetFeedback(HttpStream *stream, cchar *kind, cchar *fmt, ...)
 
 PUBLIC void espSetFeedbackv(HttpStream *stream, cchar *kind, cchar *fmt, va_list args)
 {
-    EspReq      *req;
-    cchar       *msg;
+    EspReq *req;
+    cchar  *msg;
 
     if ((req = stream->reqData) == 0) {
         return;
@@ -4230,7 +4237,7 @@ PUBLIC void espSetFeedbackv(HttpStream *stream, cchar *kind, cchar *fmt, va_list
     msg = sfmtv(fmt, args);
 
 #if KEEP
-    MprKey      *current, *last;
+    MprKey *current, *last;
     if ((current = mprLookupKeyEntry(req->feedback, kind)) != 0) {
         if ((last = mprLookupKey(req->lastFeedback, current->key)) != 0 && current->data == last->data) {
             /* Overwrite prior feedback messages */
@@ -4248,7 +4255,7 @@ PUBLIC void espSetFeedbackv(HttpStream *stream, cchar *kind, cchar *fmt, va_list
 #if DEPRECATED
 PUBLIC void espSetFlash(HttpStream *stream, cchar *kind, cchar *fmt, ...)
 {
-    va_list     args;
+    va_list args;
 
     va_start(args, fmt);
     espSetFeedbackv(stream, kind, fmt, args);
@@ -4268,7 +4275,7 @@ PUBLIC EdiGrid *espSetGrid(HttpStream *stream, EdiGrid *grid)
  */
 PUBLIC void espSetHeader(HttpStream *stream, cchar *key, cchar *fmt, ...)
 {
-    va_list     vargs;
+    va_list vargs;
 
     assert(key && *key);
     assert(fmt && *fmt);
@@ -4317,12 +4324,12 @@ PUBLIC void espSetStatus(HttpStream *stream, int status)
 
 PUBLIC void espShowRequest(HttpStream *stream)
 {
-    MprHash     *env;
-    MprJson     *params, *param;
-    MprKey      *kp;
-    MprJson     *jkey;
-    HttpRx      *rx;
-    int         i;
+    MprHash *env;
+    MprJson *params, *param;
+    MprKey  *kp;
+    MprJson *jkey;
+    HttpRx  *rx;
+    int     i;
 
     rx = stream->rx;
     httpAddHeaderString(stream, "Cache-Control", "no-cache");
@@ -4374,7 +4381,7 @@ PUBLIC void espShowRequest(HttpStream *stream)
         mprAddNullToBuf(buf);
         if ((numKeys = getParams(&keys, mprGetBufStart(buf), (int) mprGetBufLength(buf))) > 0) {
             for (i = 0; i < (numKeys * 2); i += 2) {
-                value = keys[i+1];
+                value = keys[i + 1];
                 espRender(stream, "BODY %s=%s\r\n", keys[i], value ? value: "null");
             }
         }
@@ -4386,7 +4393,7 @@ PUBLIC void espShowRequest(HttpStream *stream)
 
 PUBLIC bool espTestConfig(HttpRoute *route, cchar *key, cchar *desired)
 {
-    cchar       *value;
+    cchar *value;
 
     if ((value = mprGetJson(route->config, key)) != 0) {
         return smatch(value, desired);
@@ -4408,14 +4415,14 @@ PUBLIC cchar *espUri(HttpStream *stream, cchar *target)
 
 
 PUBLIC int espEmail(HttpStream *stream, cchar *to, cchar *from, cchar *subject, MprTime date, cchar *mime,
-    cchar *message, MprList *files)
+                    cchar *message, MprList *files)
 {
-    MprList         *lines;
-    MprCmd          *cmd;
-    cchar           *body, *boundary, *contents, *encoded, *file;
-    char            *out, *err;
-    ssize           length;
-    int             i, next, status;
+    MprList *lines;
+    MprCmd  *cmd;
+    cchar   *body, *boundary, *contents, *encoded, *file;
+    char    *out, *err;
+    ssize   length;
+    int     i, next, status;
 
     if (!from || !*from) {
         from = "anonymous";
@@ -4475,13 +4482,14 @@ PUBLIC int espEmail(HttpStream *stream, cchar *to, cchar *from, cchar *subject, 
     }
     if (mprWaitForCmd(cmd, ME_ESP_EMAIL_TIMEOUT) < 0) {
         httpLog(stream->trace, "esp.email.error", "error",
-            "msg=\"Timeout waiting for command to complete\", timeout=%d, command=\"%s\"",
-            ME_ESP_EMAIL_TIMEOUT, cmd->argv[0]);
+                "msg=\"Timeout waiting for command to complete\", timeout=%d, command=\"%s\"",
+                ME_ESP_EMAIL_TIMEOUT, cmd->argv[0]);
         mprDestroyCmd(cmd);
         return MPR_ERR_CANT_COMPLETE;
     }
     if ((status = mprGetCmdExitStatus(cmd)) != 0) {
-        httpLog(stream->trace, "esp.email.error", "error", "msg=\"Sendmail failed\", status=%d, error=\"%s\"", status, err);
+        httpLog(stream->trace, "esp.email.error", "error", "msg=\"Sendmail failed\", status=%d, error=\"%s\"", status,
+                err);
         mprDestroyCmd(cmd);
         return MPR_ERR_CANT_WRITE;
     }
@@ -4492,7 +4500,7 @@ PUBLIC int espEmail(HttpStream *stream, cchar *to, cchar *from, cchar *subject, 
 
 PUBLIC void espClearCurrentSession(HttpStream *stream)
 {
-    EspRoute    *eroute;
+    EspRoute *eroute;
 
     eroute = stream->rx->route->eroute;
     if (eroute->currentSession) {
@@ -4507,11 +4515,12 @@ PUBLIC void espClearCurrentSession(HttpStream *stream)
  */
 PUBLIC void espSetCurrentSession(HttpStream *stream)
 {
-    EspRoute    *eroute;
+    EspRoute *eroute;
 
     eroute = stream->rx->route->eroute;
     eroute->currentSession = httpGetSessionID(stream);
-    httpLog(stream->trace, "esp.singular.set", "context", "msg=\"Set singluar user\", session=%s", eroute->currentSession);
+    httpLog(stream->trace, "esp.singular.set", "context", "msg=\"Set singluar user\", session=%s",
+            eroute->currentSession);
 }
 
 
@@ -4520,7 +4529,7 @@ PUBLIC void espSetCurrentSession(HttpStream *stream)
  */
 PUBLIC bool espIsCurrentSession(HttpStream *stream)
 {
-    EspRoute    *eroute;
+    EspRoute *eroute;
 
     eroute = stream->rx->route->eroute;
     if (eroute->currentSession) {
@@ -4545,7 +4554,7 @@ PUBLIC bool espIsCurrentSession(HttpStream *stream)
  */
 
 /*
-    espHtml.c -- ESP HTML controls 
+    espHtml.c -- ESP HTML controls
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
@@ -4564,12 +4573,12 @@ static cchar *map(HttpStream *stream, MprHash *options);
 
 PUBLIC void input(cchar *field, cchar *optionString)
 {
-    HttpStream    *stream;
-    MprHash     *choices, *options;
-    MprKey      *kp;
-    EdiRec      *rec;
-    cchar       *rows, *cols, *etype, *value, *checked, *style, *error, *errorMsg;
-    int         type, flags;
+    HttpStream *stream;
+    MprHash    *choices, *options;
+    MprKey     *kp;
+    EdiRec     *rec;
+    cchar      *rows, *cols, *etype, *value, *checked, *style, *error, *errorMsg;
+    int        type, flags;
 
     stream = getStream();
     rec = stream->record;
@@ -4579,7 +4588,7 @@ PUBLIC void input(cchar *field, cchar *optionString)
     options = httpGetOptions(optionString);
     style = httpGetOption(options, "class", "");
     errorMsg = rec->errors ? mprLookupKey(rec->errors, field) : 0;
-    error = errorMsg ? sfmt("<span class=\"field-error\">%s</span>", errorMsg) : ""; 
+    error = errorMsg ? sfmt("<span class=\"field-error\">%s</span>", errorMsg) : "";
 
     switch (type) {
     case EDI_TYPE_BOOL:
@@ -4588,20 +4597,20 @@ PUBLIC void input(cchar *field, cchar *optionString)
         for (kp = 0; (kp = mprGetNextKey(choices, kp)) != 0; ) {
             checked = (smatch(kp->data, value)) ? " checked" : "";
             espRender(stream, "%s <input type='radio' name='%s' value='%s'%s%s class='%s'/>\r\n",
-                stitle(kp->key), field, kp->data, checked, map(stream, options), style);
+                      stitle(kp->key), field, kp->data, checked, map(stream, options), style);
         }
         break;
-        /* Fall through */
+    /* Fall through */
     case EDI_TYPE_BINARY:
     default:
         httpError(stream, 0, "espInput: unknown field type %d", type);
-        /* Fall through */
+    /* Fall through */
     case EDI_TYPE_FLOAT:
     case EDI_TYPE_TEXT:
 
     case EDI_TYPE_INT:
     case EDI_TYPE_DATE:
-    case EDI_TYPE_STRING:        
+    case EDI_TYPE_STRING:
         if (type == EDI_TYPE_TEXT && !httpGetOption(options, "rows", 0)) {
             httpSetOption(options, "rows", "10");
         }
@@ -4617,11 +4626,11 @@ PUBLIC void input(cchar *field, cchar *optionString)
         }
         if ((rows = httpGetOption(options, "rows", 0)) != 0) {
             cols = httpGetOption(options, "cols", "60");
-            espRender(stream, "<textarea name='%s' type='%s' cols='%s' rows='%s'%s class='%s'>%s</textarea>", 
-                field, etype, cols, rows, map(stream, options), style, value);
+            espRender(stream, "<textarea name='%s' type='%s' cols='%s' rows='%s'%s class='%s'>%s</textarea>",
+                      field, etype, cols, rows, map(stream, options), style, value);
         } else {
-            espRender(stream, "<input name='%s' type='%s' value='%s'%s class='%s'/>", field, etype, value, 
-                map(stream, options), style);
+            espRender(stream, "<input name='%s' type='%s' value='%s'%s class='%s'/>", field, etype, value,
+                      map(stream, options), style);
         }
         if (error) {
             espRenderString(stream, error);
@@ -4637,19 +4646,20 @@ PUBLIC void input(cchar *field, cchar *optionString)
  */
 PUBLIC void inputSecurityToken()
 {
-    HttpStream    *stream;
+    HttpStream *stream;
 
     stream = getStream();
-    espRender(stream, "    <input name='%s' type='hidden' value='%s' />\r\n", ME_XSRF_PARAM, httpGetSecurityToken(stream, 0));
+    espRender(stream, "    <input name='%s' type='hidden' value='%s' />\r\n", ME_XSRF_PARAM,
+              httpGetSecurityToken(stream, 0));
 }
 
 
-/**************************************** Support *************************************/ 
+/**************************************** Support *************************************/
 
 static cchar *getValue(HttpStream *stream, cchar *fieldName, MprHash *options)
 {
-    EdiRec      *record;
-    cchar       *value;
+    EdiRec *record;
+    cchar  *value;
 
     record = stream->record;
     value = 0;
@@ -4671,8 +4681,8 @@ static cchar *getValue(HttpStream *stream, cchar *fieldName, MprHash *options)
  */
 static cchar *map(HttpStream *stream, MprHash *options)
 {
-    MprKey      *kp;
-    MprBuf      *buf;
+    MprKey *kp;
+    MprBuf *buf;
 
     if (options == 0 || mprGetHashLength(options) == 0) {
         return MPR->emptyString;
@@ -4732,7 +4742,8 @@ static int unloadEsp(MprModule *mp);
 
 #if !ME_STATIC
 static cchar *getCacheName(HttpRoute *route, cchar *kind, cchar *source);
-static int espLoadModule(HttpRoute *route, MprDispatcher *dispatcher, cchar *kind, cchar *source, cchar **errMsg, bool *loaded);
+static int espLoadModule(HttpRoute *route, MprDispatcher *dispatcher, cchar *kind, cchar *source, cchar **errMsg,
+                         bool *loaded);
 static cchar *getModuleName(HttpRoute *route, cchar *kind, cchar *target);
 static char *getModuleEntry(EspRoute *eroute, cchar *kind, cchar *source, cchar *cache);
 static bool layoutIsStale(EspRoute *eroute, cchar *source, cchar *module);
@@ -4744,7 +4755,7 @@ static bool layoutIsStale(EspRoute *eroute, cchar *source, cchar *module);
  */
 PUBLIC int espOpen(MprModule *module)
 {
-    HttpStage   *handler;
+    HttpStage *handler;
 
     if ((handler = httpCreateHandler("espHandler", module)) == 0) {
         return MPR_ERR_CANT_CREATE;
@@ -4789,10 +4800,10 @@ PUBLIC int espOpen(MprModule *module)
 
 static int unloadEsp(MprModule *mp)
 {
-    HttpStage   *stage;
+    HttpStage *stage;
 
     if (esp->inUse) {
-       return MPR_ERR_BUSY;
+        return MPR_ERR_BUSY;
     }
     if (mprIsStopping()) {
         return 0;
@@ -4809,13 +4820,13 @@ static int unloadEsp(MprModule *mp)
  */
 static int openEsp(HttpQueue *q)
 {
-    HttpStream  *stream;
-    HttpRx      *rx;
-    HttpRoute   *rp, *route;
-    EspRoute    *eroute;
-    EspReq      *req;
-    cchar       *cookie;
-    int         next;
+    HttpStream *stream;
+    HttpRx     *rx;
+    HttpRoute  *rp, *route;
+    EspRoute   *eroute;
+    EspReq     *req;
+    cchar      *cookie;
+    int        next;
 
     stream = q->stream;
     rx = stream->rx;
@@ -4889,8 +4900,8 @@ static void closeEsp(HttpQueue *q)
  */
 static bool espUnloadModule(cchar *module, MprTicks timeout)
 {
-    MprModule   *mp;
-    MprTicks    mark;
+    MprModule *mp;
+    MprTicks  mark;
 
     if ((mp = mprLookupModule(module)) != 0) {
         mark = mprGetTicks();
@@ -4923,7 +4934,7 @@ static bool espUnloadModule(cchar *module, MprTicks timeout)
  */
 PUBLIC void espClearFeedback(HttpStream *stream)
 {
-    EspReq      *req;
+    EspReq *req;
 
     req = stream->reqData;
     req->feedback = 0;
@@ -4932,7 +4943,7 @@ PUBLIC void espClearFeedback(HttpStream *stream)
 
 static void setupFeedback(HttpStream *stream)
 {
-    EspReq      *req;
+    EspReq *req;
 
     req = stream->reqData;
     req->lastFeedback = 0;
@@ -4952,8 +4963,8 @@ static void setupFeedback(HttpStream *stream)
 
 static void finalizeFeedback(HttpStream *stream)
 {
-    EspReq  *req;
-    MprKey  *kp, *lp;
+    EspReq *req;
+    MprKey *kp, *lp;
 
     req = stream->reqData;
     if (req->feedback) {
@@ -4969,7 +4980,7 @@ static void finalizeFeedback(HttpStream *stream)
                 /*
                     If the session does not exist, this will create one. However, must not have
                     emitted the headers, otherwise cannot inform the client of the session cookie.
-                */
+                 */
                 httpSetSessionObj(stream, ESP_FEEDBACK_VAR, req->feedback);
             }
         }
@@ -4985,9 +4996,9 @@ static void finalizeFeedback(HttpStream *stream)
  */
 static void startEsp(HttpQueue *q)
 {
-    HttpStream  *stream;
-    HttpRx      *rx;
-    EspReq      *req;
+    HttpStream *stream;
+    HttpRx     *rx;
+    EspReq     *req;
 
     stream = q->stream;
     rx = stream->rx;
@@ -5023,11 +5034,11 @@ static void startEsp(HttpQueue *q)
 static bool loadController(HttpStream *stream)
 {
 #if !ME_STATIC
-    HttpRx      *rx;
-    HttpRoute   *route;
-    EspRoute    *eroute;
-    cchar       *errMsg, *controllers, *controller;
-    bool        loaded;
+    HttpRx    *rx;
+    HttpRoute *route;
+    EspRoute  *eroute;
+    cchar     *errMsg, *controllers, *controller;
+    bool      loaded;
 
     rx = stream->rx;
     route = rx->route;
@@ -5063,8 +5074,8 @@ static bool loadController(HttpStream *stream)
 
 static bool setToken(HttpStream *stream)
 {
-    HttpRx      *rx;
-    HttpRoute   *route;
+    HttpRx    *rx;
+    HttpRoute *route;
 
     rx = stream->rx;
     route = rx->route;
@@ -5075,7 +5086,7 @@ static bool setToken(HttpStream *stream)
             if (route->json) {
                 httpLog(stream->trace, "esp.xsrf.error", "error", 0);
                 espRenderString(stream,
-                    "{\"retry\": true, \"success\": 0, \"feedback\": {\"error\": \"Security token is stale. Please retry.\"}}");
+                                "{\"retry\": true, \"success\": 0, \"feedback\": {\"error\": \"Security token is stale. Please retry.\"}}");
                 espFinalize(stream);
             } else {
                 httpError(stream, HTTP_CODE_UNAUTHORIZED, "Security token is stale. Please reload page.");
@@ -5092,11 +5103,11 @@ static bool setToken(HttpStream *stream)
  */
 static int runAction(HttpStream *stream)
 {
-    HttpRx      *rx;
-    HttpRoute   *route;
-    EspRoute    *eroute;
-    EspReq      *req;
-    EspAction   *action;
+    HttpRx    *rx;
+    HttpRoute *route;
+    EspRoute  *eroute;
+    EspReq    *req;
+    EspAction *action;
 
     rx = stream->rx;
     req = stream->reqData;
@@ -5148,11 +5159,11 @@ static int runAction(HttpStream *stream)
 static bool loadView(HttpStream *stream, cchar *target)
 {
 #if !ME_STATIC
-    HttpRx      *rx;
-    HttpRoute   *route;
-    EspRoute    *eroute;
-    bool        loaded;
-    cchar       *errMsg, *path;
+    HttpRx    *rx;
+    HttpRoute *route;
+    EspRoute  *eroute;
+    bool      loaded;
+    cchar     *errMsg, *path;
 
     rx = stream->rx;
     route = rx->route;
@@ -5203,7 +5214,7 @@ PUBLIC bool espRenderView(HttpStream *stream, cchar *target, int flags)
         httpSetContentType(stream, "text/html");
         httpSetFilename(stream, mprJoinPath(route->documents, target), 0);
         /* WARNING: may yield */
-        (viewProc)(stream);
+        (viewProc) (stream);
     }
     return 1;
 }
@@ -5214,10 +5225,10 @@ PUBLIC bool espRenderView(HttpStream *stream, cchar *target, int flags)
  */
 static cchar *checkView(HttpStream *stream, cchar *target, cchar *filename, cchar *ext)
 {
-    HttpRx          *rx;
-    HttpRoute       *route;
-    EspRoute        *eroute;
-    MprFileSystem   *fs;
+    HttpRx        *rx;
+    HttpRoute     *route;
+    EspRoute      *eroute;
+    MprFileSystem *fs;
 
     assert(target);
 
@@ -5250,30 +5261,30 @@ static cchar *checkView(HttpStream *stream, cchar *target, cchar *filename, ccha
     }
 
 #if !ME_STATIC
-{
-    MprPath info;
-    cchar   *module, *path;
+    {
+        MprPath info;
+        cchar   *module, *path;
 
-    path = mprJoinPath(route->documents, target);
+        path = mprJoinPath(route->documents, target);
 
-    if (!eroute->combine) {
+        if (!eroute->combine) {
+            /*
+                If target exists as a cached module that has not yet been loaded
+                Note: source may not be present.
+             */
+            module = getModuleName(route, "view", path);
+            if (mprGetPathInfo(module, &info) == 0 && !info.isDir) {
+                return target;
+            }
+        }
+
         /*
-            If target exists as a cached module that has not yet been loaded
-            Note: source may not be present.
+            If target exists as a view (extension appended above)
          */
-        module = getModuleName(route, "view", path);
-        if (mprGetPathInfo(module, &info) == 0 && !info.isDir) {
+        if (mprGetPathInfo(path, &info) == 0 && !info.isDir) {
             return target;
         }
     }
-
-    /*
-        If target exists as a view (extension appended above)
-     */
-    if (mprGetPathInfo(path, &info) == 0 && !info.isDir) {
-        return target;
-    }
-}
 #endif
     return 0;
 }
@@ -5289,9 +5300,9 @@ static cchar *checkView(HttpStream *stream, cchar *target, cchar *filename, ccha
  */
 PUBLIC void espRenderDocument(HttpStream *stream, cchar *target)
 {
-    HttpUri     *up;
-    MprKey      *kp;
-    cchar       *dest;
+    HttpUri *up;
+    MprKey  *kp;
+    cchar   *dest;
 
     if (!target) {
         httpError(stream, HTTP_CODE_NOT_FOUND, "Cannot find document");
@@ -5319,7 +5330,8 @@ PUBLIC void espRenderDocument(HttpStream *stream, cchar *target)
         if (!sends(stream->rx->parsedUri->path, "/")) {
             up = stream->rx->parsedUri;
             httpRedirect(stream, HTTP_CODE_MOVED_PERMANENTLY, httpFormatUri(up->scheme, up->host,
-                up->port, sjoin(up->path, "/", NULL), up->reference, up->query, 0));
+                                                                            up->port, sjoin(up->path, "/", NULL),
+                                                                            up->reference, up->query, 0));
             return;
         }
         httpLog(stream->trace, "esp.handler", "context", "msg:Render index %s", dest);
@@ -5347,7 +5359,7 @@ PUBLIC void espRenderDocument(HttpStream *stream, cchar *target)
  */
 static void pruneDatabases(Esp *esp)
 {
-    MprKey      *kp;
+    MprKey *kp;
 
     lock(esp);
     for (ITERATE_KEYS(esp->databases, kp)) {
@@ -5366,10 +5378,10 @@ static void pruneDatabases(Esp *esp)
  */
 static int cloneDatabase(HttpStream *stream)
 {
-    Esp         *esp;
-    EspRoute    *eroute;
-    EspReq      *req;
-    cchar       *id;
+    Esp      *esp;
+    EspRoute *eroute;
+    EspReq   *req;
+    cchar    *id;
 
     req = stream->reqData;
     eroute = stream->rx->route->eroute;
@@ -5404,8 +5416,8 @@ static int cloneDatabase(HttpStream *stream)
 #if !ME_STATIC
 static cchar *getCacheName(HttpRoute *route, cchar *kind, cchar *target)
 {
-    EspRoute    *eroute;
-    cchar       *appName, *canonical;
+    EspRoute *eroute;
+    cchar    *appName, *canonical;
 
     eroute = route->eroute;
 #if VXWORKS
@@ -5417,13 +5429,14 @@ static cchar *getCacheName(HttpRoute *route, cchar *kind, cchar *target)
     canonical = mprGetPortablePath(mprGetRelPath(target, route->home));
 
     appName = eroute->appName;
-    return eroute->combine ? appName : mprGetMD5WithPrefix(sfmt("%s:%s", appName, canonical), -1, sjoin(kind, "_", NULL));
+    return eroute->combine ? appName : mprGetMD5WithPrefix(sfmt("%s:%s", appName, canonical), -1,
+                                                           sjoin(kind, "_", NULL));
 }
 
 
 static char *getModuleEntry(EspRoute *eroute, cchar *kind, cchar *source, cchar *cache)
 {
-    char    *cp, *entry;
+    char *cp, *entry;
 
     if (smatch(kind, "view")) {
         entry = sfmt("esp_%s", cache);
@@ -5443,7 +5456,7 @@ static char *getModuleEntry(EspRoute *eroute, cchar *kind, cchar *source, cchar 
         }
     }
     for (cp = entry; *cp; cp++) {
-        if (!isalnum((uchar) *cp) && *cp != '_') {
+        if (!isalnum((uchar) * cp) && *cp != '_') {
             *cp = '_';
         }
     }
@@ -5453,7 +5466,7 @@ static char *getModuleEntry(EspRoute *eroute, cchar *kind, cchar *source, cchar 
 
 static cchar *getModuleName(HttpRoute *route, cchar *kind, cchar *target)
 {
-    cchar   *cacheDir, *cache;
+    cchar *cacheDir, *cache;
 
     cache = getCacheName(route, "view", target);
     if ((cacheDir = httpGetDir(route, "CACHE")) == 0) {
@@ -5468,12 +5481,13 @@ static cchar *getModuleName(HttpRoute *route, cchar *kind, cchar *target)
     Load an ESP module. WARNING: this routine may yield. Take precautions to preserve the source argument so callers
     dont have to.
  */
-static int espLoadModule(HttpRoute *route, MprDispatcher *dispatcher, cchar *kind, cchar *source, cchar **errMsg, bool *loaded)
+static int espLoadModule(HttpRoute *route, MprDispatcher *dispatcher, cchar *kind, cchar *source, cchar **errMsg,
+                         bool *loaded)
 {
-    EspRoute    *eroute;
-    MprModule   *mp;
-    cchar       *cacheDir, *cache, *entry, *module;
-    int         isView, recompile;
+    EspRoute  *eroute;
+    MprModule *mp;
+    cchar     *cacheDir, *cache, *entry, *module;
+    int       isView, recompile;
 
     eroute = route->eroute;
     *errMsg = "";
@@ -5497,7 +5511,8 @@ static int espLoadModule(HttpRoute *route, MprDispatcher *dispatcher, cchar *kin
             if (recompile || (isView && layoutIsStale(eroute, source, module))) {
                 if (recompile) {
                     /*
-                        WARNING: espCompile may yield. espCompile will retain the arguments (source, module, cache) for us.
+                        WARNING: espCompile may yield. espCompile will retain the arguments (source, module, cache) for
+                           us.
                      */
                     if (!espCompile(route, dispatcher, source, module, cache, isView, (char**) errMsg)) {
                         unlock(esp);
@@ -5541,9 +5556,9 @@ static int espLoadModule(HttpRoute *route, MprDispatcher *dispatcher, cchar *kin
  */
 PUBLIC bool espModuleIsStale(HttpRoute *route, cchar *source, cchar *module, int *recompile)
 {
-    EspRoute    *eroute;
-    MprModule   *mp;
-    MprPath     sinfo, minfo;
+    EspRoute  *eroute;
+    MprModule *mp;
+    MprPath   sinfo, minfo;
 
     *recompile = 0;
     eroute = route->eroute;
@@ -5553,7 +5568,7 @@ PUBLIC bool espModuleIsStale(HttpRoute *route, cchar *source, cchar *module, int
         if ((mp = mprLookupModule(source)) != 0) {
             if (!espUnloadModule(source, ME_ESP_RELOAD_TIMEOUT)) {
                 mprLog("error esp", 0, "Cannot unload module %s. Streams still open. Continue using old version.",
-                    source);
+                       source);
                 return 0;
             }
         }
@@ -5569,7 +5584,7 @@ PUBLIC bool espModuleIsStale(HttpRoute *route, cchar *source, cchar *module, int
             if ((mp = mprLookupModule(source)) != 0) {
                 if (!espUnloadModule(source, ME_ESP_RELOAD_TIMEOUT)) {
                     mprLog("warn esp", 4, "Cannot unload module %s. Streams still open. Continue using old version.",
-                        source);
+                           source);
                     return 0;
                 }
             }
@@ -5583,7 +5598,7 @@ PUBLIC bool espModuleIsStale(HttpRoute *route, cchar *source, cchar *module, int
             /* Module file has been updated */
             if (!espUnloadModule(source, ME_ESP_RELOAD_TIMEOUT)) {
                 mprLog("warn esp", 4, "Cannot unload module %s. Streams still open. Continue using old version.",
-                    source);
+                       source);
                 return 0;
             }
             mprLog("info esp", 4, "Module %s has been externally updated, reloading ...", module);
@@ -5600,11 +5615,11 @@ PUBLIC bool espModuleIsStale(HttpRoute *route, cchar *source, cchar *module, int
  */
 static bool layoutIsStale(EspRoute *eroute, cchar *source, cchar *module)
 {
-    char    *data, *lpath, *quote;
-    cchar   *layout, *layoutsDir;
-    ssize   len;
-    bool    stale;
-    int     recompile;
+    char  *data, *lpath, *quote;
+    cchar *layout, *layoutsDir;
+    ssize len;
+    bool  stale;
+    int   recompile;
 
     stale = 0;
     layoutsDir = httpGetDir(eroute->route, "LAYOUTS");
@@ -5665,7 +5680,7 @@ PUBLIC void espManageEspRoute(EspRoute *eroute, int flags)
 
 PUBLIC EspRoute *espCreateRoute(HttpRoute *route)
 {
-    EspRoute    *eroute;
+    EspRoute *eroute;
 
     if ((eroute = mprAllocObj(EspRoute, espManageEspRoute)) == 0) {
         return 0;
@@ -5689,7 +5704,7 @@ PUBLIC EspRoute *espCreateRoute(HttpRoute *route)
 
 static EspRoute *cloneEspRoute(HttpRoute *route, EspRoute *parent)
 {
-    EspRoute      *eroute;
+    EspRoute *eroute;
 
     assert(parent);
     assert(route);
@@ -5732,7 +5747,7 @@ static EspRoute *cloneEspRoute(HttpRoute *route, EspRoute *parent)
  */
 PUBLIC EspRoute *espRoute(HttpRoute *route, bool create)
 {
-    HttpRoute   *rp;
+    HttpRoute *rp;
 
     if (route->eroute && (!route->parent || route->parent->eroute != route->eroute)) {
         return route->eroute;
@@ -5800,11 +5815,11 @@ static void manageEsp(Esp *esp, int flags)
  */
 PUBLIC int espLoadConfig(HttpRoute *route)
 {
-    EspRoute    *eroute;
-    HttpRoute   *rp;
-    cchar       *cookie, *home, *name, *package;
-    int         next;
-    bool        modified;
+    EspRoute  *eroute;
+    HttpRoute *rp;
+    cchar     *cookie, *home, *name, *package;
+    int       next;
+    bool      modified;
 
     eroute = route->eroute;
     if (!eroute) {
@@ -5860,12 +5875,12 @@ PUBLIC int espLoadConfig(HttpRoute *route)
 static bool preload(HttpRoute *route)
 {
 #if !ME_STATIC
-    EspRoute    *eroute;
-    MprJson     *preload, *item, *sources, *si;
-    MprList     *files;
-    cchar       *errMsg, *source;
-    char        *kind;
-    int         i, index, next;
+    EspRoute *eroute;
+    MprJson  *preload, *item, *sources, *si;
+    MprList  *files;
+    cchar    *errMsg, *source;
+    char     *kind;
+    int      i, index, next;
 
     eroute = route->eroute;
     if (eroute->app && !(route->flags & HTTP_ROUTE_NO_LISTEN)) {
@@ -5924,8 +5939,10 @@ static bool preload(HttpRoute *route)
                 }
             }
         }
-        mprLog("esp info", 6, "Loaded ESP application \"%s\", profile \"%s\" with options: combine %d, compile %d, compile mode %d, update %d",
-            eroute->appName, route->mode ? route->mode : "unset", eroute->combine, eroute->compile, eroute->compileMode, eroute->update);
+        mprLog("esp info", 6,
+               "Loaded ESP application \"%s\", profile \"%s\" with options: combine %d, compile %d, compile mode %d, update %d",
+               eroute->appName, route->mode ? route->mode : "unset", eroute->combine, eroute->compile, eroute->compileMode,
+               eroute->update);
     }
 #endif
     return 1;
@@ -5939,9 +5956,9 @@ static bool preload(HttpRoute *route)
  */
 PUBLIC int espInit(HttpRoute *route, cchar *prefix, cchar *path)
 {
-    EspRoute    *eroute;
-    cchar       *hostname;
-    bool        yielding;
+    EspRoute *eroute;
+    cchar    *hostname;
+    bool     yielding;
 
     if (!route) {
         return MPR_ERR_BAD_ARGS;
@@ -6007,9 +6024,9 @@ PUBLIC int espInit(HttpRoute *route, cchar *prefix, cchar *path)
 
 PUBLIC int espOpenDatabase(HttpRoute *route, cchar *spec)
 {
-    EspRoute    *eroute;
-    char        *provider, *path, *dir;
-    int         flags;
+    EspRoute *eroute;
+    char     *provider, *path, *dir;
+    int      flags;
 
     eroute = route->eroute;
     if (eroute->edi) {
@@ -6045,7 +6062,7 @@ PUBLIC int espOpenDatabase(HttpRoute *route, cchar *spec)
 
 PUBLIC void espCloseDatabase(HttpRoute *route)
 {
-    EspRoute    *eroute;
+    EspRoute *eroute;
 
     eroute = route->eroute;
     if (eroute->edi) {
@@ -6077,7 +6094,7 @@ static void setDir(HttpRoute *route, cchar *key, cchar *value, bool force)
 
 PUBLIC void espSetDefaultDirs(HttpRoute *route, bool force)
 {
-    cchar   *controllers, *documents, *path, *migrations;
+    cchar *controllers, *documents, *path, *migrations;
 
     documents = mprJoinPath(route->home, "dist");
     /*
@@ -6154,20 +6171,20 @@ PUBLIC void espSetDefaultDirs(HttpRoute *route, bool force)
  */
 PUBLIC int espStaticInitialize(EspModuleEntry entry, cchar *appName, cchar *routeName)
 {
-    HttpRoute   *route;
+    HttpRoute *route;
 
     if ((route = httpLookupRoute(NULL, routeName)) == 0) {
         mprLog("error esp", 0, "Cannot find route %s", routeName);
         return MPR_ERR_CANT_ACCESS;
     }
-    return (entry)(route, NULL);
+    return (entry) (route, NULL);
 }
 
 
 PUBLIC int espBindProc(HttpRoute *parent, cchar *pattern, void *proc)
 {
-    HttpRoute   *route;
-    EspRoute    *eroute;
+    HttpRoute *route;
+    EspRoute  *eroute;
 
     if ((route = httpDefineRoute(parent, "ALL", pattern, "$&", "unused")) == 0) {
         return MPR_ERR_CANT_CREATE;
@@ -6182,8 +6199,8 @@ PUBLIC int espBindProc(HttpRoute *parent, cchar *pattern, void *proc)
 
 static void ifConfigModified(HttpRoute *route, cchar *path, bool *modified)
 {
-    EspRoute    *eroute;
-    MprPath     info;
+    EspRoute *eroute;
+    MprPath  info;
 
     if (path) {
         eroute = route->eroute;
@@ -6216,42 +6233,42 @@ static void ifConfigModified(HttpRoute *route, cchar *path, bool *modified)
 /*
       ESP lexical analyser tokens
  */
-#define ESP_TOK_ERR            -1            /* Any input error */
-#define ESP_TOK_EOF             0            /* End of file */
-#define ESP_TOK_CODE            1            /* <% text %> */
-#define ESP_TOK_EXPR            2            /* <%= expression %> */
-#define ESP_TOK_CONTROL         3            /* <%^ control */
-#define ESP_TOK_PARAM           4            /* %$param */
-#define ESP_TOK_FIELD           5            /* %#field */
-#define ESP_TOK_VAR             6            /* %!var */
-#define ESP_TOK_HOME            7            /* %~ Home URL */
-#define ESP_TOK_LITERAL         8            /* literal HTML */
+#define ESP_TOK_ERR     -1                   /* Any input error */
+#define ESP_TOK_EOF     0                    /* End of file */
+#define ESP_TOK_CODE    1                    /* <% text %> */
+#define ESP_TOK_EXPR    2                    /* <%= expression %> */
+#define ESP_TOK_CONTROL 3                    /* <%^ control */
+#define ESP_TOK_PARAM   4                    /* %$param */
+#define ESP_TOK_FIELD   5                    /* %#field */
+#define ESP_TOK_VAR     6                    /* %!var */
+#define ESP_TOK_HOME    7                    /* %~ Home URL */
+#define ESP_TOK_LITERAL 8                    /* literal HTML */
 #if DEPRECATED || 1
-#define ESP_TOK_SERVER          9            /* %| Server URL  */
+#define ESP_TOK_SERVER  9                    /* %| Server URL  */
 #endif
 
 /*
     ESP page parser structure
  */
 typedef struct EspParse {
-    int     lineNumber;                     /**< Line number for error reporting */
-    char    *data;                          /**< Input data to parse */
-    char    *next;                          /**< Next character in input */
-    cchar   *path;                          /**< Filename being parsed */
-    MprBuf  *token;                         /**< Input token */
+    int lineNumber;                         /**< Line number for error reporting */
+    char *data;                             /**< Input data to parse */
+    char *next;                             /**< Next character in input */
+    cchar *path;                            /**< Filename being parsed */
+    MprBuf *token;                          /**< Input token */
 } EspParse;
 
 
 typedef struct CompileContext {
-    cchar   *csource;
-    cchar   *source;
-    cchar   *module;
-    cchar   *cache;
+    cchar *csource;
+    cchar *source;
+    cchar *module;
+    cchar *cache;
 } CompileContext;
 
 /************************************ Forwards ********************************/
 
-static CompileContext* allocContext(cchar *source, cchar *csource, cchar *module, cchar *cache);
+static CompileContext * allocContext(cchar *source, cchar *csource, cchar *module, cchar *cache);
 static int getEspToken(EspParse *parse);
 static cchar *getDebug(EspRoute *eroute);
 static cchar *getEnvString(HttpRoute *route, cchar *key, cchar *defaultValue);
@@ -6297,11 +6314,11 @@ static cchar *getWinVer(HttpRoute *route);
  */
 PUBLIC char *espExpandCommand(HttpRoute *route, cchar *command, cchar *source, cchar *module)
 {
-    MprBuf      *buf;
-    Http        *http;
-    EspRoute    *eroute;
-    cchar       *cp, *outputModule, *os, *arch, *profile, *srcDir;
-    char        *tmp;
+    MprBuf   *buf;
+    Http     *http;
+    EspRoute *eroute;
+    cchar    *cp, *outputModule, *os, *arch, *profile, *srcDir;
+    char     *tmp;
 
     if (command == 0) {
         return 0;
@@ -6390,11 +6407,11 @@ PUBLIC char *espExpandCommand(HttpRoute *route, cchar *command, cchar *source, c
             } else if (matchToken(&cp, "${VXCPU}")) {
                 mprPutStringToBuf(buf, getVxCPU(arch));
 
-            /*
-                These vars can be also be configured from environment variables.
-                NOTE: the default esp.conf includes "esp->vxworks.conf" which has EspEnv definitions for the
-                configured VxWorks toolchain.
-             */
+                /*
+                    These vars can be also be configured from environment variables.
+                    NOTE: the default esp.conf includes "esp->vxworks.conf" which has EspEnv definitions for the
+                    configured VxWorks toolchain.
+                 */
             } else if (matchToken(&cp, "${AR}")) {
                 mprPutStringToBuf(buf, getEnvString(route, "AR", getArPath(os, arch)));
 
@@ -6447,14 +6464,14 @@ PUBLIC char *espExpandCommand(HttpRoute *route, cchar *command, cchar *source, c
 
 
 static int runCommand(HttpRoute *route, MprDispatcher *dispatcher, cchar *command, cchar *csource, cchar *module,
-    char **errMsg)
+                      char **errMsg)
 {
-    MprCmd      *cmd;
-    MprKey      *var;
-    MprList     *elist;
-    EspRoute    *eroute;
-    cchar       **env, *commandLine;
-    char        *err, *out;
+    MprCmd   *cmd;
+    MprKey   *var;
+    MprList  *elist;
+    EspRoute *eroute;
+    cchar    **env, *commandLine;
+    char     *err, *out;
 
     *errMsg = 0;
     eroute = route->eroute;
@@ -6501,8 +6518,8 @@ static int runCommand(HttpRoute *route, MprDispatcher *dispatcher, cchar *comman
 
 PUBLIC int espLoadCompilerRules(HttpRoute *route)
 {
-    EspRoute    *eroute;
-    cchar       *compile, *rules;
+    EspRoute *eroute;
+    cchar    *compile, *rules;
 
     eroute = route->eroute;
     if (eroute->compileCmd) {
@@ -6530,14 +6547,14 @@ PUBLIC int espLoadCompilerRules(HttpRoute *route)
     WARNING: this routine yields and runs GC. All parameters must be retained by the caller.
  */
 PUBLIC bool espCompile(HttpRoute *route, MprDispatcher *dispatcher, cchar *source, cchar *module, cchar *cacheName,
-    int isView, char **errMsg)
+                       int isView, char **errMsg)
 {
-    MprFile         *fp;
-    EspRoute        *eroute;
-    CompileContext  *context;
-    cchar           *csource, *layoutsDir;
-    char            *layout, *script, *page, *err;
-    ssize           len;
+    MprFile        *fp;
+    EspRoute       *eroute;
+    CompileContext *context;
+    cchar          *csource, *layoutsDir;
+    char           *layout, *script, *page, *err;
+    ssize          len;
 
     eroute = route->eroute;
     assert(eroute->compile);
@@ -6583,7 +6600,7 @@ PUBLIC bool espCompile(HttpRoute *route, MprDispatcher *dispatcher, cchar *sourc
         /*
             Force a clean windows compile by removing the obj, pdb and ilk files
          */
-        cchar   *path;
+        cchar *path;
         path = mprReplacePathExt(module, "obj");
         if (mprPathExists(path, F_OK)) {
             mprDeletePath(path);
@@ -6647,10 +6664,10 @@ PUBLIC bool espCompile(HttpRoute *route, MprDispatcher *dispatcher, cchar *sourc
 
 static char *fixMultiStrings(cchar *str)
 {
-    cchar   *cp;
-    char    *buf, *bp;
-    ssize   len;
-    int     count, quoted;
+    cchar *cp;
+    char  *buf, *bp;
+    ssize len;
+    int   count, quoted;
 
     for (count = 0, cp = str; *cp; cp++) {
         if (*cp == '\n' || *cp == '"') {
@@ -6672,7 +6689,7 @@ static char *fixMultiStrings(cchar *str)
             } else if (*cp == '"') {
                 *bp++ = '\\';
             } else if (*cp == '\\' && cp[1] != '\\') {
-                /* Ignore */ ;
+                /* Ignore */;
             }
             *bp++ = *cp;
         } else {
@@ -6686,10 +6703,10 @@ static char *fixMultiStrings(cchar *str)
 
 static char *joinLine(cchar *str, ssize *lenp)
 {
-    cchar   *cp;
-    char    *buf, *bp;
-    ssize   len;
-    int     count, bquote;
+    cchar *cp;
+    char  *buf, *bp;
+    ssize len;
+    int   count, bquote;
 
     for (count = 0, cp = str; *cp; cp++) {
         if (*cp == '\n' || *cp == '\r') {
@@ -6754,16 +6771,16 @@ static char *joinLine(cchar *str, ssize *lenp)
 
 //  DEPRECATED layout
 PUBLIC char *espBuildScript(HttpRoute *route, cchar *page, cchar *path, cchar *cacheName, cchar *layout,
-        EspState *state, char **err)
+                            EspState *state, char **err)
 {
-    EspState    top;
-    EspParse    parse;
-    MprBuf      *body;
-    cchar       *layoutsDir;
-    char        *control, *incText, *where, *layoutCode, *bodyCode;
-    char        *rest, *include, *line, *fmt, *layoutPage, *incCode, *token;
-    ssize       len;
-    int         tid;
+    EspState top;
+    EspParse parse;
+    MprBuf   *body;
+    cchar    *layoutsDir;
+    char     *control, *incText, *where, *layoutCode, *bodyCode;
+    char     *rest, *include, *line, *fmt, *layoutPage, *incCode, *token;
+    ssize    len;
+    int      tid;
 
     assert(page);
 
@@ -6795,7 +6812,7 @@ PUBLIC char *espBuildScript(HttpRoute *route, cchar *page, cchar *path, cchar *c
         case ESP_TOK_CODE:
 #if DEPRECATED || 1
             if (*token == '^') {
-                for (token++; *token && isspace((uchar) *token); token++) ;
+                for (token++; *token && isspace((uchar) * token); token++);
                 where = ssplit(token, " \t\r\n", &rest);
                 if (*rest) {
                     if (smatch(where, "global")) {
@@ -6924,7 +6941,8 @@ PUBLIC char *espBuildScript(HttpRoute *route, cchar *page, cchar *path, cchar *c
         case ESP_TOK_SERVER:
             /* @| Server URL */
             mprLog("esp warn", 0, "Using deprecated \"|\" server URL directive in esp page: %s", path);
-            mprPutToBuf(body, "  espRenderString(stream, sjoin(stream->rx->route->prefix ? stream->rx->route->prefix : \"\", stream->rx->route->serverPrefix, NULL));");
+            mprPutToBuf(body,
+                        "  espRenderString(stream, sjoin(stream->rx->route->prefix ? stream->rx->route->prefix : \"\", stream->rx->route->serverPrefix, NULL));");
             break;
 #endif
 
@@ -6971,19 +6989,19 @@ PUBLIC char *espBuildScript(HttpRoute *route, cchar *page, cchar *path, cchar *c
         mprAddNullToBuf(state->global);
         mprAddNullToBuf(state->start);
         mprAddNullToBuf(state->end);
-        bodyCode = sfmt(\
-            "/*\n   Generated from %s\n */\n"\
-            "#include \"esp.h\"\n"\
-            "%s\n"\
-            "static void %s(HttpStream *stream) {\n"\
-            "%s%s%s"\
-            "}\n\n"\
-            "%s int esp_%s(HttpRoute *route) {\n"\
-            "   espDefineView(route, \"%s\", %s);\n"\
-            "   return 0;\n"\
+        bodyCode = sfmt( \
+            "/*\n   Generated from %s\n */\n" \
+            "#include \"esp.h\"\n" \
+            "%s\n" \
+            "static void %s(HttpStream *stream) {\n" \
+            "%s%s%s" \
+            "}\n\n" \
+            "%s int esp_%s(HttpRoute *route) {\n" \
+            "   espDefineView(route, \"%s\", %s);\n" \
+            "   return 0;\n" \
             "}\n",
             mprGetRelPath(path, route->home), mprGetBufStart(state->global), cacheName,
-                mprGetBufStart(state->start), bodyCode, mprGetBufStart(state->end),
+            mprGetBufStart(state->start), bodyCode, mprGetBufStart(state->end),
             ESP_EXPORT_STRING, cacheName, mprGetPortablePath(mprGetRelPath(path, route->documents)), cacheName);
         mprDebug("esp", 5, "Create ESP script: \n%s\n", bodyCode);
     }
@@ -7003,7 +7021,7 @@ static bool addChar(EspParse *parse, int c)
 
 static char *eatSpace(EspParse *parse, char *next)
 {
-    for (; *next && isspace((uchar) *next); next++) {
+    for (; *next && isspace((uchar) * next); next++) {
         if (*next == '\n') {
             parse->lineNumber++;
         }
@@ -7014,7 +7032,7 @@ static char *eatSpace(EspParse *parse, char *next)
 
 static char *eatNewLine(EspParse *parse, char *next)
 {
-    for (; *next && isspace((uchar) *next); next++) {
+    for (; *next && isspace((uchar) * next); next++) {
         if (*next == '\n') {
             parse->lineNumber++;
             next++;
@@ -7031,8 +7049,8 @@ static char *eatNewLine(EspParse *parse, char *next)
  */
 static int getEspToken(EspParse *parse)
 {
-    char    *start, *end, *next;
-    int     tid, done, c, t;
+    char *start, *end, *next;
+    int  tid, done, c, t;
 
     start = next = parse->next;
     end = &start[slen(start)];
@@ -7055,25 +7073,27 @@ static int getEspToken(EspParse *parse)
                          */
                         tid = ESP_TOK_EXPR;
                         next = eatSpace(parse, ++next);
-                        while (next < end && !(*next == '%' && next[1] == '>' && (next[-1] != '\\' && next[-1] != '%'))) {
+                        while (next < end &&
+                               !(*next == '%' && next[1] == '>' && (next[-1] != '\\' && next[-1] != '%'))) {
                             if (*next == '\n') parse->lineNumber++;
                             if (!addChar(parse, *next++)) {
                                 return ESP_TOK_ERR;
                             }
                         }
 
-                    //  DEPRECATED '@'
+                        //  DEPRECATED '@'
                     } else if (*next == '@' || *next == '^') {
                         /*
                             <%^ control
                          */
                         if (*next == '@') {
                             mprLog("esp warn", 0, "Using deprecated \"%%%c\" control directive in esp page: %s",
-                                *next, parse->path);
+                                   *next, parse->path);
                         }
                         tid = ESP_TOK_CONTROL;
                         next = eatSpace(parse, ++next);
-                        while (next < end && !(*next == '%' && next[1] == '>' && (next[-1] != '\\' && next[-1] != '%'))) {
+                        while (next < end &&
+                               !(*next == '%' && next[1] == '>' && (next[-1] != '\\' && next[-1] != '%'))) {
                             if (*next == '\n') parse->lineNumber++;
                             if (!addChar(parse, *next++)) {
                                 return ESP_TOK_ERR;
@@ -7082,7 +7102,8 @@ static int getEspToken(EspParse *parse)
 
                     } else {
                         tid = ESP_TOK_CODE;
-                        while (next < end && !(*next == '%' && next[1] == '>' && (next[-1] != '\\' && next[-1] != '%'))) {
+                        while (next < end &&
+                               !(*next == '%' && next[1] == '>' && (next[-1] != '\\' && next[-1] != '%'))) {
                             if (*next == '\n') parse->lineNumber++;
                             if (!addChar(parse, *next++)) {
                                 return ESP_TOK_ERR;
@@ -7141,14 +7162,14 @@ static int getEspToken(EspParse *parse)
                     done++;
 #endif
 
-                //  DEPRECATED '@'
+                    //  DEPRECATED '@'
                 } else if (t == '!' || t == '@' || t == '#' || t == '$') {
                     next += 2;
                     if (mprGetBufLength(parse->token) > 0) {
                         next -= 3;
                     } else {
                         if (t == '!') {
-                           tid = ESP_TOK_VAR;
+                            tid = ESP_TOK_VAR;
 #if DEPRECATED || 1
                         } else if (t == '@') {
                             tid = ESP_TOK_PARAM;
@@ -7159,7 +7180,7 @@ static int getEspToken(EspParse *parse)
                             tid = ESP_TOK_PARAM;
                         }
                         next = eatSpace(parse, next);
-                        while (isalnum((uchar) *next) || *next == '_') {
+                        while (isalnum((uchar) * next) || *next == '_') {
                             if (*next == '\n') parse->lineNumber++;
                             if (!addChar(parse, *next++)) {
                                 return ESP_TOK_ERR;
@@ -7179,7 +7200,7 @@ static int getEspToken(EspParse *parse)
 
         case '\n':
             parse->lineNumber++;
-            /* Fall through */
+        /* Fall through */
 
         case '\r':
         default:
@@ -7204,8 +7225,8 @@ static int getEspToken(EspParse *parse)
 
 static cchar *getEnvString(HttpRoute *route, cchar *key, cchar *defaultValue)
 {
-    EspRoute    *eroute;
-    cchar       *value;
+    EspRoute *eroute;
+    cchar    *value;
 
     eroute = route->eroute;
     if (route->config) {
@@ -7274,7 +7295,7 @@ static cchar *getArExt(cchar *os)
 
 static cchar *getCompilerName(cchar *os, cchar *arch)
 {
-    cchar       *name;
+    cchar *name;
 
     name = "gcc";
     if (smatch(os, "vxworks")) {
@@ -7302,7 +7323,7 @@ static cchar *getCompilerName(cchar *os, cchar *arch)
 
 static cchar *getVxCPU(cchar *arch)
 {
-    char   *cpu, *family;
+    char *cpu, *family;
 
     family = ssplit(sclone(arch), ":", &cpu);
     if (*cpu == '\0') {
@@ -7328,10 +7349,10 @@ static cchar *getVxCPU(cchar *arch)
 
 static cchar *getDebug(EspRoute *eroute)
 {
-    Http        *http;
-    Esp         *esp;
-    cchar       *switches;
-    int         symbols;
+    Http  *http;
+    Esp   *esp;
+    cchar *switches;
+    int   symbols;
 
     http = MPR->httpService;
     esp = MPR->espService;
@@ -7346,7 +7367,7 @@ static cchar *getDebug(EspRoute *eroute)
         symbols = 0;
     } else {
         symbols = sends(http->platform, "-debug") || sends(http->platform, "-xcode") ||
-            sends(http->platform, "-mine") || sends(http->platform, "-vsdebug");
+                  sends(http->platform, "-mine") || sends(http->platform, "-vsdebug");
     }
     if (scontains(http->platform, "windows-")) {
         switches = (symbols) ? "-Zi -Od" : "-Os";
@@ -7359,7 +7380,7 @@ static cchar *getDebug(EspRoute *eroute)
 
 static cchar *getLibs(cchar *os)
 {
-    cchar       *libs;
+    cchar *libs;
 
     if (smatch(os, "windows")) {
         libs = "\"${LIBPATH}\\libesp${SHLIB}\" \"${LIBPATH}\\libhttp.lib\" \"${LIBPATH}\\libmpr.lib\"";
@@ -7381,7 +7402,7 @@ static cchar *getLibs(cchar *os)
 
 static bool matchToken(cchar **str, cchar *token)
 {
-    ssize   len;
+    ssize len;
 
     len = slen(token);
     if (sncmp(*str, token, len) == 0) {
@@ -7480,8 +7501,8 @@ static cchar *getWinSDK(HttpRoute *route)
 
 static cchar *getWinVer(HttpRoute *route)
 {
-    MprList     *versions;
-    cchar       *winver, *winsdk;
+    MprList *versions;
+    cchar   *winver, *winsdk;
 
     winsdk = getWinSDK(route);
     versions = mprGlobPathFiles(mprJoinPath(winsdk, "Lib"), "*", MPR_PATH_RELATIVE);
@@ -7500,7 +7521,7 @@ static cchar *getArPath(cchar *os, cchar *arch)
     /*
         Get the real system architecture (32 or 64 bit)
      */
-    Http *http = MPR->httpService;
+    Http  *http = MPR->httpService;
     cchar *path = espGetVisualStudio();
     if (getenv("VSINSTALLDIR")) {
         path = sclone("lib.exe");
@@ -7528,7 +7549,7 @@ static cchar *getCompilerPath(cchar *os, cchar *arch)
     /*
         Get the real system architecture (32 or 64 bit)
      */
-    Http *http = MPR->httpService;
+    Http  *http = MPR->httpService;
     cchar *path = espGetVisualStudio();
     if (getenv("VSINSTALLDIR")) {
         path = sclone("cl.exe");
@@ -7550,7 +7571,7 @@ static cchar *getCompilerPath(cchar *os, cchar *arch)
 }
 
 
-static CompileContext* allocContext(cchar *source, cchar *csource, cchar *module, cchar *cache)
+static CompileContext * allocContext(cchar *source, cchar *csource, cchar *module, cchar *cache)
 {
     CompileContext *context;
 
@@ -7602,25 +7623,25 @@ static void manageContext(CompileContext *context, int flags)
 #if ME_COM_MDB
 /************************************* Local **********************************/
 
-#define MDB_LOAD_BEGIN   1      /* Initial state */
-#define MDB_LOAD_TABLE   2      /* Parsing a table */
-#define MDB_LOAD_HINTS   3      /* Parsing hints */
-#define MDB_LOAD_SCHEMA  4      /* Parsing schema */
-#define MDB_LOAD_COL     5      /* Parsing column schema */
-#define MDB_LOAD_DATA    6      /* Parsing data */
-#define MDB_LOAD_FIELD   7      /* Parsing fields */
+#define MDB_LOAD_BEGIN  1       /* Initial state */
+#define MDB_LOAD_TABLE  2       /* Parsing a table */
+#define MDB_LOAD_HINTS  3       /* Parsing hints */
+#define MDB_LOAD_SCHEMA 4       /* Parsing schema */
+#define MDB_LOAD_COL    5       /* Parsing column schema */
+#define MDB_LOAD_DATA   6       /* Parsing data */
+#define MDB_LOAD_FIELD  7       /* Parsing fields */
 
 /*
     Operations for mdbFindGrid
  */
-#define OP_ERR      -1          /* Illegal operation */
-#define OP_EQ       0           /* "==" Equal operation */
-#define OP_NEQ      0x2         /* "!=" Not equal operation */
-#define OP_LT       0x4         /* "<" Less than operation */
-#define OP_GT       0x8         /* ">" Greater than operation */
-#define OP_LTE      0x10        /* ">=" Less than or equal operation */
-#define OP_GTE      0x20        /* "<=" Greater than or equal operation */
-#define OP_IN       0x40        /* Contains */
+#define OP_ERR          -1      /* Illegal operation */
+#define OP_EQ           0       /* "==" Equal operation */
+#define OP_NEQ          0x2     /* "!=" Not equal operation */
+#define OP_LT           0x4     /* "<" Less than operation */
+#define OP_GT           0x8     /* ">" Greater than operation */
+#define OP_LTE          0x10    /* ">=" Less than or equal operation */
+#define OP_GTE          0x20    /* "<=" Greater than or equal operation */
+#define OP_IN           0x40    /* Contains */
 
 /************************************ Forwards ********************************/
 
@@ -7689,7 +7710,7 @@ PUBLIC void mdbInit(void)
 
 static Mdb *mdbAlloc(cchar *path, int flags)
 {
-    Mdb      *mdb;
+    Mdb *mdb;
 
     if ((mdb = mprAllocObj(Mdb, manageMdb)) == 0) {
         return 0;
@@ -7722,7 +7743,7 @@ static void manageMdb(Mdb *mdb, int flags)
 
 static void mdbClose(Edi *edi)
 {
-    Mdb     *mdb;
+    Mdb *mdb;
 
     mdb = (Mdb*) edi;
     if (mdb->tables) {
@@ -7737,12 +7758,12 @@ static void mdbClose(Edi *edi)
  */
 static EdiRec *mdbCreateRec(Edi *edi, cchar *tableName)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    MdbCol      *col;
-    EdiRec      *rec;
-    EdiField    *fp;
-    int         f, nfields;
+    Mdb      *mdb;
+    MdbTable *table;
+    MdbCol   *col;
+    EdiRec   *rec;
+    EdiField *fp;
+    int      f, nfields;
 
     mdb = (Mdb*) edi;
     if ((table = lookupTable(mdb, tableName)) == 0) {
@@ -7778,7 +7799,7 @@ static int mdbDelete(cchar *path)
 
 static Edi *mdbOpen(cchar *source, int flags)
 {
-    Mdb     *mdb;
+    Mdb *mdb;
 
     if (flags & EDI_LITERAL) {
         flags |= EDI_NO_SAVE;
@@ -7809,9 +7830,9 @@ static Edi *mdbOpen(cchar *source, int flags)
 
 static int mdbAddColumn(Edi *edi, cchar *tableName, cchar *columnName, int type, int flags)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    MdbCol      *col;
+    Mdb      *mdb;
+    MdbTable *table;
+    MdbCol   *col;
 
     assert(edi);
     assert(tableName && *tableName);
@@ -7854,9 +7875,9 @@ static int mdbAddColumn(Edi *edi, cchar *tableName, cchar *columnName, int type,
  */
 static int mdbAddIndex(Edi *edi, cchar *tableName, cchar *columnName, cchar *indexName)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    MdbCol      *col;
+    Mdb      *mdb;
+    MdbTable *table;
+    MdbCol   *col;
 
     assert(edi);
     assert(tableName && *tableName);
@@ -7886,8 +7907,8 @@ static int mdbAddIndex(Edi *edi, cchar *tableName, cchar *columnName, cchar *ind
 
 static int mdbAddTable(Edi *edi, cchar *tableName)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
+    Mdb      *mdb;
+    MdbTable *table;
 
     assert(edi);
     assert(tableName && *tableName);
@@ -7923,9 +7944,9 @@ static int mdbAddTable(Edi *edi, cchar *tableName)
 
 static int mdbChangeColumn(Edi *edi, cchar *tableName, cchar *columnName, int type, int flags)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    MdbCol      *col;
+    Mdb      *mdb;
+    MdbTable *table;
+    MdbCol   *col;
 
     assert(edi);
     assert(tableName && *tableName);
@@ -7955,11 +7976,11 @@ static int mdbChangeColumn(Edi *edi, cchar *tableName, cchar *columnName, int ty
  */
 static MprList *mdbGetColumns(Edi *edi, cchar *tableName)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    MdbSchema   *schema;
-    MprList     *list;
-    int         i;
+    Mdb       *mdb;
+    MdbTable  *table;
+    MdbSchema *schema;
+    MprList   *list;
+    int       i;
 
     assert(edi);
     assert(tableName && *tableName);
@@ -7987,7 +8008,7 @@ static MprList *mdbGetColumns(Edi *edi, cchar *tableName)
  */
 static EdiField makeFieldFromRow(MdbRow *row, MdbCol *col)
 {
-    EdiField    f;
+    EdiField f;
 
     /* Note: the value is not cloned */
     f.value = row->fields[col->cid];
@@ -8001,9 +8022,9 @@ static EdiField makeFieldFromRow(MdbRow *row, MdbCol *col)
 
 static int mdbGetColumnSchema(Edi *edi, cchar *tableName, cchar *columnName, int *type, int *flags, int *cid)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    MdbCol      *col;
+    Mdb      *mdb;
+    MdbTable *table;
+    MdbCol   *col;
 
     mdb = (Mdb*) edi;
     if (type) {
@@ -8037,10 +8058,10 @@ static int mdbGetColumnSchema(Edi *edi, cchar *tableName, cchar *columnName, int
 
 static MprList *mdbGetTables(Edi *edi)
 {
-    Mdb         *mdb;
-    MprList     *list;
-    MdbTable     *table;
-    int         tid, ntables;
+    Mdb      *mdb;
+    MprList  *list;
+    MdbTable *table;
+    int      tid, ntables;
 
     mdb = (Mdb*) edi;
     lock(edi);
@@ -8057,8 +8078,8 @@ static MprList *mdbGetTables(Edi *edi)
 
 static int mdbGetTableDimensions(Edi *edi, cchar *tableName, int *numRows, int *numCols)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
+    Mdb      *mdb;
+    MdbTable *table;
 
     mdb = (Mdb*) edi;
     lock(edi);
@@ -8085,8 +8106,8 @@ static int mdbGetTableDimensions(Edi *edi, cchar *tableName, int *numRows, int *
 
 static int mdbLoad(Edi *edi, cchar *path)
 {
-    cchar       *data;
-    ssize       len;
+    cchar *data;
+    ssize len;
 
     if ((data = mprReadPathContents(path, &len)) == 0) {
         return MPR_ERR_CANT_READ;
@@ -8097,9 +8118,9 @@ static int mdbLoad(Edi *edi, cchar *path)
 
 static int mdbLookupField(Edi *edi, cchar *tableName, cchar *fieldName)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    MdbCol      *col;
+    Mdb      *mdb;
+    MdbTable *table;
+    MdbCol   *col;
 
     mdb = (Mdb*) edi;
     lock(edi);
@@ -8125,12 +8146,12 @@ static EdiGrid *mdbQuery(Edi *edi, cchar *cmd, int argc, cchar **argv, va_list v
 
 static EdiField mdbReadField(Edi *edi, cchar *tableName, cchar *key, cchar *fieldName)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    MdbCol      *col;
-    MdbRow      *row;
-    EdiField    field, err;
-    int         r;
+    Mdb      *mdb;
+    MdbTable *table;
+    MdbCol   *col;
+    MdbRow   *row;
+    EdiField field, err;
+    int      r;
 
     mdb = (Mdb*) edi;
     lock(edi);
@@ -8156,11 +8177,11 @@ static EdiField mdbReadField(Edi *edi, cchar *tableName, cchar *key, cchar *fiel
 
 static EdiRec *mdbReadRecByKey(Edi *edi, cchar *tableName, cchar *key)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    MdbRow      *row;
-    EdiRec      *rec;
-    int         r;
+    Mdb      *mdb;
+    MdbTable *table;
+    MdbRow   *row;
+    EdiRec   *rec;
+    int      r;
 
     mdb = (Mdb*) edi;
     rec = 0;
@@ -8232,8 +8253,8 @@ static bool matchCell(MdbCol *col, cchar *existing, int op, cchar *value)
 
 static bool matchRow(MdbTable *table, MdbRow *row, int op, cchar *value)
 {
-    MdbCol      *col;
-    MdbSchema   *schema;
+    MdbCol    *col;
+    MdbSchema *schema;
 
     schema = table->schema;
     for (col = schema->cols; col < &schema->cols[schema->ncols]; col++) {
@@ -8250,8 +8271,8 @@ static bool matchRow(MdbTable *table, MdbRow *row, int op, cchar *value)
  */
 static MprList *parseMdbQuery(cchar *query, int *offsetp, int *limitp)
 {
-    MprList     *expressions;
-    char        *cp, *limit, *offset, *tok;
+    MprList *expressions;
+    char    *cp, *limit, *offset, *tok;
 
     *offsetp = *limitp = 0;
     expressions = mprCreateList(0, 0);
@@ -8282,15 +8303,15 @@ static MprList *parseMdbQuery(cchar *query, int *offsetp, int *limitp)
 
 static EdiGrid *mdbFindGrid(Edi *edi, cchar *tableName, cchar *query)
 {
-    Mdb         *mdb;
-    EdiGrid     *grid;
-    MdbTable    *table;
-    MdbCol      *col;
-    MdbRow      *row;
-    MprList     *expressions;
-    cchar       *columnName, *expression, *operation;
-    char        *tok, *value;
-    int         limit, matched, nrows, next, offset, op, r, index, count, nextExpression;
+    Mdb      *mdb;
+    EdiGrid  *grid;
+    MdbTable *table;
+    MdbCol   *col;
+    MdbRow   *row;
+    MprList  *expressions;
+    cchar    *columnName, *expression, *operation;
+    char     *tok, *value;
+    int      limit, matched, nrows, next, offset, op, r, index, count, nextExpression;
 
     assert(edi);
     assert(tableName && *tableName);
@@ -8389,11 +8410,11 @@ static EdiGrid *mdbFindGrid(Edi *edi, cchar *tableName, cchar *query)
 
 static int mdbRemoveColumn(Edi *edi, cchar *tableName, cchar *columnName)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    MdbSchema   *schema;
-    MdbCol      *col;
-    int         c;
+    Mdb       *mdb;
+    MdbTable  *table;
+    MdbSchema *schema;
+    MdbCol    *col;
+    int       c;
 
     mdb = (Mdb*) edi;
     lock(edi);
@@ -8428,8 +8449,8 @@ static int mdbRemoveColumn(Edi *edi, cchar *tableName, cchar *columnName)
 
 static int mdbRemoveIndex(Edi *edi, cchar *tableName, cchar *indexName)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
+    Mdb      *mdb;
+    MdbTable *table;
 
     mdb = (Mdb*) edi;
     lock(edi);
@@ -8450,10 +8471,10 @@ static int mdbRemoveIndex(Edi *edi, cchar *tableName, cchar *indexName)
 
 static int mdbRemoveRec(Edi *edi, cchar *tableName, cchar *key)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    MprKey      *kp;
-    int         r, rc, value;
+    Mdb      *mdb;
+    MdbTable *table;
+    MprKey   *kp;
+    int      r, rc, value;
 
     assert(edi);
     assert(tableName && *tableName);
@@ -8487,9 +8508,9 @@ static int mdbRemoveRec(Edi *edi, cchar *tableName, cchar *key)
 
 static int mdbRemoveTable(Edi *edi, cchar *tableName)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    int         next;
+    Mdb      *mdb;
+    MdbTable *table;
+    int      next;
 
     mdb = (Mdb*) edi;
     lock(edi);
@@ -8508,8 +8529,8 @@ static int mdbRemoveTable(Edi *edi, cchar *tableName)
 
 static int mdbRenameTable(Edi *edi, cchar *tableName, cchar *newTableName)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
+    Mdb      *mdb;
+    MdbTable *table;
 
     mdb = (Mdb*) edi;
     lock(edi);
@@ -8526,9 +8547,9 @@ static int mdbRenameTable(Edi *edi, cchar *tableName, cchar *newTableName)
 
 static int mdbRenameColumn(Edi *edi, cchar *tableName, cchar *columnName, cchar *newColumnName)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    MdbCol      *col;
+    Mdb      *mdb;
+    MdbTable *table;
+    MdbCol   *col;
 
     mdb = (Mdb*) edi;
     lock(edi);
@@ -8549,11 +8570,11 @@ static int mdbRenameColumn(Edi *edi, cchar *tableName, cchar *columnName, cchar 
 
 static int mdbUpdateField(Edi *edi, cchar *tableName, cchar *key, cchar *fieldName, cchar *value)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    MdbRow      *row;
-    MdbCol      *col;
-    int         r;
+    Mdb      *mdb;
+    MdbTable *table;
+    MdbRow   *row;
+    MdbCol   *col;
+    int      r;
 
     mdb = (Mdb*) edi;
     lock(edi);
@@ -8581,11 +8602,11 @@ static int mdbUpdateField(Edi *edi, cchar *tableName, cchar *key, cchar *fieldNa
 
 static int mdbUpdateRec(Edi *edi, EdiRec *rec)
 {
-    Mdb         *mdb;
-    MdbTable    *table;
-    MdbRow      *row;
-    MdbCol      *col;
-    int         f, r;
+    Mdb      *mdb;
+    MdbTable *table;
+    MdbRow   *row;
+    MdbCol   *col;
+    int      f, r;
 
     if (!ediValidateRec(rec)) {
         return MPR_ERR_CANT_WRITE;
@@ -8642,7 +8663,7 @@ static void popState(Mdb *mdb)
 
 static int checkMdbState(MprJsonParser *jp, cchar *name, bool leave)
 {
-    Mdb     *mdb;
+    Mdb *mdb;
 
     mdb = jp->data;
     if (leave) {
@@ -8704,9 +8725,9 @@ static int checkMdbState(MprJsonParser *jp, cchar *name, bool leave)
 
 static int setMdbValue(MprJsonParser *parser, MprJson *obj, cchar *name, MprJson *child)
 {
-    Mdb         *mdb;
-    MdbCol      *col;
-    cchar       *value;
+    Mdb    *mdb;
+    MdbCol *col;
+    cchar  *value;
 
     mdb = parser->data;
     value = child->value;
@@ -8752,7 +8773,8 @@ static int setMdbValue(MprJsonParser *parser, MprJson *obj, cchar *name, MprJson
 
     case MDB_LOAD_FIELD:
         if ((col = getCol(mdb->loadTable, mdb->loadCid++)) == 0) {
-            mprSetJsonError(parser, "Bad state '%d' in setMdbValue, column %s,  potential corrupt data", mdb->loadState, name);
+            mprSetJsonError(parser, "Bad state '%d' in setMdbValue, column %s,  potential corrupt data", mdb->loadState,
+                            name);
             return MPR_ERR_BAD_FORMAT;
         }
         updateFieldValue(mdb->loadRow, col, value);
@@ -8814,15 +8836,15 @@ static void autoSave(Mdb *mdb, MdbTable *table)
 
 static int mdbSave(Edi *edi)
 {
-    Mdb         *mdb;
-    MdbSchema   *schema;
-    MdbTable    *table;
-    MdbRow      *row;
-    MdbCol      *col;
-    cchar       *value, *path, *cp;
-    char        *npath, *bak, *type;
-    MprFile     *out;
-    int         cid, rid, tid, ntables, nrows;
+    Mdb       *mdb;
+    MdbSchema *schema;
+    MdbTable  *table;
+    MdbRow    *row;
+    MdbCol    *col;
+    cchar     *value, *path, *cp;
+    char      *npath, *bak, *type;
+    MprFile   *out;
+    int       cid, rid, tid, ntables, nrows;
 
     mdb = (Mdb*) edi;
     if (mdb->edi.flags & EDI_NO_SAVE) {
@@ -8936,7 +8958,7 @@ static int mdbSave(Edi *edi)
 
 static MdbTable *getTable(Mdb *mdb, int tid)
 {
-    int         ntables;
+    int ntables;
 
     ntables = mprGetListLength(mdb->tables);
     if (tid < 0 || tid >= ntables) {
@@ -8948,8 +8970,8 @@ static MdbTable *getTable(Mdb *mdb, int tid)
 
 static MdbTable *lookupTable(Mdb *mdb, cchar *tableName)
 {
-    MdbTable     *table;
-    int         tid, ntables;
+    MdbTable *table;
+    int      tid, ntables;
 
     ntables = mprGetListLength(mdb->tables);
     for (tid = 0; tid < ntables; tid++) {
@@ -8978,9 +9000,9 @@ static void manageTable(MdbTable *table, int flags)
 
 static int lookupRow(MdbTable *table, cchar *key)
 {
-    MprKey      *kp;
-    MdbRow      *row;
-    int         nrows, r, keycol;
+    MprKey *kp;
+    MdbRow *row;
+    int    nrows, r, keycol;
 
     if (table->index) {
         if ((kp = mprLookupKeyEntry(table->index, key)) != 0) {
@@ -9006,7 +9028,7 @@ static MdbSchema *growSchema(MdbTable *table)
 {
     if (table->schema == 0) {
         if ((table->schema = mprAllocBlock(sizeof(MdbSchema) +
-                sizeof(MdbCol) * MDB_INCR, MPR_ALLOC_MANAGER | MPR_ALLOC_ZERO)) == 0) {
+                                           sizeof(MdbCol) * MDB_INCR, MPR_ALLOC_MANAGER | MPR_ALLOC_ZERO)) == 0) {
             return 0;
         }
         mprSetManager(table->schema, (MprManager) manageSchema);
@@ -9014,7 +9036,7 @@ static MdbSchema *growSchema(MdbTable *table)
 
     } else if (table->schema->ncols >= table->schema->capacity) {
         if ((table->schema = mprRealloc(table->schema, sizeof(MdbSchema) +
-                (sizeof(MdbCol) * (table->schema->capacity + MDB_INCR)))) == 0) {
+                                        (sizeof(MdbCol) * (table->schema->capacity + MDB_INCR)))) == 0) {
             return 0;
         }
         memset(&table->schema->cols[table->schema->capacity], 0, MDB_INCR * sizeof(MdbCol));
@@ -9026,8 +9048,8 @@ static MdbSchema *growSchema(MdbTable *table)
 
 static MdbCol *createCol(MdbTable *table, cchar *columnName)
 {
-    MdbSchema    *schema;
-    MdbCol       *col;
+    MdbSchema *schema;
+    MdbCol    *col;
 
     if ((col = lookupField(table, columnName)) != 0) {
         return 0;
@@ -9044,7 +9066,7 @@ static MdbCol *createCol(MdbTable *table, cchar *columnName)
 
 static void manageSchema(MdbSchema *schema, int flags)
 {
-    int     i;
+    int i;
 
     if (flags & MPR_MANAGE_MARK) {
         for (i = 0; i < schema->ncols; i++) {
@@ -9073,8 +9095,8 @@ static MdbCol *getCol(MdbTable *table, int col)
 
 static MdbCol *lookupField(MdbTable *table, cchar *columnName)
 {
-    MdbSchema    *schema;
-    MdbCol       *col;
+    MdbSchema *schema;
+    MdbCol    *col;
 
     if ((schema = growSchema(table)) == 0) {
         return 0;
@@ -9092,8 +9114,8 @@ static MdbCol *lookupField(MdbTable *table, cchar *columnName)
 
 static MdbRow *createRow(Mdb *mdb, MdbTable *table)
 {
-    MdbRow      *row;
-    int         ncols;
+    MdbRow *row;
+    int    ncols;
 
     ncols = max(table->schema->ncols, 1);
     if ((row = mprAllocBlock(sizeof(MdbRow) + sizeof(EdiField) * ncols, MPR_ALLOC_MANAGER | MPR_ALLOC_ZERO)) == 0) {
@@ -9109,7 +9131,7 @@ static MdbRow *createRow(Mdb *mdb, MdbTable *table)
 
 static void manageRow(MdbRow *row, int flags)
 {
-    int     fid;
+    int fid;
 
     if (flags & MPR_MANAGE_MARK) {
         mprMark(row->table);
@@ -9122,7 +9144,7 @@ static void manageRow(MdbRow *row, int flags)
 
 static MdbRow *getRow(MdbTable *table, int rid)
 {
-    int     nrows;
+    int nrows;
 
     nrows = mprGetListLength(table->rows);
     if (rid < 0 || rid > nrows) {
@@ -9135,7 +9157,7 @@ static MdbRow *getRow(MdbTable *table, int rid)
 
 static cchar *mapMdbValue(cchar *value, int type)
 {
-    MprTime     time;
+    MprTime time;
 
     if (value == 0) {
         return value;
@@ -9169,8 +9191,8 @@ static cchar *mapMdbValue(cchar *value, int type)
 
 static int updateFieldValue(MdbRow *row, MdbCol *col, cchar *value)
 {
-    MdbTable    *table;
-    cchar       *key;
+    MdbTable *table;
+    cchar    *key;
 
     assert(row);
     assert(col);
@@ -9205,11 +9227,13 @@ static int updateFieldValue(MdbRow *row, MdbCol *col, cchar *value)
  */
 static EdiRec *createRecFromRow(Edi *edi, MdbRow *row)
 {
-    EdiRec  *rec;
-    MdbCol  *col;
-    int     c;
+    EdiRec *rec;
+    MdbCol *col;
+    int    c;
 
-    if ((rec = mprAllocBlock(sizeof(EdiRec) + sizeof(EdiField) * row->nfields, MPR_ALLOC_MANAGER | MPR_ALLOC_ZERO)) == 0) {
+    if ((rec =
+             mprAllocBlock(sizeof(EdiRec) + sizeof(EdiField) * row->nfields,
+                           MPR_ALLOC_MANAGER | MPR_ALLOC_ZERO)) == 0) {
         return 0;
     }
     mprSetManager(rec, (MprManager) ediManageEdiRec);
@@ -9264,7 +9288,9 @@ static int parseOperation(cchar *operation)
 
 #else
 /* To prevent ar/ranlib warnings */
-PUBLIC void mdbDummy() {}
+PUBLIC void mdbDummy()
+{
+}
 
 #endif /* ME_COM_MDB */
 
@@ -9289,18 +9315,18 @@ PUBLIC void mdbDummy() {}
  #include    "sqlite3.h"
 
 #ifndef ME_MAX_SQLITE_MEM
-    #define ME_MAX_SQLITE_MEM      (2*1024*1024)   /**< Maximum buffering for Sqlite */
+    #define ME_MAX_SQLITE_MEM      (2 * 1024 * 1024) /**< Maximum buffering for Sqlite */
 #endif
 #ifndef ME_MAX_SQLITE_DURATION
-    #define ME_MAX_SQLITE_DURATION 30000           /**< Database busy timeout */
+    #define ME_MAX_SQLITE_DURATION 30000             /**< Database busy timeout */
 #endif
 
 /************************************* Local **********************************/
 
 typedef struct Sdb {
-    Edi             edi;            /**< EDI database interface structure */
-    sqlite3         *db;            /**< SQLite database handle */
-    MprHash         *schemas;       /**< Table schemas */
+    Edi edi;                        /**< EDI database interface structure */
+    sqlite3 *db;                    /**< SQLite database handle */
+    MprHash *schemas;               /**< Table schemas */
 } Sdb;
 
 static int sqliteInitialized;
@@ -9308,32 +9334,32 @@ static void initSqlite(void);
 
 #if KEEP
 static char *DataTypeToSqlType[] = {
-    "binary":       "blob",
-    "boolean":      "tinyint",
-    "date":         "date",
-    "datetime":     "datetime",
-    "decimal":      "decimal",
-    "float":        "float",
-    "integer":      "int",
-    "number":       "decimal",
-    "string":       "varchar",
-    "text":         "text",
-    "time":         "time",
-    "timestamp":    "datetime",
+    "binary" :       "blob",
+    "boolean" :      "tinyint",
+    "date" :         "date",
+    "datetime" :     "datetime",
+    "decimal" :      "decimal",
+    "float" :        "float",
+    "integer" :      "int",
+    "number" :       "decimal",
+    "string" :       "varchar",
+    "text" :         "text",
+    "time" :         "time",
+    "timestamp" :    "datetime",
     0, 0,
 };
 #endif
 
 static char *dataTypeToSqlType[] = {
-                            0,
-    /* EDI_TYPE_BINARY */   "BLOB",
-    /* EDI_TYPE_BOOL */     "TINYINT",      //  "INTEGER",
-    /* EDI_TYPE_DATE */     "DATE",         //  "TEXT",
-    /* EDI_TYPE_FLOAT */    "FLOAT",        //  "REAL",
-    /* EDI_TYPE_INT */      "INTEGER",
-    /* EDI_TYPE_STRING */   "STRING",       //  "TEXT",
-    /* EDI_TYPE_TEXT */     "TEXT",
-                            0,
+    0,
+    /* EDI_TYPE_BINARY */ "BLOB",
+    /* EDI_TYPE_BOOL */ "TINYINT",          //  "INTEGER",
+    /* EDI_TYPE_DATE */ "DATE",             //  "TEXT",
+    /* EDI_TYPE_FLOAT */ "FLOAT",           //  "REAL",
+    /* EDI_TYPE_INT */ "INTEGER",
+    /* EDI_TYPE_STRING */ "STRING",         //  "TEXT",
+    /* EDI_TYPE_TEXT */ "TEXT",
+    0,
 };
 
 /************************************ Forwards ********************************/
@@ -9395,7 +9421,7 @@ PUBLIC void sdbInit(void)
 
 static Sdb *sdbCreate(cchar *path, int flags)
 {
-    Sdb      *sdb;
+    Sdb *sdb;
 
     assert(path && *path);
 
@@ -9432,7 +9458,7 @@ static void manageSdb(Sdb *sdb, int flags)
 
 static void sdbClose(Edi *edi)
 {
-    Sdb     *sdb;
+    Sdb *sdb;
 
     assert(edi);
 
@@ -9452,11 +9478,11 @@ static void removeSchema(Edi *edi, cchar *tableName)
 
 static EdiRec *getSchema(Edi *edi, cchar *tableName)
 {
-    Sdb         *sdb;
-    EdiRec      *rec, *schema;
-    EdiField    *fp;
-    EdiGrid     *grid;
-    int         r;
+    Sdb      *sdb;
+    EdiRec   *rec, *schema;
+    EdiField *fp;
+    EdiGrid  *grid;
+    int      r;
 
     sdb = (Sdb*) edi;
     if (!validName(tableName)) {
@@ -9491,11 +9517,13 @@ static EdiRec *getSchema(Edi *edi, cchar *tableName)
  */
 static EdiRec *sdbCreateRec(Edi *edi, cchar *tableName)
 {
-    EdiRec  *rec, *schema;
-    int     i;
+    EdiRec *rec, *schema;
+    int    i;
 
     schema = getSchema(edi, tableName);
-    if ((rec = mprAllocBlock(sizeof(EdiRec) + sizeof(EdiField) * schema->nfields, MPR_ALLOC_MANAGER | MPR_ALLOC_ZERO)) == 0) {
+    if ((rec =
+             mprAllocBlock(sizeof(EdiRec) + sizeof(EdiField) * schema->nfields,
+                           MPR_ALLOC_MANAGER | MPR_ALLOC_ZERO)) == 0) {
         return 0;
     }
     mprSetManager(rec, (MprManager) ediManageEdiRec);
@@ -9520,7 +9548,7 @@ static int sdbDelete(cchar *path)
 
 static Edi *sdbOpen(cchar *path, int flags)
 {
-    Sdb     *sdb;
+    Sdb *sdb;
 
     assert(path && *path);
     if ((sdb = sdbCreate(path, flags)) == 0) {
@@ -9607,9 +9635,9 @@ static int sdbChangeColumn(Edi *edi, cchar *tableName, cchar *columnName, int ty
 
 static MprList *sdbGetColumns(Edi *edi, cchar *tableName)
 {
-    MprList     *result;
-    EdiRec      *schema;
-    int         c;
+    MprList *result;
+    EdiRec  *schema;
+    int     c;
 
     assert(edi);
     assert(tableName && *tableName);
@@ -9630,9 +9658,9 @@ static MprList *sdbGetColumns(Edi *edi, cchar *tableName)
 
 static int sdbGetColumnSchema(Edi *edi, cchar *tableName, cchar *columnName, int *type, int *flags, int *cid)
 {
-    EdiRec      *schema;
-    EdiField    *fp;
-    int         c;
+    EdiRec   *schema;
+    EdiField *fp;
+    int      c;
 
     assert(edi);
     assert(tableName && *tableName);
@@ -9659,10 +9687,10 @@ static int sdbGetColumnSchema(Edi *edi, cchar *tableName, cchar *columnName, int
 
 static MprList *sdbGetTables(Edi *edi)
 {
-    EdiGrid     *grid;
-    EdiRec      *rec;
-    MprList     *result;
-    int         r;
+    EdiGrid *grid;
+    EdiRec  *rec;
+    MprList *result;
+    int     r;
 
     assert(edi);
 
@@ -9685,8 +9713,8 @@ static MprList *sdbGetTables(Edi *edi)
 
 static int sdbGetTableDimensions(Edi *edi, cchar *tableName, int *numRows, int *numCols)
 {
-    EdiGrid     *grid;
-    EdiRec      *schema;
+    EdiGrid *grid;
+    EdiRec  *schema;
 
     assert(edi);
     assert(tableName && *tableName);
@@ -9720,8 +9748,8 @@ static int sdbGetTableDimensions(Edi *edi, cchar *tableName, int *numRows, int *
 
 static int sdbLookupField(Edi *edi, cchar *tableName, cchar *fieldName)
 {
-    EdiRec      *schema;
-    int         c;
+    EdiRec *schema;
+    int    c;
 
     assert(edi);
     assert(tableName && *tableName);
@@ -9748,8 +9776,8 @@ PUBLIC EdiGrid *sdbQuery(Edi *edi, cchar *cmd, int argc, cchar **argv, va_list v
 
 static EdiField sdbReadField(Edi *edi, cchar *tableName, cchar *key, cchar *fieldName)
 {
-    EdiField    err;
-    EdiGrid     *grid;
+    EdiField err;
+    EdiGrid  *grid;
 
     if (!validName(tableName) || !validName(fieldName)) {
         err.valid = 0;
@@ -9773,7 +9801,7 @@ static EdiField sdbReadField(Edi *edi, cchar *tableName, cchar *key, cchar *fiel
 
 static EdiRec *sdbReadRecByKey(Edi *edi, cchar *tableName, cchar *key)
 {
-    EdiGrid     *grid;
+    EdiGrid *grid;
 
     if (!validName(tableName)) {
         return 0;
@@ -9802,8 +9830,8 @@ static EdiGrid *setTableName(EdiGrid *grid, cchar *tableName)
  */
 static cchar *parseSdbQuery(cchar *query, int *offsetp, int *limitp)
 {
-    MprList     *expressions;
-    char        *cp, *limit, *offset, *tok;
+    MprList *expressions;
+    char    *cp, *limit, *offset, *tok;
 
     *offsetp = *limitp = 0;
     expressions = mprCreateList(0, 0);
@@ -9834,12 +9862,12 @@ static cchar *parseSdbQuery(cchar *query, int *offsetp, int *limitp)
 
 static EdiGrid *sdbFindGrid(Edi *edi, cchar *tableName, cchar *select)
 {
-    EdiGrid     *grid;
-    EdiRec      *schema;
-    MprBuf      *buf;
-    cchar       *columnName, *expressions, *operation, *sql, **values;
-    char        *tok, *value;
-    int         i, limit, offset;
+    EdiGrid *grid;
+    EdiRec  *schema;
+    MprBuf  *buf;
+    cchar   *columnName, *expressions, *operation, *sql, **values;
+    char    *tok, *value;
+    int     i, limit, offset;
 
     assert(tableName && *tableName);
     columnName = operation = value = 0;
@@ -9881,7 +9909,7 @@ static EdiGrid *sdbFindGrid(Edi *edi, cchar *tableName, cchar *select)
             mprPutToBuf(buf, "SELECT * FROM %s WHERE ", tableName);
             for (i = 0; i < schema->nfields; i++) {
                 mprPutToBuf(buf, "(%s %s ?)", schema->fields[i].name, operation);
-                if ((i+1) < schema->nfields) {
+                if ((i + 1) < schema->nfields) {
                     mprPutStringToBuf(buf, " OR ");
                 }
                 values[i] = value;
@@ -9981,7 +10009,7 @@ static int sdbSave(Edi *edi)
  */
 static cchar *mapSdbValue(cchar *value, int type)
 {
-    MprTime     time;
+    MprTime time;
 
     if (value == 0) {
         return value;
@@ -10009,7 +10037,7 @@ static cchar *mapSdbValue(cchar *value, int type)
 
 static int sdbUpdateField(Edi *edi, cchar *tableName, cchar *key, cchar *fieldName, cchar *value)
 {
-    int     type;
+    int type;
 
     if (!validName(tableName) || !validName(fieldName)) {
         return 0;
@@ -10025,10 +10053,10 @@ static int sdbUpdateField(Edi *edi, cchar *tableName, cchar *key, cchar *fieldNa
  */
 static int sdbUpdateRec(Edi *edi, EdiRec *rec)
 {
-    MprBuf      *buf;
-    EdiField    *fp;
-    cchar       **argv;
-    int         argc, f;
+    MprBuf   *buf;
+    EdiField *fp;
+    cchar    **argv;
+    int      argc, f;
 
     if (!ediValidateRec(rec)) {
         return MPR_ERR_CANT_WRITE;
@@ -10085,8 +10113,8 @@ PUBLIC cchar *sdbGetLastError(Edi *edi)
 
 static EdiGrid *query(Edi *edi, cchar *cmd, ...)
 {
-    EdiGrid     *grid;
-    va_list     args;
+    EdiGrid *grid;
+    va_list args;
 
     va_start(args, cmd);
     grid = queryv(edi, cmd, 0, NULL, args);
@@ -10100,8 +10128,8 @@ static EdiGrid *query(Edi *edi, cchar *cmd, ...)
  */
 static EdiGrid *queryArgv(Edi *edi, cchar *cmd, int argc, cchar **argv, ...)
 {
-    va_list     vargs;
-    EdiGrid     *grid;
+    va_list vargs;
+    EdiGrid *grid;
 
     va_start(vargs, argv);
     grid = queryv(edi, cmd, argc, argv, vargs);
@@ -10116,16 +10144,16 @@ static EdiGrid *queryArgv(Edi *edi, cchar *cmd, int argc, cchar **argv, ...)
  */
 static EdiGrid *queryv(Edi *edi, cchar *cmd, int argc, cchar **argv, va_list vargs)
 {
-    Sdb             *sdb;
-    sqlite3         *db;
-    sqlite3_stmt    *stmt;
-    EdiGrid         *grid;
-    EdiRec          *rec, *schema;
-    MprList         *result;
-    char            *tableName;
-    cchar           *tail, *colName, *value, *defaultTableName, *arg;
-    ssize           len;
-    int             r, nrows, i, ncol, rc, retries, index, type;
+    Sdb          *sdb;
+    sqlite3      *db;
+    sqlite3_stmt *stmt;
+    EdiGrid      *grid;
+    EdiRec       *rec, *schema;
+    MprList      *result;
+    char         *tableName;
+    cchar        *tail, *colName, *value, *defaultTableName, *arg;
+    ssize        len;
+    int          r, nrows, i, ncol, rc, retries, index, type;
 
     assert(edi);
     assert(cmd && *cmd);
@@ -10168,7 +10196,8 @@ static EdiGrid *queryv(Edi *edi, cchar *cmd, int argc, cchar **argv, va_list var
         } else if (argv) {
             for (index = 0; index < argc; index++) {
                 if (sqlite3_bind_text(stmt, index + 1, argv[index], -1, 0) != SQLITE_OK) {
-                    sdbError(edi, "SDB: cannot bind to arg: %d, %s, error: %s", index + 1, argv[index], sqlite3_errmsg(db));
+                    sdbError(edi, "SDB: cannot bind to arg: %d, %s, error: %s", index + 1, argv[index],
+                             sqlite3_errmsg(db));
                     return 0;
                 }
             }
@@ -10209,7 +10238,8 @@ static EdiGrid *queryv(Edi *edi, cchar *cmd, int argc, cchar **argv, va_list var
                 stmt = 0;
                 if (rc != SQLITE_SCHEMA) {
                     retries = 0;
-                    for (cmd = tail; isspace((uchar) *cmd); cmd++) {}
+                    for (cmd = tail; isspace((uchar) * cmd); cmd++) {
+                    }
                 }
                 break;
             }
@@ -10238,7 +10268,7 @@ static EdiGrid *queryv(Edi *edi, cchar *cmd, int argc, cchar **argv, va_list var
 
 static EdiRec *createBareRec(Edi *edi, cchar *tableName, int nfields)
 {
-    EdiRec  *rec;
+    EdiRec *rec;
 
     if ((rec = mprAllocBlock(sizeof(EdiRec) + sizeof(EdiField) * nfields, MPR_ALLOC_MANAGER | MPR_ALLOC_ZERO)) == 0) {
         return 0;
@@ -10253,7 +10283,7 @@ static EdiRec *createBareRec(Edi *edi, cchar *tableName, int nfields)
 
 static EdiField makeRecField(cchar *value, cchar *name, int type)
 {
-    EdiField    f;
+    EdiField f;
 
     f.valid = 1;
     f.value = sclone(value);
@@ -10319,7 +10349,7 @@ static cchar *mapToSqlType(int type)
 
 static int mapToEdiType(cchar *type)
 {
-    int     i;
+    int i;
 
     for (i = 0; i < EDI_TYPE_MAX; i++) {
         if (smatch(dataTypeToSqlType[i], type)) {
@@ -10351,7 +10381,7 @@ static int mapSqliteTypeToEdiType(int type)
 
 static bool validName(cchar *str)
 {
-    cchar   *cp;
+    cchar *cp;
 
     if (!str) {
         return 0;
@@ -10359,14 +10389,15 @@ static bool validName(cchar *str)
     if (!isalpha(*str) && *str != '_') {
         return 0;
     }
-    for (cp = &str[1]; *cp && (isalnum((uchar) *cp) || *cp == '_' || *cp == '$'); cp++) {}
-    return (*cp == '\0');
+    for (cp = &str[1]; *cp && (isalnum((uchar) * cp) || *cp == '_' || *cp == '$'); cp++) {
+    }
+    return *cp == '\0';
 }
 
 
 static void sdbError(Edi *edi, cchar *fmt, ...)
 {
-    va_list     args;
+    va_list args;
 
     va_start(args, fmt);
     edi->errMsg = sfmtv(fmt, args);
@@ -10377,7 +10408,7 @@ static void sdbError(Edi *edi, cchar *fmt, ...)
 
 static void sdbDebug(Edi *edi, int level, cchar *fmt, ...)
 {
-    va_list     args;
+    va_list args;
 
     va_start(args, fmt);
     edi->errMsg = sfmtv(fmt, args);
@@ -10405,7 +10436,9 @@ static void initSqlite(void)
 
 #else
 /* To prevent ar/ranlib warnings */
-PUBLIC void sdbDummy(void) {}
+PUBLIC void sdbDummy(void)
+{
+}
 #endif /* ME_COM_SQLITE */
 
 /*

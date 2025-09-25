@@ -12,9 +12,9 @@
 
 /********************************** Locals ************************************/
 
-#define MAX_PASS    64
+#define MAX_PASS 64
 
-static cchar        *programName;
+static cchar *programName;
 
 /********************************* Forwards ***********************************/
 
@@ -29,11 +29,11 @@ static char *getpass(char *prompt);
 
 PUBLIC int main(int argc, char *argv[])
 {
-    MprBuf      *buf;
-    HttpRoute   *route;
-    HttpAuth    *auth;
-    char        *password, *authFile, *username, *encodedPassword, *realm, *cp, *roles, *cipher;
-    int         i, errflg, nextArg;
+    MprBuf    *buf;
+    HttpRoute *route;
+    HttpAuth  *auth;
+    char      *password, *authFile, *username, *encodedPassword, *realm, *cp, *roles, *cipher;
+    int       i, errflg, nextArg;
 
     mprCreate(argc, argv, 0);
     programName = mprGetAppName();
@@ -143,7 +143,7 @@ PUBLIC int main(int argc, char *argv[])
 
 static char *getPassword(void)
 {
-    char    *password, *confirm;
+    char *password, *confirm;
 
     password = getpass("New password: ");
     confirm = getpass("Confirm password: ");
@@ -165,7 +165,7 @@ static char *getpass(char *prompt)
 static char *getpass(char *prompt)
 {
     static char password[MAX_PASS];
-    int     c, i;
+    int         c, i;
 
     fputs(prompt, stderr);
     for (i = 0; i < (int) sizeof(password) - 1; i++) {
@@ -208,11 +208,11 @@ static char *getpass(char *prompt)
 static void printUsage(cchar *programName)
 {
     mprEprintf("usage: %s [--cipher cipher] [--file path] [--password password] realm user roles...\n"
-        "Options:\n"
-        "    --cipher md5|blowfish Select the encryption cipher. Defaults to md5\n"
-        "    --file filename       Modify the password file\n"
-        "    --password password   Use the specified password\n"
-        "\n", programName);
+               "Options:\n"
+               "    --cipher md5|blowfish Select the encryption cipher. Defaults to md5\n"
+               "    --file filename       Modify the password file\n"
+               "    --password password   Use the specified password\n"
+               "\n", programName);
 }
 
 

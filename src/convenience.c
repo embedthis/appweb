@@ -35,13 +35,13 @@ static int runServer(cchar *configFile, cchar *ip, int port, cchar *home, cchar 
 }
 
 
-/*  
-    Create a web server described by a config file. 
+/*
+    Create a web server described by a config file.
  */
 PUBLIC int maRunWebServer(cchar *configFile)
 {
-    Mpr         *mpr;
-    int         rc;
+    Mpr *mpr;
+    int rc;
 
     if ((mpr = mprCreate(0, NULL, MPR_USER_EVENTS_THREAD)) == 0) {
         mprLog("error appweb", 0, "Cannot create the web server runtime");
@@ -58,8 +58,8 @@ PUBLIC int maRunWebServer(cchar *configFile)
  */
 PUBLIC int maRunSimpleWebServer(cchar *ip, int port, cchar *home, cchar *documents)
 {
-    Mpr         *mpr;
-    int         rc;
+    Mpr *mpr;
+    int rc;
 
     if ((mpr = mprCreate(0, NULL, MPR_USER_EVENTS_THREAD)) == 0) {
         mprLog("error appweb", 0, "Cannot create the web server runtime");

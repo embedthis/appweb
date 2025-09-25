@@ -15,13 +15,13 @@
 /************************************ Locals ***********************************/
 
 typedef struct Cgi {
-    HttpStream  *stream;                /**< Client connection object */
-    MprCmd      *cmd;                   /**< CGI command object */
-    HttpQueue   *writeq;                /**< Queue to write to the CGI */
-    HttpQueue   *readq;                 /**< Queue to read from the CGI */
-    HttpPacket  *headers;               /**< CGI response headers */
-    char        *location;              /**< Redirection location */
-    int         seenHeader;             /**< Parsed response header from CGI */
+    HttpStream *stream;                 /**< Client connection object */
+    MprCmd *cmd;                        /**< CGI command object */
+    HttpQueue *writeq;                  /**< Queue to write to the CGI */
+    HttpQueue *readq;                   /**< Queue to read from the CGI */
+    HttpPacket *headers;                /**< CGI response headers */
+    char *location;                     /**< Redirection location */
+    int seenHeader;                     /**< Parsed response header from CGI */
 } Cgi;
 
 /*********************************** Forwards *********************************/
@@ -40,18 +40,18 @@ static bool parseCgiHeaders(Cgi *cgi, HttpPacket *packet);
 static void readFromCgi(Cgi *cgi, int channel);
 
 #if ME_DEBUG
-    static void traceCGIData(MprCmd *cmd, char *src, ssize size);
+static void traceCGIData(MprCmd *cmd, char *src, ssize size);
     #define traceData(cmd, src, size) traceCGIData(cmd, src, size)
 #else
     #define traceData(cmd, src, size)
 #endif
 
 #if ME_WIN_LIKE || VXWORKS
-    static void findExecutable(HttpStream *stream, char **program, char **script, char **bangScript, cchar *fileName);
+static void findExecutable(HttpStream *stream, char **program, char **script, char **bangScript, cchar *fileName);
 #endif
 #if ME_WIN_LIKE
-    static void checkCompletion(HttpQueue *q, MprEvent *event);
-    static void waitForCgi(Cgi *cgi, MprEvent *event);
+static void checkCompletion(HttpQueue *q, MprEvent *event);
+static void waitForCgi(Cgi *cgi, MprEvent *event);
 #endif
 
 /************************************* Code ***********************************/
@@ -60,16 +60,16 @@ static void readFromCgi(Cgi *cgi, int channel);
  */
 static int openCgi(HttpQueue *q)
 {
-    HttpStream  *stream;
-    Cgi         *cgi;
-    int         nproc;
+    HttpStream *stream;
+    Cgi        *cgi;
+    int        nproc;
 
     stream = q->stream;
     if ((nproc = (int) httpMonitorEvent(stream, HTTP_COUNTER_ACTIVE_PROCESSES, 1)) > stream->limits->processMax) {
         httpMonitorEvent(q->stream, HTTP_COUNTER_ACTIVE_PROCESSES, -1);
         httpLog(stream->trace, "cgi.limit.error", "error",
-            "msg=\"Too many concurrent processes\", activeProcesses=%d, maxProcesses=%d",
-            nproc - 1, stream->limits->processMax);
+                "msg=\"Too many concurrent processes\", activeProcesses=%d, maxProcesses=%d",
+                nproc - 1, stream->limits->processMax);
         httpError(stream, HTTP_CODE_SERVICE_UNAVAILABLE, "Server overloaded");
         return MPR_ERR_CANT_OPEN;
     }
@@ -105,8 +105,8 @@ static void manageCgi(Cgi *cgi, int flags)
 
 static void closeCgi(HttpQueue *q)
 {
-    Cgi     *cgi;
-    MprCmd  *cmd;
+    Cgi    *cgi;
+    MprCmd *cmd;
 
     if ((cgi = q->queueData) != 0) {
         cmd = cgi->cmd;
@@ -126,15 +126,15 @@ static void closeCgi(HttpQueue *q)
  */
 static void startCgi(HttpQueue *q)
 {
-    HttpRx          *rx;
-    HttpTx          *tx;
-    HttpRoute       *route;
-    HttpStream      *stream;
-    MprCmd          *cmd;
-    Cgi             *cgi;
-    cchar           *baseName, **argv, *fileName, **envv;
-    ssize           varCount;
-    int             argc, count;
+    HttpRx     *rx;
+    HttpTx     *tx;
+    HttpRoute  *route;
+    HttpStream *stream;
+    MprCmd     *cmd;
+    Cgi        *cgi;
+    cchar      *baseName, **argv, *fileName, **envv;
+    ssize      varCount;
+    int        argc, count;
 
     argv = 0;
     argc = 0;
@@ -165,7 +165,7 @@ static void startCgi(HttpQueue *q)
         nph prefix means non-parsed-header. Don't parse the CGI output for a CGI header
      */
     if (strncmp(baseName, "nph-", 4) == 0 ||
-            (strlen(baseName) > 4 && strcmp(&baseName[strlen(baseName) - 4], "-nph") == 0)) {
+        (strlen(baseName) > 4 && strcmp(&baseName[strlen(baseName) - 4], "-nph") == 0)) {
         /* Pretend we've seen the header for Non-parsed Header CGI programs */
         cgi->seenHeader = 1;
         tx->flags |= HTTP_TX_USE_OWN_HEADERS;
@@ -207,8 +207,8 @@ static void startCgi(HttpQueue *q)
 #if ME_WIN_LIKE
 static void waitForCgi(Cgi *cgi, MprEvent *event)
 {
-    HttpStream  *stream;
-    MprCmd      *cmd;
+    HttpStream *stream;
+    MprCmd     *cmd;
 
     stream = cgi->stream;
     cmd = cgi->cmd;
@@ -231,8 +231,8 @@ static void waitForCgi(Cgi *cgi, MprEvent *event)
  */
 static void browserToCgiData(HttpQueue *q, HttpPacket *packet)
 {
-    HttpStream  *stream;
-    Cgi         *cgi;
+    HttpStream *stream;
+    Cgi        *cgi;
 
     assert(q);
     assert(packet);
@@ -264,13 +264,13 @@ static void browserToCgiData(HttpQueue *q, HttpPacket *packet)
  */
 static void browserToCgiService(HttpQueue *q)
 {
-    HttpStream  *stream;
-    HttpPacket  *packet;
-    Cgi         *cgi;
-    MprCmd      *cmd;
-    MprBuf      *buf;
-    ssize       rc, len;
-    int         err;
+    HttpStream *stream;
+    HttpPacket *packet;
+    Cgi        *cgi;
+    MprCmd     *cmd;
+    MprBuf     *buf;
+    ssize      rc, len;
+    int        err;
 
     if ((cgi = q->queueData) == 0) {
         return;
@@ -299,7 +299,8 @@ static void browserToCgiService(HttpQueue *q)
                     httpSuspendQueue(q);
                     break;
                 }
-                httpLog(stream->trace, "cgi.error", "error", "msg=\"Cannot write to CGI gateway\", errno=%d", mprGetOsError());
+                httpLog(stream->trace, "cgi.error", "error", "msg=\"Cannot write to CGI gateway\", errno=%d",
+                        mprGetOsError());
                 mprCloseCmdFd(cmd, MPR_CMD_STDIN);
                 httpDiscardQueueData(q, 1);
                 httpError(stream, HTTP_CODE_BAD_GATEWAY, "Cannot write body data to CGI gateway");
@@ -334,9 +335,9 @@ static void cgiToBrowserData(HttpQueue *q, HttpPacket *packet)
 
 static void cgiToBrowserService(HttpQueue *q)
 {
-    HttpStream  *stream;
-    MprCmd      *cmd;
-    Cgi         *cgi;
+    HttpStream *stream;
+    MprCmd     *cmd;
+    Cgi        *cgi;
 
     if ((cgi = q->queueData) == 0) {
         return;
@@ -370,9 +371,9 @@ static void cgiToBrowserService(HttpQueue *q)
  */
 static void cgiCallback(MprCmd *cmd, int channel, void *data)
 {
-    HttpStream  *stream;
-    Cgi         *cgi;
-    int         suspended;
+    HttpStream *stream;
+    Cgi        *cgi;
+    int        suspended;
 
     if ((cgi = data) == 0) {
         return;
@@ -419,13 +420,13 @@ static void cgiCallback(MprCmd *cmd, int channel, void *data)
 
 static void readFromCgi(Cgi *cgi, int channel)
 {
-    HttpStream  *stream;
-    HttpPacket  *packet;
-    HttpTx      *tx;
-    HttpQueue   *q, *writeq;
-    MprCmd      *cmd;
-    ssize       nbytes;
-    int         err;
+    HttpStream *stream;
+    HttpPacket *packet;
+    HttpTx     *tx;
+    HttpQueue  *q, *writeq;
+    MprCmd     *cmd;
+    ssize      nbytes;
+    int        err;
 
     cmd = cgi->cmd;
     stream = cgi->stream;
@@ -471,7 +472,7 @@ static void readFromCgi(Cgi *cgi, int channel)
         }
         if (channel == MPR_CMD_STDERR) {
             httpLog(stream->trace, "cgi.error", "error", "msg:CGI failed, uri:%s, details: %s",
-                stream->rx->uri, mprBufToString(packet->content));
+                    stream->rx->uri, mprBufToString(packet->content));
             httpSetContentType(stream, "text/plain");
             httpSetStatus(stream, HTTP_CODE_SERVICE_UNAVAILABLE);
             cgi->seenHeader = 1;
@@ -500,11 +501,11 @@ static void readFromCgi(Cgi *cgi, int channel)
  */
 static bool parseCgiHeaders(Cgi *cgi, HttpPacket *packet)
 {
-    HttpStream  *stream;
-    MprBuf      *buf;
-    char        *endHeaders, *headers, *key, *value;
-    ssize       blen;
-    int         len;
+    HttpStream *stream;
+    MprBuf     *buf;
+    char       *endHeaders, *headers, *key, *value;
+    ssize      blen;
+    int        len;
 
     stream = cgi->stream;
     value = 0;
@@ -552,7 +553,7 @@ static bool parseCgiHeaders(Cgi *cgi, HttpPacket *packet)
                 key = "Bad Header";
             }
             value = getCgiToken(buf, "\n");
-            while (isspace((uchar) *value)) {
+            while (isspace((uchar) * value)) {
                 value++;
             }
             len = (int) strlen(value);
@@ -596,8 +597,8 @@ static bool parseCgiHeaders(Cgi *cgi, HttpPacket *packet)
  */
 static bool parseFirstCgiResponse(Cgi *cgi, HttpPacket *packet)
 {
-    MprBuf      *buf;
-    char        *protocol, *status, *msg;
+    MprBuf *buf;
+    char   *protocol, *status, *msg;
 
     buf = packet->content;
     protocol = getCgiToken(buf, " ");
@@ -626,12 +627,12 @@ static bool parseFirstCgiResponse(Cgi *cgi, HttpPacket *packet)
  */
 static void buildArgs(HttpStream *stream, int *argcp, cchar ***argvp)
 {
-    HttpRx      *rx;
-    HttpTx      *tx;
-    cchar       *actionProgram, *cp, *fileName, *query;
-    char        **argv, *tok;
-    ssize       len;
-    int         argc, argind, i;
+    HttpRx *rx;
+    HttpTx *tx;
+    cchar  *actionProgram, *cp, *fileName, *query;
+    char   **argv, *tok;
+    ssize  len;
+    int    argc, argind, i;
 
     rx = stream->rx;
     tx = stream->tx;
@@ -706,8 +707,8 @@ static void buildArgs(HttpStream *stream, int *argcp, cchar ***argvp)
  */
 static char *getCgiToken(MprBuf *buf, cchar *delim)
 {
-    char    *token, *nextToken;
-    ssize   len;
+    char  *token, *nextToken;
+    ssize len;
 
     len = mprGetBufLength(buf);
     if (len == 0) {
@@ -734,8 +735,8 @@ static char *getCgiToken(MprBuf *buf, cchar *delim)
  */
 static void traceCGIData(MprCmd *cmd, char *src, ssize size)
 {
-    char    dest[512];
-    int     index, i;
+    char dest[512];
+    int  index, i;
 
     if (mprGetLogLevel() >= 5) {
         mprDebug("http cgi", 5, "CGI: process wrote (leading %zd bytes) => \n", min(sizeof(dest), size));
@@ -754,7 +755,7 @@ static void traceCGIData(MprCmd *cmd, char *src, ssize size)
 
 static void copyInner(HttpStream *stream, cchar **envv, int index, cchar *key, cchar *value, cchar *prefix)
 {
-    char    *cp;
+    char *cp;
 
     if (prefix) {
         cp = sjoin(prefix, key, "=", value, NULL);
@@ -772,7 +773,7 @@ static void copyInner(HttpStream *stream, cchar **envv, int index, cchar *key, c
         if (*cp == '-') {
             *cp = '_';
         } else {
-            *cp = toupper((uchar) *cp);
+            *cp = toupper((uchar) * cp);
         }
     }
 }
@@ -780,7 +781,7 @@ static void copyInner(HttpStream *stream, cchar **envv, int index, cchar *key, c
 
 static int copyVars(HttpStream *stream, cchar **envv, int index, MprHash *vars, cchar *prefix)
 {
-    MprKey  *kp;
+    MprKey *kp;
 
     for (ITERATE_KEYS(vars, kp)) {
         if (kp->data) {
@@ -794,8 +795,8 @@ static int copyVars(HttpStream *stream, cchar **envv, int index, MprHash *vars, 
 
 static int copyParams(HttpStream *stream, cchar **envv, int index, MprJson *params, cchar *prefix)
 {
-    MprJson     *param;
-    int         i;
+    MprJson *param;
+    int     i;
 
     for (ITERATE_JSON(params, param, i)) {
         //  Workaround for large form fields that are also copied as post data
@@ -810,7 +811,7 @@ static int copyParams(HttpStream *stream, cchar **envv, int index, MprJson *para
 
 static int cgiEscapeDirective(MaState *state, cchar *key, cchar *value)
 {
-    bool    on;
+    bool on;
 
     if (!maTokenize(state, value, "%B", &on)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -822,7 +823,7 @@ static int cgiEscapeDirective(MaState *state, cchar *key, cchar *value)
 
 static int cgiPrefixDirective(MaState *state, cchar *key, cchar *value)
 {
-    cchar   *prefix;
+    cchar *prefix;
 
     if (!maTokenize(state, value, "%S", &prefix)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -837,7 +838,7 @@ static int cgiPrefixDirective(MaState *state, cchar *key, cchar *value)
  */
 PUBLIC int httpCgiInit(Http *http, MprModule *module)
 {
-    HttpStage   *handler, *connector;
+    HttpStage *handler, *connector;
 
     if ((handler = httpCreateHandler("cgiHandler", module)) == 0) {
         return MPR_ERR_CANT_CREATE;

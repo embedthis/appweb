@@ -7,7 +7,7 @@
 
 #if ME_COM_TEST_WEBSOCKETS
 
-static int test_open(HttpQueue* q)
+static int test_open(HttpQueue *q)
 {
     return 0;
 }
@@ -16,10 +16,11 @@ static void test_close(HttpQueue *q)
 {
 }
 
-static void test_incoming(HttpQueue* q, HttpPacket* packet)
+static void test_incoming(HttpQueue *q, HttpPacket *packet)
 {
     // 3K
-    char *data = "\
+    char *data =
+        "\
 0123456789012345678901234567890123456789012345678\n\
 0123456789012345678901234567890123456789012345678\n\
 0123456789012345678901234567890123456789012345678\n\
@@ -85,21 +86,21 @@ END OF DOCUMENT\n";
     httpSendBlock(q->stream, WS_MSG_TEXT, data, slen(data), 0);
 }
 
-static void test_ready(HttpQueue* q)
+static void test_ready(HttpQueue *q)
 {
 }
 
-PUBLIC int httpTestWebSocketsInit(Http* http, MprModule *module)
+PUBLIC int httpTestWebSocketsInit(Http *http, MprModule *module)
 {
-	HttpStage  *handler;
+    HttpStage *handler;
 
-	handler = httpCreateHandler("testWebSocketsHandler", module);
+    handler = httpCreateHandler("testWebSocketsHandler", module);
 
     handler->open = test_open;
-	handler->incoming = test_incoming;
-	handler->ready = test_ready;
-	handler->close = test_close;
-	return 0;
+    handler->incoming = test_incoming;
+    handler->ready = test_ready;
+    handler->close = test_close;
+    return 0;
 }
 
 #endif

@@ -10,7 +10,7 @@
 
 #if ME_COM_TEST
 
-static int test_open(HttpQueue* q)
+static int test_open(HttpQueue *q)
 {
     return 0;
 }
@@ -19,28 +19,28 @@ static void test_close(HttpQueue *q)
 {
 }
 
-static void test_incoming(HttpQueue* q, HttpPacket* packet)
+static void test_incoming(HttpQueue *q, HttpPacket *packet)
 {
     // httpFinalizeInput(q->stream);
 }
 
-static void test_ready(HttpQueue* q)
+static void test_ready(HttpQueue *q)
 {
     httpSetStatus(q->stream, 200);
     httpFinalize(q->stream);
 }
 
-PUBLIC int httpTestInit(Http* http, MprModule *module)
+PUBLIC int httpTestInit(Http *http, MprModule *module)
 {
-	HttpStage  *handler;
+    HttpStage *handler;
 
-	handler = httpCreateHandler("test", module);
+    handler = httpCreateHandler("test", module);
 
     handler->open = test_open;
-	handler->incoming = test_incoming;
-	handler->ready = test_ready;
-	handler->close = test_close;
-	return 0;
+    handler->incoming = test_incoming;
+    handler->ready = test_ready;
+    handler->close = test_close;
+    return 0;
 }
 
 #endif

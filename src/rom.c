@@ -9,7 +9,8 @@ PUBLIC MprRomInode romFiles[] = {
     { 0, 0, 0, 0 },
 };
 
-PUBLIC MprRomInode *mprGetRomFiles() {
+PUBLIC MprRomInode *mprGetRomFiles()
+{
     return romFiles;
 }
 #else

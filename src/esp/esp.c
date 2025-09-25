@@ -15,109 +15,109 @@
     Global application object. Provides the top level roots of all data objects for the GC.
  */
 typedef struct App {
-    Mpr         *mpr;
+    Mpr *mpr;
 
-    cchar       *description;           /* Application description */
-    cchar       *name;                  /* Application name */
-    cchar       *cipher;                /* Cipher for passwords: "md5" or "blowfish" */
-    cchar       *currentDir;            /* Initial starting current directory */
+    cchar *description;                 /* Application description */
+    cchar *name;                        /* Application name */
+    cchar *cipher;                      /* Cipher for passwords: "md5" or "blowfish" */
+    cchar *currentDir;                  /* Initial starting current directory */
 
-    cchar       *database;              /* Database */
-    cchar       *version;               /* Application version */
+    cchar *database;                    /* Database */
+    cchar *version;                     /* Application version */
 
-    cchar       *binDir;                /* Bin directory */
-    cchar       *home;                  /* Home directory */
-    cchar       *paksCacheDir;          /* Paks cache directory */
-    cchar       *paksDir;               /* Local paks directory */
-    cchar       *migDir;                /* Migrations directory */
-    cchar       *listen;                /* Listen endpoint for "esp run" */
-    cchar       *platform;              /* Target platform os-arch-profile (lower) */
+    cchar *binDir;                      /* Bin directory */
+    cchar *home;                        /* Home directory */
+    cchar *paksCacheDir;                /* Paks cache directory */
+    cchar *paksDir;                     /* Local paks directory */
+    cchar *migDir;                      /* Migrations directory */
+    cchar *listen;                      /* Listen endpoint for "esp run" */
+    cchar *platform;                    /* Target platform os-arch-profile (lower) */
 
-    int         combine;                /* Combine all inputs into one, combine output */
-    cchar       *combinePath;           /* Output filename for combine compilations */
-    MprFile     *combineFile;           /* Output file for combine compilations */
-    MprList     *combineItems;          /* Items to invoke from Init */
+    int combine;                        /* Combine all inputs into one, combine output */
+    cchar *combinePath;                 /* Output filename for combine compilations */
+    MprFile *combineFile;               /* Output file for combine compilations */
+    MprList *combineItems;              /* Items to invoke from Init */
 
-    MprList     *routes;                /* Routes to process */
-    EspRoute    *eroute;                /* Selected ESP route to build */
-    MprJson     *config;                /* Configuration from esp.json (only) */
-    MprJson     *package;               /* Configuration from pak.json (only) */
-    HttpRoute   *route;                 /* Selected route to build */
-    HttpHost    *host;                  /* Default host */
-    MprList     *files;                 /* List of files to process */
-    MprHash     *build;                 /* Items to build */
-    MprHash     *built;                 /* Items that have been built */
-    MprHash     *targets;               /* Command line targets */
-    EdiGrid     *migrations;            /* Migrations table */
+    MprList *routes;                    /* Routes to process */
+    EspRoute *eroute;                   /* Selected ESP route to build */
+    MprJson *config;                    /* Configuration from esp.json (only) */
+    MprJson *package;                   /* Configuration from pak.json (only) */
+    HttpRoute *route;                   /* Selected route to build */
+    HttpHost *host;                     /* Default host */
+    MprList *files;                     /* List of files to process */
+    MprHash *build;                     /* Items to build */
+    MprHash *built;                     /* Items that have been built */
+    MprHash *targets;                   /* Command line targets */
+    EdiGrid *migrations;                /* Migrations table */
 
-    cchar       *command;               /* Compilation or link command */
-    cchar       *cacheName;             /* Cached MD5 name */
-    cchar       *csource;               /* Name of "C" source for page or controller */
-    cchar       *filterRoutePattern;    /* Poute pattern to use for filtering */
-    cchar       *filterRoutePrefix;     /* Prefix of route to use for filtering */
-    cchar       *logSpec;               /* Arg for --log */
-    cchar       *traceSpec;             /* Arg for --trace */
-    cchar       *mode;                  /* New "pak.mode" to use */
-    cchar       *module;                /* Compiled module name */
-    cchar       *base;                  /* Base filename */
-    cchar       *entry;                 /* Module entry point */
-    cchar       *controller;            /* Controller name for generated entities (lower case) */
-    cchar       *password;              /* Password for auth */
-    cchar       *title;                 /* Title name for generated entities */
-    cchar       *table;                 /* Override table name for migrations, tables */
+    cchar *command;                     /* Compilation or link command */
+    cchar *cacheName;                   /* Cached MD5 name */
+    cchar *csource;                     /* Name of "C" source for page or controller */
+    cchar *filterRoutePattern;          /* Poute pattern to use for filtering */
+    cchar *filterRoutePrefix;           /* Prefix of route to use for filtering */
+    cchar *logSpec;                     /* Arg for --log */
+    cchar *traceSpec;                   /* Arg for --trace */
+    cchar *mode;                        /* New "pak.mode" to use */
+    cchar *module;                      /* Compiled module name */
+    cchar *base;                        /* Base filename */
+    cchar *entry;                       /* Module entry point */
+    cchar *controller;                  /* Controller name for generated entities (lower case) */
+    cchar *password;                    /* Password for auth */
+    cchar *title;                       /* Title name for generated entities */
+    cchar *table;                       /* Override table name for migrations, tables */
 
-    int         compileMode;            /* Debug or release compilation */
-    int         error;                  /* Any processing error */
-    int         keep;                   /* Keep source */
-    int         force;                  /* Force the requested action, ignoring unfullfilled dependencies */
-    int         quiet;                  /* Don't trace progress */
-    int         noupdate;               /* Do not update the esp.json */
-    int         require;                /* Initialization requirement flags */
-    int         rebuild;                /* Force a rebuild */
-    int         reverse;                /* Reverse migrations */
-    int         show;                   /* Show routes and compilation commands */
-    int         silent;                 /* Totally silent */
-    int         singleton;              /* Generate a singleton resource controller */
-    int         staticLink;             /* Use static linking */
-    int         verbose;                /* Verbose mode */
-    int         why;                    /* Why rebuild */
+    int compileMode;                    /* Debug or release compilation */
+    int error;                          /* Any processing error */
+    int keep;                           /* Keep source */
+    int force;                          /* Force the requested action, ignoring unfullfilled dependencies */
+    int quiet;                          /* Don't trace progress */
+    int noupdate;                       /* Do not update the esp.json */
+    int require;                        /* Initialization requirement flags */
+    int rebuild;                        /* Force a rebuild */
+    int reverse;                        /* Reverse migrations */
+    int show;                           /* Show routes and compilation commands */
+    int silent;                         /* Totally silent */
+    int singleton;                      /* Generate a singleton resource controller */
+    int staticLink;                     /* Use static linking */
+    int verbose;                        /* Verbose mode */
+    int why;                            /* Why rebuild */
 } App;
 
-static App       *app;                  /* Top level application object */
-static Esp       *esp;                  /* ESP control object */
-static Http      *http;                 /* HTTP service object */
-static int       nextMigration;         /* Sequence number for next migration */
+static App  *app;                       /* Top level application object */
+static Esp  *esp;                       /* ESP control object */
+static Http *http;                      /* HTTP service object */
+static int  nextMigration;              /* Sequence number for next migration */
 
 /*
     Initialization requirement flags
  */
-#define REQ_TARGETS     0x2             /* Require targets list */
-#define REQ_ROUTES      0x4             /* Require esp routes */
-#define REQ_CONFIG      0x8             /* Require esp.json, otherwise load only if present */
-#define REQ_LISTEN      0x10            /* Explicit listening address supplied */
-#define REQ_SERVE       0x20            /* Will be running as a server */
-#define REQ_NAME        0x40            /* Set "name" */
+#define REQ_TARGETS      0x2            /* Require targets list */
+#define REQ_ROUTES       0x4            /* Require esp routes */
+#define REQ_CONFIG       0x8            /* Require esp.json, otherwise load only if present */
+#define REQ_LISTEN       0x10           /* Explicit listening address supplied */
+#define REQ_SERVE        0x20           /* Will be running as a server */
+#define REQ_NAME         0x40           /* Set "name" */
 
 /*
     CompileFile flags
  */
-#define ESP_CONTROlLER  0x1             /* Compile a controller */
-#define ESP_VIEW        0x2             /* Compile a view */
-#define ESP_PAGE        0x4             /* Compile a stand-alone ESP page */
-#define ESP_MIGRATION   0x8             /* Compile a database migration */
-#define ESP_SRC         0x10            /* Files in src/ */
+#define ESP_CONTROlLER   0x1            /* Compile a controller */
+#define ESP_VIEW         0x2            /* Compile a view */
+#define ESP_PAGE         0x4            /* Compile a stand-alone ESP page */
+#define ESP_MIGRATION    0x8            /* Compile a database migration */
+#define ESP_SRC          0x10           /* Files in src/ */
 
 #define ESP_FOUND_TARGET 1
 
-#define MAX_PASS        64
-#define MAX_VER         1000000000
-#define VER_FACTOR      1000
-#define VER_FACTOR_MAX  "999"
+#define MAX_PASS         64
+#define MAX_VER          1000000000
+#define VER_FACTOR       1000
+#define VER_FACTOR_MAX   "999"
 
-#define ESP_MIGRATIONS  "_EspMigrations"
+#define ESP_MIGRATIONS   "_EspMigrations"
 
-#define ESP_PAKS_DIR    "paks"          /* Default paks dir */
-#define ESP_MIG_DIR     "migrations"    /* Default migrations dir */
+#define ESP_PAKS_DIR     "paks"         /* Default paks dir */
+#define ESP_MIG_DIR      "migrations"   /* Default migrations dir */
 
 /***************************** Forward Declarations ***************************/
 
@@ -185,8 +185,8 @@ static char *getpass(char *prompt);
 
 PUBLIC int main(int argc, char **argv)
 {
-    Mpr     *mpr;
-    int     options, rc;
+    Mpr *mpr;
+    int options, rc;
 
     if ((mpr = mprCreate(argc, argv, 0)) == 0) {
         exit(1);
@@ -273,11 +273,11 @@ static void manageApp(App *app, int flags)
 
 static int parseArgs(int argc, char **argv)
 {
-    cchar   *argp;
-    char    *dir, *key, *value;
-    int     argind;
+    cchar *argp;
+    char  *dir, *key, *value;
+    int   argind;
 
-   for (argind = 1; argind < argc && !app->error; argind++) {
+    for (argind = 1; argind < argc && !app->error; argind++) {
         argp = argv[argind];
         if (*argp++ != '-') {
             break;
@@ -396,7 +396,7 @@ static int parseArgs(int argc, char **argv)
         } else if (smatch(argp, "rebuild") || smatch(argp, "r")) {
             app->rebuild = 1;
 
-        //  DEPRECATED routeName
+            //  DEPRECATED routeName
         } else if (smatch(argp, "route") || smatch(argp, "routeName")) {
             if (argind >= argc) {
                 usageError();
@@ -453,7 +453,7 @@ static int parseArgs(int argc, char **argv)
             mprPrintf("%s\n", ESP_VERSION);
             exit(0);
 
-        } else if (isdigit((uchar) *argp)) {
+        } else if (isdigit((uchar) * argp)) {
             app->verbose++;
             if (!app->logSpec) {
                 app->logSpec = sfmt("stdout:%d", (int) stoi(argp));
@@ -479,7 +479,7 @@ static int parseArgs(int argc, char **argv)
 
 static void parseCommand(int argc, char **argv)
 {
-    cchar       *cmd;
+    cchar *cmd;
 
     if (app->error) {
         return;
@@ -535,7 +535,7 @@ static void parseCommand(int argc, char **argv)
     } else if (smatch(cmd, "user")) {
         app->require = REQ_CONFIG;
 
-    } else if (isdigit((uchar) *cmd)) {
+    } else if (isdigit((uchar) * cmd)) {
         app->require = REQ_LISTEN | REQ_SERVE;
 
     } else if (cmd && *cmd) {
@@ -546,7 +546,7 @@ static void parseCommand(int argc, char **argv)
 
 static void initRuntime()
 {
-    cchar   *home;
+    cchar *home;
 
     if (app->error) {
         return;
@@ -557,7 +557,7 @@ static void initRuntime()
     }
     http = MPR->httpService;
     app->route = httpGetDefaultRoute(0);
-    if (! (app->require & REQ_SERVE)) {
+    if (!(app->require & REQ_SERVE)) {
         app->route->flags |= HTTP_ROUTE_UTILITY;
     }
     mprStartLogging(app->logSpec, MPR_LOG_CMDLINE);
@@ -604,9 +604,9 @@ static void initRuntime()
 
 static void initialize(int argc, char **argv)
 {
-    HttpStage   *stage;
-    HttpRoute   *route;
-    cchar       *criteria, *espJson, *path;
+    HttpStage *stage;
+    HttpRoute *route;
+    cchar     *criteria, *espJson, *path;
 
     if (app->error) {
         return;
@@ -687,12 +687,16 @@ static void initialize(int argc, char **argv)
     app->version = getJson(app->config, "version", app->version);
 
     if (!app->config) {
-        app->config = mprParseJson(sfmt("{ name: '%s', title: '%s', description: '%s', version: '%s', \
+        app->config =
+            mprParseJson(sfmt(
+                             "{ name: '%s', title: '%s', description: '%s', version: '%s', \
             http: {}, esp: {}}",
-            app->name, app->title, app->description, app->version));
+                             app->name, app->title, app->description, app->version));
     }
     if (!app->package) {
-        app->package = mprParseJson(sfmt("{ name: '%s', title: '%s', description: '%s', version: '%s', \
+        app->package =
+            mprParseJson(sfmt(
+                             "{ name: '%s', title: '%s', description: '%s', version: '%s', \
             dependencies: {}}", app->name, app->title, app->description, app->version));
     }
 
@@ -755,7 +759,7 @@ static bool verifyConfig()
 
 static void process(int argc, char **argv)
 {
-    cchar       *cmd;
+    cchar *cmd;
 
     initialize(argc, argv);
     if (app->error) {
@@ -771,10 +775,10 @@ static void process(int argc, char **argv)
         config();
 
     } else if (smatch(cmd, "clean")) {
-        clean(argc -1, &argv[1]);
+        clean(argc - 1, &argv[1]);
 
     } else if (smatch(cmd, "compile")) {
-        compile(argc -1, &argv[1]);
+        compile(argc - 1, &argv[1]);
 
     } else if (smatch(cmd, "edit")) {
         editValue(argc - 1, &argv[1]);
@@ -805,7 +809,7 @@ static void process(int argc, char **argv)
     } else if (smatch(cmd, "user")) {
         user(argc - 1, &argv[1]);
 
-    } else if (isdigit((uchar) *cmd)) {
+    } else if (isdigit((uchar) * cmd)) {
         serve(1, (char**) &cmd);
     }
 }
@@ -823,11 +827,11 @@ static void config()
 
 static void clean(int argc, char **argv)
 {
-    MprList         *files;
-    MprDirEntry     *dp;
-    HttpRoute       *route;
-    cchar           *cacheDir, *path;
-    int             next, nextFile;
+    MprList     *files;
+    MprDirEntry *dp;
+    HttpRoute   *route;
+    cchar       *cacheDir, *path;
+    int         next, nextFile;
 
     if (app->error) {
         return;
@@ -856,7 +860,7 @@ static void clean(int argc, char **argv)
 
 static void generate(int argc, char **argv)
 {
-    char    *kind;
+    char *kind;
 
     if (app->error) {
         return;
@@ -895,9 +899,10 @@ static void generate(int argc, char **argv)
 }
 
 
-static void renderGenerated() {
-    MprCmd      *cmd;
-    char        *err, *out;
+static void renderGenerated()
+{
+    MprCmd *cmd;
+    char   *err, *out;
 
     if (!mprPathExists("expansive.json", R_OK)) {
         return;
@@ -920,7 +925,7 @@ static void renderGenerated() {
 
 static cchar *getJson(MprJson *config, cchar *key, cchar *defaultValue)
 {
-    cchar       *value;
+    cchar *value;
 
     if (!config) {
         return defaultValue;
@@ -934,8 +939,8 @@ static cchar *getJson(MprJson *config, cchar *key, cchar *defaultValue)
 
 static void editValue(int argc, char **argv)
 {
-    cchar   *key, *value;
-    int     i;
+    cchar *key, *value;
+    int   i;
 
     if (argc < 1) {
         usageError();
@@ -960,29 +965,29 @@ static void editValue(int argc, char **argv)
 
 static void init(int argc, char **argv)
 {
-    MprJson     *config;
-    cchar       *data, *path;
+    MprJson *config;
+    cchar   *data, *path;
 
     if (!mprPathExists("esp.json", R_OK)) {
         trace("Create", "esp.json");
         config = mprParseJson(sfmt("{" \
-            "esp: { app: true }," \
-            "http: {" \
-                "pipeline: {" \
-                    "handlers: 'espHandler'" \
-                "}," \
-                "server: {" \
-                    "listen: [" \
-                        "'http://*:80'" \
-                        "'https://*:4443'" \
-                    "]," \
-                "}," \
-                "ssl: {" \
-                    "certificate: ''," \
-                    "key: ''" \
-                "}" \
-            "}" \
-        "}"));
+                                   "esp: { app: true }," \
+                                   "http: {" \
+                                   "pipeline: {" \
+                                   "handlers: 'espHandler'" \
+                                   "}," \
+                                   "server: {" \
+                                   "listen: [" \
+                                   "'http://*:80'" \
+                                   "'https://*:4443'" \
+                                   "]," \
+                                   "}," \
+                                   "ssl: {" \
+                                   "certificate: ''," \
+                                   "key: ''" \
+                                   "}" \
+                                   "}" \
+                                   "}"));
         if (config == 0) {
             fail("Cannot parse config");
             return;
@@ -992,8 +997,8 @@ static void init(int argc, char **argv)
             fail("Cannot save %s", path);
         }
         data = sjoin("/*\n" \
-            "   esp.json - ESP Application configuration file\n\n" \
-            " */\n", data, NULL);
+                     "   esp.json - ESP Application configuration file\n\n" \
+                     " */\n", data, NULL);
         if (mprWritePathContents(path, data, -1, 0644) < 0) {
             fail("Cannot save %s", path);
         }
@@ -1004,12 +1009,12 @@ static void init(int argc, char **argv)
     if (!mprPathExists("pak.json", R_OK)) {
         trace("Create", "pak.json");
         config = mprParseJson(sfmt("{" \
-            "name: '%s'," \
-            "title: '%s'," \
-            "description: '%s'," \
-            "version: '%s'," \
-            "dependencies: {}," \
-        "}", app->name, app->title, app->description, app->version));
+                                   "name: '%s'," \
+                                   "title: '%s'," \
+                                   "description: '%s'," \
+                                   "version: '%s'," \
+                                   "dependencies: {}," \
+                                   "}", app->name, app->title, app->description, app->version));
         if (config == 0) {
             fail("Cannot parse config");
             return;
@@ -1124,7 +1129,7 @@ static void migrate(int argc, char **argv)
                     }
                 }
             }
-            if (! targetSeq) {
+            if (!targetSeq) {
                 fail("Cannot find target migration: %s", command);
                 return;
             }
@@ -1138,7 +1143,7 @@ static void migrate(int argc, char **argv)
     for (ITERATE_ITEMS(app->files, dp, next)) {
         file = dp->name;
         app->base = mprGetPathBase(file);
-        if (!smatch(mprGetPathExt(app->base), "c") || !isdigit((uchar) *app->base)) {
+        if (!smatch(mprGetPathExt(app->base), "c") || !isdigit((uchar) * app->base)) {
             continue;
         }
         seq = stoi(app->base);
@@ -1224,12 +1229,12 @@ static void migrate(int argc, char **argv)
  */
 static void role(int argc, char **argv)
 {
-    HttpAuth    *auth;
-    HttpRole    *role;
-    MprJson     *abilities;
-    MprBuf      *buf;
-    MprKey      *kp;
-    cchar       *cmd, *def, *key, *rolename;
+    HttpAuth *auth;
+    HttpRole *role;
+    MprJson  *abilities;
+    MprBuf   *buf;
+    MprKey   *kp;
+    cchar    *cmd, *def, *key, *rolename;
 
     if ((auth = app->route->auth) == 0) {
         fail("Authentication not configured in %s", "esp.json");
@@ -1287,7 +1292,7 @@ static void role(int argc, char **argv)
 
 static void setProfile(cchar *mode)
 {
-    int     quiet;
+    int quiet;
 
     setConfigValue(app->package, "profile", mode);
     saveConfig(app->package, "pak.json", MPR_JSON_QUOTES);
@@ -1316,9 +1321,9 @@ static void setConfigValue(MprJson *config, cchar *key, cchar *value)
  */
 static void serve(int argc, char **argv)
 {
-    HttpEndpoint    *endpoint;
-    cchar           *address, *ip;
-    int             i, port;
+    HttpEndpoint *endpoint;
+    cchar        *address, *ip;
+    int          i, port;
 
     if (app->error) {
         return;
@@ -1337,14 +1342,14 @@ static void serve(int argc, char **argv)
             httpAddHostToEndpoint(endpoint, app->host);
         }
     } else for (i = 0; i < argc; i++) {
-        address = argv[i++];
-        mprParseSocketAddress(address, &ip, &port, NULL, 80);
-        if ((endpoint = httpCreateEndpoint(ip, port, NULL)) == 0) {
-            fail("Cannot create endpoint for %s:%d", ip, port);
-            return;
+            address = argv[i++];
+            mprParseSocketAddress(address, &ip, &port, NULL, 80);
+            if ((endpoint = httpCreateEndpoint(ip, port, NULL)) == 0) {
+                fail("Cannot create endpoint for %s:%d", ip, port);
+                return;
+            }
+            httpAddHostToEndpoint(endpoint, app->host);
         }
-        httpAddHostToEndpoint(endpoint, app->host);
-    }
     if (mprGetListLength(HTTP->endpoints) == 0) {
         fail("No configured listening endpoints");
         return;
@@ -1374,11 +1379,11 @@ static void serve(int argc, char **argv)
  */
 static void user(int argc, char **argv)
 {
-    HttpAuth    *auth;
-    HttpUser    *user;
-    MprJson     *credentials;
-    char        *password;
-    cchar       *cmd, *def, *key, *username, *encodedPassword, *roles;
+    HttpAuth *auth;
+    HttpUser *user;
+    MprJson  *credentials;
+    char     *password;
+    cchar    *cmd, *def, *key, *username, *encodedPassword, *roles;
 
     if ((auth = app->route->auth) == 0) {
         fail("Authentication not configured in %s", "esp.json");
@@ -1457,8 +1462,8 @@ static void user(int argc, char **argv)
 
 static MprHash *getTargets(int argc, char **argv)
 {
-    MprHash     *targets;
-    int         i;
+    MprHash *targets;
+    int     i;
 
     targets = mprCreateHash(0, MPR_HASH_STABLE);
     for (i = 0; i < argc; i++) {
@@ -1488,12 +1493,12 @@ static bool similarRoute(HttpRoute *r1, HttpRoute *r2)
 
 static MprList *getRoutes()
 {
-    HttpRoute   *route, *parent, *rp;
-    EspRoute    *eroute;
-    MprList     *routes;
-    MprKey      *kp;
-    cchar       *filterRoutePattern, *filterRoutePrefix;
-    int         next, nextRoute;
+    HttpRoute *route, *parent, *rp;
+    EspRoute  *eroute;
+    MprList   *routes;
+    MprKey    *kp;
+    cchar     *filterRoutePattern, *filterRoutePrefix;
+    int       next, nextRoute;
 
     if (app->error) {
         return 0;
@@ -1515,12 +1520,14 @@ static MprList *getRoutes()
             continue;
         }
         if (filterRoutePattern) {
-            mprLog("", 6, "Check route name \"%s\", prefix \"%s\" with \"%s\"", route->pattern, route->startWith, filterRoutePattern);
+            mprLog("", 6, "Check route name \"%s\", prefix \"%s\" with \"%s\"", route->pattern, route->startWith,
+                   filterRoutePattern);
             if (!smatch(filterRoutePattern, route->pattern)) {
                 continue;
             }
         } else if (filterRoutePrefix) {
-            mprLog("", 6, "Check route name \"%s\", prefix \"%s\" with \"%s\"", route->pattern, route->startWith, filterRoutePrefix);
+            mprLog("", 6, "Check route name \"%s\", prefix \"%s\" with \"%s\"", route->pattern, route->startWith,
+                   filterRoutePrefix);
             if (!smatch(filterRoutePrefix, route->prefix) && !smatch(filterRoutePrefix, route->startWith)) {
                 continue;
             }
@@ -1547,7 +1554,8 @@ static MprList *getRoutes()
         }
         parent = route->parent;
         if (parent && parent->eroute &&
-            ((EspRoute*) parent->eroute)->compileCmd && smatch(route->documents, parent->documents) && parent->startWith) {
+            ((EspRoute*) parent->eroute)->compileCmd &&
+            smatch(route->documents, parent->documents) && parent->startWith) {
             /*
                 Use the parent instead if it has the same directory and is not the default route
                 This is for MVC apps with a prefix of "/" and a directory the same as the default route.
@@ -1556,7 +1564,7 @@ static MprList *getRoutes()
         }
         if (route && mprLookupItem(routes, route) < 0) {
             mprLog("", 6, "Using route name: \"%s\" documents:\"%s\" prefix: \"%s\"", route->pattern, route->documents,
-                route->startWith);
+                   route->startWith);
             mprAddItem(routes, route);
         }
     }
@@ -1596,12 +1604,12 @@ static MprList *getRoutes()
 
 static int runEspCommand(HttpRoute *route, cchar *command, cchar *csource, cchar *module)
 {
-    MprCmd      *cmd;
-    MprList     *elist;
-    MprKey      *var;
-    EspRoute    *eroute;
-    cchar       **env;
-    char        *err, *out;
+    MprCmd   *cmd;
+    MprList  *elist;
+    MprKey   *var;
+    EspRoute *eroute;
+    cchar    **env;
+    char     *err, *out;
 
     eroute = route->eroute;
     if ((app->command = espExpandCommand(route, command, csource, module)) == 0) {
@@ -1657,11 +1665,11 @@ static int runEspCommand(HttpRoute *route, cchar *command, cchar *csource, cchar
 
 static void compileFile(HttpRoute *route, cchar *source, int kind)
 {
-    EspRoute    *eroute;
-    cchar       *canonical, *defaultLayout, *page, *layout, *data, *prefix, *lpath, *appName, *cacheDir, *layoutsDir;
-    char        *err, *quote, *script;
-    ssize       len;
-    int         recompile;
+    EspRoute *eroute;
+    cchar    *canonical, *defaultLayout, *page, *layout, *data, *prefix, *lpath, *appName, *cacheDir, *layoutsDir;
+    char     *err, *quote, *script;
+    ssize    len;
+    int      recompile;
 
     if (app->error) {
         return;
@@ -1749,7 +1757,7 @@ static void compileFile(HttpRoute *route, cchar *source, int kind)
                 mprAddItem(app->combineItems, sfmt("esp_app_%s", eroute->appName));
             } else if (eroute->appName && *eroute->appName) {
                 mprAddItem(app->combineItems,
-                    sfmt("esp_controller_%s_%s", eroute->appName, mprTrimPathExt(mprGetPathBase(source))));
+                           sfmt("esp_controller_%s_%s", eroute->appName, mprTrimPathExt(mprGetPathBase(source))));
             } else {
                 mprAddItem(app->combineItems, sfmt("esp_controller_%s", mprTrimPathExt(mprGetPathBase(source))));
             }
@@ -1820,9 +1828,9 @@ static void compileFile(HttpRoute *route, cchar *source, int kind)
  */
 static void compile(int argc, char **argv)
 {
-    HttpRoute   *route;
-    MprKey      *kp;
-    int         next;
+    HttpRoute *route;
+    MprKey    *kp;
+    int       next;
 
     if (app->error) {
         return;
@@ -1862,8 +1870,8 @@ static void compile(int argc, char **argv)
  */
 static bool requiredRoute(HttpRoute *route)
 {
-    MprKey      *kp;
-    cchar       *source;
+    MprKey *kp;
+    cchar  *source;
 
     if (app->targets == 0 || mprGetHashLength(app->targets) == 0) {
         return 1;
@@ -1890,8 +1898,8 @@ static bool requiredRoute(HttpRoute *route)
  */
 static bool selectResource(cchar *path, cchar *kind)
 {
-    MprKey  *kp;
-    cchar   *ext;
+    MprKey *kp;
+    cchar  *ext;
 
     ext = mprGetPathExt(path);
     if (kind && !smatch(ext, kind)) {
@@ -1912,9 +1920,9 @@ static bool selectResource(cchar *path, cchar *kind)
 
 static bool selectView(HttpRoute *route, cchar *path)
 {
-    MprKey      *kp;
-    MprJson     *extensions, *ext;
-    int         index;
+    MprKey  *kp;
+    MprJson *extensions, *ext;
+    int     index;
 
     if ((extensions = mprGetJsonObj(route->config, "http.pipeline.handlers.espHandler")) != 0) {
         for (ITERATE_JSON(extensions, ext, index)) {
@@ -2025,14 +2033,14 @@ static void compileItems(HttpRoute *route)
  */
 static void compileCombined(HttpRoute *route)
 {
-    MprDirEntry     *dp;
-    MprKey          *kp;
-    EspRoute        *eroute;
-    MprJson         *extensions, *ext, *source, *sourceList;
-    MprList         *files;
-    cchar           *controllers, *item, *name;
-    char            *path, *line;
-    int             next, kind, index;
+    MprDirEntry *dp;
+    MprKey      *kp;
+    EspRoute    *eroute;
+    MprJson     *extensions, *ext, *source, *sourceList;
+    MprList     *files;
+    cchar       *controllers, *item, *name;
+    char        *path, *line;
+    int         next, kind, index;
 
     eroute = route->eroute;
     name = app->name ? app->name : mprGetPathBase(route->documents);
@@ -2108,7 +2116,7 @@ static void compileCombined(HttpRoute *route)
             compileFile(route, kp->key, kind);
         }
         mprWriteFileFmt(app->combineFile,
-            "\nESP_EXPORT int esp_app_%s_combine(HttpRoute *route) {\n", name);
+                        "\nESP_EXPORT int esp_app_%s_combine(HttpRoute *route) {\n", name);
         for (next = 0; (line = mprGetNextItem(app->combineItems, &next)) != 0; ) {
             mprWriteFileFmt(app->combineFile, "    %s(route);\n", line);
         }
@@ -2151,9 +2159,9 @@ static void generateItem(cchar *item)
  */
 static void generateController(int argc, char **argv)
 {
-    MprHash     *tokens;
-    cchar       *action, *actions, *defines;
-    int         i;
+    MprHash *tokens;
+    cchar   *action, *actions, *defines;
+    int     i;
 
     if (argc < 1) {
         usageError();
@@ -2169,7 +2177,7 @@ static void generateController(int argc, char **argv)
     for (i = 1; i < argc; i++) {
         action = argv[i];
         defines = sjoin(defines, sfmt("    espAction(route, \"%s/%s\", NULL, %s);\n", app->controller,
-            action, action), NULL);
+                                      action, action), NULL);
         actions = sjoin(actions, sfmt("static void %s() {\n}\n\n", action), NULL);
     }
     tokens = makeTokens(0, mprDeserialize(sfmt("{ ACTIONS: '%s', DEFINE_ACTIONS: '%s' }", actions, defines)));
@@ -2184,7 +2192,7 @@ static void generateController(int argc, char **argv)
  */
 static void generateMigration(int argc, char **argv)
 {
-    cchar       *name, *stem, *table;
+    cchar *name, *stem, *table;
 
     if (argc < 2) {
         fail("Bad migration command line");
@@ -2229,7 +2237,7 @@ static void createMigration(cchar *name, cchar *table, cchar *comment, int field
         forward = sjoin(forward, def, NULL);
     }
     tokens = mprDeserialize(sfmt("{ MIGRATION: '%s', TABLE: '%s', COMMENT: '%s', FORWARD: '%s', BACKWARD: '%s' }",
-        name, table, comment, forward, backward));
+                                 name, table, comment, forward, backward));
     if ((data = getTemplate("migration", tokens)) == 0) {
         return;
     }
@@ -2252,7 +2260,7 @@ static void createMigration(cchar *name, cchar *table, cchar *comment, int field
 
 static void generateScaffoldController(int argc, char **argv)
 {
-    cchar   *key;
+    cchar *key;
 
     key = app->singleton ? "controllerSingleton" : "controller";
     genKey(key, sfmt("%s/%s.c", httpGetDir(app->route, "CONTROLLERS"), app->controller), 0);
@@ -2262,20 +2270,20 @@ static void generateScaffoldController(int argc, char **argv)
 static void generateClientController(int argc, char **argv)
 {
     genKey("clientController", sfmt("%s/%s/%sControl.js", httpGetDir(app->route, "CONTENTS"),
-        app->controller, stitle(app->controller)), 0);
+                                    app->controller, stitle(app->controller)), 0);
 }
 
 
 static void generateClientModel(int argc, char **argv)
 {
     genKey("clientModel", sfmt("%s/%s/%s.js", httpGetDir(app->route, "CONTENTS"), app->controller,
-        stitle(app->controller)), 0);
+                               stitle(app->controller)), 0);
 }
 
 
 static void generateClientRoutes(int argc, char **argv)
 {
-    cchar   *data, *routes, *ucontroller;
+    cchar *data, *routes, *ucontroller;
 
     genKey("clientRoutes", sfmt("%s/%s/routes.js", httpGetDir(app->route, "CONTENTS"), app->controller), 0);
 
@@ -2284,10 +2292,10 @@ static void generateClientRoutes(int argc, char **argv)
         data = mprReadPathContents(routes, NULL);
         ucontroller = stitle(app->controller);
         data = sreplace(data,
-            "export default routes",
-            sfmt("import %sRoutes from './%s/routes.js'\n"
-                 "routes = routes.concat(%sRoutes)\n\n"
-                 "export default routes", ucontroller, app->controller, ucontroller));
+                        "export default routes",
+                        sfmt("import %sRoutes from './%s/routes.js'\n"
+                             "routes = routes.concat(%sRoutes)\n\n"
+                             "export default routes", ucontroller, app->controller, ucontroller));
         if (mprWritePathContents(routes, data, -1, 0) < 0) {
             fail("Cannot update %s", routes);
         }
@@ -2300,7 +2308,7 @@ static void generateClientRoutes(int argc, char **argv)
  */
 static void generateScaffoldMigration(int argc, char **argv)
 {
-    cchar       *comment;
+    cchar *comment;
 
     if (argc < 1) {
         fail("Bad migration command line");
@@ -2315,10 +2323,10 @@ static void generateScaffoldMigration(int argc, char **argv)
  */
 static void generateTable(int argc, char **argv)
 {
-    Edi         *edi;
-    cchar       *field;
-    char        *typeString;
-    int         rc, i, type;
+    Edi   *edi;
+    cchar *field;
+    char  *typeString;
+    int   rc, i, type;
 
     app->table = app->table ? app->table : sclone(argv[0]);
     if ((edi = app->eroute->edi) == 0) {
@@ -2371,7 +2379,7 @@ static void generateScaffoldViews(int argc, char **argv)
  */
 static void generateScaffold(int argc, char **argv)
 {
-    char    *plural;
+    char *plural;
 
     if (argc < 1) {
         usageError();
@@ -2413,8 +2421,8 @@ static void generateScaffold(int argc, char **argv)
  */
 static int reverseSortFiles(MprDirEntry **d1, MprDirEntry **d2)
 {
-    char    *base1, *base2, *b1, *b2, *p1, *p2;
-    int     rc;
+    char *base1, *base2, *b1, *b2, *p1, *p2;
+    int  rc;
 
     base1 = mprGetPathBase((*d1)->name);
     base2 = mprGetPathBase((*d2)->name);
@@ -2460,7 +2468,7 @@ static void makeEspDir(cchar *path)
 
 static void makeEspFile(cchar *path, cchar *data, ssize len)
 {
-    bool    exists;
+    bool exists;
 
     exists = mprPathExists(path, R_OK);
     if (exists && !app->force) {
@@ -2485,10 +2493,10 @@ static void makeEspFile(cchar *path, cchar *data, ssize len)
 
 static cchar *getCachedPaks()
 {
-    MprJson         *config, *keyword;
-    MprList         *files, *result;
-    cchar           *base, *dir, *path, *version;
-    int             index, next, show;
+    MprJson *config, *keyword;
+    MprList *files, *result;
+    cchar   *base, *dir, *path, *version;
+    int     index, next, show;
 
     if (!app->paksCacheDir) {
         return 0;
@@ -2525,8 +2533,8 @@ static cchar *getCachedPaks()
 
 static cchar *readTemplate(cchar *path, MprHash *tokens, ssize *len)
 {
-    cchar   *cp, *data;
-    ssize   size;
+    cchar *cp, *data;
+    ssize size;
 
     if (!path || *path == '\0') {
         return 0;
@@ -2539,7 +2547,8 @@ static cchar *readTemplate(cchar *path, MprHash *tokens, ssize *len)
         *len = size;
     }
     /* Detect non-text content via premature nulls */
-    for (cp = data; *cp; cp++) { }
+    for (cp = data; *cp; cp++) {
+    }
     if ((cp - data) < size) {
         /* Skip template as the data looks lik binary */
         return data;
@@ -2555,7 +2564,7 @@ static cchar *readTemplate(cchar *path, MprHash *tokens, ssize *len)
 
 static cchar *getTemplate(cchar *key, MprHash *tokens)
 {
-    cchar   *pattern;
+    cchar *pattern;
 
     if ((pattern = getJson(app->config, sfmt("esp.generate.%s", key), 0)) != 0) {
         if (mprPathExists(app->paksDir, X_OK)) {
@@ -2568,21 +2577,23 @@ static cchar *getTemplate(cchar *key, MprHash *tokens)
 
 static MprHash *makeTokens(cchar *path, MprHash *other)
 {
-    HttpRoute   *route;
-    MprHash     *tokens;
-    cchar       *filename, *list;
+    HttpRoute *route;
+    MprHash   *tokens;
+    cchar     *filename, *list;
 
     route = app->route;
     filename = mprGetPathBase(path);
     list = smatch(app->controller, app->table) ? sfmt("%ss", app->controller) : app->table;
 
     tokens = mprDeserialize(sfmt(
-        "{ NAME: '%s', TITLE: '%s', HOME: '%s', DOCUMENTS: '%s', CONTENTS: '%s', BINDIR: '%s', DATABASE: '%s',"
-        "FILENAME: '%s', LIST: '%s', LISTEN: '%s', CONTROLLER: '%s', UCONTROLLER: '%s', MODEL: '%s', UMODEL: '%s',"
-        "TABLE: '%s', ACTIONS: '', DEFINE_ACTIONS: '' }",
-        app->name, app->title, route->home, route->documents, httpGetDir(route, "CONTENTS"), app->binDir, app->database,
-        filename, list, app->listen, app->controller, stitle(app->controller), app->controller, stitle(app->controller),
-        app->table));
+                                "{ NAME: '%s', TITLE: '%s', HOME: '%s', DOCUMENTS: '%s', CONTENTS: '%s', BINDIR: '%s', DATABASE: '%s',"
+                                "FILENAME: '%s', LIST: '%s', LISTEN: '%s', CONTROLLER: '%s', UCONTROLLER: '%s', MODEL: '%s', UMODEL: '%s',"
+                                "TABLE: '%s', ACTIONS: '', DEFINE_ACTIONS: '' }",
+                                app->name, app->title, route->home, route->documents, httpGetDir(route, "CONTENTS"),
+                                app->binDir, app->database,
+                                filename, list, app->listen, app->controller, stitle(app->controller), app->controller,
+                                stitle(app->controller),
+                                app->table));
     if (other) {
         mprBlendHash(tokens, other);
     }
@@ -2592,7 +2603,7 @@ static MprHash *makeTokens(cchar *path, MprHash *other)
 
 static void genKey(cchar *key, cchar *path, MprHash *tokens)
 {
-    cchar       *data, *pattern;
+    cchar *data, *pattern;
 
     if (app->error) {
         return;
@@ -2615,60 +2626,60 @@ static void genKey(cchar *key, cchar *path, MprHash *tokens)
 
 static void usageError()
 {
-    cchar   *name, *paks;
+    cchar *name, *paks;
 
     name = mprGetAppName();
     mprEprintf("\nESP Usage:\n\n"
-    "  %s [options] [commands]\n\n"
-    "  Options:\n"
-    "    --cipher cipher            # Password cipher 'md5' or 'blowfish'\n"
-    "    --combine                  # Combine ESP assets into one cache file\n"
-    "    --database name            # Database provider 'mdb|sdb'\n"
-    "    --dir DIR=path             # Set directory to path\n"
-    "    --force                    # Force requested action\n"
-    "    --home directory           # Change to directory first\n"
-    "    --keep                     # Keep intermediate source\n"
-    "    --listen [ip:]port         # Generate app to listen at address\n"
-    "    --log logFile:level        # Log to file at verbosity level (0-5)\n"
-    "    --name appName             # Name for the app when combining\n"
-    "    --noupdate                 # Do not update the esp.json\n"
-    "    --optimized                # Compile optimized without symbols\n"
-    "    --quiet                    # Don't emit trace\n"
-    "    --platform os-arch-profile # Target platform\n"
-    "    --rebuild                  # Force a rebuild\n"
-    "    --route pattern            # Route pattern to select\n"
-    "    --routePrefix prefix       # Prefix of route to select\n"
-    "    --single                   # Generate a singleton controller\n"
-    "    --show                     # Show routes and compile commands\n"
+               "  %s [options] [commands]\n\n"
+               "  Options:\n"
+               "    --cipher cipher            # Password cipher 'md5' or 'blowfish'\n"
+               "    --combine                  # Combine ESP assets into one cache file\n"
+               "    --database name            # Database provider 'mdb|sdb'\n"
+               "    --dir DIR=path             # Set directory to path\n"
+               "    --force                    # Force requested action\n"
+               "    --home directory           # Change to directory first\n"
+               "    --keep                     # Keep intermediate source\n"
+               "    --listen [ip:]port         # Generate app to listen at address\n"
+               "    --log logFile:level        # Log to file at verbosity level (0-5)\n"
+               "    --name appName             # Name for the app when combining\n"
+               "    --noupdate                 # Do not update the esp.json\n"
+               "    --optimized                # Compile optimized without symbols\n"
+               "    --quiet                    # Don't emit trace\n"
+               "    --platform os-arch-profile # Target platform\n"
+               "    --rebuild                  # Force a rebuild\n"
+               "    --route pattern            # Route pattern to select\n"
+               "    --routePrefix prefix       # Prefix of route to select\n"
+               "    --single                   # Generate a singleton controller\n"
+               "    --show                     # Show routes and compile commands\n"
 #if KEEP
-    /*
-        Static linking is not recommended due to the complexity of resolving initializers
-     */
-    "    --static                   # Use static linking\n"
+               /*
+                   Static linking is not recommended due to the complexity of resolving initializers
+                */
+               "    --static                   # Use static linking\n"
 #endif
-    "    --symbols                  # Compile for debug with symbols\n"
-    "    --table name               # Override table name if plural required\n"
-    "    --trace traceFile:level    # Trace to file at verbosity level (0-5)\n"
-    "    --verbose                  # Emit more verbose trace\n"
-    "    --why                      # Why compile or skip building\n"
-    "\n"
-    "  Commands:\n"
-    "    esp clean\n"
-    "    esp compile [pathFilters ...]\n"
-    "    esp config\n"
-    "    esp edit key[=value]\n"
-    "    esp generate controller name [action [, action] ...\n"
-    "    esp generate migration description model [field:type [, field:type] ...]\n"
-    "    esp generate scaffold model [field:type [, field:type] ...]\n"
-    "    esp generate table name [field:type [, field:type] ...]\n"
-    "    esp init [name [version]]\n"
-    "    esp migrate [forward|backward|NNN]\n"
-    "    esp profile [dev|prod|...]\n"
-    "    esp role [add|remove] rolename abilities...\n"
-    "    esp [serve] [ip]:[port] ...\n"
-    "    esp user [add|compute] username password roles...\n"
-    "    esp user [remove|show] username\n"
-    "\n", name);
+               "    --symbols                  # Compile for debug with symbols\n"
+               "    --table name               # Override table name if plural required\n"
+               "    --trace traceFile:level    # Trace to file at verbosity level (0-5)\n"
+               "    --verbose                  # Emit more verbose trace\n"
+               "    --why                      # Why compile or skip building\n"
+               "\n"
+               "  Commands:\n"
+               "    esp clean\n"
+               "    esp compile [pathFilters ...]\n"
+               "    esp config\n"
+               "    esp edit key[=value]\n"
+               "    esp generate controller name [action [, action] ...\n"
+               "    esp generate migration description model [field:type [, field:type] ...]\n"
+               "    esp generate scaffold model [field:type [, field:type] ...]\n"
+               "    esp generate table name [field:type [, field:type] ...]\n"
+               "    esp init [name [version]]\n"
+               "    esp migrate [forward|backward|NNN]\n"
+               "    esp profile [dev|prod|...]\n"
+               "    esp role [add|remove] rolename abilities...\n"
+               "    esp [serve] [ip]:[port] ...\n"
+               "    esp user [add|compute] username password roles...\n"
+               "    esp user [remove|show] username\n"
+               "\n", name);
 
     initRuntime();
     paks = getCachedPaks();
@@ -2681,8 +2692,8 @@ static void usageError()
 
 static void fail(cchar *fmt, ...)
 {
-    va_list     args;
-    char        *msg;
+    va_list args;
+    char    *msg;
 
     va_start(args, fmt);
     msg = sfmtv(fmt, args);
@@ -2694,8 +2705,8 @@ static void fail(cchar *fmt, ...)
 
 static void fatal(cchar *fmt, ...)
 {
-    va_list     args;
-    char        *msg;
+    va_list args;
+    char    *msg;
 
     va_start(args, fmt);
     msg = sfmtv(fmt, args);
@@ -2710,8 +2721,8 @@ static void fatal(cchar *fmt, ...)
  */
 static void qtrace(cchar *tag, cchar *fmt, ...)
 {
-    va_list     args;
-    char        *msg;
+    va_list args;
+    char    *msg;
 
     if (!app->silent) {
         va_start(args, fmt);
@@ -2728,8 +2739,8 @@ static void qtrace(cchar *tag, cchar *fmt, ...)
  */
 static void trace(cchar *tag, cchar *fmt, ...)
 {
-    va_list     args;
-    char        *msg;
+    va_list args;
+    char    *msg;
 
     if (!app->quiet) {
         va_start(args, fmt);
@@ -2746,8 +2757,8 @@ static void trace(cchar *tag, cchar *fmt, ...)
  */
 static void vtrace(cchar *tag, cchar *fmt, ...)
 {
-    va_list     args;
-    char        *msg;
+    va_list args;
+    char    *msg;
 
     if (app->verbose && !app->quiet) {
         va_start(args, fmt);
@@ -2760,8 +2771,8 @@ static void vtrace(cchar *tag, cchar *fmt, ...)
 
 static void why(cchar *path, cchar *fmt, ...)
 {
-    va_list     args;
-    char        *msg;
+    va_list args;
+    char    *msg;
 
     if (app->why) {
         va_start(args, fmt);
@@ -2798,8 +2809,8 @@ static MprJson *loadJson(cchar *path)
 
 static MprJson *readConfig(cchar *path)
 {
-    MprJson     *config, *profiles;
-    cchar       *data, *errorMsg, *profile;
+    MprJson *config, *profiles;
+    cchar   *data, *errorMsg, *profile;
 
     if ((data = mprReadPathContents(path, NULL)) == 0) {
         fail("Cannot read configuration from \"%s\"", path);
@@ -2837,8 +2848,8 @@ static void saveConfig(MprJson *config, cchar *path, int flags)
  */
 static cchar *getPakVersion(cchar *name, cchar *version)
 {
-    MprDirEntry     *dp;
-    MprList         *files;
+    MprDirEntry *dp;
+    MprList     *files;
 
     if (!version || smatch(version, "*")) {
         name = ssplit(sclone(name), "#", (char**) &version);
@@ -2860,7 +2871,7 @@ static cchar *getPakVersion(cchar *name, cchar *version)
 
 static bool identifier(cchar *name)
 {
-    cchar   *cp;
+    cchar *cp;
 
     if (!name) {
         return 0;
@@ -2876,7 +2887,7 @@ static bool identifier(cchar *name)
 
 static char *getPassword()
 {
-    char    *password, *confirm;
+    char *password, *confirm;
 
     password = getpass("New user password: ");
     confirm = getpass("Confirm user password: ");
@@ -2898,7 +2909,7 @@ static char *getpass(char *prompt)
 static char *getpass(char *prompt)
 {
     static char password[MAX_PASS];
-    int     c, i;
+    int         c, i;
 
     fputs(prompt, stdout);
     for (i = 0; i < (int) sizeof(password) - 1; i++) {

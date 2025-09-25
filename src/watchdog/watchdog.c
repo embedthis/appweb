@@ -28,38 +28,38 @@
     #define SERVICE_PROGRAM ME_APP_PREFIX "/bin/" ME_NAME
 #endif
 #ifndef SERVICE_NAME
-    #define SERVICE_NAME ME_NAME
+    #define SERVICE_NAME    ME_NAME
 #endif
 #ifndef SERVICE_HOME
-    #define SERVICE_HOME "/"
+    #define SERVICE_HOME    "/"
 #endif
 
 #if ME_UNIX_LIKE
 /*********************************** Locals ***********************************/
 
-#define RESTART_DELAY (0 * 1000)        /* Default heart beat period (30 sec) */
-#define RESTART_MAX   (100)             /* Max restarts per hour */
+#define RESTART_DELAY  (0 * 1000)       /* Default heart beat period (30 sec) */
+#define RESTART_MAX    (100)            /* Max restarts per hour */
 #define MANAGE_TIMEOUT (20 * 1000)      /* Timeout for actions */
 
 typedef struct App {
-    int     continueOnErrors;           /* Keep going through errors */
-    int     exiting;                    /* Program should exit */
-    int     retries;                    /* Number of times to retry staring app */
-    int     signal;                     /* Signal to use to terminate service */
-    char    *command;                   /* Last command */
-    char    *error;                     /* Command error message */
-    char    *output;                    /* Command output message */
-    char    *logSpec;                   /* Log directive for service */
-    char    *pidDir;                    /* Location for pid file */
-    char    *pidPath;                   /* Path to the watchdog pid for this service */
-    int     restartCount;               /* Service restart count */
-    int     restartWarned;              /* Has user been notified */
-    int     servicePid;                 /* Process ID for the service */
-    char    *company;                   /* One word company name (lower case) */
-    char    *serviceArgs;               /* Args to pass to service */
-    char    *serviceHome;               /* Service home */
-    char    *serviceName;               /* Basename of service program */
-    char    *serviceProgram;            /* Program to start */
+    int continueOnErrors;               /* Keep going through errors */
+    int exiting;                        /* Program should exit */
+    int retries;                        /* Number of times to retry staring app */
+    int signal;                         /* Signal to use to terminate service */
+    char *command;                      /* Last command */
+    char *error;                        /* Command error message */
+    char *output;                       /* Command output message */
+    char *logSpec;                      /* Log directive for service */
+    char *pidDir;                       /* Location for pid file */
+    char *pidPath;                      /* Path to the watchdog pid for this service */
+    int restartCount;                   /* Service restart count */
+    int restartWarned;                  /* Has user been notified */
+    int servicePid;                     /* Process ID for the service */
+    char *company;                      /* One word company name (lower case) */
+    char *serviceArgs;                  /* Args to pass to service */
+    char *serviceHome;                  /* Service home */
+    char *serviceName;                  /* Basename of service program */
+    char *serviceProgram;               /* Program to start */
     MprSignal *sigchld;                 /* Child death signal handler */
 } App;
 
@@ -81,8 +81,8 @@ static int  writePid(int pid);
 
 PUBLIC int main(int argc, char *argv[])
 {
-    char    *argp, *value;
-    int     err, nextArg, flags;
+    char *argp, *value;
+    int  err, nextArg, flags;
 
     flags = 0;
 
@@ -221,31 +221,31 @@ PUBLIC int main(int argc, char *argv[])
     }
     if (err) {
         mprEprintf("Bad command line: \n"
-            "  Usage: %s [commands]\n"
-            "  Switches:\n"
-            "    --args               # Args to pass to service\n"
-            "    --continue           # Continue on errors\n"
-            "    --daemon             # Run watchdog as a daemon\n"
-            "    --home path          # Home directory for service\n"
-            "    --log logFile:level  # Log directive for service\n"
-            "    --retries count      # Max count of app restarts\n"
-            "    --name name          # Name of the service to manage\n"
-            "    --pidfile path       # Location of the pid file\n"
-            "    --program path       # Service program to start\n"
-            "    --signal signo       # Signal number to terminate service\n"
-            "    --verbose            # Show command feedback\n"
+                   "  Usage: %s [commands]\n"
+                   "  Switches:\n"
+                   "    --args               # Args to pass to service\n"
+                   "    --continue           # Continue on errors\n"
+                   "    --daemon             # Run watchdog as a daemon\n"
+                   "    --home path          # Home directory for service\n"
+                   "    --log logFile:level  # Log directive for service\n"
+                   "    --retries count      # Max count of app restarts\n"
+                   "    --name name          # Name of the service to manage\n"
+                   "    --pidfile path       # Location of the pid file\n"
+                   "    --program path       # Service program to start\n"
+                   "    --signal signo       # Signal number to terminate service\n"
+                   "    --verbose            # Show command feedback\n"
 #if KEEP
-            "    --heartBeat interval # Heart beat interval period (secs) \n"
+                   "    --heartBeat interval # Heart beat interval period (secs) \n"
 #endif
-            "  Commands:\n"
-            "    disable              # Disable the service\n"
-            "    enable               # Enable the service\n"
-            "    install              # Install the service\n"
-            "    run                  # Run and watch over the service\n"
-            "    start                # Start the service\n"
-            "    stop                 # Stop the service\n"
-            "    uninstall            # Uninstall the service\n"
-            , mprGetAppName());
+                   "  Commands:\n"
+                   "    disable              # Disable the service\n"
+                   "    enable               # Enable the service\n"
+                   "    install              # Install the service\n"
+                   "    run                  # Run and watch over the service\n"
+                   "    start                # Start the service\n"
+                   "    stop                 # Stop the service\n"
+                   "    uninstall            # Uninstall the service\n"
+                   , mprGetAppName());
         return -1;
     }
     if (app->logSpec) {
@@ -326,9 +326,9 @@ static void terminating(int state, int how, int status)
 
 static bool exists(cchar *fmt, ...)
 {
-    va_list     args;
-    cchar       *path;
-    bool        rc;
+    va_list args;
+    cchar   *path;
+    bool    rc;
 
     va_start(args, fmt);
     path = sfmtv(fmt, args);
@@ -354,10 +354,10 @@ static void report(bool success, cchar *activity)
 
 static bool run(cchar *fmt, ...)
 {
-    va_list     args;
-    MprCmd      *cmd;
-    char        *out, *err;
-    int         rc;
+    va_list args;
+    MprCmd  *cmd;
+    char    *out, *err;
+    int     rc;
 
     va_start(args, fmt);
     app->command = sfmtv(fmt, args);
@@ -373,8 +373,8 @@ static bool run(cchar *fmt, ...)
 
 static bool process(cchar *operation, bool quiet)
 {
-    cchar   *name, *off, *path, *verb;
-    int     rc, launch, update, service, upstart;
+    cchar *name, *off, *path, *verb;
+    int   rc, launch, update, service, upstart;
 
     /*
         No systemd support yet
@@ -393,7 +393,7 @@ static bool process(cchar *operation, bool quiet)
         launch++;
 
     } else if (exists("/sbin/start") && exists("/etc/init/rc.conf") &&
-            (exists("/etc/init/%s.conf", name) || exists("/etc/init/%s.off", name))) {
+               (exists("/etc/init/%s.conf", name) || exists("/etc/init/%s.off", name))) {
         upstart++;
 
     } else if (exists("/usr/sbin/update-rc.d")) {
@@ -469,10 +469,11 @@ static bool process(cchar *operation, bool quiet)
             } else {
                 /*
                     May fail on legacy systems
-                */
+                 */
                 rc = run("/bin/launchctl enable system/com.%s.%s", app->company, name);
                 /*
-                    Unfortunately, there is no launchctl command to do an enable without starting. So must do a stop below.
+                    Unfortunately, there is no launchctl command to do an enable without starting. So must do a stop
+                       below.
                  */
                 process("stop", 1);
             }
@@ -582,10 +583,10 @@ static bool process(cchar *operation, bool quiet)
 
 static void runService(void)
 {
-    MprTicks    mark;
-    cchar       **av, **argv;
-    char        *env[3];
-    int         err, i, status, ac, next;
+    MprTicks mark;
+    cchar    **av, **argv;
+    char     *env[3];
+    int      err, i, status, ac, next;
 
     app->servicePid = 0;
     atexit(killService);
@@ -609,9 +610,9 @@ static void runService(void)
         }
         if (app->servicePid == 0) {
             if (app->restartCount >= app->retries) {
-                if (! app->restartWarned) {
+                if (!app->restartWarned) {
                     mprLog("error watchdog", 0, "Too many restarts for %s, %d in last hour",
-                        app->serviceProgram, app->restartCount);
+                           app->serviceProgram, app->restartCount);
                     mprLog("error watchdog", 0, "Suspending restarts for one minute");
                     app->restartWarned++;
                 }
@@ -635,7 +636,8 @@ static void runService(void)
                 setsid();
 
                 mprLog("info watchdog", 1, "Change dir to %s", app->serviceHome);
-                if (chdir(app->serviceHome) < 0) {}
+                if (chdir(app->serviceHome) < 0) {
+                }
 
                 for (i = 3; i < 128; i++) {
                     close(i);
@@ -669,7 +671,8 @@ static void runService(void)
 
                 /* Should not get here */
                 err = errno;
-                mprLog("error watchdog", 0, "Cannot exec %s, err %d, cwd %s", app->serviceProgram, err, app->serviceHome);
+                mprLog("error watchdog", 0, "Cannot exec %s, err %d, cwd %s", app->serviceProgram, err,
+                       app->serviceHome);
                 exit(MPR_ERR_CANT_INITIALIZE);
             }
 
@@ -682,7 +685,8 @@ static void runService(void)
             waitpid(app->servicePid, &status, 0);
             mprLog("info watchdog", 1, "%s has exited with status %d", app->serviceProgram, WEXITSTATUS(status));
             if (!mprIsStopping()) {
-                mprLog("info watchdog", 1, "Restarting %s (%d/%d)...", app->serviceProgram, app->restartCount, app->retries);
+                mprLog("info watchdog", 1, "Restarting %s (%d/%d)...", app->serviceProgram, app->restartCount,
+                       app->retries);
             }
             app->servicePid = 0;
         }
@@ -693,7 +697,8 @@ static void runService(void)
 static void killService(void)
 {
     if (app->servicePid > 0) {
-        mprLog("info watchdog", 1, "Killing %s at pid %d with signal %d", app->serviceProgram, app->servicePid, app->signal);
+        mprLog("info watchdog", 1, "Killing %s at pid %d with signal %d", app->serviceProgram, app->servicePid,
+               app->signal);
         kill(app->servicePid, app->signal);
         app->servicePid = 0;
     }
@@ -705,8 +710,8 @@ static void killService(void)
  */
 static int readPid(void)
 {
-    char    pbuf[32];
-    int     pid, fd;
+    char pbuf[32];
+    int  pid, fd;
 
     if ((fd = open(app->pidPath, O_RDONLY, 0666)) < 0) {
         return -1;
@@ -722,7 +727,7 @@ static int readPid(void)
 
 static bool killPid(void)
 {
-    int     pid;
+    int pid;
 
     if ((pid = readPid()) > 1) {
         return kill(pid, SIGTERM) == 0;
@@ -736,9 +741,9 @@ static bool killPid(void)
  */
 static int writePid(int pid)
 {
-    char    *pbuf;
-    ssize   len;
-    int     fd;
+    char  *pbuf;
+    ssize len;
+    int   fd;
 
     if ((fd = open(app->pidPath, O_CREAT | O_RDWR | O_TRUNC, 0666)) < 0) {
         mprLog("error watchdog", 0, "Could not create pid file %s", app->pidPath);
@@ -763,40 +768,40 @@ static int writePid(int pid)
 #define SERVICE_DESCRIPTION ("Manages " ME_TITLE)
 
 typedef struct App {
-    HWND         hwnd;               /* Application window handle */
-    HINSTANCE    appInst;            /* Current application instance */
-    int          continueOnErrors;   /* Keep going through errors */
-    int          createConsole;      /* Display service console */
-    int          exiting;            /* Program should exit */
-    char         *logSpec;           /* Log directive for service */
-    int          heartBeatPeriod;    /* Service heart beat interval */
-    HANDLE       heartBeatEvent;     /* Heart beat event event to sleep on */
-    HWND         otherHwnd;          /* Existing instance window handle */
-    int          restartCount;       /* Service restart count */
-    int          restartWarned;      /* Has user been notified */
-    char         *company;           /* One word company name (lower case) */
-    char         *serviceArgs;       /* Args to pass to service */
-    cchar        *serviceHome;       /* Service home */
-    cchar        *serviceName;       /* Service name */
-    char         *serviceProgram;    /* Program to run */
-    HANDLE       servicePid;         /* Process ID for the service */
-    cchar        *serviceTitle;      /* Application title */
-    HANDLE       serviceThreadEvent; /* Service event to block on */
-    int          serviceStopped;     /* Service stopped */
-    HANDLE       threadHandle;       /* Handle for the service thread */
+    HWND hwnd;                          /* Application window handle */
+    HINSTANCE appInst;                  /* Current application instance */
+    int continueOnErrors;               /* Keep going through errors */
+    int createConsole;                  /* Display service console */
+    int exiting;                        /* Program should exit */
+    char *logSpec;                      /* Log directive for service */
+    int heartBeatPeriod;                /* Service heart beat interval */
+    HANDLE heartBeatEvent;              /* Heart beat event event to sleep on */
+    HWND otherHwnd;                     /* Existing instance window handle */
+    int restartCount;                   /* Service restart count */
+    int restartWarned;                  /* Has user been notified */
+    char *company;                      /* One word company name (lower case) */
+    char *serviceArgs;                  /* Args to pass to service */
+    cchar *serviceHome;                 /* Service home */
+    cchar *serviceName;                 /* Service name */
+    char *serviceProgram;               /* Program to run */
+    HANDLE servicePid;                  /* Process ID for the service */
+    cchar *serviceTitle;                /* Application title */
+    HANDLE serviceThreadEvent;          /* Service event to block on */
+    int serviceStopped;                 /* Service stopped */
+    HANDLE threadHandle;                /* Handle for the service thread */
 } App;
 
 static App *app;
 static Mpr *mpr;
 
-static SERVICE_STATUS           svcStatus;
-static SERVICE_STATUS_HANDLE    svcHandle;
-static SERVICE_TABLE_ENTRY      svcTable[] = {
+static SERVICE_STATUS        svcStatus;
+static SERVICE_STATUS_HANDLE svcHandle;
+static SERVICE_TABLE_ENTRY   svcTable[] = {
     { UT("default"), 0   },
     { 0,             0   }
 };
 
-static void     WINAPI serviceCallback(ulong code);
+static void WINAPI serviceCallback(ulong code);
 static bool     enableService(int enable);
 static void     setWinDefaults(HINSTANCE inst);
 static bool     installService(void);
@@ -826,8 +831,8 @@ static void WINAPI serviceMain(ulong argc, wchar **argv);
 
 int APIENTRY WinMain(HINSTANCE inst, HINSTANCE junk, char *args, int junk2)
 {
-    char    *argv[ME_MAX_ARGC], *argp;
-    int     argc, err, nextArg, status;
+    char *argv[ME_MAX_ARGC], *argp;
+    int  argc, err, nextArg, status;
 
     argv[0] = ME_NAME "Manager";
     argc = mprParseArgs(args, &argv[1], ME_MAX_ARGC - 1) + 1;
@@ -922,24 +927,24 @@ int APIENTRY WinMain(HINSTANCE inst, HINSTANCE junk, char *args, int junk2)
         }
         if (err) {
             mprEprintf("Bad command line: %s\n"
-                "  Usage: %s [options] [program args]\n"
-                "  Switches:\n"
-                "    --args               # Args to pass to service\n"
-                "    --continue           # Continue on errors\n"
-                "    --console            # Display the service console\n"
-                "    --heartBeat interval # Heart beat interval period (secs)\n"
-                "    --home path          # Home directory for service\n"
-                "    --log logFile:level  # Log directive for service\n"
-                "    --name name          # Name of the service to manage\n"
-                "    --program path       # Service program to start\n"
-                "    --verbose            # Show command feedback\n"
-                "  Commands:\n"
-                "    disable              # Disable the service\n"
-                "    enable               # Enable the service\n"
-                "    start                # Start the service\n"
-                "    stop                 # Start the service\n"
-                "    run                  # Run and watch over the service\n",
-                args, mprGetAppName());
+                       "  Usage: %s [options] [program args]\n"
+                       "  Switches:\n"
+                       "    --args               # Args to pass to service\n"
+                       "    --continue           # Continue on errors\n"
+                       "    --console            # Display the service console\n"
+                       "    --heartBeat interval # Heart beat interval period (secs)\n"
+                       "    --home path          # Home directory for service\n"
+                       "    --log logFile:level  # Log directive for service\n"
+                       "    --name name          # Name of the service to manage\n"
+                       "    --program path       # Service program to start\n"
+                       "    --verbose            # Show command feedback\n"
+                       "  Commands:\n"
+                       "    disable              # Disable the service\n"
+                       "    enable               # Enable the service\n"
+                       "    start                # Start the service\n"
+                       "    stop                 # Start the service\n"
+                       "    run                  # Run and watch over the service\n",
+                       args, mprGetAppName());
             return MPR_ERR_BAD_ARGS;
         }
     }
@@ -957,11 +962,11 @@ int APIENTRY WinMain(HINSTANCE inst, HINSTANCE junk, char *args, int junk2)
             }
 
         } else for (; nextArg < argc; nextArg++) {
-            if (!process(argv[nextArg]) && !app->continueOnErrors) {
-                status = 3;
-                break;
+                if (!process(argv[nextArg]) && !app->continueOnErrors) {
+                    status = 3;
+                    break;
+                }
             }
-        }
     }
     mprDestroy();
     return 0;
@@ -984,7 +989,7 @@ static void manageApp(void *ptr, int flags)
 
 static bool process(cchar *operation)
 {
-    bool    rc;
+    bool rc;
 
     rc = 1;
 
@@ -1031,7 +1036,7 @@ static bool process(cchar *operation)
  */
 static void WINAPI serviceMain(ulong argc, char **argv)
 {
-    int     threadId;
+    int threadId;
 
     mprLog("info watchdog", 1, "Watching over %s", app->serviceProgram);
 
@@ -1121,7 +1126,7 @@ static void run(void)
     }
     mark = mprGetTicks();
 
-    while (! app->exiting) {
+    while (!app->exiting) {
         if (mprGetElapsedTicks(mark) > (3600 * 1000)) {
             mark = mprGetTicks();
             app->restartCount = 0;
@@ -1129,9 +1134,9 @@ static void run(void)
         }
         if (app->servicePid == 0 && !app->serviceStopped) {
             if (app->restartCount >= RESTART_MAX) {
-                if (! app->restartWarned) {
+                if (!app->restartWarned) {
                     mprLog("error watchdog", 0, "Too many restarts for %s, %d in last hour",
-                        mprGetAppName(), app->restartCount);
+                           mprGetAppName(), app->restartCount);
                     app->restartWarned++;
                 }
                 /*
@@ -1146,7 +1151,7 @@ static void run(void)
             /*
                 Launch the process
              */
-            if (! CreateProcess(0, cmd, 0, 0, FALSE, createFlags, 0, app->serviceHome, &startInfo, &procInfo)) {
+            if (!CreateProcess(0, cmd, 0, 0, FALSE, createFlags, 0, app->serviceHome, &startInfo, &procInfo)) {
                 mprLog("error watchdog", 0, "Cannot create process: %s, %d", cmd, mprGetOsError());
             } else {
                 app->servicePid = procInfo.hProcess;
@@ -1174,9 +1179,9 @@ static void run(void)
 
 static int startDispatcher(LPSERVICE_MAIN_FUNCTION svcMain)
 {
-    SC_HANDLE       mgr;
-    char            name[80];
-    ulong           len;
+    SC_HANDLE mgr;
+    char      name[80];
+    ulong     len;
 
     if (!(mgr = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS))) {
         mprLog("error watchdog", 0, "Cannot open service manager");
@@ -1239,7 +1244,7 @@ static void updateStatus(int status, int exitCode)
  */
 static void WINAPI serviceCallback(ulong cmd)
 {
-    switch(cmd) {
+    switch (cmd) {
     case SERVICE_CONTROL_INTERROGATE:
         break;
 
@@ -1272,9 +1277,9 @@ static void WINAPI serviceCallback(ulong cmd)
 
 static bool installService(void)
 {
-    SC_HANDLE   svc, mgr;
-    char        cmd[ME_MAX_FNAME], key[ME_MAX_FNAME];
-    int         serviceType;
+    SC_HANDLE svc, mgr;
+    char      cmd[ME_MAX_FNAME], key[ME_MAX_FNAME];
+    int       serviceType;
 
     mgr = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!mgr) {
@@ -1292,8 +1297,8 @@ static bool installService(void)
         }
         GetModuleFileName(0, cmd, sizeof(cmd));
         svc = CreateService(mgr, app->serviceName, app->serviceTitle, SERVICE_ALL_ACCESS, serviceType, SERVICE_DISABLED,
-            SERVICE_ERROR_NORMAL, cmd, NULL, NULL, "", NULL, NULL);
-        if (! svc) {
+                            SERVICE_ERROR_NORMAL, cmd, NULL, NULL, "", NULL, NULL);
+        if (!svc) {
             mprLog("error watchdog", 0, "Cannot create service: 0x%x == %d", GetLastError(), GetLastError());
             CloseServiceHandle(mgr);
             return 0;
@@ -1345,7 +1350,7 @@ static bool installService(void)
  */
 static bool removeService(int removeFromScmDb)
 {
-    SC_HANDLE   svc, mgr;
+    SC_HANDLE svc, mgr;
 
     app->exiting = 1;
 
@@ -1355,7 +1360,7 @@ static bool removeService(int removeFromScmDb)
         return 0;
     }
     svc = OpenService(mgr, app->serviceName, SERVICE_ALL_ACCESS);
-    if (! svc) {
+    if (!svc) {
         CloseServiceHandle(mgr);
         mprLog("error watchdog", 0, "Cannot open service");
         return 0;
@@ -1389,8 +1394,8 @@ static bool removeService(int removeFromScmDb)
 
 static bool enableService(int enable)
 {
-    SC_HANDLE   svc, mgr;
-    int         flag;
+    SC_HANDLE svc, mgr;
+    int       flag;
 
     mgr = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!mgr) {
@@ -1406,7 +1411,8 @@ static bool enableService(int enable)
         return 0;
     }
     flag = (enable) ? SERVICE_AUTO_START : SERVICE_DISABLED;
-    if (!ChangeServiceConfig(svc, SERVICE_NO_CHANGE, flag, SERVICE_NO_CHANGE, NULL, NULL, NULL, NULL, NULL, NULL, NULL)) {
+    if (!ChangeServiceConfig(svc, SERVICE_NO_CHANGE, flag, SERVICE_NO_CHANGE, NULL, NULL, NULL, NULL, NULL, NULL,
+                             NULL)) {
         mprLog("error watchdog", 0, "Cannot change service: 0x%x == %d", GetLastError(), GetLastError());
         CloseServiceHandle(svc);
         CloseServiceHandle(mgr);
@@ -1420,8 +1426,8 @@ static bool enableService(int enable)
 
 static bool startService(void)
 {
-    SC_HANDLE   svc, mgr;
-    int         rc;
+    SC_HANDLE svc, mgr;
+    int       rc;
 
     app->exiting = 0;
 
@@ -1431,7 +1437,7 @@ static bool startService(void)
         return 0;
     }
     svc = OpenService(mgr, app->serviceName, SERVICE_ALL_ACCESS);
-    if (! svc) {
+    if (!svc) {
         mprLog("error watchdog", 0, "Cannot open service");
         CloseServiceHandle(mgr);
         return 0;
@@ -1450,7 +1456,7 @@ static bool startService(void)
 
 static bool stopService(int cmd)
 {
-    int     exitCode;
+    int exitCode;
 
     app->exiting = 1;
     app->serviceStopped = 1;
@@ -1563,7 +1569,7 @@ static void terminating(int state, int how, int status)
 
 static void gracefulShutdown(MprTicks timeout)
 {
-    HWND    hwnd;
+    HWND hwnd;
 
     hwnd = FindWindow(ME_NAME, ME_NAME);
     if (hwnd) {
@@ -1589,7 +1595,8 @@ static void gracefulShutdown(MprTicks timeout)
 
 
 #else
-PUBLIC void stubManager(void) {
+PUBLIC void stubManager(void)
+{
     fprintf(stdout, "Manager not supported on this architecture");
 }
 #endif /* ME_WIN_LIKE */

@@ -36,7 +36,7 @@ static void checkSsl(MaState *state);
  */
 PUBLIC int maLoadModules(void)
 {
-    int     rc;
+    int rc;
 
     rc = 0;
 #if ME_COM_CGI
@@ -68,7 +68,7 @@ PUBLIC int configureHandlers(HttpRoute *route)
 {
 #if ME_COM_CGI
     if (httpLookupStage("cgiHandler")) {
-        char    *path;
+        char *path;
         /*
             Disabled by default so files are not served from the documents directory by default.
             httpAddRouteHandler(route, "cgiHandler", "cgi cgi-nph bat cmd pl py");
@@ -107,8 +107,8 @@ PUBLIC int configureHandlers(HttpRoute *route)
 
 PUBLIC int maConfigureServer(cchar *configFile, cchar *home, cchar *documents, cchar *ip, int port)
 {
-    HttpEndpoint    *endpoint;
-    HttpRoute       *route;
+    HttpEndpoint *endpoint;
+    HttpRoute    *route;
 
     route = httpGetDefaultRoute(0);
     if (maLoadModules() < 0) {
@@ -147,10 +147,10 @@ static int openConfig(MaState *state, cchar *path)
 
 PUBLIC int maParseConfig(cchar *path)
 {
-    HttpRoute   *route;
-    MaState     *state;
-    bool        yielding;
-    int         rc;
+    HttpRoute *route;
+    MaState   *state;
+    bool      yielding;
+    int       rc;
 
     route = httpGetDefaultRoute(0);
 
@@ -177,8 +177,8 @@ PUBLIC int maParseConfig(cchar *path)
 
 PUBLIC int maParseFile(MaState *state, cchar *path)
 {
-    MaState     *topState;
-    int         rc, lineNumber;
+    MaState *topState;
+    int     rc, lineNumber;
 
     assert(path && *path);
     if (!state) {
@@ -210,7 +210,7 @@ static int parseFileInner(MaState *state, cchar *path)
         return MPR_ERR_CANT_OPEN;
     }
     for (state->lineNumber = 1; state->file && (line = mprReadLine(state->file, 0, NULL)) != 0; state->lineNumber++) {
-        for (tok = line; isspace((uchar) *tok); tok++) ;
+        for (tok = line; isspace((uchar) * tok); tok++);
         if (*tok == '\0' || *tok == '#') {
             continue;
         }
@@ -225,14 +225,14 @@ static int parseFileInner(MaState *state, cchar *path)
         }
         if ((directive = mprLookupKey(directives, key)) == 0) {
             mprLog("error appweb config", 0, "Unknown directive \"%s\". At line %d in %s",
-                key, state->lineNumber, state->filename);
+                   key, state->lineNumber, state->filename);
             return MPR_ERR_BAD_SYNTAX;
         }
         state->key = key;
 
         if ((*directive)(state, key, value) < 0) {
             mprLog("error appweb config", 0, "Error with directive \"%s\". At line %d in %s",
-                state->key, state->lineNumber, state->filename);
+                   state->key, state->lineNumber, state->filename);
             return MPR_ERR_BAD_SYNTAX;
         }
         state = state->top->current;
@@ -251,7 +251,7 @@ static int parseFileInner(MaState *state, cchar *path)
 
 static int actionDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *mimeType, *program;
+    char *mimeType, *program;
 
     if (!maTokenize(state, value, "%S %S", &mimeType, &program)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -266,7 +266,7 @@ static int actionDirective(MaState *state, cchar *key, cchar *value)
  */
 static int addFilterDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *filter, *extensions;
+    char *filter, *extensions;
 
     if (!maTokenize(state, value, "%S ?*", &filter, &extensions)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -284,7 +284,7 @@ static int addFilterDirective(MaState *state, cchar *key, cchar *value)
  */
 static int addInputFilterDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *filter, *extensions;
+    char *filter, *extensions;
 
     if (!maTokenize(state, value, "%S ?*", &filter, &extensions)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -303,8 +303,8 @@ static int addInputFilterDirective(MaState *state, cchar *key, cchar *value)
  */
 static int addLanguageSuffixDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *lang, *ext, *position;
-    int     flags;
+    char *lang, *ext, *position;
+    int  flags;
 
     if (!maTokenize(state, value, "%S %S ?S", &lang, &ext, &position)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -325,8 +325,8 @@ static int addLanguageSuffixDirective(MaState *state, cchar *key, cchar *value)
  */
 static int addLanguageDirDirective(MaState *state, cchar *key, cchar *value)
 {
-    HttpRoute   *route;
-    char        *lang, *path;
+    HttpRoute *route;
+    char      *lang, *path;
 
     route = state->route;
     if (!maTokenize(state, value, "%S %S", &lang, &path)) {
@@ -348,7 +348,7 @@ static int addLanguageDirDirective(MaState *state, cchar *key, cchar *value)
  */
 static int addOutputFilterDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *filter, *extensions;
+    char *filter, *extensions;
 
     if (!maTokenize(state, value, "%S ?*", &filter, &extensions)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -366,7 +366,7 @@ static int addOutputFilterDirective(MaState *state, cchar *key, cchar *value)
  */
 static int addHandlerDirective(MaState *state, cchar *key, cchar *value)
 {
-    char        *handler, *extensions;
+    char *handler, *extensions;
 
     if (!maTokenize(state, value, "%S ?*", &handler, &extensions)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -389,7 +389,7 @@ static int addHandlerDirective(MaState *state, cchar *key, cchar *value)
  */
 static int addTypeDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *ext, *mimeType;
+    char *ext, *mimeType;
 
     if (!maTokenize(state, value, "%S %S", &mimeType, &ext)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -404,9 +404,9 @@ static int addTypeDirective(MaState *state, cchar *key, cchar *value)
  */
 static int aliasDirective(MaState *state, cchar *key, cchar *value)
 {
-    HttpRoute   *alias;
-    MprPath     info;
-    char        *prefix, *path;
+    HttpRoute *alias;
+    MprPath   info;
+    char      *prefix, *path;
 
     if (!maTokenize(state, value, "%S %P", &prefix, &path)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -435,7 +435,7 @@ static int aliasDirective(MaState *state, cchar *key, cchar *value)
  */
 static int allowDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *from, *spec;
+    char *from, *spec;
 
     if (!maTokenize(state, value, "%S %S", &from, &spec)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -474,7 +474,7 @@ static int authRealmDirective(MaState *state, cchar *key, cchar *value)
  */
 static int authTypeDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *type, *details, *loginPage, *loginService, *logoutService, *loggedInPage, *loggedOutPage, *realm;
+    char *type, *details, *loginPage, *loginService, *logoutService, *loggedInPage, *loggedOutPage, *realm;
 
     if (!maTokenize(state, value, "%S ?S ?*", &type, &realm, &details)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -491,7 +491,7 @@ static int authTypeDirective(MaState *state, cchar *key, cchar *value)
         }
         if (details) {
             if (!maTokenize(state, details, "%S ?S ?S ?S ?S", &loginPage, &loginService, &logoutService,
-                    &loggedInPage, &loggedOutPage)) {
+                            &loggedInPage, &loggedOutPage)) {
                 return MPR_ERR_BAD_SYNTAX;
             }
             if (loginPage && !*loginPage) {
@@ -522,7 +522,7 @@ static int authTypeDirective(MaState *state, cchar *key, cchar *value)
  */
 static int authAutoLoginDirective(MaState *state, cchar *key, cchar *value)
 {
-    cchar   *username;
+    cchar *username;
 
     if (!maTokenize(state, value, "%S", &username)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -566,10 +566,10 @@ static int autoFinalize(MaState *state, cchar *key, cchar *value)
  */
 static int cacheDirective(MaState *state, cchar *key, cchar *value)
 {
-    MprTicks    lifespan, clientLifespan, serverLifespan;
-    char        *option, *ovalue, *tok;
-    char        *methods, *extensions, *types, *uris;
-    int         flags;
+    MprTicks lifespan, clientLifespan, serverLifespan;
+    char     *option, *ovalue, *tok;
+    char     *methods, *extensions, *types, *uris;
+    int      flags;
 
     flags = 0;
     lifespan = clientLifespan = serverLifespan = 0;
@@ -586,7 +586,7 @@ static int cacheDirective(MaState *state, cchar *key, cchar *value)
         }
         option = ssplit(option, " =\t,", &ovalue);
         ovalue = strim(ovalue, "\"'", MPR_TRIM_BOTH);
-        if ((int) isdigit((uchar) *option)) {
+        if ((int) isdigit((uchar) * option)) {
             lifespan = httpGetTicks(option);
 
         } else if (smatch(option, "client")) {
@@ -653,9 +653,9 @@ static int charSetDirective(MaState *state, cchar *key, cchar *value)
 static int chrootDirective(MaState *state, cchar *key, cchar *value)
 {
 #if ME_UNIX_LIKE
-    MprKey  *kp;
-    cchar   *oldConfigDir;
-    char    *home;
+    MprKey *kp;
+    cchar  *oldConfigDir;
+    char   *home;
 
     home = httpMakePath(state->route, state->configDir, value);
     if (chdir(home) < 0) {
@@ -727,8 +727,8 @@ static int closeDirective(MaState *state, cchar *key, cchar *value)
  */
 static int conditionDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *name, *details;
-    int     not;
+    char *name, *details;
+    int  not;
 
     if (!maTokenize(state, value, "%! ?S ?*", &not, &name, &details)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -742,8 +742,8 @@ static int conditionDirective(MaState *state, cchar *key, cchar *value)
  */
 static int crossOriginDirective(MaState *state, cchar *key, cchar *value)
 {
-    HttpRoute   *route;
-    char        *option, *ovalue, *tok;
+    HttpRoute *route;
+    char      *option, *ovalue, *tok;
 
     route = state->route;
     tok = sclone(value);
@@ -801,7 +801,7 @@ static int crossOriginDirective(MaState *state, cchar *key, cchar *value)
  */
 static int defenseDirective(MaState *state, cchar *key, cchar *value)
 {
-    cchar   *name, *args;
+    cchar *name, *args;
 
     if (!maTokenize(state, value, "%S ?*", &name, &args)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -824,7 +824,7 @@ static int defaultLanguageDirective(MaState *state, cchar *key, cchar *value)
  */
 static int denyDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *from, *spec;
+    char *from, *spec;
 
     if (!maTokenize(state, value, "%S %S", &from, &spec)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -844,7 +844,8 @@ static int directoryDirective(MaState *state, cchar *key, cchar *value)
         The router and Route directives cannot emulate this. The user needs to migrate such configurations to apply
         Auth directives to route URIs instead.
      */
-    mprLog("warn config", 0, "The <Directory> directive is deprecated. Use <Route> with a Documents directive instead.");
+    mprLog("warn config", 0,
+           "The <Directory> directive is deprecated. Use <Route> with a Documents directive instead.");
     return MPR_ERR_BAD_SYNTAX;
 }
 
@@ -854,7 +855,7 @@ static int directoryDirective(MaState *state, cchar *key, cchar *value)
  */
 static int directoryIndexDirective(MaState *state, cchar *key, cchar *value)
 {
-    char   *path, *tok;
+    char *path, *tok;
 
     for (path = stok(sclone(value), " \t,", &tok); path; path = stok(0, " \t,", &tok)) {
         httpAddRouteIndex(state->route, path);
@@ -869,7 +870,7 @@ static int directoryIndexDirective(MaState *state, cchar *key, cchar *value)
  */
 static int documentsDirective(MaState *state, cchar *key, cchar *value)
 {
-    cchar   *path;
+    cchar *path;
 
     if (!maTokenize(state, value, "%T", &path)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -895,8 +896,8 @@ static int elseDirective(MaState *state, cchar *key, cchar *value)
  */
 static int errorDocumentDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *uri;
-    int     status;
+    char *uri;
+    int  status;
 
     if (!maTokenize(state, value, "%N %S", &status, &uri)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -916,11 +917,11 @@ static int errorDocumentDirective(MaState *state, cchar *key, cchar *value)
  */
 static int errorLogDirective(MaState *state, cchar *key, cchar *value)
 {
-    MprTicks    stamp;
-    cchar       *path;
-    char        *option, *ovalue, *tok;
-    ssize       size;
-    int         level, flags, backup;
+    MprTicks stamp;
+    cchar    *path;
+    char     *option, *ovalue, *tok;
+    ssize    size;
+    int      level, flags, backup;
 
     if (mprGetCmdlineLogging()) {
         mprLog("info appweb config", 4, "Already logging. Ignoring ErrorLog directive");
@@ -1022,8 +1023,8 @@ static int groupAccountDirective(MaState *state, cchar *key, cchar *value)
  */
 static int headerDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *cmd, *header, *hvalue;
-    int     op;
+    char *cmd, *header, *hvalue;
+    int  op;
 
     if (!maTokenize(state, value, "%S %S ?*", &cmd, &header, &hvalue)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -1050,7 +1051,7 @@ static int headerDirective(MaState *state, cchar *key, cchar *value)
  */
 static int homeDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *path;
+    char *path;
 
     if (!maTokenize(state, value, "%T", &path)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -1062,7 +1063,7 @@ static int homeDirective(MaState *state, cchar *key, cchar *value)
 
 static int http2Directive(MaState *state, cchar *key, cchar *value)
 {
-    bool    on;
+    bool on;
 
     if (!maTokenize(state, value, "%B", &on)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -1077,7 +1078,7 @@ static int http2Directive(MaState *state, cchar *key, cchar *value)
  */
 static int ignoreEncodingErrorsDirective(MaState *state, cchar *key, cchar *value)
 {
-    bool    on;
+    bool on;
 
     if (!maTokenize(state, value, "%B", &on)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -1092,9 +1093,9 @@ static int ignoreEncodingErrorsDirective(MaState *state, cchar *key, cchar *valu
  */
 static int includeDirective(MaState *state, cchar *key, cchar *value)
 {
-    MprList     *includes;
-    char        *path, *pattern, *include;
-    int         next;
+    MprList *includes;
+    char    *path, *pattern, *include;
+    int     next;
 
     /*
         Must use %S and not %P because the path is relative to the appweb.conf file and not to the route home
@@ -1192,7 +1193,7 @@ static int ifDirective(MaState *state, cchar *key, cchar *value)
  */
 static int inactivityTimeoutDirective(MaState *state, cchar *key, cchar *value)
 {
-    if (! mprGetDebugMode()) {
+    if (!mprGetDebugMode()) {
         httpGraduateLimits(state->route, 0);
         state->route->limits->inactivityTimeout = httpGetTicks(value);
     }
@@ -1205,7 +1206,7 @@ static int inactivityTimeoutDirective(MaState *state, cchar *key, cchar *value)
  */
 static int limitPacketDirective(MaState *state, cchar *key, cchar *value)
 {
-    int     size;
+    int size;
 
     httpGraduateLimits(state->route, 0);
     size = httpGetInt(value);
@@ -1299,7 +1300,7 @@ static int limitFilesDirective(MaState *state, cchar *key, cchar *value)
 static int limitFrameDirective(MaState *state, cchar *key, cchar *value)
 {
 #if ME_HTTP_HTTP2
-    int     size;
+    int size;
 
     httpGraduateLimits(state->route, 0);
     size = httpGetInt(value);
@@ -1333,7 +1334,7 @@ static int limitKeepAliveDirective(MaState *state, cchar *key, cchar *value)
  */
 static int limitMemoryDirective(MaState *state, cchar *key, cchar *value)
 {
-    ssize   maxMem;
+    ssize maxMem;
 
     maxMem = (ssize) httpGetNumber(value);
     mprSetMemLimits(maxMem / 100 * 85, maxMem, -1);
@@ -1474,7 +1475,7 @@ static int limitUploadDirective(MaState *state, cchar *key, cchar *value)
 static int limitWindowDirective(MaState *state, cchar *key, cchar *value)
 {
 #if ME_HTTP_HTTP2
-    int     size;
+    int size;
 
     httpGraduateLimits(state->route, 0);
     size = httpGetInt(value);
@@ -1495,7 +1496,7 @@ static int limitWindowDirective(MaState *state, cchar *key, cchar *value)
  */
 static int limitWorkersDirective(MaState *state, cchar *key, cchar *value)
 {
-    int     count;
+    int count;
 
     count = atoi(value);
     if (count < 1) {
@@ -1517,10 +1518,10 @@ static int limitWorkersDirective(MaState *state, cchar *key, cchar *value)
  */
 static int listenDirective(MaState *state, cchar *key, cchar *value)
 {
-    HttpEndpoint    *endpoint, *dual;
-    HttpHost        *host;
-    cchar           *ip, *address, *multiple;
-    int             port;
+    HttpEndpoint *endpoint, *dual;
+    HttpHost     *host;
+    cchar        *ip, *address, *multiple;
+    int          port;
 
     multiple = address = 0;
     if (!maTokenize(state, value, "%S ?S", &address, &multiple)) {
@@ -1567,10 +1568,10 @@ static int listenDirective(MaState *state, cchar *key, cchar *value)
 static int listenSecureDirective(MaState *state, cchar *key, cchar *value)
 {
 #if ME_COM_SSL
-    HttpEndpoint    *endpoint, *dual;
-    HttpHost        *host;
-    cchar           *address, *ip, *multiple;
-    int             port;
+    HttpEndpoint *endpoint, *dual;
+    HttpHost     *host;
+    cchar        *address, *ip, *multiple;
+    int          port;
 
     address = multiple = 0;
     if (!maTokenize(state, value, "%S ?S", &address, &multiple)) {
@@ -1620,7 +1621,7 @@ static int listenSecureDirective(MaState *state, cchar *key, cchar *value)
  */
 static int logRoutesDirective(MaState *state, cchar *key, cchar *value)
 {
-    cchar   *full;
+    cchar *full;
 
     if (!maTokenize(state, value, "?S", &full)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -1638,7 +1639,7 @@ static int logRoutesDirective(MaState *state, cchar *key, cchar *value)
  */
 static int loadModulePathDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *sep, *path;
+    char *sep, *path;
 
     if (!maTokenize(state, value, "%T", &value)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -1661,7 +1662,7 @@ static int loadModulePathDirective(MaState *state, cchar *key, cchar *value)
  */
 static int loadModuleDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *name, *path;
+    char *name, *path;
 
     if (!maTokenize(state, value, "%S %S", &name, &path)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -1677,7 +1678,7 @@ static int loadModuleDirective(MaState *state, cchar *key, cchar *value)
 static int userToID(cchar *user)
 {
 #if ME_UNIX_LIKE
-    struct passwd   *pp;
+    struct passwd *pp;
     if ((pp = getpwnam(user)) == 0) {
         mprLog("error appweb config", 0, "Bad user: %s", user);
         return 0;
@@ -1692,7 +1693,7 @@ static int userToID(cchar *user)
 static int groupToID(cchar *group)
 {
 #if ME_UNIX_LIKE
-    struct group    *gp;
+    struct group *gp;
     if ((gp = getgrnam(group)) == 0) {
         mprLog("error appweb config", 0, "Bad group: %s", group);
         return MPR_ERR_CANT_ACCESS;
@@ -1773,7 +1774,7 @@ static int makeDirDirective(MaState *state, cchar *key, cchar *value)
  */
 static int mapDirective(MaState *state, cchar *key, cchar *value)
 {
-    cchar   *extensions, *mappings;
+    cchar *extensions, *mappings;
 
     if (!maTokenize(state, value, "%S ?*", &extensions, &mappings)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -1792,8 +1793,8 @@ static int mapDirective(MaState *state, cchar *key, cchar *value)
  */
 static int memoryPolicyDirective(MaState *state, cchar *key, cchar *value)
 {
-    cchar   *policy;
-    int     flags;
+    cchar *policy;
+    int   flags;
 
     flags = MPR_ALLOC_POLICY_EXIT;
 
@@ -1828,7 +1829,7 @@ static int memoryPolicyDirective(MaState *state, cchar *key, cchar *value)
  */
 static int methodsDirective(MaState *state, cchar *key, cchar *value)
 {
-    cchar   *cmd, *methods;
+    cchar *cmd, *methods;
 
     if (!maTokenize(state, value, "%S %*", &cmd, &methods)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -1859,7 +1860,7 @@ static int minWorkersDirective(MaState *state, cchar *key, cchar *value)
  */
 static int monitorDirective(MaState *state, cchar *key, cchar *value)
 {
-    cchar   *counter, *expr, *limit, *period, *relation, *defenses;
+    cchar *counter, *expr, *limit, *period, *relation, *defenses;
 
     if (!maTokenize(state, value, "%S %S %*", &expr, &period, &defenses)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -1919,8 +1920,8 @@ static int orderDirective(MaState *state, cchar *key, cchar *value)
  */
 static int paramDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *field;
-    int     not;
+    char *field;
+    int  not;
 
     if (!maTokenize(state, value, "?! %S %*", &not, &field, &value)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -1948,9 +1949,9 @@ static int prefixDirective(MaState *state, cchar *key, cchar *value)
  */
 static int redirectDirective(MaState *state, cchar *key, cchar *value)
 {
-    HttpRoute   *alias;
-    char        *code, *uri, *path, *target;
-    int         status;
+    HttpRoute *alias;
+    char      *code, *uri, *path, *target;
+    int       status;
 
     status = 0;
     if (smatch(value, "secure")) {
@@ -2033,8 +2034,8 @@ static int requestTimeoutDirective(MaState *state, cchar *key, cchar *value)
  */
 static int requireDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *age, *type, *rest, *option, *ovalue, *tok;
-    int     domains;
+    char *age, *type, *rest, *option, *ovalue, *tok;
+    int  domains;
 
     if (!maTokenize(state, value, "%S ?*", &type, &rest)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2042,7 +2043,7 @@ static int requireDirective(MaState *state, cchar *key, cchar *value)
     if (scaselesscmp(type, "ability") == 0) {
         httpSetAuthRequiredAbilities(state->auth, rest);
 
-    /* Support require group for legacy support */
+        /* Support require group for legacy support */
     } else if (scaselesscmp(type, "role") == 0) {
         httpSetAuthRequiredAbilities(state->auth, rest);
 
@@ -2085,9 +2086,9 @@ static int requireDirective(MaState *state, cchar *key, cchar *value)
  */
 static int rerouteDirective(MaState *state, cchar *key, cchar *value)
 {
-    HttpRoute   *route;
-    cchar       *pattern;
-    int         not;
+    HttpRoute *route;
+    cchar     *pattern;
+    int       not;
 
     state = maPushState(state);
     if (state->enabled) {
@@ -2117,7 +2118,7 @@ static int rerouteDirective(MaState *state, cchar *key, cchar *value)
  */
 static int resetDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *name;
+    char *name;
 
     if (!maTokenize(state, value, "%S", &name)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2140,7 +2141,7 @@ static int resetDirective(MaState *state, cchar *key, cchar *value)
  */
 static int roleDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *name, *abilities;
+    char *name, *abilities;
 
     if (!maTokenize(state, value, "%S ?*", &name, &abilities)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2159,8 +2160,8 @@ static int roleDirective(MaState *state, cchar *key, cchar *value)
  */
 static int routeDirective(MaState *state, cchar *key, cchar *value)
 {
-    cchar       *pattern;
-    int         not;
+    cchar *pattern;
+    int   not;
 
     state = maPushState(state);
     if (state->enabled) {
@@ -2188,8 +2189,8 @@ static int routeDirective(MaState *state, cchar *key, cchar *value)
  */
 static int requestHeaderDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *header;
-    int     not;
+    char *header;
+    int  not;
 
     if (!maTokenize(state, value, "?! %S %*", &not, &header, &value)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2201,8 +2202,8 @@ static int requestHeaderDirective(MaState *state, cchar *key, cchar *value)
 
 static int scriptAliasDirective(MaState *state, cchar *key, cchar *value)
 {
-    HttpRoute   *route;
-    char        *handler, *prefix, *path;
+    HttpRoute *route;
+    char      *handler, *prefix, *path;
 
     if (!maTokenize(state, value, "%S %S ?S", &prefix, &path, &handler)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2236,7 +2237,7 @@ static int serverNameDirective(MaState *state, cchar *key, cchar *value)
  */
 static int sessionCookieDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *options, *option, *ovalue, *tok;
+    char *options, *option, *ovalue, *tok;
 
     if (!maTokenize(state, value, "%*", &options)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2290,7 +2291,7 @@ static int sessionTimeoutDirective(MaState *state, cchar *key, cchar *value)
  */
 static int setDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *var;
+    char *var;
 
     if (!maTokenize(state, value, "%S %S", &var, &value)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2318,7 +2319,7 @@ static int setConnectorDirective(MaState *state, cchar *key, cchar *value)
  */
 static int setHandlerDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *name;
+    char *name;
 
     if (!maTokenize(state, value, "%S", &name)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2336,7 +2337,7 @@ static int setHandlerDirective(MaState *state, cchar *key, cchar *value)
  */
 static int showErrorsDirective(MaState *state, cchar *key, cchar *value)
 {
-    bool    on;
+    bool on;
 
     if (!maTokenize(state, value, "%B", &on)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2360,7 +2361,7 @@ static int sourceDirective(MaState *state, cchar *key, cchar *value)
 
 static void checkSsl(MaState *state)
 {
-    HttpRoute   *route, *parent;
+    HttpRoute *route, *parent;
 
     route = state->route;
     parent = route->parent;
@@ -2495,7 +2496,7 @@ static int sslVerifyDepthDirective(MaState *state, cchar *key, cchar *value)
  */
 static int sslVerifyIssuerDirective(MaState *state, cchar *key, cchar *value)
 {
-    bool    on;
+    bool on;
 
     checkSsl(state);
     if (!maTokenize(state, value, "%B", &on)) {
@@ -2511,8 +2512,8 @@ static int sslVerifyIssuerDirective(MaState *state, cchar *key, cchar *value)
  */
 static int sslProtocolDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *word, *tok;
-    int     mask, protoMask;
+    char *word, *tok;
+    int  mask, protoMask;
 
     checkSsl(state);
     protoMask = 0;
@@ -2578,7 +2579,7 @@ static int sslPreload(MaState *state, cchar *key, cchar *value)
 static int sslEngine(MaState *state, cchar *key, cchar *value)
 {
     mprSetSslDevice(state->route->ssl, value);
-	return 0;
+    return 0;
 }
 #endif /* ME_COM_SSL */
 
@@ -2587,7 +2588,7 @@ static int sslEngine(MaState *state, cchar *key, cchar *value)
  */
 static int stealthDirective(MaState *state, cchar *key, cchar *value)
 {
-    bool    on;
+    bool on;
 
     if (!maTokenize(state, value, "%B", &on)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2602,8 +2603,8 @@ static int stealthDirective(MaState *state, cchar *key, cchar *value)
  */
 static int streamInputDirective(MaState *state, cchar *key, cchar *value)
 {
-    cchar   *mime, *uri;
-    int     disable;
+    cchar *mime, *uri;
+    int   disable;
 
     if (!maTokenize(state, value, "%! ?S ?S", &disable, &mime, &uri)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2622,7 +2623,7 @@ static int streamInputDirective(MaState *state, cchar *key, cchar *value)
  */
 static int targetDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *name, *details;
+    char *name, *details;
 
     if (!maTokenize(state, value, "%S ?*", &name, &details)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2673,7 +2674,7 @@ static int traceDirective(MaState *state, cchar *key, cchar *value)
 
 PUBLIC int maTraceDirective(MaState *state, HttpTrace *trace, cchar *key, cchar *value)
 {
-    char        *option, *ovalue, *tok;
+    char *option, *ovalue, *tok;
 
     for (option = stok(sclone(value), " \t", &tok); option; option = stok(0, " \t", &tok)) {
         option = ssplit(option, " =\t,", &ovalue);
@@ -2706,10 +2707,10 @@ static int traceLogDirective(MaState *state, cchar *key, cchar *value)
 
 PUBLIC int maTraceLogDirective(MaState *state, HttpTrace *trace, cchar *key, cchar *value)
 {
-    cchar       *path;
-    char        *format, *option, *ovalue, *tok, *formatter;
-    ssize       size;
-    int         flags, backup, level;
+    cchar *path;
+    char  *format, *option, *ovalue, *tok, *formatter;
+    ssize size;
+    int   flags, backup, level;
 
     size = MAXINT;
     backup = 0;
@@ -2781,7 +2782,7 @@ PUBLIC int maTraceLogDirective(MaState *state, HttpTrace *trace, cchar *key, cch
  */
 static int typesConfigDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *path;
+    char *path;
 
     path = httpMakePath(state->route, state->configDir, value);
     if ((state->route->mimeTypes = mprCreateMimeTypes(path)) == 0) {
@@ -2798,9 +2799,9 @@ static int typesConfigDirective(MaState *state, cchar *key, cchar *value)
  */
 static int unloadModuleDirective(MaState *state, cchar *key, cchar *value)
 {
-    MprModule   *module;
-    HttpStage   *stage;
-    char        *name, *timeout;
+    MprModule *module;
+    HttpStage *stage;
+    char      *name, *timeout;
 
     timeout = MA_UNLOAD_TIMEOUT;
     if (!maTokenize(state, value, "%S ?S", &name, &timeout)) {
@@ -2826,7 +2827,7 @@ static int unloadModuleDirective(MaState *state, cchar *key, cchar *value)
  */
 static int updateDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *name, *rest;
+    char *name, *rest;
 
     if (!maTokenize(state, value, "%S %*", &name, &rest)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2840,7 +2841,7 @@ static int updateDirective(MaState *state, cchar *key, cchar *value)
  */
 static int userDirective(MaState *state, cchar *key, cchar *value)
 {
-    char    *name, *password, *roles;
+    char *name, *password, *roles;
 
     if (!maTokenize(state, value, "%S %S ?*", &name, &password, &roles)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2903,14 +2904,15 @@ static int virtualHostDirective(MaState *state, cchar *key, cchar *value)
  */
 static int closeVirtualHostDirective(MaState *state, cchar *key, cchar *value)
 {
-    HttpEndpoint    *endpoint;
-    cchar           *address, *ip;
-    char            *addresses, *tok;
-    int             port;
+    HttpEndpoint *endpoint;
+    cchar        *address, *ip;
+    char         *addresses, *tok;
+    int          port;
 
     if (state->enabled) {
         if (state->endpoints && *state->endpoints) {
-            for (addresses = sclone(state->endpoints); (address = stok(addresses, " \t,", &tok)) != 0 ; addresses = tok) {
+            for (addresses = sclone(state->endpoints); (address = stok(addresses, " \t,", &tok)) != 0 ;
+                 addresses = tok) {
                 if (mprParseSocketAddress(address, &ip, &port, NULL, -1) < 0) {
                     mprLog("error appweb config", 0, "Bad virtual host endpoint %s", address);
                     return MPR_ERR_BAD_SYNTAX;
@@ -2934,7 +2936,7 @@ static int closeVirtualHostDirective(MaState *state, cchar *key, cchar *value)
  */
 static int preserveFramesDirective(MaState *state, cchar *key, cchar *value)
 {
-    bool    on;
+    bool on;
 
     if (!maTokenize(state, value, "%B", &on)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -2992,7 +2994,7 @@ static int uploadDirDirective(MaState *state, cchar *key, cchar *value)
  */
 static int uploadAutoDeleteDirective(MaState *state, cchar *key, cchar *value)
 {
-    bool    on;
+    bool on;
 
     if (!maTokenize(state, value, "%B", &on)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -3019,14 +3021,15 @@ static int webSocketsPingDirective(MaState *state, cchar *key, cchar *value)
 
 static bool conditionalDefinition(MaState *state, cchar *key)
 {
-    cchar   *arch, *os, *platform, *profile;
-    int     result, not;
+    cchar *arch, *os, *platform, *profile;
+    int   result, not;
 
     platform = HTTP->platform;
     result = 0;
     not = (*key == '!') ? 1 : 0;
     if (not) {
-        for (++key; isspace((uchar) *key); key++) {}
+        for (++key; isspace((uchar) * key); key++) {
+        }
     }
     httpParsePlatform(platform, &os, &arch, &profile);
 
@@ -3118,12 +3121,12 @@ static bool conditionalDefinition(MaState *state, cchar *key)
  */
 PUBLIC bool maTokenize(MaState *state, cchar *line, cchar *fmt, ...)
 {
-    va_list     ap;
+    va_list ap;
 
     va_start(ap, fmt);
     if (!httpTokenizev(state->route, line, fmt, ap)) {
         mprLog("error appweb config", 0, "Bad \"%s\" directive at line %d in %s, line: %s %s",
-                state->key, state->lineNumber, state->filename, state->key, line);
+               state->key, state->lineNumber, state->filename, state->key, line);
         va_end(ap);
         return 0;
     }
@@ -3136,7 +3139,7 @@ static int addCondition(MaState *state, cchar *name, cchar *details, int flags)
 {
     if (httpAddRouteCondition(state->route, name, details, flags) < 0) {
         mprLog("error appweb config", 0, "Bad \"%s\" directive at line %d in %s, line: %s %s",
-            state->key, state->lineNumber, state->filename, state->key, details);
+               state->key, state->lineNumber, state->filename, state->key, details);
         return MPR_ERR_BAD_SYNTAX;
     }
     return 0;
@@ -3147,7 +3150,7 @@ static int addUpdate(MaState *state, cchar *name, cchar *details, int flags)
 {
     if (httpAddRouteUpdate(state->route, name, details, flags) < 0) {
         mprLog("error appweb config", 0, "Bad \"%s\" directive at line %d in %s, line: %s %s %s",
-                state->key, state->lineNumber, state->filename, state->key, name, details);
+               state->key, state->lineNumber, state->filename, state->key, name, details);
         return MPR_ERR_BAD_SYNTAX;
     }
     return 0;
@@ -3158,7 +3161,7 @@ static int setTarget(MaState *state, cchar *name, cchar *details)
 {
     if (httpSetRouteTarget(state->route, name, details) < 0) {
         mprLog("error appweb config", 0, "Bad \"%s\" directive at line %d in %s, line: %s %s %s",
-                state->key, state->lineNumber, state->filename, state->key, name, details);
+               state->key, state->lineNumber, state->filename, state->key, name, details);
         return MPR_ERR_BAD_SYNTAX;
     }
     return 0;
@@ -3170,9 +3173,9 @@ static int setTarget(MaState *state, cchar *name, cchar *details)
  */
 static MaState *createState(void)
 {
-    MaState     *state;
-    HttpHost    *host;
-    HttpRoute   *route;
+    MaState   *state;
+    HttpHost  *host;
+    HttpRoute *route;
 
     host = httpGetDefaultHost();
     route = httpGetDefaultRoute(host);
@@ -3193,7 +3196,7 @@ static MaState *createState(void)
 
 PUBLIC MaState *maPushState(MaState *prev)
 {
-    MaState   *state;
+    MaState *state;
 
     if ((state = mprAllocObj(MaState, manageState)) == 0) {
         return 0;
@@ -3218,7 +3221,8 @@ PUBLIC MaState *maPushState(MaState *prev)
 PUBLIC MaState *maPopState(MaState *state)
 {
     if (state->prev == 0) {
-        mprLog("error appweb config", 0, "Too many closing blocks.\nAt line %d in %s\n\n", state->lineNumber, state->filename);
+        mprLog("error appweb config", 0, "Too many closing blocks.\nAt line %d in %s\n\n", state->lineNumber,
+               state->filename);
     }
     state->prev->lineNumber = state->lineNumber;
     state = state->prev;
@@ -3248,7 +3252,8 @@ static void manageState(MaState *state, int flags)
 
 static int configError(MaState *state, cchar *key)
 {
-    mprLog("error appweb config", 0, "Error in directive \"%s\", at line %d in %s", key, state->lineNumber, state->filename);
+    mprLog("error appweb config", 0, "Error in directive \"%s\", at line %d in %s", key, state->lineNumber,
+           state->filename);
     return MPR_ERR_BAD_SYNTAX;
 }
 
@@ -3258,8 +3263,8 @@ static int configError(MaState *state, cchar *key)
  */
 static char *getDirective(char *line, char **valuep)
 {
-    char    *key, *value;
-    ssize   len;
+    char  *key, *value;
+    ssize len;
 
     assert(line);
     assert(valuep);
@@ -3275,7 +3280,8 @@ static char *getDirective(char *line, char **valuep)
     if (value) {
         value = strim(value, " \t\r\n>", MPR_TRIM_END);
         /*
-            Trim quotes if wrapping the entire value and no spaces. Preserve embedded quotes and leading/trailing "" etc.
+            Trim quotes if wrapping the entire value and no spaces. Preserve embedded quotes and leading/trailing ""
+               etc.
          */
         len = slen(value);
         if (*value == '\"' && value[len - 1] == '"' && len > 2 && value[1] != '\"' && !strpbrk(value, " \t")) {
@@ -3294,18 +3300,19 @@ static char *getDirective(char *line, char **valuep)
 
 PUBLIC char *maGetNextArg(char *s, char **tok)
 {
-    char    *etok;
-    int     quoted;
+    char *etok;
+    int  quoted;
 
     if (s == 0) {
         return 0;
     }
-    for (; isspace((uchar) *s); s++) {}
+    for (; isspace((uchar) * s); s++) {
+    }
 
     for (quoted = 0, etok = s; *etok; etok++) {
         if (*etok == '\'' || *etok == '"') {
             quoted = !quoted;
-        } else if (isspace((uchar) *etok) && !quoted && (etok > s && etok[-1] != '\\')) {
+        } else if (isspace((uchar) * etok) && !quoted && (etok > s && etok[-1] != '\\')) {
             break;
         }
     }
@@ -3319,7 +3326,8 @@ PUBLIC char *maGetNextArg(char *s, char **tok)
         etok = NULL;
     } else {
         *etok++ = '\0';
-        for (; isspace((uchar) *etok); etok++) {}
+        for (; isspace((uchar) * etok); etok++) {
+        }
     }
     *tok = etok;
     return s;
@@ -3328,11 +3336,11 @@ PUBLIC char *maGetNextArg(char *s, char **tok)
 
 PUBLIC int maWriteAuthFile(HttpAuth *auth, char *path)
 {
-    MprFile         *file;
-    MprKey          *kp, *ap;
-    HttpRole        *role;
-    HttpUser        *user;
-    char            *tempFile;
+    MprFile  *file;
+    MprKey   *kp, *ap;
+    HttpRole *role;
+    HttpUser *user;
+    char     *tempFile;
 
     tempFile = mprGetTempPath(mprGetPathDir(path));
     if ((file = mprOpenFile(tempFile, O_CREAT | O_TRUNC | O_WRONLY | O_TEXT, 0444)) == 0) {
@@ -3546,8 +3554,8 @@ static int parseInit(void)
  */
 PUBLIC int maLoadModule(cchar *name, cchar *libname)
 {
-    MprModule   *module;
-    cchar       *entry, *path;
+    MprModule *module;
+    cchar     *entry, *path;
 
     if (smatch(name, "phpHandler")) {
         name = "php";
