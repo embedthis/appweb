@@ -131,6 +131,10 @@ static int parseArgs(int argc, char **argv)
                 usage();
             }
             mark += count;
+            if (mark >= BUFFER_SIZE) {
+                fprintf(stderr, "Too many parameters");
+                usage();
+            }
             free(key);
         }
         if (*pbuf) {

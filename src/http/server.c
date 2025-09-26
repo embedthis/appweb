@@ -25,13 +25,13 @@
     Global application object. Provides the top level roots of all data objects for the GC.
  */
 typedef struct App {
-    Mpr *mpr;
-    MprSignal *signal;
-    cchar *documents;
-    cchar *home;
-    cchar *configFile;
-    cchar *pathVar;
-    int show;
+    Mpr         *mpr;
+    MprSignal   *signal;
+    cchar       *documents;
+    cchar       *home;
+    cchar       *configFile;
+    cchar       *pathVar;
+    int         show;
 } App;
 
 static App *app;
@@ -46,11 +46,12 @@ static void usageError(void);
 
 /*********************************** Code *************************************/
 
-MAIN(http, int argc, char **argv, char **envp){
-    Mpr   *mpr;
-    cchar *argp;
-    char  *logSpec, *traceSpec;
-    int   argind;
+MAIN(http, int argc, char **argv, char **envp)
+{
+    Mpr     *mpr;
+    cchar   *argp;
+    char    *logSpec, *traceSpec;
+    int     argind;
 
     logSpec = 0;
     traceSpec = 0;
@@ -183,8 +184,8 @@ static void manageApp(App *app, int flags)
 
 static int createEndpoints(int argc, char **argv)
 {
-    HttpHost  *host;
-    HttpRoute *route;
+    HttpHost    *host;
+    HttpRoute   *route;
 
     host = httpCreateHost();
     httpSetDefaultHost(host);
@@ -206,7 +207,7 @@ static int createEndpoints(int argc, char **argv)
 
 static int findConfig()
 {
-    char *base, *filename;
+    char    *base, *filename;
 
     base = sclone("http.json");
     filename = base;
@@ -227,22 +228,22 @@ static int findConfig()
 
 static void usageError()
 {
-    cchar *name;
+    cchar   *name;
 
     name = mprGetAppName();
     mprEprintf("\n%s Usage:\n\n"
-               "  %s [options]\n"
-               "  Options:\n"
-               "    --config configFile     # Use named config file instead http.json\n"
-               "    --debugger              # Disable timeouts to make debugging easier\n"
-               "    --log logFile:level     # Log to file at verbosity level (0-5)\n"
-               "    --name uniqueName       # Unique name for this instance\n"
-               "    --show                  # Show route table\n"
-               "    --trace traceFile:level # Trace to file at verbosity level (0-5)\n"
-               "    --verbose               # Same as --log stderr:2\n"
-               "    --version               # Output version information\n"
-               "    --DIGIT                 # Same as --log stderr:DIGIT\n\n",
-               mprGetAppTitle(), name);
+        "  %s [options]\n"
+        "  Options:\n"
+        "    --config configFile     # Use named config file instead http.json\n"
+        "    --debugger              # Disable timeouts to make debugging easier\n"
+        "    --log logFile:level     # Log to file at verbosity level (0-5)\n"
+        "    --name uniqueName       # Unique name for this instance\n"
+        "    --show                  # Show route table\n"
+        "    --trace traceFile:level # Trace to file at verbosity level (0-5)\n"
+        "    --verbose               # Same as --log stderr:2\n"
+        "    --version               # Output version information\n"
+        "    --DIGIT                 # Same as --log stderr:DIGIT\n\n",
+        mprGetAppTitle(), name);
     exit(7);
 }
 

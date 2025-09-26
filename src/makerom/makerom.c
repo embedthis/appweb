@@ -1,8 +1,8 @@
 /**
     makerom.c - Compile source files into C code suitable for embedding in ROM.
-
+  
     Usage: makerom --mount mount --strip string files ... >rom.c
-
+  
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
 
@@ -21,10 +21,10 @@ static int binToC(MprList *files, cchar *mount, cchar *strip);
 
 int main(int argc, char **argv)
 {
-    MprList *files;
-    FILE    *fp;
-    char    *argp, *mount, *strip, *fileList, *path, fbuf[ME_MAX_FNAME];
-    int     nextArg, err;
+    MprList     *files;
+    FILE        *fp;
+    char        *argp, *mount, *strip, *fileList, *path, fbuf[ME_MAX_FNAME];
+    int         nextArg, err;
 
     mprCreate(argc, argv, 0);
 
@@ -104,16 +104,16 @@ static void printUsage(void)
 }
 
 
-/*
+/* 
     Encode the files as C code
  */
 static int binToC(MprList *files, cchar *mount, cchar *strip)
 {
-    struct stat sbuf;
-    char        buf[512];
-    char        *filename, *p, *name;
-    ssize       len;
-    int         fd, next, i, j;
+    struct stat     sbuf;
+    char            buf[512];
+    char            *filename, *p, *name;
+    ssize           len;
+    int             fd, next, i, j;
 
     mprPrintf("/*\n    Compiled Files\n */\n");
 
@@ -126,7 +126,7 @@ static int binToC(MprList *files, cchar *mount, cchar *strip)
     for (next = 0; (filename = mprGetNextItem(files, &next)) != 0; ) {
         if (stat(filename, &sbuf) == 0 && sbuf.st_mode & S_IFDIR) {
             continue;
-        }
+        } 
         if ((fd = open(filename, O_RDONLY | O_BINARY, 0666)) < 0) {
             mprLog("error makerom", 0, "Cannot open file %s", filename);
             return -1;
@@ -150,7 +150,7 @@ static int binToC(MprList *files, cchar *mount, cchar *strip)
 
     /*
         Now output the page index
-     */
+     */ 
     mprPrintf("PUBLIC MprRomInode romFiles[] = {\n");
     strip = mprGetNativePath(strip);
     mount = mprGetNativePath(mount);
