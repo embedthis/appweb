@@ -34,7 +34,6 @@ cache/
 Debug/
 diff
 node_modules
-paks/
 php.log
 projecs/*.sdf
 projecs/*.sln
