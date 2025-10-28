@@ -33,6 +33,8 @@ build/
 cache/
 Debug/
 diff
+paks/*
+!paks/ejs/
 node_modules
 php.log
 projecs/*.sdf
