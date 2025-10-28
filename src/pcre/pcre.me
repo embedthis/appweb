@@ -19,7 +19,8 @@ Me.load({
 					} else {
 						me.target.defines = [ '-DPCRE_CHAR=char' ]
 					}
-                    if (me.platform.os == 'macosx' && me.target.type == 'lib') {
+                    //  New MakeMe quoting has trouble with these and quotes them as one
+                    if (false && me.platform.os == 'macosx' && me.target.type == 'lib') {
                         me.target.linker.push('-compatibility_version ' + me.settings.compatible)
                         me.target.linker.push('-current_version ' + me.settings.compatible)                                
                     }  

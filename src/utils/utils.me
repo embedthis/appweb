@@ -15,8 +15,6 @@ Me.load({
             type:   'exe',
             sources: [ 'cgiProgram.c' ],
             ifdef: [ 'cgi' ],
-            action: true,
-            generate: false,
         },
 
         'fastProgram': {
@@ -25,8 +23,6 @@ Me.load({
             ifdef: [ 'fast' ],
             includes: [ '/usr/local/include' ],
             libraries: [ 'fcgi' ],
-            action: true,
-            generate: false,
         },
     },
 })

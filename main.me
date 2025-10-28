@@ -11,7 +11,6 @@ Me.load({
         'src/**.me',
         'certs/**.me',
         '?doc/doc.me',
-        '?test/test.me',
         '?samples/samples.me',
         '?installs/installs.me',
         '?local.me',
@@ -71,7 +70,7 @@ Me.load({
         },
 
         compiler: {
-            fortify: true,
+            fortify: false,
         },
 
         esp: {
@@ -180,14 +179,9 @@ Me.load({
             depends: [ 'libmod_proxy' ],
         },
 
-        /*
-            See src/server/server.me for the appweb targets
-            See src/libappweb.me for the appweb library target
-            See installs/installs.me for the install targets
-         */
         projects: {
             action: `
-                genProjects('--with esp --with mdb --with cgi', 'default', ['freebsd-arm', 'linux-x64', 'macosx-arm64', 'vxworks-arm', 'windows-x64'])
+                genProjects('--with esp --with mdb --with cgi --with fast --with proxy', 'default', ['freebsd-arm', 'linux-x64', 'macosx-arm64', 'vxworks-arm', 'windows-x64'])
             `,
         },
 

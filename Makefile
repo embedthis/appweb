@@ -3,18 +3,16 @@
 #
 #	This Makefile is for Unix/Linux and Cygwin. On windows, it can be invoked via make.bat.
 #
-#   You can use this Makefile and build via "make" with a pre-selected configuration. Alternatively,
-#   you can build using the MakeMe tool for for a fully configurable build. If you wish to
-#   cross-compile, you should use MakeMe.
+#   You can use this Makefile and build via "make" with a pre-selected configuration. 
 #
-#	See projects/$(OS)-$(ARCH)-$(PROFILE)-me.h for configuration default settings. Can override
+#	See projects/$(OS)-$(ARCH)-default-me.h for configuration default settings. Can override
 #	via make environment variables. For example: make ME_COM_SQLITE=0. These are converted to
 #	DFLAGS and will then override the me.h default values. Use "make help" for a list of available
 #	make variable options.
 #
 NAME    := appweb
 OS      := $(shell uname | sed 's/CYGWIN.*/windows/;s/Darwin/macosx/' | tr '[A-Z]' '[a-z]')
-PROFILE := default
+PROFILE ?= dev
 
 ifeq ($(ARCH),)
 	ifeq ($(OS),windows)
@@ -24,7 +22,7 @@ ifeq ($(ARCH),)
 			ARCH?=x86
 		endif
 	else
-		ARCH:= $(shell uname -m | sed 's/i.86/x86/;s/x86_64/x64/;;s/mips.*/mips/')
+		ARCH:= $(shell uname -m | sed 's/i.86/x86/;s/x86_64/x64/;;s/mips.*/mips/;s/aarch/arm/')
 	endif
 endif
 
@@ -36,35 +34,37 @@ else
 	EXT     := mk
 endif
 
-BIN 	:= $(OS)-$(ARCH)-$(PROFILE)/bin
-PATH	:= $(PWD)/build/$(BIN):$(PATH)
+BIN 		:= $(OS)-$(ARCH)-$(PROFILE)/bin
+PATH		:= $(PWD)/build/$(BIN):$(PATH)
+PROJECT 	:= projects/$(NAME)-$(OS)-default.mk
 
 .EXPORT_ALL_VARIABLES:
-.PHONY: build doc
+.PHONY: build doc test
 
 all build compile:
-	@if [ ! -f projects/$(NAME)-$(OS)-$(PROFILE).$(EXT) ] ; then \
-		echo "The build configuration projects/$(NAME)-$(OS)-$(PROFILE).$(EXT) is not supported" ; exit 255 ; \
+	@if [ ! -f $(PROJECT) ] ; then \
+		echo "The build configuration $(PROJECT) is not supported" ; exit 255 ; \
 	fi
-	@echo '       [Run] $(MAKE) -f projects/$(NAME)-$(OS)-$(PROFILE).$(EXT) $@'
-	@$(MAKE) -f projects/$(NAME)-$(OS)-$(PROFILE).$(EXT) $@
+	@echo '       [Run] $(MAKE) -f $(PROJECT) $@'
+	@$(MAKE) -f $(PROJECT) $@
 	@echo '      [Info] Run via: "make run". Run manually with "build/$(OS)-$(ARCH)-$(PROFILE)/bin" in your path.'
 	@echo ""
 
 clean clobber install installBinary uninstall run:
-	@echo '       [Run] $(MAKE) -f projects/$(NAME)-$(OS)-$(PROFILE).$(EXT) $@'
-	@$(MAKE) -f projects/$(NAME)-$(OS)-$(PROFILE).$(EXT) $@
+	@echo '       [Run] $(MAKE) -f $(PROJECT) $@'
+	@$(MAKE) -f $(PROJECT) $@
 	@echo '      [Info] $@ complete'
 
+test:
+	@test/utils/prep-test.sh
+	@tm test
+
 deploy:
-	@echo '       [Deploy] $(MAKE) ME_ROOT_PREFIX=$(OS)-$(ARCH)-$(PROFILE)/deploy -f projects/$(NAME)-$(OS)-$(PROFILE).$(EXT) installBinary'
-	@$(MAKE) ME_ROOT_PREFIX=$(OS)-$(ARCH)-$(PROFILE)/deploy -f projects/$(NAME)-$(OS)-$(PROFILE).$(EXT) installBinary
+	@echo '       [Deploy] $(MAKE) ME_ROOT_PREFIX=$(OS)-$(ARCH)-$(PROFILE)/deploy -f $(PROJECT) installBinary'
+	@$(MAKE) ME_ROOT_PREFIX=$(OS)-$(ARCH)-$(PROFILE)/deploy -f $(PROJECT) installBinary
 
 version:
-	@$(MAKE) -f projects/$(NAME)-$(OS)-$(PROFILE).$(EXT) $@
-
-doc:
-	@me doc
+	@$(MAKE) -f $(PROJECT) $@
 
 help:
 	@echo '' >&2

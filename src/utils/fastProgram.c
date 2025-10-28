@@ -343,6 +343,10 @@ static int getArgv(State *state, int *pargc, char ***pargv, int originalArgc, ch
     }
     if (switches == 0) {
         switches = FCGX_GetParam("HTTP_SWITCHES", state->request->envp);
+        if (switches == 0) {
+            // Try lowercase for HTTP/2 compatibility
+            switches = FCGX_GetParam("HTTP_switches", state->request->envp);
+        }
     }
     if (switches) {
         strncpy(sbuf, switches, sizeof(sbuf) - 1);

@@ -7,7 +7,7 @@
         "http",
         "webserver"
     ],
-    "version": "9.0.5",
+    "version": "9.1.0",
     "homepage": "https://www.embedthis.com/appweb/",
     "author": {
         "name": "Embedthis Software",
@@ -40,5 +40,6 @@
         "ssl": "~1.0",
         "updater": "~1",
         "watchdog": "~1.0"
-    }
+    },
+    "repository": undefined
 }

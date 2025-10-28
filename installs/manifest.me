@@ -268,15 +268,28 @@ Me.load({
                     home:       '${TOP}',
                     from: [
                                 'src',
-                                'test',
                                 'doc',
                                 'projects',
                                 'certs',
                                 'installs',
                     ],
                     to:         '${src}/',
-                    exclude:    /\.old$|\.tmp$|xcshared|xcuserdata|xcworkspace|project.guid|-mine|\/cache\/|10M.txt|1M.txt|\/tmp\//,
+                    exclude:    /\.old$|\.tmp$|xcshared|xcuserdata|xcworkspace|project.guid|-mine|\/cache\/|10M.txt|1M.txt|\/tmp\/|\/ejs\//,
                     flatten:    false,
+
+                }, {
+                    home:       '${TOP}',
+                    from: [
+                                'paks/ejs',
+                    ],
+                    to:         '${src}/',
+                    flatten:    false,
+                }, {
+                    home:   '${TOP}',
+                    from:   'test/**',
+                    to:     '${src}/',
+                    exclude: /.local.mk|local.json5|\.testme|certs\/|.*K\.txt|node_modules|web\/tmp\/|cgi-bin\/|fast-bin\//,
+                    flatten: false,
                 }
             ],
             utils: [
