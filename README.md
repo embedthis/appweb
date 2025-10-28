@@ -52,12 +52,19 @@ distribute, manage and track software updates for your Appweb devices.
 ## Tests
 
 The test suite is located in the `test/` directory. It is written in TypeScript
-and uses the [TestMe](https://www.embedthis.com/testme/) framework. The test
-suite is run with the `tm` command.
+and uses the [TestMe](https://www.embedthis.com/testme/) framework. 
+
+First time, run the tests with:
+
+    make test
+
+This will ensure that the test environment is prepared. After that, you can run
+the tests with the `tm` command or via `make test`.
 
     tm
 
-To run a specific test, use the `tm` command with the test name.
+To run a specific test or group of tests, use the `tm` command with the test
+name.
 
     tm basic/
 

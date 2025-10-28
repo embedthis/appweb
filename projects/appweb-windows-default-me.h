@@ -268,7 +268,7 @@
 
 /* Profile */
 #ifndef ME_CONFIG_CMD
-    #define ME_CONFIG_CMD "me -d -q -platform windows-x64-default -configure . --with esp --with mdb --with cgi --with fast --with proxy -gen vs"
+    #define ME_CONFIG_CMD "me -d -q -platform windows-x64-default -configure . --with esp --with mdb --with cgi --with proxy -gen vs"
 #endif
 #ifndef ME_APPWEB_PRODUCT
     #define ME_APPWEB_PRODUCT 1
@@ -311,7 +311,7 @@
     #define ME_COM_ESP 1
 #endif
 #ifndef ME_COM_FAST
-    #define ME_COM_FAST 1
+    #define ME_COM_FAST 0
 #endif
 #ifndef ME_COM_HTTP
     #define ME_COM_HTTP 1

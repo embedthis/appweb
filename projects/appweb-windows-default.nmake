@@ -66,7 +66,7 @@ ME_COM_EJS            = 0
 ME_COM_ESP            = 1
 !ENDIF
 !IFNDEF ME_COM_FAST
-ME_COM_FAST           = 1
+ME_COM_FAST           = 0
 !ENDIF
 !IFNDEF ME_COM_HTTP
 ME_COM_HTTP           = 1
@@ -207,7 +207,7 @@ ME_COMPILER_HAS_UNNAMED_UNIONS = 1
 ME_CONFIG_FILE        = \"appweb.conf\"
 !ENDIF
 !IFNDEF ME_CONFIGURE
-ME_CONFIGURE          = \"me -d -q -platform windows-x64-default -configure . --with esp --with mdb --with cgi --with fast --with proxy -gen nmake\"
+ME_CONFIGURE          = \"me -d -q -platform windows-x64-default -configure . --with esp --with mdb --with cgi --with proxy -gen nmake\"
 !ENDIF
 !IFNDEF ME_CONFIGURED
 ME_CONFIGURED         = 1
