@@ -943,7 +943,7 @@ static void vmfree(void *ptr, size_t size)
 
 
 /***************************************************** Garbage Colllector
-   *************************************************/
+ *************************************************/
 
 PUBLIC void mprStartGCService()
 {
@@ -1683,7 +1683,7 @@ PUBLIC void mprRemoveRoot(cvoid *root)
 
 
 /****************************************************** Debug
-   *************************************************************/
+ *************************************************************/
 
 #if ME_MPR_ALLOC_STATS
 static void printQueueStats()
@@ -3077,7 +3077,7 @@ PUBLIC void mprRestart()
     for (i = 3; i < MPR_MAX_FILE; i++) {
         close(i);
     }
-    execv(MPR->argv[0], (char*const*) MPR->argv);
+    execv(MPR->argv[0], (char*const *) MPR->argv);
 
     /*
         Last-ditch trace. Can only use stdout. Logging may be closed.
@@ -18730,14 +18730,10 @@ static int configOss(MprSsl *ssl, int flags, char **errorMsg)
 #else
     SSL_CTX_set_app_data(ctx, (void*) ssl);
 #endif
-    if (ssl->verifyPeer && !(ssl->caFile || ssl->caPath)) {
-        *errorMsg = sfmt("Cannot verify peer due to undefined CA certificates");
-        SSL_CTX_free(ctx);
-        return MPR_ERR_CANT_INITIALIZE;
-    }
-
     /*
         Configure the certificates
+        Use either the authority file or the default verify paths
+        OpenSSL currently has issues where loading additional paths may (may not) invalidate the default paths
      */
     if (ssl->certFile) {
         if (setCertFile(ctx, ssl->certFile) < 0) {
@@ -18794,28 +18790,29 @@ static int configOss(MprSsl *ssl, int flags, char **errorMsg)
     }
     verifyMode = !ssl->verifyPeer ? SSL_VERIFY_NONE : SSL_VERIFY_PEER;
     if (verifyMode != SSL_VERIFY_NONE) {
-        if (!(ssl->caFile || ssl->caPath)) {
-            *errorMsg = sclone("No defined certificate authority file");
-            SSL_CTX_free(ctx);
-            return MPR_ERR_CANT_INITIALIZE;
-        }
-        if ((!SSL_CTX_load_verify_locations(ctx, (char*) ssl->caFile, (char*) ssl->caPath)) ||
-            (!SSL_CTX_set_default_verify_paths(ctx))) {
-            *errorMsg = sfmt("Unable to set certificate locations: %s: %s", ssl->caFile, ssl->caPath);
-            SSL_CTX_free(ctx);
-            return MPR_ERR_CANT_INITIALIZE;
-        }
-        if (ssl->caFile) {
-            STACK_OF(X509_NAME) * certNames;
-            certNames = SSL_load_client_CA_file(ssl->caFile);
-            if (certNames) {
-                /*
-                    Define the list of CA certificates to send to the client
-                    before they send their client certificate for validation
-                 */
-                SSL_CTX_set_client_CA_list(ctx, certNames);
+        if (ssl->caFile || ssl->caPath) {
+            if (!SSL_CTX_load_verify_locations(ctx, (char*) ssl->caFile, (char*) ssl->caPath)) {
+                *errorMsg = sfmt("Unable to set certificate locations: %s: %s", ssl->caFile, ssl->caPath);
+                SSL_CTX_free(ctx);
+                return MPR_ERR_CANT_INITIALIZE;
             }
+            if (ssl->caFile) {
+                STACK_OF(X509_NAME) * certNames;
+                certNames = SSL_load_client_CA_file(ssl->caFile);
+                if (certNames) {
+                    /*
+                        Define the list of CA certificates to send to the client
+                        before they send their client certificate for validation
+                     */
+                    SSL_CTX_set_client_CA_list(ctx, certNames);
+                }
+            }
+        } else if (!SSL_CTX_set_default_verify_paths(ctx)) {
+            *errorMsg = sfmt("Unable to set default certificate locations");
+            SSL_CTX_free(ctx);
+            return MPR_ERR_CANT_INITIALIZE;
         }
+
         store = SSL_CTX_get_cert_store(ctx);
         if (ssl->revoke && !X509_STORE_load_locations(store, ssl->revoke, 0)) {
             mprLog("error openssl", 0, "Cannot load certificate revoke list: %s", ssl->revoke);

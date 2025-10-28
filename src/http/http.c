@@ -23,96 +23,96 @@
 
 /*********************************** Locals ***********************************/
 
-#define MAX_REDIRECTS   5           /* Maximum number of redirects to follow */
+#define MAX_REDIRECTS 5             /* Maximum number of redirects to follow */
 
 typedef struct ThreadData {
-    int             activeRequests;
-    MprCond         *cond;
-    MprDispatcher   *dispatcher;
-    HttpNet         *net;
-    MprList         *requests;
+    int activeRequests;
+    MprCond *cond;
+    MprDispatcher *dispatcher;
+    HttpNet *net;
+    MprList *requests;
 } ThreadData;
 
 /*
     State for each stream
  */
 typedef struct Request {
-    HttpNet     *net;
-    HttpStream  *stream;
-    int         count;              /* Count of request iterations issued so far */
-    int         follow;             /* Current follow redirect count */
-    MprFile     *file;              /* Put/Upload file */
-    cchar       *ip;                /* First hop IP for the request URL */
-    MprFile     *outFile;
-    cchar       *path;              /* Put/Upload file path */
-    int         port;               /* TCP/IP port for request */
-    cchar       *redirect;          /* Redirect URL */
-    int         retries;            /* Current retry count */
-    MprEvent    *timeout;           /* Timeout event */
-    ThreadData  *threadData;
-    int         upload;             /* Upload using multipart mime */
-    HttpUri     *uri;               /* Parsed target URL */
-    char        *url;               /* Request target URL */
+    HttpNet *net;
+    HttpStream *stream;
+    int count;                      /* Count of request iterations issued so far */
+    int follow;                     /* Current follow redirect count */
+    MprFile *file;                  /* Put/Upload file */
+    cchar *ip;                      /* First hop IP for the request URL */
+    MprFile *outFile;
+    cchar *path;                    /* Put/Upload file path */
+    int port;                       /* TCP/IP port for request */
+    cchar *redirect;                /* Redirect URL */
+    int retries;                    /* Current retry count */
+    MprEvent *timeout;              /* Timeout event */
+    ThreadData *threadData;
+    int upload;                     /* Upload using multipart mime */
+    HttpUri *uri;                   /* Parsed target URL */
+    char *url;                      /* Request target URL */
 } Request;
 
 typedef struct App {
-    int         activeLoadThreads;  /* Active threads */
-    char        *authType;          /* Authentication: basic|digest */
-    int         benchmark;          /* Output benchmarks */
-    MprBuf      *bodyData;          /* Block body data */
-    cchar       *ca;                /* Certificate bundle to use when validating the server certificate */
-    cchar       *cert;              /* Certificate to identify the client */
-    int         chunkSize;          /* Ask for response data to be chunked in this quanta */
-    char        *ciphers;           /* Set of acceptable ciphers to use for SSL */
-    int         continueOnErrors;   /* Continue testing even if an error occurs. Default is to stop */
-    int         fetchCount;         /* Total count of fetches */
-    MprList     *files;             /* List of files to put / upload (only ever 1 entry) */
-    MprList     *formData;          /* Form body data */
-    int         hasData;            /* Request has body data */
-    MprList     *headers;           /* Request headers */
-    Http        *http;              /* Http service object */
-    char        *host;              /* Host to connect to */
-    cchar       *ip;                /* Target IP for the request URL */
-    int         iterations;         /* URLs to fetch (per thread) */
-    cchar       *key;               /* Private key file */
-    int         loadThreads;        /* Number of threads to use for URL requests */
-    int         maxRetries;         /* Times to retry a failed request */
-    int         maxFollow;          /* Times to follow a redirect */
-    char        *method;            /* HTTP method when URL on cmd line */
-    Mpr         *mpr;               /* Portable runtime */
-    MprMutex    *mutex;             /* Multithread sync */
-    bool        needSsl;            /* Need SSL for request */
-    int         nextArg;            /* Next arg to parse */
-    int         noout;              /* Don't output files */
-    int         nofollow;           /* Don't automatically follow redirects */
-    char        *outFilename;       /* Output filename */
-    int         packetSize;         /* HTTP/2 input frame size (min 16K) */
-    char        *password;          /* Password for authentication */
-    int         port;               /* Target port */
-    int         printable;          /* Make binary output printable */
-    int         protocol;           /**< HTTP protocol: 0 for HTTP/1.0, 1 for HTTP/1.1 or 2+ */
-    char        *ranges;            /* Request ranges */
-    int         sequence;           /* Sequence requests with a custom header */
-    int         status;             /* Status for single requests */
-    int         showStatus;         /* Output the Http response status */
-    int         showHeaders;        /* Output the response headers */
-    int         singleStep;         /* Pause between requests */
-    MprSsl      *ssl;               /* SSL configuration */
-    int         streams;            /* Number of HTTP/2 streams to spawn */
-    int         success;            /* Total success flag */
-    cchar       *target;            /* Destination url */
-    cchar       *test;              /* Test to invoke */
-    int         text;               /* Emit errors in plain text */
-    MprTicks    timeout;            /* Timeout in msecs for a non-responsive server */
-    MprList     *threadData;        /* Per thread data */
-    int         upload;             /* Upload using multipart mime */
-    char        *username;          /* User name for authentication of requests */
-    char        *verifyPeer;        /* Validate server certs */
-    int         verifyIssuer;       /* Validate the issuer. Permits self-signed certs if false. */
-    int         verbose;            /* Trace progress */
-    int         window;             /* HTTP/2 input window size (min 65535) */
-    int         workers;            /* Worker threads. >0 if multi-threaded */
-    int         zeroOnErrors;       /* Exit zero status for any valid HTTP response code  */
+    int activeLoadThreads;          /* Active threads */
+    char *authType;                 /* Authentication: basic|digest */
+    int benchmark;                  /* Output benchmarks */
+    MprBuf *bodyData;               /* Block body data */
+    cchar *ca;                      /* Certificate bundle to use when validating the server certificate */
+    cchar *cert;                    /* Certificate to identify the client */
+    int chunkSize;                  /* Ask for response data to be chunked in this quanta */
+    char *ciphers;                  /* Set of acceptable ciphers to use for SSL */
+    int continueOnErrors;           /* Continue testing even if an error occurs. Default is to stop */
+    int fetchCount;                 /* Total count of fetches */
+    MprList *files;                 /* List of files to put / upload (only ever 1 entry) */
+    MprList *formData;              /* Form body data */
+    int hasData;                    /* Request has body data */
+    MprList *headers;               /* Request headers */
+    Http *http;                     /* Http service object */
+    char *host;                     /* Host to connect to */
+    cchar *ip;                      /* Target IP for the request URL */
+    int iterations;                 /* URLs to fetch (per thread) */
+    cchar *key;                     /* Private key file */
+    int loadThreads;                /* Number of threads to use for URL requests */
+    int maxRetries;                 /* Times to retry a failed request */
+    int maxFollow;                  /* Times to follow a redirect */
+    char *method;                   /* HTTP method when URL on cmd line */
+    Mpr *mpr;                       /* Portable runtime */
+    MprMutex *mutex;                /* Multithread sync */
+    bool needSsl;                   /* Need SSL for request */
+    int nextArg;                    /* Next arg to parse */
+    int noout;                      /* Don't output files */
+    int nofollow;                   /* Don't automatically follow redirects */
+    char *outFilename;              /* Output filename */
+    int packetSize;                 /* HTTP/2 input frame size (min 16K) */
+    char *password;                 /* Password for authentication */
+    int port;                       /* Target port */
+    int printable;                  /* Make binary output printable */
+    int protocol;                   /**< HTTP protocol: 0 for HTTP/1.0, 1 for HTTP/1.1 or 2+ */
+    char *ranges;                   /* Request ranges */
+    int sequence;                   /* Sequence requests with a custom header */
+    int status;                     /* Status for single requests */
+    int showStatus;                 /* Output the Http response status */
+    int showHeaders;                /* Output the response headers */
+    int singleStep;                 /* Pause between requests */
+    MprSsl *ssl;                    /* SSL configuration */
+    int streams;                    /* Number of HTTP/2 streams to spawn */
+    int success;                    /* Total success flag */
+    cchar *target;                  /* Destination url */
+    cchar *test;                    /* Test to invoke */
+    int text;                       /* Emit errors in plain text */
+    MprTicks timeout;               /* Timeout in msecs for a non-responsive server */
+    MprList *threadData;            /* Per thread data */
+    int upload;                     /* Upload using multipart mime */
+    char *username;                 /* User name for authentication of requests */
+    char *verifyPeer;               /* Validate server certs */
+    int verifyIssuer;               /* Validate the issuer. Permits self-signed certs if false. */
+    int verbose;                    /* Trace progress */
+    int window;                     /* HTTP/2 input window size (min 65535) */
+    int workers;                    /* Worker threads. >0 if multi-threaded */
+    int zeroOnErrors;               /* Exit zero status for any valid HTTP response code  */
 } App;
 
 static App *app;
@@ -120,15 +120,15 @@ static App *app;
 /***************************** Forward Declarations ***************************/
 
 static void     addFormVars(cchar *buf);
-static Request  *allocRequest(void);
+static Request *allocRequest(void);
 static void     checkRequestState(HttpStream *stream);
-static Request  *createRequest(ThreadData *td, HttpNet *net);
-static char     *extendUrl(cchar *url);
+static Request *createRequest(ThreadData *td, HttpNet *net);
+static char *extendUrl(cchar *url);
 static void     finishRequest(Request *req);
 static void     finishThread(MprThread *thread);
-static cchar    *formatOutput(HttpStream *stream, cchar *buf, ssize *count);
-static char     *getPassword(void);
-static cchar    *getRedirectUrl(HttpStream *stream, cchar *url);
+static cchar *formatOutput(HttpStream *stream, cchar *buf, ssize *count);
+static char *getPassword(void);
+static cchar *getRedirectUrl(HttpStream *stream, cchar *url);
 static HttpStream *getStream(Request *req);
 static int      initSettings(void);
 static int      initSsl(void);
@@ -155,11 +155,10 @@ static ssize    writeBody(HttpStream *stream);
 
 /*********************************** Code *************************************/
 
-MAIN(httpMain, int argc, char **argv, char **envp)
-{
-    MprTime     start;
-    double      elapsed;
-    int         success;
+MAIN(httpMain, int argc, char **argv, char **envp){
+    MprTime start;
+    double  elapsed;
+    int     success;
 
     if (mprCreate(argc, argv, MPR_USER_EVENTS_THREAD) == 0) {
         return MPR_ERR_MEMORY;
@@ -273,8 +272,8 @@ static void setDefaults()
 
 static int parseArgs(int argc, char **argv)
 {
-    char    *argp, *key, *logSpec, *value, *traceSpec;
-    int     i, setWorkers, nextArg;
+    char *argp, *key, *logSpec, *value, *traceSpec;
+    int  i, setWorkers, nextArg;
 
     setWorkers = 0;
     app->needSsl = 0;
@@ -403,7 +402,7 @@ static int parseArgs(int argc, char **argv)
                     return MPR_ERR_BAD_ARGS;
                 }
                 *value++ = '\0';
-                while (isspace((uchar) *value)) {
+                while (isspace((uchar) * value)) {
                     value++;
                 }
                 mprAddItem(app->headers, mprCreateKeyPair(key, value, 0));
@@ -733,7 +732,7 @@ static int parseArgs(int argc, char **argv)
 
 static int initSettings()
 {
-    HttpLimits      *limits;
+    HttpLimits *limits;
 
     if (app->streams > 1 && app->protocol != 2) {
         mprLog("error http", 0, "Cannot use multiple streams except with HTTP/2 protocol");
@@ -770,66 +769,66 @@ static int initSettings()
 static int showUsage()
 {
     mprEprintf("usage: %s [options] [file] url\n"
-        "  Options:\n"
-        "  --auth basic|digest   # Set authentication type.\n"
-        "  --benchmark           # Compute benchmark results.\n"
-        "  --ca file             # Certificate bundle to use when validating the server certificate.\n"
-        "  --cert file           # Certificate to send to the server to identify the client.\n"
-        "  --chunk size          # Request response data to use this chunk size.\n"
-        "  --ciphers cipher,...  # List of suitable ciphers.\n"
-        "  --continue            # Continue on errors.\n"
-        "  --cookie CookieString # Define a cookie header. Multiple uses okay.\n"
-        "  --data bodyData       # Body data to send with PUT or POST.\n"
-        "  --debugger            # Disable timeouts to make running in a debugger easier.\n"
-        "  --delete              # Use the DELETE method. Shortcut for --method DELETE..\n"
-        "  --form string         # Form data. Must already be form-www-urlencoded.\n"
-        "  --frame size          # Set maximum HTTP/2 input frame size (min 16K).\n"
-        "  --header 'key: value' # Add a custom request header.\n"
-        "  --host hostName       # Host name or IP address for unqualified URLs.\n"
-        "  --http0               # Alias for --protocol HTTP/1.0 (default HTTP/1.1).\n"
-        "  --http1               # Alias for --protocol HTTP/1.1 (default HTTP/1.1).\n"
+               "  Options:\n"
+               "  --auth basic|digest   # Set authentication type.\n"
+               "  --benchmark           # Compute benchmark results.\n"
+               "  --ca file             # Certificate bundle to use when validating the server certificate.\n"
+               "  --cert file           # Certificate to send to the server to identify the client.\n"
+               "  --chunk size          # Request response data to use this chunk size.\n"
+               "  --ciphers cipher,...  # List of suitable ciphers.\n"
+               "  --continue            # Continue on errors.\n"
+               "  --cookie CookieString # Define a cookie header. Multiple uses okay.\n"
+               "  --data bodyData       # Body data to send with PUT or POST.\n"
+               "  --debugger            # Disable timeouts to make running in a debugger easier.\n"
+               "  --delete              # Use the DELETE method. Shortcut for --method DELETE..\n"
+               "  --form string         # Form data. Must already be form-www-urlencoded.\n"
+               "  --frame size          # Set maximum HTTP/2 input frame size (min 16K).\n"
+               "  --header 'key: value' # Add a custom request header.\n"
+               "  --host hostName       # Host name or IP address for unqualified URLs.\n"
+               "  --http0               # Alias for --protocol HTTP/1.0 (default HTTP/1.1).\n"
+               "  --http1               # Alias for --protocol HTTP/1.1 (default HTTP/1.1).\n"
 #if ME_HTTP_HTTP2
-        "  --http2               # Alias for --protocol HTTP/2 (default HTTP/1.1).\n"
+               "  --http2               # Alias for --protocol HTTP/2 (default HTTP/1.1).\n"
 #endif
-        "  --iterations count    # Number of times to fetch the URLs per thread (default 1).\n"
-        "  --key file            # Private key file.\n"
-        "  --log logFile:level   # Log to the file at the verbosity level.\n"
-        "  --method KIND         # HTTP request method GET|OPTIONS|POST|PUT|TRACE (default GET).\n"
-        "  --nofollow            # Don't automatically follow redirects.\n"
-        "  --noout               # Don't output files to stdout.\n"
-        "  --out file            # Send output to file.\n"
-        "  --password pass       # Password for authentication.\n"
-        "  --post                # Use POST method. Shortcut for --method POST.\n"
-        "  --printable           # Make binary output printable.\n"
-        "  --protocol PROTO      # Set HTTP protocol to HTTP/1.0, HTTP/1.1 or HTTP/2 (default HTTP/1.1).\n"
-        "  --put                 # Use PUT method. Shortcut for --method PUT.\n"
-        "  --range byteRanges    # Request a subset range of the document.\n"
-        "  --retries count       # Number of times to retry failing requests (default 2).\n"
-        "  --sequence            # Sequence requests with a custom header.\n"
-        "  --showHeaders         # Output response headers.\n"
-        "  --showStatus          # Output the Http response status code.\n"
-        "  --single              # Single step. Pause for input between requests.\n"
-        "  --streams count       # Number of HTTP/2 streams to spawn (default 1).\n"
-        "  --threads count       # Number of thread instances to spawn (default 1).\n"
-        "  --timeout secs        # Request timeout period in seconds.\n"
-        "  --trace file:level    # Trace to the file at the verbosity level.\n"
-        "  --upload              # Use multipart mime upload.\n"
-        "  --user name           # User name for authentication.\n"
-        "  --verify              # Validate server certificates when using SSL.\n"
-        "  --verbose             # Verbose operation. Trace progress.\n"
-        "  --window size         # Set HTTP/2 input window size (min 65535).\n"
-        "  --workers count       # Set maximum worker threads.\n"
-        "  --zero                # Exit with zero status for any valid HTTP response.\n"
-        , mprGetAppName());
+               "  --iterations count    # Number of times to fetch the URLs per thread (default 1).\n"
+               "  --key file            # Private key file.\n"
+               "  --log logFile:level   # Log to the file at the verbosity level.\n"
+               "  --method KIND         # HTTP request method GET|OPTIONS|POST|PUT|TRACE (default GET).\n"
+               "  --nofollow            # Don't automatically follow redirects.\n"
+               "  --noout               # Don't output files to stdout.\n"
+               "  --out file            # Send output to file.\n"
+               "  --password pass       # Password for authentication.\n"
+               "  --post                # Use POST method. Shortcut for --method POST.\n"
+               "  --printable           # Make binary output printable.\n"
+               "  --protocol PROTO      # Set HTTP protocol to HTTP/1.0, HTTP/1.1 or HTTP/2 (default HTTP/1.1).\n"
+               "  --put                 # Use PUT method. Shortcut for --method PUT.\n"
+               "  --range byteRanges    # Request a subset range of the document.\n"
+               "  --retries count       # Number of times to retry failing requests (default 2).\n"
+               "  --sequence            # Sequence requests with a custom header.\n"
+               "  --showHeaders         # Output response headers.\n"
+               "  --showStatus          # Output the Http response status code.\n"
+               "  --single              # Single step. Pause for input between requests.\n"
+               "  --streams count       # Number of HTTP/2 streams to spawn (default 1).\n"
+               "  --threads count       # Number of thread instances to spawn (default 1).\n"
+               "  --timeout secs        # Request timeout period in seconds.\n"
+               "  --trace file:level    # Trace to the file at the verbosity level.\n"
+               "  --upload              # Use multipart mime upload.\n"
+               "  --user name           # User name for authentication.\n"
+               "  --verify              # Validate server certificates when using SSL.\n"
+               "  --verbose             # Verbose operation. Trace progress.\n"
+               "  --window size         # Set HTTP/2 input window size (min 65535).\n"
+               "  --workers count       # Set maximum worker threads.\n"
+               "  --zero                # Exit with zero status for any valid HTTP response.\n"
+               , mprGetAppName());
     return MPR_ERR_BAD_ARGS;
 }
 
 
 static void startThreads()
 {
-    MprThread   *tp;
-    ThreadData  *data;
-    int         j;
+    MprThread  *tp;
+    ThreadData *data;
+    int        j;
 
     app->activeLoadThreads = app->loadThreads;
     app->threadData = mprCreateList(app->loadThreads, 0);
@@ -864,12 +863,12 @@ static void manageThreadData(ThreadData *data, int flags)
  */
 static void threadMain(void *data, MprThread *thread)
 {
-    HttpNet     *net;
-    HttpUri     *uri;
-    Request     *req;
-    ThreadData  *td;
-    cchar       *target;
-    int         i;
+    HttpNet    *net;
+    HttpUri    *uri;
+    Request    *req;
+    ThreadData *td;
+    cchar      *target;
+    int        i;
 
     /*
         Create and start a dispatcher. This ensures that all activity on the network will be serialized.
@@ -921,8 +920,8 @@ static void threadMain(void *data, MprThread *thread)
 
 static Request *createRequest(ThreadData *td, HttpNet *net)
 {
-    Request     *req;
-    cchar       *path;
+    Request *req;
+    cchar   *path;
 
     req = allocRequest();
     req->threadData = td;
@@ -951,8 +950,8 @@ static Request *createRequest(ThreadData *td, HttpNet *net)
  */
 static HttpStream *getStream(Request *req)
 {
-    HttpNet     *net;
-    HttpStream  *stream;
+    HttpNet    *net;
+    HttpStream *stream;
 
     net = req->net;
     stream = req->stream;
@@ -991,8 +990,8 @@ static HttpStream *getStream(Request *req)
 
 static void startRequest(Request *req)
 {
-    HttpNet     *net;
-    HttpStream  *stream;
+    HttpNet    *net;
+    HttpStream *stream;
 
     stream = getStream(req);
 
@@ -1037,8 +1036,8 @@ static void startRequest(Request *req)
  */
 static void notifier(HttpStream *stream, int event, int arg)
 {
-    Request     *req;
-    int         delay, limit;
+    Request *req;
+    int     delay, limit;
 
     req = stream->data;
 
@@ -1131,7 +1130,7 @@ static void checkRequestState(HttpStream *stream)
 
 static void parseStatus(HttpStream *stream)
 {
-    HttpRx      *rx;
+    HttpRx *rx;
 
     if (stream->net->error) {
         httpNetError(stream->net, "Connection I/O error");
@@ -1153,11 +1152,11 @@ static void parseStatus(HttpStream *stream)
 
 static void prepHeaders(Request *req)
 {
-    HttpStream      *stream;
-    MprKeyValue     *header;
-    char            *seq, *url;
-    int             next;
-    static int      sequence = 0;
+    HttpStream  *stream;
+    MprKeyValue *header;
+    char        *seq, *url;
+    int         next;
+    static int  sequence = 0;
 
     stream = req->stream;
     for (next = 0; (header = mprGetNextItem(app->headers, &next)) != 0; ) {
@@ -1189,8 +1188,8 @@ static void prepHeaders(Request *req)
 
 static int prepUri(Request *req)
 {
-    MprFile     *file;
-    cchar       *base, *path;
+    MprFile *file;
+    cchar   *base, *path;
 
     if (req->redirect) {
         req->url = sclone(req->redirect);
@@ -1198,9 +1197,9 @@ static int prepUri(Request *req)
     } else if (req->upload) {
         req->url = extendUrl(app->target);
         /*
-        if (app->verbose) {
+           if (app->verbose) {
             mprPrintf("Uploading: %s\n", req->url);
-        } */
+           } */
 
     } else if (app->files) {
         if (mprGetListLength(app->files) == 1) {
@@ -1231,9 +1230,9 @@ static int prepUri(Request *req)
         }
         req->url = extendUrl(req->url);
         /*
-        if (app->verbose) {
+           if (app->verbose) {
             mprPrintf("Putting: %s to %s\n", path, req->url);
-        } */
+           } */
     } else {
         req->url = extendUrl(app->target);
     }
@@ -1245,7 +1244,7 @@ static int prepUri(Request *req)
 
 static cchar *getRedirectUrl(HttpStream *stream, cchar *url)
 {
-    HttpUri     *target, *location;
+    HttpUri *target, *location;
 
     httpRemoveHeader(stream, "Host");
     location = httpCreateUri(url, 0);
@@ -1260,12 +1259,12 @@ static cchar *getRedirectUrl(HttpStream *stream, cchar *url)
 
 static int processResponse(HttpStream *stream)
 {
-    Request     *req;
-    HttpNet     *net;
-    HttpRx      *rx;
-    MprOff      bytesRead, contentLength;
-    cchar       *msg, *responseHeaders, *sep;
-    int         status;
+    Request *req;
+    HttpNet *net;
+    HttpRx  *rx;
+    MprOff  bytesRead, contentLength;
+    cchar   *msg, *responseHeaders, *sep;
+    int     status;
 
     req = stream->data;
     net = stream->net;
@@ -1309,7 +1308,8 @@ static int processResponse(HttpStream *stream)
             app->success = 0;
         }
         if (!app->showStatus) {
-            mprLog("error http", 0, "\nCannot process request for %s \"%s\" (%d) %s", app->method, req->url, status, httpGetError(stream));
+            mprLog("error http", 0, "\nCannot process request for %s \"%s\" (%d) %s", app->method, req->url, status, httpGetError(
+                       stream));
             return MPR_ERR_CANT_READ;
         }
     } else if (contentLength >= 0 && bytesRead != contentLength) {
@@ -1329,10 +1329,10 @@ static int processResponse(HttpStream *stream)
 
 static void readBody(HttpStream *stream)
 {
-    Request     *req;
-    char        buf[ME_BUFSIZE];
-    cchar       *result;
-    ssize       bytes;
+    Request *req;
+    char    buf[ME_BUFSIZE];
+    cchar   *result;
+    ssize   bytes;
 
     req = stream->data;
     while (!stream->error && (bytes = httpRead(stream, buf, sizeof(buf))) > 0) {
@@ -1352,11 +1352,11 @@ static void readBody(HttpStream *stream)
 
 static int setContentLength(HttpStream *stream)
 {
-    Request     *req;
-    MprPath     info;
-    MprOff      len;
-    char        *pair;
-    int         next;
+    Request *req;
+    MprPath info;
+    MprOff  len;
+    char    *pair;
+    int     next;
 
     req = stream->data;
     len = 0;
@@ -1389,10 +1389,10 @@ static int setContentLength(HttpStream *stream)
 
 static ssize writeBody(HttpStream *stream)
 {
-    Request     *req;
-    char        buf[ME_BUFSIZE], *pair;
-    ssize       bytes, len, count, nbytes, sofar;
-    int         next;
+    Request *req;
+    char    buf[ME_BUFSIZE], *pair;
+    ssize   bytes, len, count, nbytes, sofar;
+    int     next;
 
     req = stream->data;
     if (req->upload) {
@@ -1418,9 +1418,9 @@ static ssize writeBody(HttpStream *stream)
         }
         if (req->file) {
             /*
-            if (app->verbose) {
+               if (app->verbose) {
                 mprPrintf("Uploading: %s\n", req->path);
-            } */
+               } */
             while ((bytes = mprReadFile(req->file, buf, sizeof(buf))) > 0) {
                 sofar = 0;
                 while (bytes > 0) {
@@ -1452,7 +1452,7 @@ static ssize writeBody(HttpStream *stream)
 
 static void finishRequest(Request *req)
 {
-    ThreadData  *td;
+    ThreadData *td;
 
     if (req) {
         td = req->threadData;
@@ -1505,18 +1505,19 @@ static void manageRequest(Request *req, int flags)
 
 static void waitForUser()
 {
-    int     c;
+    int c;
 
     mprLock(app->mutex);
     mprPrintf("Pause: ");
-    if (read(0, (char*) &c, 1) < 0) {}
+    if (read(0, (char*) &c, 1) < 0) {
+    }
     mprUnlock(app->mutex);
 }
 
 
 static void addFormVars(cchar *buf)
 {
-    char    *pair, *tok;
+    char *pair, *tok;
 
     pair = stok(sclone(buf), "&", &tok);
     while (pair) {
@@ -1528,10 +1529,10 @@ static void addFormVars(cchar *buf)
 
 static bool isPort(cchar *name)
 {
-    cchar   *cp;
+    cchar *cp;
 
     for (cp = name; *cp && *cp != '/'; cp++) {
-        if (!isdigit((uchar) *cp) || *cp == '.') {
+        if (!isdigit((uchar) * cp) || *cp == '.') {
             return 0;
         }
     }
@@ -1541,7 +1542,7 @@ static bool isPort(cchar *name)
 
 static char *extendUrl(cchar *url)
 {
-    cchar   *proto;
+    cchar *proto;
 
     proto = app->protocol >= 2 ? "https" : "http";
 
@@ -1572,8 +1573,8 @@ static char *extendUrl(cchar *url)
 static int initSsl(void)
 {
 #if ME_COM_SSL
-    HttpUri     *uri;
-    cchar       *target;
+    HttpUri *uri;
+    cchar   *target;
 
     target = extendUrl(app->target);
     uri = httpCreateUri(target, HTTP_COMPLETE_URI_PATH);
@@ -1614,8 +1615,8 @@ static int initSsl(void)
 
 static cchar *formatOutput(HttpStream *stream, cchar *buf, ssize *count)
 {
-    cchar       *result;
-    int         i, c, isBinary;
+    cchar *result;
+    int   i, c, isBinary;
 
     if (app->noout) {
         return 0;
@@ -1664,7 +1665,7 @@ static void trace(HttpStream *stream, cchar *url, int fetchCount, cchar *method,
             mprPrintf("  Count   Thread   Op  Code   Bytes  Url\n");
         }
         mprPrintf("%7d %7s %4s %5d %7d  %s\n", fetchCount - 1,
-            mprGetCurrentThreadName(), method, status, (uchar) contentLen, url);
+                  mprGetCurrentThreadName(), method, status, (uchar) contentLen, url);
     }
 }
 
@@ -1673,7 +1674,7 @@ static void trace(HttpStream *stream, cchar *url, int fetchCount, cchar *method,
 static char *getpass(char *prompt)
 {
     static char password[80];
-    int     c, i;
+    int         c, i;
 
     fputs(prompt, stdout);
     for (i = 0; i < (int) sizeof(password) - 1; i++) {
@@ -1717,7 +1718,7 @@ static char *getpass(char *prompt)
 static char *getPassword()
 {
 #if !WINCE
-    char    *password;
+    char *password;
 
     password = getpass("Password: ");
 #else
@@ -1731,11 +1732,13 @@ static char *getPassword()
 /*
     VxWorks link resolution
  */
-PUBLIC int _cleanup() {
+PUBLIC int _cleanup()
+{
     return 0;
 }
 
-PUBLIC int _exit() {
+PUBLIC int _exit()
+{
     return 0;
 }
 #endif

@@ -938,7 +938,7 @@ typedef struct MprMem {
     uchar qindex;                       /**< Freeq index. Always less than 512 queues. */
     uchar eternal;                      /**< Immune from GC. Implemented as a byte to be atomic */
     uchar mark;                         /**< GC mark indicator. Toggled for each GC pass by mark() when thread yielded.
-                                        */
+                                         */
 
     /*
         Bits for fields only updated by mark/sweeper. Must not use bits for fields updated by multiple threads.
@@ -1174,7 +1174,7 @@ typedef struct MprMemStats {
     uint64 collections;                         /**< Number of GC collections */
     uint64 freed;                               /**< Bytes freed in last sweep */
     uint64 joins;                               /**< Count of times a block was joined (coalesced) with its neighbours
-                                                */
+                                                 */
     uint64 markVisited;                         /**< Number of blocks examined for marking */
     uint64 marked;                              /**< Number of blocks marked */
     uint64 race;                                /**< Another thread raced for a block and won */
@@ -1707,7 +1707,7 @@ PUBLIC void mprAddRoot(cvoid *ptr);
                                          block if GC is required. */
 #define MPR_GC_FORCE    0x1         /**< mprGC flag to force start a GC sweep whether it is required or not */
 #define MPR_GC_NO_BLOCK 0x2         /**< mprGC flag to run GC if ncessary and return without yielding. Will not block.
-                                    */
+                                     */
 #define MPR_GC_COMPLETE 0x4         /**< mprGC flag to force start a GC and wait until the GC cycle fully completes
                                          including sweep phase */
 
@@ -1805,9 +1805,9 @@ PUBLIC void mprRemoveRoot(cvoid *ptr);
         mprMark on memory allocated via malloc(), strdup() or other non-MPR allocation routines.
         It is safe pass a NULL pointer to mprMark and this will have no effect. This is a convenient pattern
         where manager functions can call mprMark() without testing if the element reference is null or not.
+    @ingroup MprMem
  */
 PUBLIC void mprMark(void *ptr);
-@ingroup MprMem
 
 #else
 #if ME_MPR_ALLOC_STATS
@@ -1818,7 +1818,7 @@ PUBLIC void mprMark(void *ptr);
     #define mprMark(ptr) \
             if (ptr) { \
                 MprMem *_mp = MPR_GET_MEM((ptr)); \
-                       HINC(markVisited); \
+                HINC(markVisited); \
                 if (_mp->mark != MPR->heap->mark) { \
                     _mp->mark = MPR->heap->mark; \
                     if (_mp->hasManager) { \
@@ -1849,7 +1849,7 @@ PUBLIC int mprSyncThreads(MprTicks timeout);
         stemplateJson stoi stoiradix stok strim supper sncontains mprFprintf fmtv fmt
     @stability Internal
  */
-typedef struct MprString { void*dummy; } MprString;
+typedef struct MprString { void *dummy; } MprString;
 
 /**
     Format a string into a static buffer.
@@ -1863,7 +1863,7 @@ typedef struct MprString { void*dummy; } MprString;
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*fmt(char*buf, ssize maxSize, cchar*fmt, ...) PRINTF_ATTRIBUTE(3, 4);
+PUBLIC char *fmt(char *buf, ssize maxSize, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 
 /**
     Format a string into a statically allocated buffer.
@@ -1877,7 +1877,7 @@ PUBLIC char*fmt(char*buf, ssize maxSize, cchar*fmt, ...) PRINTF_ATTRIBUTE(3, 4);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*fmtv(char*buf, ssize maxSize, cchar*fmt, va_list args);
+PUBLIC char *fmtv(char *buf, ssize maxSize, cchar *fmt, va_list args);
 
 /**
     Convert an integer to a string.
@@ -1887,7 +1887,7 @@ PUBLIC char*fmtv(char*buf, ssize maxSize, cchar*fmt, va_list args);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*itos(int64 value);
+PUBLIC char *itos(int64 value);
 
 /**
     Convert an integer to a string.
@@ -1898,7 +1898,7 @@ PUBLIC char*itos(int64 value);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*itosradix(int64 value, int radix);
+PUBLIC char *itosradix(int64 value, int radix);
 
 /**
     Convert an integer to a string buffer.
@@ -1913,7 +1913,7 @@ PUBLIC char*itosradix(int64 value, int radix);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*itosbuf(char*buf, ssize size, int64 value, int radix);
+PUBLIC char *itosbuf(char *buf, ssize size, int64 value, int radix);
 
 /**
     Compare strings ignoring case. This is a safe replacement for strcasecmp. It can handle NULL args.
@@ -1925,7 +1925,7 @@ PUBLIC char*itosbuf(char*buf, ssize size, int64 value, int radix);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC int scaselesscmp(cchar*s1, cchar*s2);
+PUBLIC int scaselesscmp(cchar *s1, cchar *s2);
 
 /**
     Find a pattern in a string with a caseless comparison
@@ -1936,7 +1936,7 @@ PUBLIC int scaselesscmp(cchar*s1, cchar*s2);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*scaselesscontains(cchar*str, cchar*pattern);
+PUBLIC char *scaselesscontains(cchar *str, cchar *pattern);
 
 /**
     Compare strings ignoring case. This is similar to scaselesscmp but it returns a boolean.
@@ -1947,7 +1947,7 @@ PUBLIC char*scaselesscontains(cchar*str, cchar*pattern);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC bool scaselessmatch(cchar*s1, cchar*s2);
+PUBLIC bool scaselessmatch(cchar *s1, cchar *s2);
 
 /**
     Create a camel case version of the string
@@ -1957,7 +1957,7 @@ PUBLIC bool scaselessmatch(cchar*s1, cchar*s2);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*scamel(cchar*str);
+PUBLIC char *scamel(cchar *str);
 
 /**
    Find a character in a string.
@@ -1969,7 +1969,7 @@ PUBLIC char*scamel(cchar*str);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*schr(cchar*str, int c);
+PUBLIC char *schr(cchar *str, int c);
 
 /**
     Clone a string.
@@ -1979,7 +1979,7 @@ PUBLIC char*schr(cchar*str, int c);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*sclone(cchar*str);
+PUBLIC char *sclone(cchar *str);
 
 /**
     Compare strings.
@@ -1991,7 +1991,7 @@ PUBLIC char*sclone(cchar*str);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC int scmp(cchar*s1, cchar*s2);
+PUBLIC int scmp(cchar *s1, cchar *s2);
 
 /**
     Find a pattern in a string.
@@ -2002,7 +2002,7 @@ PUBLIC int scmp(cchar*s1, cchar*s2);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*scontains(cchar*str, cchar*pattern);
+PUBLIC char *scontains(cchar *str, cchar *pattern);
 
 /**
     Copy a string.
@@ -2017,7 +2017,7 @@ PUBLIC char*scontains(cchar*str, cchar*pattern);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC ssize scopy(char*dest, ssize destMax, cchar*src);
+PUBLIC ssize scopy(char *dest, ssize destMax, cchar *src);
 
 /**
     Test if the string ends with a given pattern.
@@ -2027,7 +2027,7 @@ PUBLIC ssize scopy(char*dest, ssize destMax, cchar*src);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC cchar*sends(cchar*str, cchar*suffix);
+PUBLIC cchar *sends(cchar *str, cchar *suffix);
 
 /**
     Erase the contents of a string
@@ -2035,7 +2035,7 @@ PUBLIC cchar*sends(cchar*str, cchar*suffix);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC void serase(char*str);
+PUBLIC void serase(char *str);
 
 /**
     Format a string. This is a secure verion of printf that can handle null args.
@@ -2047,7 +2047,7 @@ PUBLIC void serase(char*str);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*sfmt(cchar*fmt, ...) PRINTF_ATTRIBUTE(1, 2);
+PUBLIC char *sfmt(cchar *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
 
 /**
     Format a string. This is a secure verion of printf that can handle null args.
@@ -2059,7 +2059,7 @@ PUBLIC char*sfmt(cchar*fmt, ...) PRINTF_ATTRIBUTE(1, 2);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*sfmtv(cchar*fmt, va_list args);
+PUBLIC char *sfmtv(cchar *fmt, va_list args);
 
 /**
     Compute a hash code for a string
@@ -2069,7 +2069,7 @@ PUBLIC char*sfmtv(cchar*fmt, va_list args);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC uint shash(cchar*str, ssize len);
+PUBLIC uint shash(cchar *str, ssize len);
 
 /**
     Compute a caseless hash code for a string
@@ -2080,7 +2080,7 @@ PUBLIC uint shash(cchar*str, ssize len);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC uint shashlower(cchar*str, ssize len);
+PUBLIC uint shashlower(cchar *str, ssize len);
 
 /**
     Catenate strings.
@@ -2093,7 +2093,7 @@ PUBLIC uint shashlower(cchar*str, ssize len);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*sjoin(cchar*str, ...);
+PUBLIC char *sjoin(cchar *str, ...);
 
 /**
     Catenate strings.
@@ -2106,7 +2106,7 @@ PUBLIC char*sjoin(cchar*str, ...);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*sjoinv(cchar*str, va_list args);
+PUBLIC char *sjoinv(cchar *str, va_list args);
 
 /**
     Join an array of strings
@@ -2117,7 +2117,7 @@ PUBLIC char*sjoinv(cchar*str, va_list args);
     @stability Stable
     @ingroup MprString
  */
-PUBLIC cchar*sjoinArgs(int argc, cchar**argv, cchar*sep);
+PUBLIC cchar *sjoinArgs(int argc, cchar **argv, cchar *sep);
 
 /**
     Return the length of a string.
@@ -2128,7 +2128,7 @@ PUBLIC cchar*sjoinArgs(int argc, cchar**argv, cchar*sep);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC ssize slen(cchar*str);
+PUBLIC ssize slen(cchar *str);
 
 /**
     Convert a string to lower case.
@@ -2138,7 +2138,7 @@ PUBLIC ssize slen(cchar*str);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*slower(cchar*str);
+PUBLIC char *slower(cchar *str);
 
 /**
     Compare strings.
@@ -2149,7 +2149,7 @@ PUBLIC char*slower(cchar*str);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC bool smatch(cchar*s1, cchar*s2);
+PUBLIC bool smatch(cchar *s1, cchar *s2);
 
 /**
     Secure compare strings.
@@ -2161,7 +2161,7 @@ PUBLIC bool smatch(cchar*s1, cchar*s2);
     @ingroup MprString
     @stability Prototype
  */
-PUBLIC bool smatchsec(cchar*s1, cchar*s2);
+PUBLIC bool smatchsec(cchar *s1, cchar *s2);
 
 /**
     Compare strings ignoring case.
@@ -2175,7 +2175,7 @@ PUBLIC bool smatchsec(cchar*s1, cchar*s2);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC int sncaselesscmp(cchar*s1, cchar*s2, ssize len);
+PUBLIC int sncaselesscmp(cchar *s1, cchar *s2, ssize len);
 
 /**
     Find a pattern in a string with a limit and a caseless comparison
@@ -2188,7 +2188,7 @@ PUBLIC int sncaselesscmp(cchar*s1, cchar*s2, ssize len);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*sncaselesscontains(cchar*str, cchar*pattern, ssize limit);
+PUBLIC char *sncaselesscontains(cchar *str, cchar *pattern, ssize limit);
 
 /**
     Clone a substring.
@@ -2200,7 +2200,7 @@ PUBLIC char*sncaselesscontains(cchar*str, cchar*pattern, ssize limit);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*snclone(cchar*str, ssize len);
+PUBLIC char *snclone(cchar *str, ssize len);
 
 /**
     Compare strings.
@@ -2213,7 +2213,7 @@ PUBLIC char*snclone(cchar*str, ssize len);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC int sncmp(cchar*s1, cchar*s2, ssize len);
+PUBLIC int sncmp(cchar *s1, cchar *s2, ssize len);
 
 /**
     Find a pattern in a string with a limit.
@@ -2226,7 +2226,7 @@ PUBLIC int sncmp(cchar*s1, cchar*s2, ssize len);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*sncontains(cchar*str, cchar*pattern, ssize limit);
+PUBLIC char *sncontains(cchar *str, cchar *pattern, ssize limit);
 
 /**
     Copy characters from a string.
@@ -2242,7 +2242,7 @@ PUBLIC char*sncontains(cchar*str, cchar*pattern, ssize limit);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC ssize sncopy(char*dest, ssize destMax, cchar*src, ssize len);
+PUBLIC ssize sncopy(char *dest, ssize destMax, cchar *src, ssize len);
 
 /*
     Test if a string is a floating point number
@@ -2251,7 +2251,7 @@ PUBLIC ssize sncopy(char*dest, ssize destMax, cchar*src, ssize len);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC bool sfnumber(cchar*s);
+PUBLIC bool sfnumber(cchar *s);
 
 /*
     Test if a string is a hexadecimal number
@@ -2260,7 +2260,7 @@ PUBLIC bool sfnumber(cchar*s);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC bool shnumber(cchar*s);
+PUBLIC bool shnumber(cchar *s);
 
 /*
     Test if a string is a radix 10 number.
@@ -2269,7 +2269,7 @@ PUBLIC bool shnumber(cchar*s);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC bool snumber(cchar*s);
+PUBLIC bool snumber(cchar *s);
 
 /**
     Create a Title Case version of the string
@@ -2279,7 +2279,7 @@ PUBLIC bool snumber(cchar*s);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*stitle(cchar*str);
+PUBLIC char *stitle(cchar *str);
 
 /**
     Locate the a character from a set in a string.
@@ -2290,7 +2290,7 @@ PUBLIC char*stitle(cchar*str);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*spbrk(cchar*str, cchar*set);
+PUBLIC char *spbrk(cchar *str, cchar *set);
 
 /**
     Find a character in a string by searching backwards.
@@ -2301,7 +2301,7 @@ PUBLIC char*spbrk(cchar*str, cchar*set);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*srchr(cchar*str, int c);
+PUBLIC char *srchr(cchar *str, int c);
 
 /**
     Append strings to an existing string and reallocate as required.
@@ -2313,7 +2313,7 @@ PUBLIC char*srchr(cchar*str, int c);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*srejoin(char*buf, ...);
+PUBLIC char *srejoin(char *buf, ...);
 
 /**
     Append strings to an existing string and reallocate as required.
@@ -2325,7 +2325,7 @@ PUBLIC char*srejoin(char*buf, ...);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*srejoinv(char*buf, va_list args);
+PUBLIC char *srejoinv(char *buf, va_list args);
 
 /*
     Replace a pattern in a string
@@ -2337,7 +2337,7 @@ PUBLIC char*srejoinv(char*buf, va_list args);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*sreplace(cchar*str, cchar*pattern, cchar*replacement);
+PUBLIC char *sreplace(cchar *str, cchar *pattern, cchar *replacement);
 
 /*
     Test if a string is all white space
@@ -2345,7 +2345,7 @@ PUBLIC char*sreplace(cchar*str, cchar*pattern, cchar*replacement);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC bool sspace(cchar*s);
+PUBLIC bool sspace(cchar *s);
 
 /**
     Split a string at a delimiter
@@ -2362,7 +2362,7 @@ PUBLIC bool sspace(cchar*s);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*ssplit(char*str, cchar*delim, char**last);
+PUBLIC char *ssplit(char *str, cchar *delim, char **last);
 
 /**
     Find the end of a spanning prefix
@@ -2375,7 +2375,7 @@ PUBLIC char*ssplit(char*str, cchar*delim, char**last);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC ssize sspn(cchar*str, cchar*set);
+PUBLIC ssize sspn(cchar *str, cchar *set);
 
 /**
     Test if the string starts with a given pattern.
@@ -2385,7 +2385,7 @@ PUBLIC ssize sspn(cchar*str, cchar*set);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC bool sstarts(cchar*str, cchar*prefix);
+PUBLIC bool sstarts(cchar *str, cchar *prefix);
 
 /**
     Replace template tokens in a string with values from a lookup table. Tokens are ${variable} references.
@@ -2396,7 +2396,7 @@ PUBLIC bool sstarts(cchar*str, cchar*prefix);
     @stability Stable
     @see stemplateJson
  */
-PUBLIC char*stemplate(cchar*str, struct MprHash *tokens);
+PUBLIC char *stemplate(cchar *str, struct MprHash *tokens);
 
 /**
     Replace template tokens in a string with values from a lookup table. Tokens are ${variable} references.
@@ -2407,7 +2407,7 @@ PUBLIC char*stemplate(cchar*str, struct MprHash *tokens);
     @stability Stable
     @see stemplate
  */
-PUBLIC char*stemplateJson(cchar*str, struct MprJson *tokens);
+PUBLIC char *stemplateJson(cchar *str, struct MprJson *tokens);
 
 /**
     Convert a string to a double.
@@ -2417,7 +2417,7 @@ PUBLIC char*stemplateJson(cchar*str, struct MprJson *tokens);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC double stof(cchar*str);
+PUBLIC double stof(cchar *str);
 
 /**
     Convert a string to an integer.
@@ -2427,7 +2427,7 @@ PUBLIC double stof(cchar*str);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC int64 stoi(cchar*str);
+PUBLIC int64 stoi(cchar *str);
 
 /**
     Convert a string to an integer.
@@ -2438,7 +2438,7 @@ PUBLIC int64 stoi(cchar*str);
     @return Returns the integer equivalent value of the string.
     @ingroup MprString
  */
-PUBLIC int64 stoiradix(cchar*str, int radix, int*err);
+PUBLIC int64 stoiradix(cchar *str, int radix, int *err);
 
 /**
     Tokenize a string
@@ -2450,7 +2450,7 @@ PUBLIC int64 stoiradix(cchar*str, int radix, int*err);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*stok(char*str, cchar*delim, char**last);
+PUBLIC char *stok(char *str, cchar *delim, char **last);
 
 /**
     Tokenize a string
@@ -2462,7 +2462,7 @@ PUBLIC char*stok(char*str, cchar*delim, char**last);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*sptok(char*str, cchar*pattern, char**last);
+PUBLIC char *sptok(char *str, cchar *pattern, char **last);
 
 /**
    String to list. This parses the string into space separated arguments. Single and double quotes are supported.
@@ -2471,7 +2471,7 @@ PUBLIC char*sptok(char*str, cchar*pattern, char**last);
    @ingroup MprString
    @stability Stable
  */
-PUBLIC struct MprList *stolist(cchar*src);
+PUBLIC struct MprList *stolist(cchar *src);
 
 /**
     Create a substring
@@ -2482,7 +2482,7 @@ PUBLIC struct MprList *stolist(cchar*src);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*ssub(cchar*str, ssize offset, ssize length);
+PUBLIC char *ssub(cchar *str, ssize offset, ssize length);
 
 /*
     String trim flags
@@ -2502,7 +2502,7 @@ PUBLIC char*ssub(cchar*str, ssize offset, ssize length);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*strim(cchar*str, cchar*set, int where);
+PUBLIC char *strim(cchar *str, cchar *set, int where);
 
 /**
     Convert a string to upper case.
@@ -2512,7 +2512,7 @@ PUBLIC char*strim(cchar*str, cchar*set, int where);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC char*supper(cchar*str);
+PUBLIC char *supper(cchar *str);
 
 /************************************ Unicode *********************************/
 /*
@@ -2521,8 +2521,8 @@ PUBLIC char*supper(cchar*str);
     This API is not yet public
  */
 /* Allocating */
-PUBLIC wchar*amtow(cchar*src, ssize*len);
-PUBLIC char*awtom(wchar*src, ssize*len);
+PUBLIC wchar *amtow(cchar *src, ssize *len);
+PUBLIC char *awtom(wchar *src, ssize *len);
 
 #if ME_CHAR_LEN > 1
 #define multi(s) awtom(s, 0)
@@ -2533,43 +2533,43 @@ PUBLIC char*awtom(wchar*src, ssize*len);
 #endif
 
 #if ME_CHAR_LEN > 1
-PUBLIC ssize wtom(char*dest, ssize count, wchar*src, ssize len);
-PUBLIC ssize mtow(wchar*dest, ssize count, cchar*src, ssize len);
+PUBLIC ssize wtom(char *dest, ssize count, wchar *src, ssize len);
+PUBLIC ssize mtow(wchar *dest, ssize count, cchar *src, ssize len);
 
 #if FUTURE
-PUBLIC wchar*wfmt(wchar*fmt, ...);
-PUBLIC wchar*itow(wchar*buf, ssize bufCount, int64 value, int radix);
-PUBLIC wchar*wchr(wchar*s, int c);
-PUBLIC int wcasecmp(wchar*s1, wchar*s2);
-PUBLIC wchar*wclone(wchar*str);
-PUBLIC int wcmp(wchar*s1, wchar*s2);
-PUBLIC wchar*wcontains(wchar*str, wchar*pattern, ssize limit);
-PUBLIC ssize wcopy(wchar*dest, ssize destMax, wchar*src);
-PUBLIC int wends(wchar*str, wchar*suffix);
-PUBLIC wchar*wfmtv(wchar*fmt, va_list arg);
-PUBLIC uint whash(wchar*name, ssize len);
-PUBLIC uint whashlower(wchar*name, ssize len);
-PUBLIC wchar*wjoin(wchar*sep, ...);
-PUBLIC wchar*wjoinv(wchar*sep, va_list args);
-PUBLIC ssize wlen(wchar*s);
+PUBLIC wchar *wfmt(wchar *fmt, ...);
+PUBLIC wchar *itow(wchar *buf, ssize bufCount, int64 value, int radix);
+PUBLIC wchar *wchr(wchar *s, int c);
+PUBLIC int wcasecmp(wchar *s1, wchar *s2);
+PUBLIC wchar *wclone(wchar *str);
+PUBLIC int wcmp(wchar *s1, wchar *s2);
+PUBLIC wchar *wcontains(wchar *str, wchar *pattern, ssize limit);
+PUBLIC ssize wcopy(wchar *dest, ssize destMax, wchar *src);
+PUBLIC int wends(wchar *str, wchar *suffix);
+PUBLIC wchar *wfmtv(wchar *fmt, va_list arg);
+PUBLIC uint whash(wchar *name, ssize len);
+PUBLIC uint whashlower(wchar *name, ssize len);
+PUBLIC wchar *wjoin(wchar *sep, ...);
+PUBLIC wchar *wjoinv(wchar *sep, va_list args);
+PUBLIC ssize wlen(wchar *s);
 #endif
 
-PUBLIC wchar*wlower(wchar*s);
-PUBLIC int wncaselesscmp(wchar*s1, wchar*s2, ssize len);
-PUBLIC int wncmp(wchar*s1, wchar*s2, ssize len);
-PUBLIC ssize wncopy(wchar*dest, ssize destCount, wchar*src, ssize len);
-PUBLIC wchar*wpbrk(wchar*str, wchar*set);
-PUBLIC wchar*wrchr(wchar*s, int c);
-PUBLIC wchar*wrejoin(wchar*buf, wchar*sep, ...);
-PUBLIC wchar*wrejoinv(wchar*buf, wchar*sep, va_list args);
-PUBLIC ssize wspn(wchar*str, wchar*set);
-PUBLIC int wstarts(wchar*str, wchar*prefix);
-PUBLIC wchar*wsub(wchar*str, ssize offset, ssize len);
-PUBLIC int64 wtoi(wchar*str);
-PUBLIC int64 wtoiradix(wchar*str, int radix, int*err);
-PUBLIC wchar*wtok(wchar*str, wchar*delim, wchar**last);
-PUBLIC wchar*wtrim(wchar*str, wchar*set, int where);
-PUBLIC wchar*wupper(wchar*s);
+PUBLIC wchar *wlower(wchar *s);
+PUBLIC int wncaselesscmp(wchar *s1, wchar *s2, ssize len);
+PUBLIC int wncmp(wchar *s1, wchar *s2, ssize len);
+PUBLIC ssize wncopy(wchar *dest, ssize destCount, wchar *src, ssize len);
+PUBLIC wchar *wpbrk(wchar *str, wchar *set);
+PUBLIC wchar *wrchr(wchar *s, int c);
+PUBLIC wchar *wrejoin(wchar *buf, wchar *sep, ...);
+PUBLIC wchar *wrejoinv(wchar *buf, wchar *sep, va_list args);
+PUBLIC ssize wspn(wchar *str, wchar *set);
+PUBLIC int wstarts(wchar *str, wchar *prefix);
+PUBLIC wchar *wsub(wchar *str, ssize offset, ssize len);
+PUBLIC int64 wtoi(wchar *str);
+PUBLIC int64 wtoiradix(wchar *str, int radix, int *err);
+PUBLIC wchar *wtok(wchar *str, wchar *delim, wchar **last);
+PUBLIC wchar *wtrim(wchar *str, wchar *set, int where);
+PUBLIC wchar *wupper(wchar *s);
 
 #else
 
@@ -2619,26 +2619,26 @@ PUBLIC wchar*wupper(wchar*s);
  */
 #if ME_CHAR_LEN > 1
 #if FUTURE
-PUBLIC int mcaselesscmp(wchar*s1, cchar*s2);
-PUBLIC int mcmp(wchar*s1, cchar*s2);
-PUBLIC wchar*mcontains(wchar*str, cchar*pattern);
-PUBLIC wchar*mncontains(wchar*str, cchar*pattern, ssize limit);
-PUBLIC ssize mcopy(wchar*dest, ssize destMax, cchar*src);
-PUBLIC int mends(wchar*str, cchar*suffix);
-PUBLIC wchar*mfmt(cchar*fmt, ...);
-PUBLIC wchar*mfmtv(cchar*fmt, va_list arg);
-PUBLIC wchar*mjoin(cchar*str, ...);
-PUBLIC wchar*mjoinv(wchar*buf, va_list args);
-PUBLIC int mncmp(wchar*s1, cchar*s2, ssize len);
-PUBLIC int mncaselesscmp(wchar*s1, cchar*s2, ssize len);
-PUBLIC ssize mncopy(wchar*dest, ssize destMax, cchar*src, ssize len);
-PUBLIC wchar*mpbrk(wchar*str, cchar*set);
-PUBLIC wchar*mrejoin(wchar*buf, cchar*sep, ...);
-PUBLIC wchar*mrejoinv(wchar*buf, cchar*sep, va_list args);
-PUBLIC ssize mspn(wchar*str, cchar*set);
-PUBLIC int mstarts(wchar*str, cchar*prefix);
-PUBLIC wchar*mtok(wchar*str, cchar*delim, wchar**last);
-PUBLIC wchar*mtrim(wchar*str, cchar*set, int where);
+PUBLIC int mcaselesscmp(wchar *s1, cchar *s2);
+PUBLIC int mcmp(wchar *s1, cchar *s2);
+PUBLIC wchar *mcontains(wchar *str, cchar *pattern);
+PUBLIC wchar *mncontains(wchar *str, cchar *pattern, ssize limit);
+PUBLIC ssize mcopy(wchar *dest, ssize destMax, cchar *src);
+PUBLIC int mends(wchar *str, cchar *suffix);
+PUBLIC wchar *mfmt(cchar *fmt, ...);
+PUBLIC wchar *mfmtv(cchar *fmt, va_list arg);
+PUBLIC wchar *mjoin(cchar *str, ...);
+PUBLIC wchar *mjoinv(wchar *buf, va_list args);
+PUBLIC int mncmp(wchar *s1, cchar *s2, ssize len);
+PUBLIC int mncaselesscmp(wchar *s1, cchar *s2, ssize len);
+PUBLIC ssize mncopy(wchar *dest, ssize destMax, cchar *src, ssize len);
+PUBLIC wchar *mpbrk(wchar *str, cchar *set);
+PUBLIC wchar *mrejoin(wchar *buf, cchar *sep, ...);
+PUBLIC wchar *mrejoinv(wchar *buf, cchar *sep, va_list args);
+PUBLIC ssize mspn(wchar *str, cchar *set);
+PUBLIC int mstarts(wchar *str, cchar *prefix);
+PUBLIC wchar *mtok(wchar *str, cchar *delim, wchar **last);
+PUBLIC wchar *mtrim(wchar *str, cchar *set, int where);
 #endif
 
 #else /* ME_CHAR_LEN <= 1 */
@@ -2675,7 +2675,7 @@ PUBLIC wchar*mtrim(wchar*str, cchar*set, int where);
     @ingroup MprString
     @stability Stable
  */
-PUBLIC ssize mprEprintf(cchar*fmt, ...) PRINTF_ATTRIBUTE(1, 2);
+PUBLIC ssize mprEprintf(cchar *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
 
 /**
     Print a formatted message to a file descriptor
@@ -2699,13 +2699,13 @@ PUBLIC ssize mprFprintf(struct MprFile *file, cchar *fmt, ...) PRINTF_ATTRIBUTE(
     @ingroup MprString
     @stability Stable
  */
-PUBLIC ssize mprPrintf(cchar*fmt, ...) PRINTF_ATTRIBUTE(1, 2);
+PUBLIC ssize mprPrintf(cchar *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
 
 /**
     Print to stdout and add a trailing newline
     @internal
  */
-PUBLIC ssize print(cchar*fmt, ...) PRINTF_ATTRIBUTE(1, 2);
+PUBLIC ssize print(cchar *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
 
 /**
     Format a string into a buffer.
@@ -2721,7 +2721,7 @@ PUBLIC ssize print(cchar*fmt, ...) PRINTF_ATTRIBUTE(1, 2);
     @internal
     @stability Stable
  */
-PUBLIC char*mprPrintfCore(char*buf, ssize maxsize, cchar*fmt, va_list args);
+PUBLIC char *mprPrintfCore(char *buf, ssize maxsize, cchar *fmt, va_list args);
 
 /********************************* Floating Point *****************************/
 #if ME_FLOAT
@@ -2794,15 +2794,15 @@ typedef int (*MprBufProc)(struct MprBuf *bp, void *arg);
     @stability Internal.
  */
 typedef struct MprBuf {
-    char*data;                          /**< Actual buffer for data */
-    char*endbuf;                        /**< Pointer one past the end of buffer */
-    char*start;                         /**< Pointer to next data char */
-    char*end;                           /**< Pointer one past the last data chr */
+    char *data;                         /**< Actual buffer for data */
+    char *endbuf;                       /**< Pointer one past the end of buffer */
+    char *start;                        /**< Pointer to next data char */
+    char *end;                          /**< Pointer one past the last data chr */
     ssize buflen;                       /**< Current size of buffer */
     ssize maxsize;                      /**< Max size the buffer can ever grow */
     ssize growBy;                       /**< Next growth increment to use */
     MprBufProc refillProc;              /**< Auto-refill procedure */
-    void*refillArg;                     /**< Refill arg - must be alloced memory */
+    void *refillArg;                    /**< Refill arg - must be alloced memory */
 } MprBuf;
 
 /**
@@ -2814,7 +2814,7 @@ typedef struct MprBuf {
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC void mprAddNullToBuf(MprBuf*buf);
+PUBLIC void mprAddNullToBuf(MprBuf *buf);
 
 /**
     Adjust the buffer end position
@@ -2827,7 +2827,7 @@ PUBLIC void mprAddNullToBuf(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC void mprAdjustBufEnd(MprBuf*buf, ssize count);
+PUBLIC void mprAdjustBufEnd(MprBuf *buf, ssize count);
 
 /**
     Adjust the buffer start position
@@ -2840,7 +2840,7 @@ PUBLIC void mprAdjustBufEnd(MprBuf*buf, ssize count);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC void mprAdjustBufStart(MprBuf*buf, ssize count);
+PUBLIC void mprAdjustBufStart(MprBuf *buf, ssize count);
 
 /**
     Convert the buffer contents to a string
@@ -2849,7 +2849,7 @@ PUBLIC void mprAdjustBufStart(MprBuf*buf, ssize count);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC char*mprBufToString(MprBuf*buf);
+PUBLIC char *mprBufToString(MprBuf *buf);
 
 /**
     Create a new buffer
@@ -2860,7 +2860,7 @@ PUBLIC char*mprBufToString(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC MprBuf*mprCreateBuf(ssize initialSize, ssize maxSize);
+PUBLIC MprBuf *mprCreateBuf(ssize initialSize, ssize maxSize);
 
 /**
     Clone a buffer
@@ -2869,7 +2869,7 @@ PUBLIC MprBuf*mprCreateBuf(ssize initialSize, ssize maxSize);
     @return Returns a newly allocated buffer
     @stability Stable.
  */
-PUBLIC MprBuf*mprCloneBuf(MprBuf*orig);
+PUBLIC MprBuf *mprCloneBuf(MprBuf *orig);
 
 /**
     Clone a buffer contents
@@ -2877,7 +2877,7 @@ PUBLIC MprBuf*mprCloneBuf(MprBuf*orig);
     @return Returns a newly allocated memory block containing the buffer contents.
     @stability Stable.
  */
-PUBLIC char*mprCloneBufMem(MprBuf*bp);
+PUBLIC char *mprCloneBufMem(MprBuf *bp);
 
 /**
     Clone a buffer contents
@@ -2885,7 +2885,7 @@ PUBLIC char*mprCloneBufMem(MprBuf*bp);
     @return Returns a string containing the buffer contents.
     @stability Stable.
  */
-PUBLIC char*mprCloneBufAsString(MprBuf*bp);
+PUBLIC char *mprCloneBufAsString(MprBuf *bp);
 
 /**
     Compact the buffer contents
@@ -2894,7 +2894,7 @@ PUBLIC char*mprCloneBufAsString(MprBuf*bp);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC void mprCompactBuf(MprBuf*buf);
+PUBLIC void mprCompactBuf(MprBuf *buf);
 
 /**
     Flush the buffer contents
@@ -2903,7 +2903,7 @@ PUBLIC void mprCompactBuf(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC void mprFlushBuf(MprBuf*buf);
+PUBLIC void mprFlushBuf(MprBuf *buf);
 
 /**
     Get a block of data from the buffer
@@ -2916,7 +2916,7 @@ PUBLIC void mprFlushBuf(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC ssize mprGetBlockFromBuf(MprBuf*buf, char*blk, ssize count);
+PUBLIC ssize mprGetBlockFromBuf(MprBuf *buf, char *blk, ssize count);
 
 /**
     Get a reference to the end of the buffer contents
@@ -2926,7 +2926,7 @@ PUBLIC ssize mprGetBlockFromBuf(MprBuf*buf, char*blk, ssize count);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC char*mprGetBufEnd(MprBuf*buf);
+PUBLIC char *mprGetBufEnd(MprBuf *buf);
 
 /**
     Get the buffer content length.
@@ -2936,7 +2936,7 @@ PUBLIC char*mprGetBufEnd(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC ssize mprGetBufLength(MprBuf*buf);
+PUBLIC ssize mprGetBufLength(MprBuf *buf);
 
 /**
     Get the buffer refill procedure
@@ -2946,7 +2946,7 @@ PUBLIC ssize mprGetBufLength(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC MprBufProc mprGetBufRefillProc(MprBuf*buf);
+PUBLIC MprBufProc mprGetBufRefillProc(MprBuf *buf);
 
 /**
     Get the origin of the buffer content storage.
@@ -2956,7 +2956,7 @@ PUBLIC MprBufProc mprGetBufRefillProc(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC char*mprGetBuf(MprBuf*buf);
+PUBLIC char *mprGetBuf(MprBuf *buf);
 
 /**
     Get the current size of the buffer content storage.
@@ -2966,7 +2966,7 @@ PUBLIC char*mprGetBuf(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC ssize mprGetBufSize(MprBuf*buf);
+PUBLIC ssize mprGetBufSize(MprBuf *buf);
 
 /**
     Get the space available to store content
@@ -2976,7 +2976,7 @@ PUBLIC ssize mprGetBufSize(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC ssize mprGetBufSpace(MprBuf*buf);
+PUBLIC ssize mprGetBufSpace(MprBuf *buf);
 
 /**
     Get the start of the buffer contents
@@ -2987,7 +2987,7 @@ PUBLIC ssize mprGetBufSpace(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC char*mprGetBufStart(MprBuf*buf);
+PUBLIC char *mprGetBufStart(MprBuf *buf);
 
 /**
     Get a character from the buffer
@@ -2997,7 +2997,7 @@ PUBLIC char*mprGetBufStart(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC int mprGetCharFromBuf(MprBuf*buf);
+PUBLIC int mprGetCharFromBuf(MprBuf *buf);
 
 /**
     Grow the buffer
@@ -3009,7 +3009,7 @@ PUBLIC int mprGetCharFromBuf(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC int mprGrowBuf(MprBuf*buf, ssize count);
+PUBLIC int mprGrowBuf(MprBuf *buf, ssize count);
 
 /**
     Insert a character into the buffer
@@ -3020,7 +3020,7 @@ PUBLIC int mprGrowBuf(MprBuf*buf, ssize count);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC int mprInsertCharToBuf(MprBuf*buf, int c);
+PUBLIC int mprInsertCharToBuf(MprBuf *buf, int c);
 
 /**
     Peek at the next character in the buffer
@@ -3031,7 +3031,7 @@ PUBLIC int mprInsertCharToBuf(MprBuf*buf, int c);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC int mprLookAtNextCharInBuf(MprBuf*buf);
+PUBLIC int mprLookAtNextCharInBuf(MprBuf *buf);
 
 /**
     Peek at the last character in the buffer
@@ -3042,7 +3042,7 @@ PUBLIC int mprLookAtNextCharInBuf(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC int mprLookAtLastCharInBuf(MprBuf*buf);
+PUBLIC int mprLookAtLastCharInBuf(MprBuf *buf);
 
 /**
     Put a block to the buffer.
@@ -3054,7 +3054,7 @@ PUBLIC int mprLookAtLastCharInBuf(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC ssize mprPutBlockToBuf(MprBuf*buf, cchar*ptr, ssize size);
+PUBLIC ssize mprPutBlockToBuf(MprBuf *buf, cchar *ptr, ssize size);
 
 /**
     Put a character to the buffer.
@@ -3065,7 +3065,7 @@ PUBLIC ssize mprPutBlockToBuf(MprBuf*buf, cchar*ptr, ssize size);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC int mprPutCharToBuf(MprBuf*buf, int c);
+PUBLIC int mprPutCharToBuf(MprBuf *buf, int c);
 
 /**
     Put a formatted string to the buffer.
@@ -3077,7 +3077,7 @@ PUBLIC int mprPutCharToBuf(MprBuf*buf, int c);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC ssize mprPutToBuf(MprBuf*buf, cchar*fmt, ...) PRINTF_ATTRIBUTE(2, 3);
+PUBLIC ssize mprPutToBuf(MprBuf *buf, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Put an integer to the buffer.
@@ -3088,7 +3088,7 @@ PUBLIC ssize mprPutToBuf(MprBuf*buf, cchar*fmt, ...) PRINTF_ATTRIBUTE(2, 3);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC ssize mprPutIntToBuf(MprBuf*buf, int64 i);
+PUBLIC ssize mprPutIntToBuf(MprBuf *buf, int64 i);
 
 /**
     Put padding characters to the buffer.
@@ -3100,7 +3100,7 @@ PUBLIC ssize mprPutIntToBuf(MprBuf*buf, int64 i);
     @ingroup MprBuf
     @stability Stable
  */
-PUBLIC ssize mprPutPadToBuf(MprBuf*buf, int c, ssize count);
+PUBLIC ssize mprPutPadToBuf(MprBuf *buf, int c, ssize count);
 
 /**
     Put a string to the buffer.
@@ -3111,7 +3111,7 @@ PUBLIC ssize mprPutPadToBuf(MprBuf*buf, int c, ssize count);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC ssize mprPutStringToBuf(MprBuf*buf, cchar*str);
+PUBLIC ssize mprPutStringToBuf(MprBuf *buf, cchar *str);
 
 /**
     Put a substring to the buffer.
@@ -3123,7 +3123,7 @@ PUBLIC ssize mprPutStringToBuf(MprBuf*buf, cchar*str);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC ssize mprPutSubStringToBuf(MprBuf*buf, cchar*str, ssize count);
+PUBLIC ssize mprPutSubStringToBuf(MprBuf *buf, cchar *str, ssize count);
 
 /**
     Refill the buffer with data
@@ -3133,7 +3133,7 @@ PUBLIC ssize mprPutSubStringToBuf(MprBuf*buf, cchar*str, ssize count);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC int mprRefillBuf(MprBuf*buf);
+PUBLIC int mprRefillBuf(MprBuf *buf);
 
 /**
     Reset the buffer
@@ -3142,7 +3142,7 @@ PUBLIC int mprRefillBuf(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC void mprResetBufIfEmpty(MprBuf*buf);
+PUBLIC void mprResetBufIfEmpty(MprBuf *buf);
 
 /**
     Set the maximum buffer size
@@ -3152,7 +3152,7 @@ PUBLIC void mprResetBufIfEmpty(MprBuf*buf);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC void mprSetBufMax(MprBuf*buf, ssize maxSize);
+PUBLIC void mprSetBufMax(MprBuf *buf, ssize maxSize);
 
 /**
     Set the buffer refill procedure
@@ -3164,7 +3164,7 @@ PUBLIC void mprSetBufMax(MprBuf*buf, ssize maxSize);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC void mprSetBufRefillProc(MprBuf*buf, MprBufProc fn, void*arg);
+PUBLIC void mprSetBufRefillProc(MprBuf *buf, MprBufProc fn, void *arg);
 
 /**
     Set the buffer size
@@ -3181,7 +3181,7 @@ PUBLIC void mprSetBufRefillProc(MprBuf*buf, MprBufProc fn, void*arg);
     @ingroup MprBuf
     @stability Stable.
  */
-PUBLIC int mprSetBufSize(MprBuf*buf, ssize size, ssize maxSize);
+PUBLIC int mprSetBufSize(MprBuf *buf, ssize size, ssize maxSize);
 
 #if DOXYGEN || ME_CHAR_LEN > 1
 #if KEEP
@@ -3194,7 +3194,7 @@ PUBLIC int mprSetBufSize(MprBuf*buf, ssize size, ssize maxSize);
     @ingroup MprBuf
     @stability Prototype
  */
-PUBLIC void mprAddNullToWideBuf(MprBuf*buf);
+PUBLIC void mprAddNullToWideBuf(MprBuf *buf);
 
 /**
     Put a wide character to the buffer.
@@ -3205,7 +3205,7 @@ PUBLIC void mprAddNullToWideBuf(MprBuf*buf);
     @ingroup MprBuf
     @stability Prototype
  */
-PUBLIC int mprPutCharToWideBuf(MprBuf*buf, int c);
+PUBLIC int mprPutCharToWideBuf(MprBuf *buf, int c);
 
 /**
     Put a wide string to the buffer.
@@ -3216,7 +3216,7 @@ PUBLIC int mprPutCharToWideBuf(MprBuf*buf, int c);
     @ingroup MprBuf
     @stability Prototype
  */
-PUBLIC ssize mprPutStringToWideBuf(MprBuf*buf, cchar*str);
+PUBLIC ssize mprPutStringToWideBuf(MprBuf *buf, cchar *str);
 
 /**
     Put a formatted wide string to the buffer.
@@ -3228,7 +3228,7 @@ PUBLIC ssize mprPutStringToWideBuf(MprBuf*buf, cchar*str);
     @ingroup MprBuf
     @stability Prototype
  */
-PUBLIC ssize mprPutFmtToWideBuf(MprBuf*buf, cchar*fmt, ...) PRINTF_ATTRIBUTE(2, 3);
+PUBLIC ssize mprPutFmtToWideBuf(MprBuf *buf, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 #endif /* KEEP */
 #else /* ME_CHAR_LEN == 1 */
@@ -3252,12 +3252,12 @@ PUBLIC ssize mprPutFmtToWideBuf(MprBuf*buf, cchar*fmt, ...) PRINTF_ATTRIBUTE(2, 
 /*
     Prototype
  */
-PUBLIC uint mprGetUint16FromBuf(MprBuf*buf);
-PUBLIC uint mprGetUint24FromBuf(MprBuf*buf);
-PUBLIC uint mprGetUint32FromBuf(MprBuf*buf);
-PUBLIC uint mprPeekUint32FromBuf(MprBuf*buf);
-PUBLIC void mprPutUint16ToBuf(MprBuf*buf, uint16 num);
-PUBLIC void mprPutUint32ToBuf(MprBuf*buf, uint32 num);
+PUBLIC uint mprGetUint16FromBuf(MprBuf *buf);
+PUBLIC uint mprGetUint24FromBuf(MprBuf *buf);
+PUBLIC uint mprGetUint32FromBuf(MprBuf *buf);
+PUBLIC uint mprPeekUint32FromBuf(MprBuf *buf);
+PUBLIC void mprPutUint16ToBuf(MprBuf *buf, uint16 num);
+PUBLIC void mprPutUint32ToBuf(MprBuf *buf, uint32 num);
 
 /******************************** Date and Time *******************************/
 /**
@@ -3352,7 +3352,7 @@ PUBLIC void mprDecodeUniversalTime(struct tm *timep, MprTime time);
     @ingroup MprTime
     @stability Stable
  */
-PUBLIC char*mprFormatLocalTime(cchar*fmt, MprTime time);
+PUBLIC char *mprFormatLocalTime(cchar *fmt, MprTime time);
 
 /**
     Convert a time value to universal time and format as a string.
@@ -3473,7 +3473,7 @@ PUBLIC char*mprFormatLocalTime(cchar*fmt, MprTime time);
     @ingroup MprTime
     @stability Stable
  */
-PUBLIC char*mprFormatUniversalTime(cchar*fmt, MprTime time);
+PUBLIC char *mprFormatUniversalTime(cchar *fmt, MprTime time);
 
 /**
     Format a time value as a local time.
@@ -3484,7 +3484,7 @@ PUBLIC char*mprFormatUniversalTime(cchar*fmt, MprTime time);
     @ingroup MprTime
     @stability Stable
  */
-PUBLIC char*mprFormatTm(cchar*fmt, struct tm *timep);
+PUBLIC char *mprFormatTm(cchar *fmt, struct tm *timep);
 
 /**
     Get the system time.
@@ -3514,7 +3514,7 @@ PUBLIC MprTime mprGetTime(void);
     @ingroup MprTime
     @stability Stable
  */
-PUBLIC char*mprGetDate(char*fmt);
+PUBLIC char *mprGetDate(char *fmt);
 
 /**
     Get the CPU tick count.
@@ -3642,7 +3642,7 @@ PUBLIC MprTime mprMakeUniversalTime(struct tm *tm);
     @stability Stable
 
  */
-PUBLIC int mprParseTime(MprTime*time, cchar*dateString, int timezone, struct tm *defaults);
+PUBLIC int mprParseTime(MprTime *time, cchar *dateString, int timezone, struct tm *defaults);
 
 /**
     Get the current timezone offset for a given time
@@ -3678,8 +3678,8 @@ typedef struct MprList {
     int size;                           /**< Current list capacity */
     int length;                         /**< Current length of the list contents */
     int maxSize;                        /**< Maximum capacity */
-    MprMutex*mutex;                     /**< Multithread lock */
-    void**items;                        /**< List item data */
+    MprMutex *mutex;                    /**< Multithread lock */
+    void **items;                       /**< List item data */
 } MprList;
 
 /**
@@ -3691,7 +3691,7 @@ typedef struct MprList {
     @ingroup MprList
     @stability Stable.
  */
-typedef int (*MprListCompareProc)(cvoid*arg1, cvoid*arg2);
+typedef int (*MprListCompareProc)(cvoid *arg1, cvoid *arg2);
 
 /**
     Add an item to a list
@@ -3704,7 +3704,7 @@ typedef int (*MprListCompareProc)(cvoid*arg1, cvoid*arg2);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC int mprAddItem(MprList*list, cvoid*item);
+PUBLIC int mprAddItem(MprList *list, cvoid *item);
 
 /**
     Add a null item to the list.
@@ -3713,7 +3713,7 @@ PUBLIC int mprAddItem(MprList*list, cvoid*item);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC int mprAddNullItem(MprList*list);
+PUBLIC int mprAddNullItem(MprList *list);
 
 /**
     Append a list
@@ -3724,7 +3724,7 @@ PUBLIC int mprAddNullItem(MprList*list);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC MprList*mprAppendList(MprList*list, MprList*add);
+PUBLIC MprList *mprAppendList(MprList *list, MprList *add);
 
 /**
     Clears the list of all items.
@@ -3733,7 +3733,7 @@ PUBLIC MprList*mprAppendList(MprList*list, MprList*add);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC void mprClearList(MprList*list);
+PUBLIC void mprClearList(MprList *list);
 
 /**
     Clone a list and all elements
@@ -3743,7 +3743,7 @@ PUBLIC void mprClearList(MprList*list);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC MprList*mprCloneList(MprList*src);
+PUBLIC MprList *mprCloneList(MprList *src);
 
 /**
     Copy list contents
@@ -3755,7 +3755,7 @@ PUBLIC MprList*mprCloneList(MprList*src);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC int mprCopyListContents(MprList*dest, MprList*src);
+PUBLIC int mprCopyListContents(MprList *dest, MprList *src);
 
 /**
     Create a list.
@@ -3771,7 +3771,7 @@ PUBLIC int mprCopyListContents(MprList*dest, MprList*src);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC MprList*mprCreateList(int size, int flags);
+PUBLIC MprList *mprCreateList(int size, int flags);
 
 /**
     Create a list of words
@@ -3781,7 +3781,7 @@ PUBLIC MprList*mprCreateList(int size, int flags);
     @ingroup MprList
     @stability Stable
  */
-PUBLIC MprList*mprCreateListFromWords(cchar*str);
+PUBLIC MprList *mprCreateListFromWords(cchar *str);
 
 /**
     Get the first item in the list.
@@ -3791,7 +3791,7 @@ PUBLIC MprList*mprCreateListFromWords(cchar*str);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC void*mprGetFirstItem(MprList*list);
+PUBLIC void *mprGetFirstItem(MprList *list);
 
 #if DOXYGEN || 1
 /**
@@ -3802,7 +3802,7 @@ PUBLIC void*mprGetFirstItem(MprList*list);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC void*mprGetItem(MprList*list, int index);
+PUBLIC void *mprGetItem(MprList *list, int index);
 #else
     #define mprGetItem(lp, index) (index < 0 || index >= lp->length) ? 0 : lp->items[index];
 #endif
@@ -3815,7 +3815,7 @@ PUBLIC void*mprGetItem(MprList*list, int index);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC void*mprGetLastItem(MprList*list);
+PUBLIC void *mprGetLastItem(MprList *list);
 
 /**
     Get the current capacity of the list.
@@ -3824,7 +3824,7 @@ PUBLIC void*mprGetLastItem(MprList*list);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC int mprGetListCapacity(MprList*list);
+PUBLIC int mprGetListCapacity(MprList *list);
 
 /**
     Get the number of items in the list.
@@ -3833,7 +3833,7 @@ PUBLIC int mprGetListCapacity(MprList*list);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC int mprGetListLength(MprList*list);
+PUBLIC int mprGetListLength(MprList *list);
 
 /**
     Get the next item in the list.
@@ -3845,7 +3845,7 @@ PUBLIC int mprGetListLength(MprList*list);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC void*mprGetNextItem(MprList*list, int*lastIndex);
+PUBLIC void *mprGetNextItem(MprList *list, int *lastIndex);
 
 /**
     Get the next item in a stable list.
@@ -3859,7 +3859,7 @@ PUBLIC void*mprGetNextItem(MprList*list, int*lastIndex);
     @internal
     @stability Stable
  */
-PUBLIC void*mprGetNextStableItem(MprList*list, int*lastIndex);
+PUBLIC void *mprGetNextStableItem(MprList *list, int *lastIndex);
 
 /**
     Get the previous item in the list.
@@ -3871,7 +3871,7 @@ PUBLIC void*mprGetNextStableItem(MprList*list, int*lastIndex);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC void*mprGetPrevItem(MprList*list, int*lastIndex);
+PUBLIC void *mprGetPrevItem(MprList *list, int *lastIndex);
 
 /**
     Initialize a list structure
@@ -3884,7 +3884,7 @@ PUBLIC void*mprGetPrevItem(MprList*list, int*lastIndex);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC void mprInitList(MprList*list, int flags);
+PUBLIC void mprInitList(MprList *list, int flags);
 
 /**
     Insert an item into a list at a specific position
@@ -3898,7 +3898,7 @@ PUBLIC void mprInitList(MprList*list, int flags);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC int mprInsertItemAtPos(MprList*list, int index, cvoid*item);
+PUBLIC int mprInsertItemAtPos(MprList *list, int index, cvoid *item);
 
 /**
     Convert a list of strings to a single string. This uses the specified join string between the elements.
@@ -3907,7 +3907,7 @@ PUBLIC int mprInsertItemAtPos(MprList*list, int index, cvoid*item);
     @ingroup MprList
     @stability Stable
  */
-PUBLIC char*mprListToString(MprList*list, cchar*join);
+PUBLIC char *mprListToString(MprList *list, cchar *join);
 
 /**
     Find an item and return its index.
@@ -3918,7 +3918,7 @@ PUBLIC char*mprListToString(MprList*list, cchar*join);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC int mprLookupItem(MprList*list, cvoid*item);
+PUBLIC int mprLookupItem(MprList *list, cvoid *item);
 
 /**
     Find a string item and return its index.
@@ -3929,7 +3929,7 @@ PUBLIC int mprLookupItem(MprList*list, cvoid*item);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC int mprLookupStringItem(MprList*list, cchar*str);
+PUBLIC int mprLookupStringItem(MprList *list, cchar *str);
 
 /**
     Remove an item from the list
@@ -3940,7 +3940,7 @@ PUBLIC int mprLookupStringItem(MprList*list, cchar*str);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC int mprRemoveItem(MprList*list, cvoid*item);
+PUBLIC int mprRemoveItem(MprList *list, cvoid *item);
 
 /**
     Remove an item from the list
@@ -3950,7 +3950,7 @@ PUBLIC int mprRemoveItem(MprList*list, cvoid*item);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC int mprRemoveItemAtPos(MprList*list, int index);
+PUBLIC int mprRemoveItemAtPos(MprList *list, int index);
 
 /**
     Remove the last item from the list
@@ -3960,7 +3960,7 @@ PUBLIC int mprRemoveItemAtPos(MprList*list, int index);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC int mprRemoveLastItem(MprList*list);
+PUBLIC int mprRemoveLastItem(MprList *list);
 
 /**
     Remove a range of items from the list.
@@ -3973,7 +3973,7 @@ PUBLIC int mprRemoveLastItem(MprList*list);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC int mprRemoveRangeOfItems(MprList*list, int start, int end);
+PUBLIC int mprRemoveRangeOfItems(MprList *list, int start, int end);
 
 /**
     Remove a string item from the list
@@ -3984,7 +3984,7 @@ PUBLIC int mprRemoveRangeOfItems(MprList*list, int start, int end);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC int mprRemoveStringItem(MprList*list, cchar*str);
+PUBLIC int mprRemoveStringItem(MprList *list, cchar *str);
 
 /**
     Set a list item
@@ -3996,7 +3996,7 @@ PUBLIC int mprRemoveStringItem(MprList*list, cchar*str);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC void*mprSetItem(MprList*list, int index, cvoid*item);
+PUBLIC void *mprSetItem(MprList *list, int index, cvoid *item);
 
 /**
     Define the list size limits
@@ -4008,7 +4008,7 @@ PUBLIC void*mprSetItem(MprList*list, int index, cvoid*item);
     @ingroup MprList
     @stability Stable.
  */
-PUBLIC int mprSetListLimits(MprList*list, int initialSize, int maxSize);
+PUBLIC int mprSetListLimits(MprList *list, int initialSize, int maxSize);
 
 /**
     Quicksort callback function
@@ -4020,7 +4020,7 @@ PUBLIC int mprSetListLimits(MprList*list, int initialSize, int maxSize);
     @ingroup MprList
     @stability Stable
  */
-typedef int (*MprSortProc)(cvoid*p1, cvoid*p2, void*ctx);
+typedef int (*MprSortProc)(cvoid *p1, cvoid *p2, void *ctx);
 
 /**
     Quicksort
@@ -4034,7 +4034,7 @@ typedef int (*MprSortProc)(cvoid*p1, cvoid*p2, void*ctx);
     @ingroup MprList
     @stability Stable
  */
-PUBLIC void*mprSort(void*base, ssize num, ssize width, MprSortProc compare, void*ctx);
+PUBLIC void *mprSort(void *base, ssize num, ssize width, MprSortProc compare, void *ctx);
 
 /**
     Sort a list
@@ -4046,7 +4046,7 @@ PUBLIC void*mprSort(void*base, ssize num, ssize width, MprSortProc compare, void
     @ingroup MprList
     @stability Stable
  */
-PUBLIC MprList*mprSortList(MprList*list, MprSortProc compare, void*ctx);
+PUBLIC MprList *mprSortList(MprList *list, MprSortProc compare, void *ctx);
 
 /**
     Key value pairs for use with MprList or MprKey
@@ -4054,8 +4054,8 @@ PUBLIC MprList*mprSortList(MprList*list, MprSortProc compare, void*ctx);
     @stability Stable
  */
 typedef struct MprKeyValue {
-    void*key;                       /**< Key string (managed) */
-    void*value;                     /**< Associated value for the key (managed) */
+    void *key;                      /**< Key string (managed) */
+    void *value;                    /**< Associated value for the key (managed) */
     int flags;                      /**< General flags word */
 } MprKeyValue;
 
@@ -4069,7 +4069,7 @@ typedef struct MprKeyValue {
     @ingroup MprList
     @stability Stable
  */
-PUBLIC MprKeyValue*mprCreateKeyPair(cchar*key, cchar*value, int flags);
+PUBLIC MprKeyValue *mprCreateKeyPair(cchar *key, cchar *value, int flags);
 
 /**
     Pop an item
@@ -4079,7 +4079,7 @@ PUBLIC MprKeyValue*mprCreateKeyPair(cchar*key, cchar*value, int flags);
     @ingroup MprList
     @stability Stable
  */
-PUBLIC void*mprPopItem(MprList*list);
+PUBLIC void *mprPopItem(MprList *list);
 
 /**
     Push an item onto the list
@@ -4091,7 +4091,7 @@ PUBLIC void*mprPopItem(MprList*list);
     @ingroup MprList
     @stability Stable
  */
-PUBLIC int mprPushItem(MprList*list, cvoid*item);
+PUBLIC int mprPushItem(MprList *list, cvoid *item);
 
 #define MPR_GET_ITEM(list, index)              list->items[index]
 #define ITERATE_ITEMS(list, item, next)        next = 0; (item = mprGetNextItem(list, &next)) != 0;
@@ -4117,7 +4117,7 @@ typedef struct MprLog { int dummy; } MprLog;
     @ingroup MprLog
     @stability Stable
  */
-typedef void (*MprLogHandler)(cchar*tags, int level, cchar*msg);
+typedef void (*MprLogHandler)(cchar *tags, int level, cchar *msg);
 
 /**
     Output an assure assertion failed message.
@@ -4129,7 +4129,7 @@ typedef void (*MprLogHandler)(cchar*tags, int level, cchar*msg);
     @ingroup MprLog
     @stability Stable
  */
-PUBLIC void mprAssert(cchar*loc, cchar*msg);
+PUBLIC void mprAssert(cchar *loc, cchar *msg);
 
 /**
     Initialize the log service
@@ -4145,7 +4145,7 @@ PUBLIC void mprCreateLogService(void);
     @ingroup MprLog
     @stability Stable
  */
-PUBLIC int mprBackupLog(cchar*path, int count);
+PUBLIC int mprBackupLog(cchar *path, int count);
 
 /**
     Default MPR log handler
@@ -4155,7 +4155,7 @@ PUBLIC int mprBackupLog(cchar*path, int count);
     @ingroup MprLog
     @stability Stable
  */
-PUBLIC void mprDefaultLogHandler(cchar*tags, int level, cchar*msg);
+PUBLIC void mprDefaultLogHandler(cchar *tags, int level, cchar *msg);
 
 /**
     Log an error message.
@@ -4168,7 +4168,7 @@ PUBLIC void mprDefaultLogHandler(cchar*tags, int level, cchar*msg);
     @ingroup MprLog
     @stability Stable
  */
-PUBLIC void mprError(cchar*fmt, ...) PRINTF_ATTRIBUTE(1, 2);
+PUBLIC void mprError(cchar *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
 
 /**
     Get the log file object
@@ -4205,7 +4205,7 @@ PUBLIC MprLogHandler mprGetLogHandler(void);
            convention, specify the RFC tag name first in a list of tags.
         \n\n
         The default log handler emits messages in three formats depending on whether MPR_LOG_DETAILED is provided to
-           #mprStartLogging and the value of the tags parameter. If MPR_LOG_DETAILED and tags are supplied, the format
+ #mprStartLogging and the value of the tags parameter. If MPR_LOG_DETAILED and tags are supplied, the format
            is: "MM/DD/YY HH:MM:SS LEVEL TAGS, Message". Otherwise a a simplified output format is used: "Name: severity:
            message", where severity is set to "error" for level 0 messages. This is useful for utility programs. If tags
            are null, the message is output raw, without any any prefixes.
@@ -4233,9 +4233,9 @@ PUBLIC MprLogHandler mprGetLogHandler(void);
     @ingroup MprLog
     @stability Stable
  */
-PUBLIC void mprLog(cchar*tags, int level, cchar*fmt, ...);
+PUBLIC void mprLog(cchar *tags, int level, cchar *fmt, ...);
 #endif
-PUBLIC void mprLogProc(cchar*tags, int level, cchar*fmt, ...) PRINTF_ATTRIBUTE(3, 4);
+PUBLIC void mprLogProc(cchar *tags, int level, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 
 /**
     Show the product configuration at the start of the log file
@@ -4295,7 +4295,7 @@ PUBLIC MprLogHandler mprSetLogHandler(MprLogHandler handler);
     @ingroup MprLog
     @stability Stable
  */
-PUBLIC int mprStartLogging(cchar*logSpec, int flags);
+PUBLIC int mprStartLogging(cchar *logSpec, int flags);
 
 #if DOXYGEN
 /**
@@ -4308,10 +4308,10 @@ PUBLIC int mprStartLogging(cchar*logSpec, int flags);
     @ingroup MprLog
     @stability Stable
  */
-PUBLIC void mprDebug(cchar*tags, int level, cchar*fmt, ...);
+PUBLIC void mprDebug(cchar *tags, int level, cchar *fmt, ...);
 #endif
 
-PUBLIC void mprLogProc(cchar*tags, int level, cchar*fmt, ...) PRINTF_ATTRIBUTE(3, 4);
+PUBLIC void mprLogProc(cchar *tags, int level, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 
 /**
     Determine if the app is using the default MPR log handler.
@@ -4346,8 +4346,8 @@ PUBLIC int mprUsingDefaultLogHandler(void);
  */
 typedef struct MprKey {
     struct MprKey *next;                /**< Next symbol in hash chain */
-    char*key;                           /**< Hash key */
-    cvoid*data;                         /**< Pointer to symbol data (managed) */
+    char *key;                          /**< Hash key */
+    cvoid *data;                        /**< Pointer to symbol data (managed) */
     int type : 4;                       /**< Data type */
     int bucket : 28;                    /**< Hash bucket index */
 } MprKey;
@@ -4360,7 +4360,7 @@ typedef struct MprKey {
     @internal
     @stability Internal.
  */
-typedef uint (*MprHashProc)(cvoid*name, ssize len);
+typedef uint (*MprHashProc)(cvoid *name, ssize len);
 
 /*
     Flags for MprHash
@@ -4386,9 +4386,9 @@ typedef struct MprHash {
     int flags;                          /**< Hash control flags */
     int size;                           /**< Size of the buckets array */
     int length;                         /**< Number of symbols in the table */
-    MprKey**buckets;                    /**< Hash collision bucket table */
+    MprKey **buckets;                   /**< Hash collision bucket table */
     MprHashProc fn;                     /**< Hash function */
-    MprMutex*mutex;                     /**< GC marker sync */
+    MprMutex *mutex;                    /**< GC marker sync */
 } MprHash;
 
 /*
@@ -4410,7 +4410,7 @@ typedef struct MprHash {
     @ingroup MprHash
     @stability Stable.
  */
-PUBLIC MprKey*mprAddDuplicateKey(MprHash*table, cvoid*key, cvoid*ptr);
+PUBLIC MprKey *mprAddDuplicateKey(MprHash *table, cvoid *key, cvoid *ptr);
 
 /**
     Add a symbol value into the hash table
@@ -4423,7 +4423,7 @@ PUBLIC MprKey*mprAddDuplicateKey(MprHash*table, cvoid*key, cvoid*ptr);
     @ingroup MprHash
     @stability Stable.
  */
-PUBLIC MprKey*mprAddKey(MprHash*table, cvoid*key, cvoid*ptr);
+PUBLIC MprKey *mprAddKey(MprHash *table, cvoid *key, cvoid *ptr);
 
 /**
     Add a symbol value into the hash table and set the key type.
@@ -4436,7 +4436,7 @@ PUBLIC MprKey*mprAddKey(MprHash*table, cvoid*key, cvoid*ptr);
     @ingroup MprHash
     @stability internal.
  */
-PUBLIC MprKey*mprAddKeyWithType(MprHash*table, cvoid*key, cvoid*ptr, int type);
+PUBLIC MprKey *mprAddKeyWithType(MprHash *table, cvoid *key, cvoid *ptr, int type);
 
 /**
     Add a key with a formatting value into the hash table
@@ -4448,7 +4448,7 @@ PUBLIC MprKey*mprAddKeyWithType(MprHash*table, cvoid*key, cvoid*ptr, int type);
     @ingroup MprHash
     @stability Stable.
  */
-PUBLIC MprKey*mprAddKeyFmt(MprHash*table, cvoid*key, cchar*fmt, ...) PRINTF_ATTRIBUTE(3, 4);
+PUBLIC MprKey *mprAddKeyFmt(MprHash *table, cvoid *key, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 
 /**
     Copy a hash table
@@ -4458,7 +4458,7 @@ PUBLIC MprKey*mprAddKeyFmt(MprHash*table, cvoid*key, cchar*fmt, ...) PRINTF_ATTR
     @ingroup MprHash
     @stability Stable.
  */
-PUBLIC MprHash*mprCloneHash(MprHash*table);
+PUBLIC MprHash *mprCloneHash(MprHash *table);
 
 /**
     Create a hash table
@@ -4473,7 +4473,7 @@ PUBLIC MprHash*mprCloneHash(MprHash*table);
     @ingroup MprHash
     @stability Stable.
  */
-PUBLIC MprHash*mprCreateHash(int hashSize, int flags);
+PUBLIC MprHash *mprCreateHash(int hashSize, int flags);
 
 /**
     Create a hash of words
@@ -4484,7 +4484,7 @@ PUBLIC MprHash*mprCreateHash(int hashSize, int flags);
     @ingroup MprHash
     @stability Stable.
  */
-PUBLIC MprHash*mprCreateHashFromWords(cchar*str);
+PUBLIC MprHash *mprCreateHashFromWords(cchar *str);
 
 /**
     Return the first symbol in a symbol entry
@@ -4494,7 +4494,7 @@ PUBLIC MprHash*mprCreateHashFromWords(cchar*str);
     @ingroup MprHash
     @stability Stable.
  */
-PUBLIC MprKey*mprGetFirstKey(MprHash*table);
+PUBLIC MprKey *mprGetFirstKey(MprHash *table);
 
 /**
     Return the next symbol in a symbol entry
@@ -4508,7 +4508,7 @@ PUBLIC MprKey*mprGetFirstKey(MprHash*table);
     @ingroup MprHash
     @stability Stable.
  */
-PUBLIC MprKey*mprGetNextKey(MprHash*table, MprKey*last);
+PUBLIC MprKey *mprGetNextKey(MprHash *table, MprKey *last);
 
 /**
     Return the count of symbols in a symbol entry
@@ -4518,7 +4518,7 @@ PUBLIC MprKey*mprGetNextKey(MprHash*table, MprKey*last);
     @ingroup MprHash
     @stability Stable.
  */
-PUBLIC int mprGetHashLength(MprHash*table);
+PUBLIC int mprGetHashLength(MprHash *table);
 
 /**
     Lookup a symbol in the hash table.
@@ -4529,7 +4529,7 @@ PUBLIC int mprGetHashLength(MprHash*table);
     @ingroup MprHash
     @stability Stable.
  */
-PUBLIC void*mprLookupKey(MprHash*table, cvoid*key);
+PUBLIC void *mprLookupKey(MprHash *table, cvoid *key);
 
 /**
     Lookup a symbol in the hash table and return the hash entry
@@ -4540,7 +4540,7 @@ PUBLIC void*mprLookupKey(MprHash*table, cvoid*key);
     @ingroup MprHash
     @stability Stable.
  */
-PUBLIC MprKey*mprLookupKeyEntry(MprHash*table, cvoid*key);
+PUBLIC MprKey *mprLookupKeyEntry(MprHash *table, cvoid *key);
 
 /**
     Remove a symbol entry from the hash table.
@@ -4551,7 +4551,7 @@ PUBLIC MprKey*mprLookupKeyEntry(MprHash*table, cvoid*key);
     @ingroup MprHash
     @stability Stable.
  */
-PUBLIC int mprRemoveKey(MprHash*table, cvoid*key);
+PUBLIC int mprRemoveKey(MprHash *table, cvoid *key);
 
 /**
     Blend two hash tables
@@ -4562,7 +4562,7 @@ PUBLIC int mprRemoveKey(MprHash*table, cvoid*key);
     @ingroup MprHash
     @stability Stable.
  */
-PUBLIC MprHash*mprBlendHash(MprHash*target, MprHash*other);
+PUBLIC MprHash *mprBlendHash(MprHash *target, MprHash *other);
 
 /**
     Convert a hash of strings to a single string
@@ -4572,7 +4572,7 @@ PUBLIC MprHash*mprBlendHash(MprHash*target, MprHash*other);
     @ingroup MprHash
     @stability Stable
  */
-PUBLIC char*mprHashToString(MprHash*hash, cchar*join);
+PUBLIC char *mprHashToString(MprHash *hash, cchar *join);
 
 /**
     Convert hash keys to a single string
@@ -4582,7 +4582,7 @@ PUBLIC char*mprHashToString(MprHash*hash, cchar*join);
     @ingroup MprHash
     @stability Stable
  */
-PUBLIC char*mprHashKeysToString(MprHash*hash, cchar*join);
+PUBLIC char *mprHashKeysToString(MprHash *hash, cchar *join);
 
 /*********************************** Files ************************************/
 /**
@@ -4647,12 +4647,12 @@ typedef struct MprFileSystem {
     MprTruncateFileProc truncateFile;   /**< Virtual truncate file routine */
     bool caseSensitive;                 /**< Path comparisons are case sensitive */
     bool hasDriveSpecs;                 /**< Paths can have drive specifications */
-    char*separators;                    /**< Filename path separators. First separator is the preferred separator. */
-    char*newline;                       /**< Newline for text files */
-    cchar*root;                         /**< Root file path */
+    char *separators;                   /**< Filename path separators. First separator is the preferred separator. */
+    char *newline;                      /**< Newline for text files */
+    cchar *root;                        /**< Root file path */
 #if ME_WIN_LIKE || CYGWIN
-    char*cygwin;                        /**< Cygwin install directory */
-    char*cygdrive;                      /**< Cygwin drive root */
+    char *cygwin;                       /**< Cygwin install directory */
+    char *cygdrive;                     /**< Cygwin drive root */
 #endif
 } MprFileSystem;
 
@@ -4664,7 +4664,7 @@ typedef struct MprFileSystem {
     @ingroup MprFileSystem
     @stability Internal
  */
-PUBLIC void mprInitFileSystem(MprFileSystem*fs, cchar*path);
+PUBLIC void mprInitFileSystem(MprFileSystem *fs, cchar *path);
 
 /**
     A RomInode is created for each file in the Rom file system.
@@ -4672,16 +4672,16 @@ PUBLIC void mprInitFileSystem(MprFileSystem*fs, cchar*path);
     @stability Internal
  */
 typedef struct  MprRomInode {
-    char*path;                          /**< File path */
-    uchar*data;                         /**< Pointer to file data (unmanaged) */
+    char *path;                         /**< File path */
+    uchar *data;                        /**< Pointer to file data (unmanaged) */
     int size;                           /**< Size of file */
     int num;                            /**< Inode number */
 } MprRomInode;
 
 typedef struct MprRomFileSystem {
     MprFileSystem fileSystem;           /**< Extends MprFileSystem */
-    MprHash*fileIndex;
-    MprRomInode*romInodes;              /**< File inode data (unmanaged) */
+    MprHash *fileIndex;
+    MprRomInode *romInodes;             /**< File inode data (unmanaged) */
 } MprRomFileSystem;
 
 #if ME_ROM
@@ -4694,7 +4694,7 @@ typedef struct MprRomFileSystem {
     @ingroup MprFileSystem
     @stability Internal
  */
-PUBLIC MprRomFileSystem*mprCreateRomFileSystem(cchar*path, MprRomInode*inodes);
+PUBLIC MprRomFileSystem *mprCreateRomFileSystem(cchar *path, MprRomInode *inodes);
 
 /**
     Get the ROM file system data
@@ -4702,7 +4702,7 @@ PUBLIC MprRomFileSystem*mprCreateRomFileSystem(cchar*path, MprRomInode*inodes);
     @ingroup MprFileSystem
     @stability Stable
  */
-PUBLIC MprRomInode*mprGetRomFiles(void);
+PUBLIC MprRomInode *mprGetRomFiles(void);
 #endif /* ME_ROM */
 
 typedef MprFileSystem MprDiskFileSystem;
@@ -4714,7 +4714,7 @@ typedef MprFileSystem MprDiskFileSystem;
     @ingroup MprFileSystem
     @stability Internal
  */
-PUBLIC MprDiskFileSystem*mprCreateDiskFileSystem(cchar*path);
+PUBLIC MprDiskFileSystem *mprCreateDiskFileSystem(cchar *path);
 
 /**
     Create and initialize the disk FileSystem.
@@ -4723,7 +4723,7 @@ PUBLIC MprDiskFileSystem*mprCreateDiskFileSystem(cchar*path);
     @ingroup MprFileSystem
     @stability Internal
  */
-PUBLIC void mprAddFileSystem(MprFileSystem*fs);
+PUBLIC void mprAddFileSystem(MprFileSystem *fs);
 
 /**
     Lookup a file system
@@ -4732,7 +4732,7 @@ PUBLIC void mprAddFileSystem(MprFileSystem*fs);
     @ingroup MprFileSystem
     @stability Internal
  */
-PUBLIC MprFileSystem*mprLookupFileSystem(cchar*path);
+PUBLIC MprFileSystem *mprLookupFileSystem(cchar *path);
 
 /**
     Set the file system path separators
@@ -4741,7 +4741,7 @@ PUBLIC MprFileSystem*mprLookupFileSystem(cchar*path);
     @ingroup MprFileSystem
     @stability Stable
  */
-PUBLIC void mprSetPathSeparators(cchar*path, cchar*separators);
+PUBLIC void mprSetPathSeparators(cchar *path, cchar *separators);
 
 /**
     Set the file system new line character string
@@ -4750,9 +4750,9 @@ PUBLIC void mprSetPathSeparators(cchar*path, cchar*separators);
     @ingroup MprFileSystem
     @stability Stable
  */
-PUBLIC void mprSetPathNewline(cchar*path, cchar*newline);
+PUBLIC void mprSetPathNewline(cchar *path, cchar *newline);
 
-PUBLIC MprList*mprGetDirList(cchar*path);
+PUBLIC MprList *mprGetDirList(cchar *path);
 
 /**
     File I/O Module
@@ -4767,9 +4767,9 @@ PUBLIC MprList*mprGetDirList(cchar*path);
         mprGetFileFd
  */
 typedef struct MprFile {
-    char*path;                          /**< Filename */
-    MprFileSystem*fileSystem;           /**< File system owning this file */
-    MprBuf*buf;                         /**< Buffer for I/O if buffered */
+    char *path;                         /**< Filename */
+    MprFileSystem *fileSystem;          /**< File system owning this file */
+    MprBuf *buf;                        /**< Buffer for I/O if buffered */
     MprOff pos;                         /**< Current read position  */
     MprOff iopos;                       /**< Raw I/O position  */
     MprOff size;                        /**< Current file size */
@@ -4777,7 +4777,7 @@ typedef struct MprFile {
     int perms;                          /**< File permissions */
     int fd;                             /**< File handle */
     int attached;                       /**< Attached to existing descriptor */
-    MprRomInode*inode;                  /**< Reference to ROM file */
+    MprRomInode *inode;                 /**< Reference to ROM file */
 } MprFile;
 
 
@@ -4801,7 +4801,7 @@ typedef struct MprFile {
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC MprFile*mprAttachFileFd(int fd, cchar*name, int omode);
+PUBLIC MprFile *mprAttachFileFd(int fd, cchar *name, int omode);
 
 /**
     Close a file
@@ -4811,7 +4811,7 @@ PUBLIC MprFile*mprAttachFileFd(int fd, cchar*name, int omode);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC int mprCloseFile(MprFile*file);
+PUBLIC int mprCloseFile(MprFile *file);
 
 /**
     Disable file buffering
@@ -4820,7 +4820,7 @@ PUBLIC int mprCloseFile(MprFile*file);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC void mprDisableFileBuffering(MprFile*file);
+PUBLIC void mprDisableFileBuffering(MprFile *file);
 
 /**
     Enable file buffering
@@ -4831,7 +4831,7 @@ PUBLIC void mprDisableFileBuffering(MprFile*file);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC int mprEnableFileBuffering(MprFile*file, ssize size, ssize maxSize);
+PUBLIC int mprEnableFileBuffering(MprFile *file, ssize size, ssize maxSize);
 
 /**
     Flush any buffered write data
@@ -4841,7 +4841,7 @@ PUBLIC int mprEnableFileBuffering(MprFile*file, ssize size, ssize maxSize);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC int mprFlushFile(MprFile*file);
+PUBLIC int mprFlushFile(MprFile *file);
 
 /**
     Read a character from the file.
@@ -4852,7 +4852,7 @@ PUBLIC int mprFlushFile(MprFile*file);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC int mprGetFileChar(MprFile*file);
+PUBLIC int mprGetFileChar(MprFile *file);
 
 /**
     Get the file descriptor for a file
@@ -4861,7 +4861,7 @@ PUBLIC int mprGetFileChar(MprFile*file);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC int mprGetFileFd(MprFile*file);
+PUBLIC int mprGetFileFd(MprFile *file);
 
 /**
     Return the current file position
@@ -4870,7 +4870,7 @@ PUBLIC int mprGetFileFd(MprFile*file);
     @return The current file offset position if successful. Returns a negative MPR error code on errors.
     @ingroup MprFile
  */
-PUBLIC MprOff mprGetFilePosition(MprFile*file);
+PUBLIC MprOff mprGetFilePosition(MprFile *file);
 
 /**
     Get the size of the file
@@ -4880,7 +4880,7 @@ PUBLIC MprOff mprGetFilePosition(MprFile*file);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC MprOff mprGetFileSize(MprFile*file);
+PUBLIC MprOff mprGetFileSize(MprFile *file);
 
 /**
     Return a file object for the Stderr I/O channel
@@ -4888,7 +4888,7 @@ PUBLIC MprOff mprGetFileSize(MprFile*file);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC MprFile*mprGetStderr(void);
+PUBLIC MprFile *mprGetStderr(void);
 
 /**
     Return a file object for the Stdin I/O channel
@@ -4896,7 +4896,7 @@ PUBLIC MprFile*mprGetStderr(void);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC MprFile*mprGetStdin(void);
+PUBLIC MprFile *mprGetStdin(void);
 
 /**
     Return a file object for the Stdout I/O channel
@@ -4904,7 +4904,7 @@ PUBLIC MprFile*mprGetStdin(void);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC MprFile*mprGetStdout(void);
+PUBLIC MprFile *mprGetStdout(void);
 
 /**
     Open a file
@@ -4926,7 +4926,7 @@ PUBLIC MprFile*mprGetStdout(void);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC MprFile*mprOpenFile(cchar*filename, int omode, int perms);
+PUBLIC MprFile *mprOpenFile(cchar *filename, int omode, int perms);
 
 /**
     Non-destructively read a character from the file.
@@ -4937,7 +4937,7 @@ PUBLIC MprFile*mprOpenFile(cchar*filename, int omode, int perms);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC int mprPeekFileChar(MprFile*file);
+PUBLIC int mprPeekFileChar(MprFile *file);
 
 /**
     Write a character to the file.
@@ -4949,7 +4949,7 @@ PUBLIC int mprPeekFileChar(MprFile*file);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC ssize mprPutFileChar(MprFile*file, int c);
+PUBLIC ssize mprPutFileChar(MprFile *file, int c);
 
 /**
     Write a string to the file.
@@ -4960,7 +4960,7 @@ PUBLIC ssize mprPutFileChar(MprFile*file, int c);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC ssize mprPutFileString(MprFile*file, cchar*str);
+PUBLIC ssize mprPutFileString(MprFile *file, cchar *str);
 
 /**
     Read data from a file.
@@ -4972,7 +4972,7 @@ PUBLIC ssize mprPutFileString(MprFile*file, cchar*str);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC ssize mprReadFile(MprFile*file, void*buf, ssize size);
+PUBLIC ssize mprReadFile(MprFile *file, void *buf, ssize size);
 
 /**
     Read a line from the file.
@@ -4986,7 +4986,7 @@ PUBLIC ssize mprReadFile(MprFile*file, void*buf, ssize size);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC char*mprReadLine(MprFile*file, ssize size, ssize*len);
+PUBLIC char *mprReadLine(MprFile *file, ssize size, ssize *len);
 
 /**
     Seek the I/O pointer to a new location in the file.
@@ -5002,7 +5002,7 @@ PUBLIC char*mprReadLine(MprFile*file, ssize size, ssize*len);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC MprOff mprSeekFile(MprFile*file, int seekType, MprOff distance);
+PUBLIC MprOff mprSeekFile(MprFile *file, int seekType, MprOff distance);
 
 /**
     Truncate a file
@@ -5013,7 +5013,7 @@ PUBLIC MprOff mprSeekFile(MprFile*file, int seekType, MprOff distance);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC int mprTruncateFile(cchar*path, MprOff size);
+PUBLIC int mprTruncateFile(cchar *path, MprOff size);
 
 /**
     Write data to a file.
@@ -5025,7 +5025,7 @@ PUBLIC int mprTruncateFile(cchar*path, MprOff size);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC ssize mprWriteFile(MprFile*file, cvoid*buf, ssize count);
+PUBLIC ssize mprWriteFile(MprFile *file, cvoid *buf, ssize count);
 
 /**
     Write formatted data to a file.
@@ -5036,7 +5036,7 @@ PUBLIC ssize mprWriteFile(MprFile*file, cvoid*buf, ssize count);
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC ssize mprWriteFileFmt(MprFile*file, cchar*fmt, ...) PRINTF_ATTRIBUTE(2, 3);
+PUBLIC ssize mprWriteFileFmt(MprFile *file, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Write a string to a file.
@@ -5047,7 +5047,7 @@ PUBLIC ssize mprWriteFileFmt(MprFile*file, cchar*fmt, ...) PRINTF_ATTRIBUTE(2, 3
     @ingroup MprFile
     @stability Stable
  */
-PUBLIC ssize mprWriteFileString(MprFile*file, cchar*str);
+PUBLIC ssize mprWriteFileString(MprFile *file, cchar *str);
 
 /*********************************** Paths ************************************/
 /**
@@ -5087,7 +5087,7 @@ typedef struct MprPath {
     @stability Internal
  */
 typedef struct MprDirEntry {
-    char*name;                          /**< Name of the file */
+    char *name;                         /**< Name of the file */
     MprTime lastModified;               /**< Time the file was last modified */
     MprOff size;                        /**< Size of the file */
     bool isDir : 1;                     /**< True if the file is a directory */
@@ -5115,7 +5115,7 @@ typedef struct MprDirEntry {
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC int mprCopyPath(cchar*from, cchar*to, int omode);
+PUBLIC int mprCopyPath(cchar *from, cchar *to, int omode);
 
 /**
     Delete a file.
@@ -5125,7 +5125,7 @@ PUBLIC int mprCopyPath(cchar*from, cchar*to, int omode);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC int mprDeletePath(cchar*path);
+PUBLIC int mprDeletePath(cchar *path);
 
 /**
     Convert a path to an absolute path
@@ -5139,7 +5139,7 @@ PUBLIC int mprDeletePath(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprGetAbsPath(cchar*path);
+PUBLIC char *mprGetAbsPath(cchar *path);
 
 /**
     Return the current working directory
@@ -5147,7 +5147,7 @@ PUBLIC char*mprGetAbsPath(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC cchar*mprGetCurrentPath(void);
+PUBLIC cchar *mprGetCurrentPath(void);
 
 /**
     Get the first path separator in a path
@@ -5156,7 +5156,7 @@ PUBLIC cchar*mprGetCurrentPath(void);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC cchar*mprGetFirstPathSeparator(cchar*path);
+PUBLIC cchar *mprGetFirstPathSeparator(cchar *path);
 
 /*
     Get the last path separator in a path
@@ -5165,7 +5165,7 @@ PUBLIC cchar*mprGetFirstPathSeparator(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC cchar*mprGetLastPathSeparator(cchar*path);
+PUBLIC cchar *mprGetLastPathSeparator(cchar *path);
 
 /**
     Get a path formatted according to the native O/S conventions.
@@ -5176,7 +5176,7 @@ PUBLIC cchar*mprGetLastPathSeparator(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprGetNativePath(cchar*path);
+PUBLIC char *mprGetNativePath(cchar *path);
 
 /**
     Get the base portion of a path
@@ -5186,7 +5186,7 @@ PUBLIC char*mprGetNativePath(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprGetPathBase(cchar*path);
+PUBLIC char *mprGetPathBase(cchar *path);
 
 /**
     Get a reference to the base portion of a path
@@ -5197,7 +5197,7 @@ PUBLIC char*mprGetPathBase(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC cchar*mprGetPathBaseRef(cchar*path);
+PUBLIC cchar *mprGetPathBaseRef(cchar *path);
 
 /**
     Get the directory portion of a path
@@ -5207,7 +5207,7 @@ PUBLIC cchar*mprGetPathBaseRef(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprGetPathDir(cchar*path);
+PUBLIC char *mprGetPathDir(cchar *path);
 
 /**
     Get the file extension portion of a path
@@ -5218,7 +5218,7 @@ PUBLIC char*mprGetPathDir(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprGetPathExt(cchar*path);
+PUBLIC char *mprGetPathExt(cchar *path);
 
 /*
     Flags for mprGetPathFiles
@@ -5228,7 +5228,7 @@ PUBLIC char*mprGetPathExt(cchar*path);
 #define MPR_PATH_INC_HIDDEN  0x4                /**< Flag for mprGetPathFiles to include hidden files */
 #define MPR_PATH_NO_DIRS     0x8                /**< Flag for mprGetPathFiles to exclude subdirectories */
 #define MPR_PATH_RELATIVE    0x10               /**< Flag for mprGetPathFiles to return paths relative to the directory
-                                                */
+                                                 */
 
 /**
     Create a list of files in a directory or subdirectories. This call returns a list of MprDirEntry objects.
@@ -5242,7 +5242,7 @@ PUBLIC char*mprGetPathExt(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC MprList*mprGetPathFiles(cchar*dir, int flags);
+PUBLIC MprList *mprGetPathFiles(cchar *dir, int flags);
 
 /**
     Create a list of files in a directory or subdirectories that match the given wildcard pattern.
@@ -5260,7 +5260,7 @@ PUBLIC MprList*mprGetPathFiles(cchar*dir, int flags);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC MprList*mprGlobPathFiles(cchar*path, cchar*patterns, int flags);
+PUBLIC MprList *mprGlobPathFiles(cchar *path, cchar *patterns, int flags);
 
 /**
     Get the first directory portion of a path
@@ -5269,7 +5269,7 @@ PUBLIC MprList*mprGlobPathFiles(cchar*path, cchar*patterns, int flags);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprGetPathFirstDir(cchar*path);
+PUBLIC char *mprGetPathFirstDir(cchar *path);
 
 /**
     Return information about a file represented by a path.
@@ -5280,7 +5280,7 @@ PUBLIC char*mprGetPathFirstDir(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC int mprGetPathInfo(cchar*path, MprPath*info);
+PUBLIC int mprGetPathInfo(cchar *path, MprPath *info);
 
 /**
     Get the target of a symbolic link.
@@ -5290,7 +5290,7 @@ PUBLIC int mprGetPathInfo(cchar*path, MprPath*info);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprGetPathLink(cchar*path);
+PUBLIC char *mprGetPathLink(cchar *path);
 
 /**
     Get the file newline character string for a given path.
@@ -5300,7 +5300,7 @@ PUBLIC char*mprGetPathLink(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC cchar*mprGetPathNewline(cchar*path);
+PUBLIC cchar *mprGetPathNewline(cchar *path);
 
 /**
     Get the parent directory of a path
@@ -5309,7 +5309,7 @@ PUBLIC cchar*mprGetPathNewline(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprGetPathParent(cchar*path);
+PUBLIC char *mprGetPathParent(cchar *path);
 
 /**
     Get the path directory separator.
@@ -5320,7 +5320,7 @@ PUBLIC char*mprGetPathParent(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC cchar*mprGetPathSeparators(cchar*path);
+PUBLIC cchar *mprGetPathSeparators(cchar *path);
 
 /**
     Get the default path directory separator.
@@ -5331,7 +5331,7 @@ PUBLIC cchar*mprGetPathSeparators(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char mprGetPathSeparator(cchar*path);
+PUBLIC char mprGetPathSeparator(cchar *path);
 
 /**
     Get a portable path
@@ -5343,7 +5343,7 @@ PUBLIC char mprGetPathSeparator(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprGetPortablePath(cchar*path);
+PUBLIC char *mprGetPortablePath(cchar *path);
 
 /**
     Get a path relative to another path.
@@ -5356,7 +5356,7 @@ PUBLIC char*mprGetPortablePath(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprGetRelPath(cchar*dest, cchar*origin);
+PUBLIC char *mprGetRelPath(cchar *dest, cchar *origin);
 
 /**
     Make a temporary file.
@@ -5366,7 +5366,7 @@ PUBLIC char*mprGetRelPath(cchar*dest, cchar*origin);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprGetTempPath(cchar*tmpDir);
+PUBLIC char *mprGetTempPath(cchar *tmpDir);
 
 /**
     Convert a path to an absolute windows path
@@ -5378,7 +5378,7 @@ PUBLIC char*mprGetTempPath(cchar*tmpDir);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprGetWinPath(cchar*path);
+PUBLIC char *mprGetWinPath(cchar *path);
 
 /**
     Determine if a directory is the same as or a parent of a path.
@@ -5388,7 +5388,7 @@ PUBLIC char*mprGetWinPath(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC bool mprIsPathContained(cchar*path, cchar*dir);
+PUBLIC bool mprIsPathContained(cchar *path, cchar *dir);
 
 /**
     Fast version of mprIsPathContained that works only for absolute paths.
@@ -5399,7 +5399,7 @@ PUBLIC bool mprIsPathContained(cchar*path, cchar*dir);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC bool mprIsAbsPathContained(cchar*path, cchar*dir);
+PUBLIC bool mprIsAbsPathContained(cchar *path, cchar *dir);
 
 /**
     Determine if a path is absolute
@@ -5408,7 +5408,7 @@ PUBLIC bool mprIsAbsPathContained(cchar*path, cchar*dir);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC bool mprIsPathAbs(cchar*path);
+PUBLIC bool mprIsPathAbs(cchar *path);
 
 /**
     Determine if a path is a directory
@@ -5417,7 +5417,7 @@ PUBLIC bool mprIsPathAbs(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC bool mprIsPathDir(cchar*path);
+PUBLIC bool mprIsPathDir(cchar *path);
 
 /**
     Determine if a path is relative
@@ -5426,7 +5426,7 @@ PUBLIC bool mprIsPathDir(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC bool mprIsPathRel(cchar*path);
+PUBLIC bool mprIsPathRel(cchar *path);
 
 /**
     Test if a character is a path separarator
@@ -5436,7 +5436,7 @@ PUBLIC bool mprIsPathRel(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC bool mprIsPathSeparator(cchar*path, cchar c);
+PUBLIC bool mprIsPathSeparator(cchar *path, cchar c);
 
 /**
     Join paths
@@ -5447,7 +5447,7 @@ PUBLIC bool mprIsPathSeparator(cchar*path, cchar c);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprJoinPath(cchar*base, cchar*path);
+PUBLIC char *mprJoinPath(cchar *base, cchar *path);
 
 /**
     Join paths
@@ -5458,7 +5458,7 @@ PUBLIC char*mprJoinPath(cchar*base, cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprJoinPaths(cchar*base, ...);
+PUBLIC char *mprJoinPaths(cchar *base, ...);
 
 /**
     Join an extension to a path
@@ -5469,7 +5469,7 @@ PUBLIC char*mprJoinPaths(cchar*base, ...);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprJoinPathExt(cchar*path, cchar*ext);
+PUBLIC char *mprJoinPathExt(cchar *path, cchar *ext);
 
 /**
     Make a directory
@@ -5483,7 +5483,7 @@ PUBLIC char*mprJoinPathExt(cchar*path, cchar*ext);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC int mprMakeDir(cchar*path, int perms, int owner, int group, bool makeMissing);
+PUBLIC int mprMakeDir(cchar *path, int perms, int owner, int group, bool makeMissing);
 
 /**
     Make a link
@@ -5496,7 +5496,7 @@ PUBLIC int mprMakeDir(cchar*path, int perms, int owner, int group, bool makeMiss
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC int mprMakeLink(cchar*path, cchar*target, bool hard);
+PUBLIC int mprMakeLink(cchar *path, cchar *target, bool hard);
 
 /**
     Map the separators in a path.
@@ -5507,7 +5507,7 @@ PUBLIC int mprMakeLink(cchar*path, cchar*target, bool hard);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC void mprMapSeparators(char*path, int separator);
+PUBLIC void mprMapSeparators(char *path, int separator);
 
 /**
     Normalize a path
@@ -5518,7 +5518,7 @@ PUBLIC void mprMapSeparators(char*path, int separator);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprNormalizePath(cchar*path);
+PUBLIC char *mprNormalizePath(cchar *path);
 
 /**
     Determine if a file exists for a path name and can be accessed
@@ -5529,7 +5529,7 @@ PUBLIC char*mprNormalizePath(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC bool mprPathExists(cchar*path, int omode);
+PUBLIC bool mprPathExists(cchar *path, int omode);
 
 /*
     Read the contents of a file
@@ -5541,7 +5541,7 @@ PUBLIC bool mprPathExists(cchar*path, int omode);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprReadPathContents(cchar*path, ssize*lenp);
+PUBLIC char *mprReadPathContents(cchar *path, ssize *lenp);
 
 /**
     Replace an extension to a path
@@ -5552,7 +5552,7 @@ PUBLIC char*mprReadPathContents(cchar*path, ssize*lenp);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprReplacePathExt(cchar*path, cchar*ext);
+PUBLIC char *mprReplacePathExt(cchar *path, cchar *ext);
 
 /**
     Resolve paths
@@ -5577,7 +5577,7 @@ PUBLIC char*mprReplacePathExt(cchar*path, cchar*ext);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprResolvePath(cchar*base, cchar*path);
+PUBLIC char *mprResolvePath(cchar *base, cchar *path);
 
 /**
     Compare two paths if they are the same
@@ -5589,7 +5589,7 @@ PUBLIC char*mprResolvePath(cchar*base, cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC int mprSamePath(cchar*path1, cchar*path2);
+PUBLIC int mprSamePath(cchar *path1, cchar *path2);
 
 /**
     Compare two paths if they are the same for a given length.
@@ -5603,7 +5603,7 @@ PUBLIC int mprSamePath(cchar*path1, cchar*path2);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC int mprSamePathCount(cchar*path1, cchar*path2, ssize len);
+PUBLIC int mprSamePathCount(cchar *path1, cchar *path2, ssize len);
 
 /*
     Flags for mprSearchPath
@@ -5622,7 +5622,7 @@ PUBLIC int mprSamePathCount(cchar*path1, cchar*path2, ssize len);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprSearchPath(cchar*path, int flags, cchar*search, ...);
+PUBLIC char *mprSearchPath(cchar *path, int flags, cchar *search, ...);
 
 /*
     Flags for mprTransformPath
@@ -5641,7 +5641,7 @@ PUBLIC char*mprSearchPath(cchar*path, int flags, cchar*search, ...);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprTransformPath(cchar*path, int flags);
+PUBLIC char *mprTransformPath(cchar *path, int flags);
 
 /**
     Trim path components from a path
@@ -5652,7 +5652,7 @@ PUBLIC char*mprTransformPath(cchar*path, int flags);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprTrimPathComponents(cchar*path, int count);
+PUBLIC char *mprTrimPathComponents(cchar *path, int count);
 
 /**
     Trim an extension from a path
@@ -5662,7 +5662,7 @@ PUBLIC char*mprTrimPathComponents(cchar*path, int count);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprTrimPathExt(cchar*path);
+PUBLIC char *mprTrimPathExt(cchar *path);
 
 /**
     Trim the drive from a path
@@ -5672,7 +5672,7 @@ PUBLIC char*mprTrimPathExt(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC char*mprTrimPathDrive(cchar*path);
+PUBLIC char *mprTrimPathDrive(cchar *path);
 
 /**
     Create a file and write contents
@@ -5685,12 +5685,12 @@ PUBLIC char*mprTrimPathDrive(cchar*path);
     @ingroup MprPath
     @stability Stable
  */
-PUBLIC ssize mprWritePathContents(cchar*path, cchar*buf, ssize len, int mode);
+PUBLIC ssize mprWritePathContents(cchar *path, cchar *buf, ssize len, int mode);
 
 /*
     Internal - prototype
  */
-PUBLIC bool mprMatchPath(cchar*path, cchar*pattern);
+PUBLIC bool mprMatchPath(cchar *path, cchar *pattern);
 
 /********************************** O/S Dep ***********************************/
 /**
@@ -5722,9 +5722,9 @@ PUBLIC void mprStopOsService(void);
     @stability Internal
  */
 typedef struct MprModuleService {
-    MprList*modules;                    /**< List of defined modules */
-    char*searchPath;                    /**< Module search path to locate modules */
-    MprMutex*mutex;
+    MprList *modules;                    /**< List of defined modules */
+    char *searchPath;                    /**< Module search path to locate modules */
+    MprMutex *mutex;
 } MprModuleService;
 
 
@@ -5734,7 +5734,7 @@ typedef struct MprModuleService {
     @ingroup MprModuleService
     @stability Internal
  */
-PUBLIC MprModuleService*mprCreateModuleService(void);
+PUBLIC MprModuleService *mprCreateModuleService(void);
 
 /**
     Start the module service
@@ -5780,11 +5780,11 @@ typedef int (*MprModuleProc)(struct MprModule *mp);
     @stability Internal
  */
 typedef struct MprModule {
-    char*name;                          /**< Unique module name */
-    char*path;                          /**< Module library filename */
-    char*entry;                         /**< Module library init entry point */
-    void*moduleData;                    /**< Module specific data - not managed unless MPR_MODULE_DATA_MANAGED */
-    void*handle;                        /**< O/S shared library load handle */
+    char *name;                         /**< Unique module name */
+    char *path;                         /**< Module library filename */
+    char *entry;                        /**< Module library init entry point */
+    void *moduleData;                   /**< Module specific data - not managed unless MPR_MODULE_DATA_MANAGED */
+    void *handle;                       /**< O/S shared library load handle */
     MprTime modified;                   /**< When the module file was last modified */
     MprTicks lastActivity;              /**< When the module was last used */
     MprTicks timeout;                   /**< Inactivity unload timeout */
@@ -5802,7 +5802,7 @@ typedef struct MprModule {
     @ingroup MprModule
     @stability Stable
  */
-typedef int (*MprModuleEntry)(void*data, MprModule*mp);
+typedef int (*MprModuleEntry)(void *data, MprModule *mp);
 
 /**
     Create a module
@@ -5820,7 +5820,7 @@ typedef int (*MprModuleEntry)(void*data, MprModule*mp);
     @ingroup MprModule
     @stability Stable
  */
-PUBLIC MprModule*mprCreateModule(cchar*name, cchar*path, cchar*entry, void*data);
+PUBLIC MprModule *mprCreateModule(cchar *name, cchar *path, cchar *entry, void *data);
 
 /**
     Get the module search path
@@ -5831,7 +5831,7 @@ PUBLIC MprModule*mprCreateModule(cchar*name, cchar*path, cchar*entry, void*data)
     @ingroup MprModule
     @stability Stable
  */
-PUBLIC cchar*mprGetModuleSearchPath(void);
+PUBLIC cchar *mprGetModuleSearchPath(void);
 
 /**
     Load a module
@@ -5842,7 +5842,7 @@ PUBLIC cchar*mprGetModuleSearchPath(void);
     @ingroup MprModule
     @stability Stable
  */
-PUBLIC int mprLoadModule(MprModule*mp);
+PUBLIC int mprLoadModule(MprModule *mp);
 
 #if ME_COMPILER_HAS_DYN_LOAD || DOXYGEN
 /**
@@ -5852,7 +5852,7 @@ PUBLIC int mprLoadModule(MprModule*mp);
     @ingroup MprModule
     @stability Stable
  */
-PUBLIC int mprLoadNativeModule(MprModule*mp);
+PUBLIC int mprLoadNativeModule(MprModule *mp);
 
 /**
     Unload a native module
@@ -5862,7 +5862,7 @@ PUBLIC int mprLoadNativeModule(MprModule*mp);
     @ingroup MprModule
     @stability Stable
  */
-PUBLIC int mprUnloadNativeModule(MprModule*mp);
+PUBLIC int mprUnloadNativeModule(MprModule *mp);
 #endif
 
 /**
@@ -5873,7 +5873,7 @@ PUBLIC int mprUnloadNativeModule(MprModule*mp);
     @ingroup MprModule
     @stability Stable
  */
-PUBLIC MprModule*mprLookupModule(cchar*name);
+PUBLIC MprModule *mprLookupModule(cchar *name);
 
 /**
     Lookup a module and return the module data
@@ -5883,7 +5883,7 @@ PUBLIC MprModule*mprLookupModule(cchar*name);
     @ingroup MprModule
     @stability Stable
  */
-PUBLIC void*mprLookupModuleData(cchar*name);
+PUBLIC void *mprLookupModuleData(cchar *name);
 
 /**
     Search for a module on the current module path
@@ -5892,7 +5892,7 @@ PUBLIC void*mprLookupModuleData(cchar*name);
     @ingroup MprModule
     @stability Stable
  */
-PUBLIC char*mprSearchForModule(cchar*module);
+PUBLIC char *mprSearchForModule(cchar *module);
 
 /**
     Define a module finalizer that will be called before a module is stopped
@@ -5901,7 +5901,7 @@ PUBLIC char*mprSearchForModule(cchar*module);
     @ingroup MprModule
     @stability Stable
  */
-PUBLIC void mprSetModuleFinalizer(MprModule*module, MprModuleProc stop);
+PUBLIC void mprSetModuleFinalizer(MprModule *module, MprModuleProc stop);
 
 /**
     Set the module search path
@@ -5911,7 +5911,7 @@ PUBLIC void mprSetModuleFinalizer(MprModule*module, MprModuleProc stop);
     @ingroup MprModule
     @stability Stable
  */
-PUBLIC void mprSetModuleSearchPath(char*searchPath);
+PUBLIC void mprSetModuleSearchPath(char *searchPath);
 
 /**
     Set a module timeout
@@ -5921,7 +5921,7 @@ PUBLIC void mprSetModuleSearchPath(char*searchPath);
     @stability Internal
     @internal
  */
-PUBLIC void mprSetModuleTimeout(MprModule*module, MprTicks timeout);
+PUBLIC void mprSetModuleTimeout(MprModule *module, MprTicks timeout);
 
 /**
     Start a module
@@ -5930,7 +5930,7 @@ PUBLIC void mprSetModuleTimeout(MprModule*module, MprTicks timeout);
     @ingroup MprModule
     @stability Internal
  */
-PUBLIC int mprStartModule(MprModule*mp);
+PUBLIC int mprStartModule(MprModule *mp);
 
 /**
     Stop a module
@@ -5939,7 +5939,7 @@ PUBLIC int mprStartModule(MprModule*mp);
     @ingroup MprModule
     @stability Internal
  */
-PUBLIC int mprStopModule(MprModule*mp);
+PUBLIC int mprStopModule(MprModule *mp);
 
 /**
     Unload a module
@@ -5951,7 +5951,7 @@ PUBLIC int mprStopModule(MprModule*mp);
     @ingroup MprModule
     @stability Internal
  */
-PUBLIC int mprUnloadModule(MprModule*mp);
+PUBLIC int mprUnloadModule(MprModule *mp);
 
 /********************************* Events *************************************/
 /*
@@ -5971,7 +5971,7 @@ PUBLIC int mprUnloadModule(MprModule*mp);
     @ingroup MprEvent
     @stability Stable
  */
-typedef void (*MprEventProc)(void*data, struct MprEvent *event);
+typedef void (*MprEventProc)(void *data, struct MprEvent *event);
 
 /**
     Event object
@@ -5986,12 +5986,12 @@ typedef void (*MprEventProc)(void*data, struct MprEvent *event);
     @stability Internal
  */
 typedef struct MprEvent {
-    cchar*name;                         /**< Static debug name of the event */
+    cchar *name;                        /**< Static debug name of the event */
     MprEventProc proc;                  /**< Callback procedure */
     MprTicks timestamp;                 /**< When was the event created */
     MprTicks due;                       /**< When is the event due */
-    void*data;                          /**< Event private data (managed|unmanged depending on flags) */
-    void*sock;                          /**< Optional socket data */
+    void *data;                         /**< Event private data (managed|unmanged depending on flags) */
+    void *sock;                         /**< Optional socket data */
     int flags;                          /**< Event flags */
     int mask;                           /**< I/O mask of events */
     int hasRun;                         /**< Event has run */
@@ -6000,7 +6000,7 @@ typedef struct MprEvent {
     struct MprEvent *prev;              /**< Previous event linkage */
     struct MprDispatcher *dispatcher;   /**< Event dispatcher service */
     struct MprWaitHandler *handler;     /**< Optional wait handler */
-    MprCond*cond;                       /**< Wait for event to complete */
+    MprCond *cond;                      /**< Wait for event to complete */
 } MprEvent;
 
 /*
@@ -6017,10 +6017,10 @@ typedef struct MprEvent {
     @stability Internal
  */
 typedef struct MprDispatcher {
-    cchar*name;                         /**< Static debug dispatcher name / purpose */
-    MprEvent*eventQ;                    /**< Event queue */
-    MprEvent*currentQ;                  /**< Currently executing event */
-    MprCond*cond;                       /**< Multi-thread sync */
+    cchar *name;                        /**< Static debug dispatcher name / purpose */
+    MprEvent *eventQ;                   /**< Event queue */
+    MprEvent *currentQ;                 /**< Currently executing event */
+    MprCond *cond;                      /**< Multi-thread sync */
     int flags;                          /**< Dispatcher control flags */
     int64 mark;                         /**< Last event sequence mark (may reuse over time) */
     struct MprDispatcher *next;         /**< Next dispatcher linkage */
@@ -6038,11 +6038,11 @@ typedef struct MprDispatcher {
 typedef struct MprEventService {
     MprTicks now;                       /**< Current notion of system time for the dispatcher service */
     MprTicks willAwake;                 /**< When the event service will next awake */
-    MprDispatcher*runQ;                 /**< Queue of running dispatchers */
-    MprDispatcher*readyQ;               /**< Queue of dispatchers with events ready to run */
-    MprDispatcher*waitQ;                /**< Queue of waiting (future) events */
-    MprDispatcher*idleQ;                /**< Queue of idle dispatchers */
-    MprDispatcher*pendingQ;             /**< Queue of pending dispatchers (waiting for resources) */
+    MprDispatcher *runQ;                /**< Queue of running dispatchers */
+    MprDispatcher *readyQ;              /**< Queue of dispatchers with events ready to run */
+    MprDispatcher *waitQ;               /**< Queue of waiting (future) events */
+    MprDispatcher *idleQ;               /**< Queue of idle dispatchers */
+    MprDispatcher *pendingQ;            /**< Queue of pending dispatchers (waiting for resources) */
     MprOsThread serviceThread;          /**< Thread running the dispatcher service */
     MprTicks delay;                     /**< Maximum sleep time before awaking */
     int eventCount;                     /**< Count of events */
@@ -6070,7 +6070,7 @@ PUBLIC void mprClearWaiting(void);
     @ingroup MprDispatcher
     @stability Internal
  */
-PUBLIC MprDispatcher*mprCreateDispatcher(cchar*name, int flags);
+PUBLIC MprDispatcher *mprCreateDispatcher(cchar *name, int flags);
 
 /**
     Disable a dispatcher from service events. This removes the dispatcher from any dispatcher queues and allows
@@ -6079,7 +6079,7 @@ PUBLIC MprDispatcher*mprCreateDispatcher(cchar*name, int flags);
     @ingroup MprDispatcher
     @stability Internal
  */
-PUBLIC void mprDestroyDispatcher(MprDispatcher*dispatcher);
+PUBLIC void mprDestroyDispatcher(MprDispatcher *dispatcher);
 
 /**
     Get the MPR primary dispatcher
@@ -6087,7 +6087,7 @@ PUBLIC void mprDestroyDispatcher(MprDispatcher*dispatcher);
     @ingroup MprDispatcher
     @stability Internal
  */
-PUBLIC MprDispatcher*mprGetDispatcher(void);
+PUBLIC MprDispatcher *mprGetDispatcher(void);
 
 /*
     mprServiceEvents parameters
@@ -6162,7 +6162,7 @@ PUBLIC void mprSuspendThread(MprTicks timeout);
     @ingroup MprDispatcher
     @stability Stable
  */
-PUBLIC int mprWaitForEvent(MprDispatcher*dispatcher, MprTicks timeout, int64 mark);
+PUBLIC int mprWaitForEvent(MprDispatcher *dispatcher, MprTicks timeout, int64 mark);
 
 /**
     Get an event mark for a dispatcher
@@ -6175,7 +6175,7 @@ PUBLIC int mprWaitForEvent(MprDispatcher*dispatcher, MprTicks timeout, int64 mar
     @ingroup MprDispatcher
     @stability Stable
  */
-PUBLIC int64 mprGetEventMark(MprDispatcher*dispatcher);
+PUBLIC int64 mprGetEventMark(MprDispatcher *dispatcher);
 
 /**
     Wake the event service
@@ -6192,7 +6192,7 @@ PUBLIC void mprWakeEventService(void);
     @stability Internal
     @internal
  */
-PUBLIC void mprSignalDispatcher(MprDispatcher*dispatcher);
+PUBLIC void mprSignalDispatcher(MprDispatcher *dispatcher);
 
 /**
     Queue an new event on a dispatcher.
@@ -6242,7 +6242,8 @@ PUBLIC void mprSignalDispatcher(MprDispatcher*dispatcher);
     @ingroup MprEvent
     @stability Stable
  */
-PUBLIC MprEvent*mprCreateEvent(MprDispatcher*dispatcher, cchar*name, MprTicks period, void*proc, void*data, int flags);
+PUBLIC MprEvent *mprCreateEvent(MprDispatcher *dispatcher, cchar *name, MprTicks period, void *proc, void *data,
+                                int flags);
 
 /**
     Optimized variety of mprCreateEvent for use by local MPR threads only
@@ -6256,8 +6257,8 @@ PUBLIC MprEvent*mprCreateEvent(MprDispatcher*dispatcher, cchar*name, MprTicks pe
     @ingroup MprEvent
     @stability Evolving
  */
-PUBLIC MprEvent*mprCreateLocalEvent(MprDispatcher*dispatcher, cchar*name, MprTicks period, void*proc, void*data,
-                                    int flags);
+PUBLIC MprEvent *mprCreateLocalEvent(MprDispatcher *dispatcher, cchar *name, MprTicks period, void *proc, void *data,
+                                     int flags);
 
 /**
     Create and queue an IO event for a wait handler
@@ -6270,7 +6271,7 @@ PUBLIC MprEvent*mprCreateLocalEvent(MprDispatcher*dispatcher, cchar*name, MprTic
     @ingroup MprEvent
     @stability Internal
  */
-PUBLIC void mprCreateIOEvent(MprDispatcher*dispatcher, void*proc, void*data, struct MprWaitHandler *wp,
+PUBLIC void mprCreateIOEvent(MprDispatcher *dispatcher, void *proc, void *data, struct MprWaitHandler *wp,
                              struct MprSocket *sock);
 
 /**
@@ -6287,8 +6288,8 @@ PUBLIC void mprCreateIOEvent(MprDispatcher*dispatcher, void*proc, void*data, str
     @ingroup MprEvent
     @stability Stable
  */
-PUBLIC MprEvent*mprCreateTimerEvent(MprDispatcher*dispatcher, cchar*name, MprTicks period, void*proc, void*data,
-                                    int flags);
+PUBLIC MprEvent *mprCreateTimerEvent(MprDispatcher *dispatcher, cchar *name, MprTicks period, void *proc, void *data,
+                                     int flags);
 
 /*
     Queue a new event for service.
@@ -6298,7 +6299,7 @@ PUBLIC MprEvent*mprCreateTimerEvent(MprDispatcher*dispatcher, cchar*name, MprTic
     @ingroup MprEvent
     @stability Stable
  */
-PUBLIC void mprQueueEvent(MprDispatcher*dispatcher, MprEvent*event);
+PUBLIC void mprQueueEvent(MprDispatcher *dispatcher, MprEvent *event);
 
 /**
     Remove an event
@@ -6307,7 +6308,7 @@ PUBLIC void mprQueueEvent(MprDispatcher*dispatcher, MprEvent*event);
     @ingroup MprEvent
     @stability Stable
  */
-PUBLIC void mprRemoveEvent(MprEvent*event);
+PUBLIC void mprRemoveEvent(MprEvent *event);
 
 /**
     Stop an event
@@ -6316,7 +6317,7 @@ PUBLIC void mprRemoveEvent(MprEvent*event);
     @ingroup MprEvent
     @stability Stable
  */
-PUBLIC void mprStopContinuousEvent(MprEvent*event);
+PUBLIC void mprStopContinuousEvent(MprEvent *event);
 
 /**
     Restart an event
@@ -6326,7 +6327,7 @@ PUBLIC void mprStopContinuousEvent(MprEvent*event);
     @ingroup MprEvent
     @stability Stable
  */
-PUBLIC void mprRestartContinuousEvent(MprEvent*event);
+PUBLIC void mprRestartContinuousEvent(MprEvent *event);
 
 /**
     Enable or disable an event being continous
@@ -6336,7 +6337,7 @@ PUBLIC void mprRestartContinuousEvent(MprEvent*event);
     @ingroup MprEvent
     @stability Stable
  */
-PUBLIC void mprEnableContinuousEvent(MprEvent*event, int enable);
+PUBLIC void mprEnableContinuousEvent(MprEvent *event, int enable);
 
 /**
     Reschedule an event
@@ -6346,7 +6347,7 @@ PUBLIC void mprEnableContinuousEvent(MprEvent*event, int enable);
     @ingroup MprEvent
     @stability Stable
  */
-PUBLIC void mprRescheduleEvent(MprEvent*event, MprTicks period);
+PUBLIC void mprRescheduleEvent(MprEvent *event, MprTicks period);
 
 /**
     Start a dispatcher by setting it on the run queue
@@ -6357,7 +6358,7 @@ PUBLIC void mprRescheduleEvent(MprEvent*event, MprTicks period);
     @stability Stable
     @ingroup MprEvent
  */
-PUBLIC int mprStartDispatcher(MprDispatcher*dispatcher);
+PUBLIC int mprStartDispatcher(MprDispatcher *dispatcher);
 
 /**
     Stop a dispatcher by removing it from the run queue
@@ -6366,25 +6367,25 @@ PUBLIC int mprStartDispatcher(MprDispatcher*dispatcher);
     @stability Stable
     @ingroup MprEvent
  */
-PUBLIC int mprStopDispatcher(MprDispatcher*dispatcher);
+PUBLIC int mprStopDispatcher(MprDispatcher *dispatcher);
 
 /* Internal API */
-PUBLIC MprEvent*mprCreateEventQueue(void);
-PUBLIC MprEventService*mprCreateEventService(void);
-PUBLIC void mprDedicateWorkerToDispatcher(MprDispatcher*dispatcher, struct MprWorker *worker);
-PUBLIC void mprLinkEvent(MprEvent*prior, MprEvent*event);
-PUBLIC void mprUnlinkEvent(MprEvent*event);
-PUBLIC bool mprDispatcherHasEvents(MprDispatcher*dispatcher);
+PUBLIC MprEvent *mprCreateEventQueue(void);
+PUBLIC MprEventService *mprCreateEventService(void);
+PUBLIC void mprDedicateWorkerToDispatcher(MprDispatcher *dispatcher, struct MprWorker *worker);
+PUBLIC void mprLinkEvent(MprEvent *prior, MprEvent *event);
+PUBLIC void mprUnlinkEvent(MprEvent *event);
+PUBLIC bool mprDispatcherHasEvents(MprDispatcher *dispatcher);
 PUBLIC int mprDispatchersAreIdle(void);
-PUBLIC int mprGetEventCount(MprDispatcher*dispatcher);
-PUBLIC MprEvent*mprGetNextEvent(MprDispatcher*dispatcher);
-PUBLIC MprDispatcher*mprGetNonBlockDispatcher(void);
-PUBLIC void mprInitEventQ(MprEvent*q);
-PUBLIC void mprQueueTimerEvent(MprDispatcher*dispatcher, MprEvent*event);
-PUBLIC void mprReleaseWorkerFromDispatcher(MprDispatcher*dispatcher, struct MprWorker *worker);
-PUBLIC void mprScheduleDispatcher(MprDispatcher*dispatcher);
-PUBLIC void mprRescheduleDispatcher(MprDispatcher*dispatcher);
-PUBLIC void mprSetDispatcherImmediate(MprDispatcher*dispatcher);
+PUBLIC int mprGetEventCount(MprDispatcher *dispatcher);
+PUBLIC MprEvent *mprGetNextEvent(MprDispatcher *dispatcher);
+PUBLIC MprDispatcher *mprGetNonBlockDispatcher(void);
+PUBLIC void mprInitEventQ(MprEvent *q);
+PUBLIC void mprQueueTimerEvent(MprDispatcher *dispatcher, MprEvent *event);
+PUBLIC void mprReleaseWorkerFromDispatcher(MprDispatcher *dispatcher, struct MprWorker *worker);
+PUBLIC void mprScheduleDispatcher(MprDispatcher *dispatcher);
+PUBLIC void mprRescheduleDispatcher(MprDispatcher *dispatcher);
+PUBLIC void mprSetDispatcherImmediate(MprDispatcher *dispatcher);
 PUBLIC void mprStopEventService(void);
 PUBLIC void mprWakeDispatchers(void);
 PUBLIC void mprWakePendingDispatchers(void);
@@ -6392,8 +6393,8 @@ PUBLIC void mprWakePendingDispatchers(void);
 /*
     Used in testme scripts
  */
-PUBLIC void mprSignalCompletion(MprDispatcher*dispatcher);
-PUBLIC bool mprWaitForCompletion(MprDispatcher*dispatcher, MprTicks timeout);
+PUBLIC void mprSignalCompletion(MprDispatcher *dispatcher);
+PUBLIC bool mprWaitForCompletion(MprDispatcher *dispatcher, MprTicks timeout);
 
 /*********************************** XML **************************************/
 /*
@@ -6466,13 +6467,13 @@ typedef ssize (*MprXmlInputStream)(struct MprXml *xp, void *arg, char *buf, ssiz
 typedef struct MprXml {
     MprXmlHandler handler;                  /**< Callback function */
     MprXmlInputStream readFn;               /**< Read data function */
-    MprBuf*inBuf;                           /**< Input data queue */
-    MprBuf*tokBuf;                          /**< Parsed token buffer */
+    MprBuf *inBuf;                          /**< Input data queue */
+    MprBuf *tokBuf;                         /**< Parsed token buffer */
     int quoteChar;                          /**< XdbAtt quote char */
     int lineNumber;                         /**< Current line no for debug */
-    void*parseArg;                          /**< Arg passed to mprXmlParse() */
-    void*inputArg;                          /**< Arg for mprXmlSetInputStream() */
-    char*errMsg;                            /**< Error message text */
+    void *parseArg;                         /**< Arg passed to mprXmlParse() */
+    void *inputArg;                         /**< Arg for mprXmlSetInputStream() */
+    char *errMsg;                           /**< Error message text */
 } MprXml;
 
 /**
@@ -6482,7 +6483,7 @@ typedef struct MprXml {
     @ingroup MprXml
     @stability Stable
  */
-PUBLIC cchar*mprXmlGetErrorMsg(MprXml*xp);
+PUBLIC cchar *mprXmlGetErrorMsg(MprXml *xp);
 
 /**
     Get the source XML line number.
@@ -6492,7 +6493,7 @@ PUBLIC cchar*mprXmlGetErrorMsg(MprXml*xp);
     @ingroup MprXml
     @stability Stable
  */
-PUBLIC int mprXmlGetLineNumber(MprXml*xp);
+PUBLIC int mprXmlGetLineNumber(MprXml *xp);
 
 /**
     Get the XML callback argument
@@ -6501,7 +6502,7 @@ PUBLIC int mprXmlGetLineNumber(MprXml*xp);
     @ingroup MprXml
     @stability Stable
  */
-PUBLIC void*mprXmlGetParseArg(MprXml*xp);
+PUBLIC void *mprXmlGetParseArg(MprXml *xp);
 
 /**
     Open an XML parser instance.
@@ -6511,7 +6512,7 @@ PUBLIC void*mprXmlGetParseArg(MprXml*xp);
     @ingroup MprXml
     @stability Stable
  */
-PUBLIC MprXml*mprXmlOpen(ssize initialSize, ssize maxSize);
+PUBLIC MprXml *mprXmlOpen(ssize initialSize, ssize maxSize);
 
 /**
     Run the XML parser
@@ -6520,7 +6521,7 @@ PUBLIC MprXml*mprXmlOpen(ssize initialSize, ssize maxSize);
     @ingroup MprXml
     @stability Stable
  */
-PUBLIC int mprXmlParse(MprXml*xp);
+PUBLIC int mprXmlParse(MprXml *xp);
 
 /**
     Define the XML parser input stream. This
@@ -6531,7 +6532,7 @@ PUBLIC int mprXmlParse(MprXml*xp);
     @ingroup MprXml
     @stability Stable
  */
-PUBLIC void mprXmlSetInputStream(MprXml*xp, MprXmlInputStream fn, void*arg);
+PUBLIC void mprXmlSetInputStream(MprXml *xp, MprXmlInputStream fn, void *arg);
 
 /**
     Set the XML callback argument
@@ -6540,7 +6541,7 @@ PUBLIC void mprXmlSetInputStream(MprXml*xp, MprXmlInputStream fn, void*arg);
     @ingroup MprXml
     @stability Stable
  */
-PUBLIC void mprXmlSetParseArg(MprXml*xp, void*parseArg);
+PUBLIC void mprXmlSetParseArg(MprXml *xp, void *parseArg);
 
 /**
     Set the XML parser data handle
@@ -6549,7 +6550,7 @@ PUBLIC void mprXmlSetParseArg(MprXml*xp, void*parseArg);
     @ingroup MprXml
     @stability Stable
  */
-PUBLIC void mprXmlSetParserHandler(MprXml*xp, MprXmlHandler h);
+PUBLIC void mprXmlSetParserHandler(MprXml *xp, MprXmlHandler h);
 
 /******************************** JSON ****************************************/
 /*
@@ -6593,8 +6594,8 @@ PUBLIC void mprXmlSetParserHandler(MprXml*xp, MprXmlHandler h);
         mprReadJson mprWriteJsonObj mprWriteJson mprWriteJsonObj
  */
 typedef struct MprJson {
-    cchar*name;                         /**< Property name for this object */
-    cchar*value;                        /**< Property value - always strings */
+    cchar *name;                        /**< Property name for this object */
+    cchar *value;                       /**< Property value - always strings */
     int type;                           /**< Property type. Object, Array or value */
     int length;                         /**< Number of child properties */
     struct MprJson *next;               /**< Next sibling */
@@ -6612,7 +6613,7 @@ typedef struct MprJsonCallback {
         Check state callback for JSON deserialization. This function is called at the entry and exit of object levels
         for arrays and objects.
      */
-    int(*checkBlock)(struct MprJsonParser *parser, cchar *name, bool leave);
+    int (*checkBlock)(struct MprJsonParser *parser, cchar *name, bool leave);
 
     /**
         MakeObject callback for JSON deserialization. This function is called to construct an object for each level
@@ -6623,17 +6624,17 @@ typedef struct MprJsonCallback {
     /**
         Handle a parse error. This function is called from mprSetJsonError to handle error reporting.
      */
-    void(*parseError)(struct MprJsonParser *parser, cchar *msg);
+    void (*parseError)(struct MprJsonParser *parser, cchar *msg);
 
     /**
         Set a property value in an object.
      */
-    int(*setValue)(struct MprJsonParser *parser, MprJson *obj, cchar *name, MprJson *child);
+    int (*setValue)(struct MprJsonParser *parser, MprJson *obj, cchar *name, MprJson *child);
 
     /**
         Pattern matching callback
      */
-    bool(*match)(struct MprJsonParser *parser, cchar *str, cchar *pattern);
+    bool (*match)(struct MprJsonParser *parser, cchar *str, cchar *pattern);
 } MprJsonCallback;
 
 
@@ -6643,13 +6644,13 @@ typedef struct MprJsonCallback {
     @stability Internal
  */
 typedef struct MprJsonParser {
-    cchar*input;                        /* Current input (unmanaged) */
-    cchar*token;                        /* Current parse token */
-    cchar*putback;                      /* Putback parse token */
-    cchar*errorMsg;                     /* Parse error message */
-    void*data;                          /* Custom data handle (unmanaged) */
-    cchar*path;                         /* Optional JSON filename */
-    MprBuf*buf;                         /* Token buffer */
+    cchar *input;                       /* Current input (unmanaged) */
+    cchar *token;                       /* Current parse token */
+    cchar *putback;                     /* Putback parse token */
+    cchar *errorMsg;                    /* Parse error message */
+    void *data;                         /* Custom data handle (unmanaged) */
+    cchar *path;                        /* Optional JSON filename */
+    MprBuf *buf;                        /* Token buffer */
     MprJsonCallback callback;           /* JSON parser callbacks */
     int tokid;                          /* Current tokend ID */
     int type;                           /* Extra type information */
@@ -6690,7 +6691,7 @@ typedef struct MprJsonParser {
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC int mprBlendJson(MprJson*dest, MprJson*src, int flags);
+PUBLIC int mprBlendJson(MprJson *dest, MprJson *src, int flags);
 
 /**
     Clone a JSON object
@@ -6699,7 +6700,7 @@ PUBLIC int mprBlendJson(MprJson*dest, MprJson*src, int flags);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprJson*mprCloneJson(MprJson*obj);
+PUBLIC MprJson *mprCloneJson(MprJson *obj);
 
 /**
     Create a JSON object
@@ -6711,7 +6712,7 @@ PUBLIC MprJson*mprCloneJson(MprJson*obj);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprJson*mprCreateJson(int type);
+PUBLIC MprJson *mprCreateJson(int type);
 
 /**
     Create a JSON object value
@@ -6724,7 +6725,7 @@ PUBLIC MprJson*mprCreateJson(int type);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprJson*mprCreateJsonValue(cchar*value, int type);
+PUBLIC MprJson *mprCreateJsonValue(cchar *value, int type);
 
 /**
     Deserialize a simple JSON string and return a hash of properties
@@ -6733,7 +6734,7 @@ PUBLIC MprJson*mprCreateJsonValue(cchar*value, int type);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprHash*mprDeserialize(cchar*str);
+PUBLIC MprHash *mprDeserialize(cchar *str);
 
 /**
     Deserialize a simple JSON string into the given hash object
@@ -6743,7 +6744,7 @@ PUBLIC MprHash*mprDeserialize(cchar*str);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprHash*mprDeserializeInto(cchar*str, MprHash*hash);
+PUBLIC MprHash *mprDeserializeInto(cchar *str, MprHash *hash);
 
 /**
     Format a JSON name into and output buffer. This handles quotes and backquotes.
@@ -6753,7 +6754,7 @@ PUBLIC MprHash*mprDeserializeInto(cchar*str, MprHash*hash);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC void mprFormatJsonName(MprBuf*buf, cchar*name, int flags);
+PUBLIC void mprFormatJsonName(MprBuf *buf, cchar *name, int flags);
 
 /**
     Format a string as a JSON string. This handles quotes and backquotes.
@@ -6762,7 +6763,7 @@ PUBLIC void mprFormatJsonName(MprBuf*buf, cchar*name, int flags);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC void mprFormatJsonString(MprBuf*buf, cchar*value);
+PUBLIC void mprFormatJsonString(MprBuf *buf, cchar *value);
 
 /**
     Format a value as a simple JSON string. This converts any JSON value to a string representation.
@@ -6773,7 +6774,7 @@ PUBLIC void mprFormatJsonString(MprBuf*buf, cchar*value);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC void mprFormatJsonValue(MprBuf*buf, int type, cchar*value, int flags);
+PUBLIC void mprFormatJsonValue(MprBuf *buf, int type, cchar *value, int flags);
 
 /**
     Get a parsed JSON object for a key value
@@ -6784,7 +6785,7 @@ PUBLIC void mprFormatJsonValue(MprBuf*buf, int type, cchar*value, int flags);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprJson*mprGetJsonObj(MprJson*obj, cchar*key);
+PUBLIC MprJson *mprGetJsonObj(MprJson *obj, cchar *key);
 
 /**
     Get a JSON key and return a string value.
@@ -6801,7 +6802,7 @@ PUBLIC MprJson*mprGetJsonObj(MprJson*obj, cchar*key);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC cchar*mprGetJson(MprJson*obj, cchar*key);
+PUBLIC cchar *mprGetJson(MprJson *obj, cchar *key);
 
 /**
     Get the number of child properties in a JSON object
@@ -6810,7 +6811,7 @@ PUBLIC cchar*mprGetJson(MprJson*obj, cchar*key);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC ssize mprGetJsonLength(MprJson*obj);
+PUBLIC ssize mprGetJsonLength(MprJson *obj);
 
 /**
     Convert a hash object into a JSON object
@@ -6819,7 +6820,7 @@ PUBLIC ssize mprGetJsonLength(MprJson*obj);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprJson*mprHashToJson(MprHash*hash);
+PUBLIC MprJson *mprHashToJson(MprHash *hash);
 
 /**
     Convert a JSON object to a string of environment variables
@@ -6830,7 +6831,7 @@ PUBLIC MprJson*mprHashToJson(MprHash*hash);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprList*mprJsonToEnv(MprJson*json, cchar*prefix, MprList*list);
+PUBLIC MprList *mprJsonToEnv(MprJson *json, cchar *prefix, MprList *list);
 
 /**
     Convert a JSON object into a Hash object
@@ -6839,7 +6840,7 @@ PUBLIC MprList*mprJsonToEnv(MprJson*json, cchar*prefix, MprList*list);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprHash*mprJsonToHash(MprJson*json);
+PUBLIC MprHash *mprJsonToHash(MprJson *json);
 
 /**
     Serialize a JSON object into a string
@@ -6852,7 +6853,7 @@ PUBLIC MprHash*mprJsonToHash(MprJson*json);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC char*mprJsonToString(MprJson*obj, int flags);
+PUBLIC char *mprJsonToString(MprJson *obj, int flags);
 
 /**
     Load a JSON object from a filename
@@ -6861,7 +6862,7 @@ PUBLIC char*mprJsonToString(MprJson*obj, int flags);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprJson*mprLoadJson(cchar*path);
+PUBLIC MprJson *mprLoadJson(cchar *path);
 
 /**
     Trace the JSON object to the debug log
@@ -6871,7 +6872,7 @@ PUBLIC MprJson*mprLoadJson(cchar*path);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC void mprLogJson(int level, MprJson*obj, cchar*fmt, ...) PRINTF_ATTRIBUTE(3, 4);
+PUBLIC void mprLogJson(int level, MprJson *obj, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 
 /**
     Parse a JSON string into an object tree.
@@ -6882,7 +6883,7 @@ PUBLIC void mprLogJson(int level, MprJson*obj, cchar*fmt, ...) PRINTF_ATTRIBUTE(
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprJson*mprParseJson(cchar*str);
+PUBLIC MprJson *mprParseJson(cchar *str);
 
 /**
     Extended JSON parsing from a JSON string into an object tree.
@@ -6900,7 +6901,7 @@ PUBLIC MprJson*mprParseJson(cchar*str);
     @stability Internal
     @internal
  */
-PUBLIC MprJson*mprParseJsonEx(cchar*str, MprJsonCallback*callback, void*data, MprJson*obj, cchar**errorMsg);
+PUBLIC MprJson *mprParseJsonEx(cchar *str, MprJsonCallback *callback, void *data, MprJson *obj, cchar **errorMsg);
 
 /**
     Parse a JSON string into an existing object
@@ -6912,7 +6913,7 @@ PUBLIC MprJson*mprParseJsonEx(cchar*str, MprJsonCallback*callback, void*data, Mp
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprJson*mprParseJsonInto(cchar*str, MprJson*obj);
+PUBLIC MprJson *mprParseJsonInto(cchar *str, MprJson *obj);
 
 /**
     Query a JSON object for a property key path and execute the given command.
@@ -6966,7 +6967,7 @@ PUBLIC MprJson*mprParseJsonInto(cchar*str, MprJson*obj);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprJson*mprQueryJson(MprJson*obj, cchar*key, cchar*value, int type);
+PUBLIC MprJson *mprQueryJson(MprJson *obj, cchar *key, cchar *value, int type);
 
 /**
     Read a JSON object
@@ -6981,7 +6982,7 @@ PUBLIC MprJson*mprQueryJson(MprJson*obj, cchar*key, cchar*value, int type);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprJson*mprReadJsonObj(MprJson*obj, cchar*name);
+PUBLIC MprJson *mprReadJsonObj(MprJson *obj, cchar *name);
 
 /**
     Read a JSON property
@@ -6995,7 +6996,7 @@ PUBLIC MprJson*mprReadJsonObj(MprJson*obj, cchar*name);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC cchar*mprReadJson(MprJson*obj, cchar*name);
+PUBLIC cchar *mprReadJson(MprJson *obj, cchar *name);
 
 /**
     Read a JSON object by value
@@ -7008,7 +7009,7 @@ PUBLIC cchar*mprReadJson(MprJson*obj, cchar*name);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprJson*mprReadJsonValue(MprJson*obj, cchar*value);
+PUBLIC MprJson *mprReadJsonValue(MprJson *obj, cchar *value);
 
 /**
     Remove a property from a JSON object
@@ -7020,7 +7021,7 @@ PUBLIC MprJson*mprReadJsonValue(MprJson*obj, cchar*value);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprJson*mprRemoveJson(MprJson*obj, cchar*key);
+PUBLIC MprJson *mprRemoveJson(MprJson *obj, cchar *key);
 
 /**
     Remove a child from a JSON object
@@ -7031,7 +7032,7 @@ PUBLIC MprJson*mprRemoveJson(MprJson*obj, cchar*key);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC MprJson*mprRemoveJsonChild(MprJson*obj, MprJson*child);
+PUBLIC MprJson *mprRemoveJsonChild(MprJson *obj, MprJson *child);
 
 /**
     Save a JSON object to a filename
@@ -7042,7 +7043,7 @@ PUBLIC MprJson*mprRemoveJsonChild(MprJson*obj, MprJson*child);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC int mprSaveJson(MprJson*obj, cchar*path, int flags);
+PUBLIC int mprSaveJson(MprJson *obj, cchar *path, int flags);
 
 /**
     Serialize a hash of properties as a JSON string
@@ -7054,7 +7055,7 @@ PUBLIC int mprSaveJson(MprJson*obj, cchar*path, int flags);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC char*mprSerialize(MprHash*hash, int flags);
+PUBLIC char *mprSerialize(MprHash *hash, int flags);
 
 /**
     Signal a parse error in the JSON input stream.
@@ -7067,7 +7068,7 @@ PUBLIC char*mprSerialize(MprHash*hash, int flags);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC void mprSetJsonError(MprJsonParser*jp, cchar*fmt, ...) PRINTF_ATTRIBUTE(2, 3);
+PUBLIC void mprSetJsonError(MprJsonParser *jp, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Update a property in a JSON object
@@ -7080,7 +7081,7 @@ PUBLIC void mprSetJsonError(MprJsonParser*jp, cchar*fmt, ...) PRINTF_ATTRIBUTE(2
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC int mprSetJsonObj(MprJson*obj, cchar*key, MprJson*value);
+PUBLIC int mprSetJsonObj(MprJson *obj, cchar *key, MprJson *value);
 
 /**
     Update a key/value in the JSON object with a string value
@@ -7096,7 +7097,7 @@ PUBLIC int mprSetJsonObj(MprJson*obj, cchar*key, MprJson*value);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC int mprSetJson(MprJson*obj, cchar*key, cchar*value, int type);
+PUBLIC int mprSetJson(MprJson *obj, cchar *key, cchar *value, int type);
 
 /**
     Write a property in a JSON object
@@ -7108,7 +7109,7 @@ PUBLIC int mprSetJson(MprJson*obj, cchar*key, cchar*value, int type);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC int mprWriteJsonObj(MprJson*obj, cchar*key, MprJson*value);
+PUBLIC int mprWriteJsonObj(MprJson *obj, cchar *key, MprJson *value);
 
 /**
     Write a key/value in the JSON object with a string value
@@ -7122,7 +7123,7 @@ PUBLIC int mprWriteJsonObj(MprJson*obj, cchar*key, MprJson*value);
     @ingroup MprJson
     @stability Stable
  */
-PUBLIC int mprWriteJson(MprJson*obj, cchar*key, cchar*value, int type);
+PUBLIC int mprWriteJson(MprJson *obj, cchar *key, cchar *value, int type);
 
 /********************************* Threads ************************************/
 /**
@@ -7131,10 +7132,10 @@ PUBLIC int mprWriteJson(MprJson*obj, cchar*key, cchar*value, int type);
     @stability Internal
  */
 typedef struct MprThreadService {
-    MprList*threads;                        /**< List of all threads */
+    MprList *threads;                       /**< List of all threads */
     struct MprThread *mainThread;           /**< Main application thread */
     struct MprThread *eventsThread;         /**< Event service thread */
-    MprCond*pauseThreads;                   /**< Waiting for threads to yield */
+    MprCond *pauseThreads;                  /**< Waiting for threads to yield */
     ssize stackSize;                        /**< Default thread stack size */
 } MprThreadService;
 
@@ -7145,12 +7146,12 @@ typedef struct MprThreadService {
     @ingroup MprThread
     @stability Stable
  */
-typedef void (*MprThreadProc)(void*arg, struct MprThread *tp);
+typedef void (*MprThreadProc)(void *arg, struct MprThread *tp);
 
 /*
     Internal
  */
-PUBLIC MprThreadService*mprCreateThreadService(void);
+PUBLIC MprThreadService *mprCreateThreadService(void);
 PUBLIC void mprStopThreadService(void);
 
 /**
@@ -7170,15 +7171,15 @@ typedef struct MprThread {
     HWND hwnd;                          /**< Window handle */
 #endif
     MprThreadProc entry;                /**< Users thread entry point */
-    MprMutex*mutex;                     /**< Multi-thread locking */
-    MprCond*cond;                       /**< Multi-thread synchronization */
-    void*data;                          /**< Data argument (managed) */
-    char*name;                          /**< Name of thead for trace */
+    MprMutex *mutex;                    /**< Multi-thread locking */
+    MprCond *cond;                      /**< Multi-thread synchronization */
+    void *data;                         /**< Data argument (managed) */
+    char *name;                         /**< Name of thead for trace */
     ulong pid;                          /**< Owning process id */
     int priority;                       /**< Current priority */
     ssize stackSize;                    /**< Only VxWorks implements */
 #if ME_MPR_ALLOC_STACK
-    void*stackBase;                     /**< Base of stack (approx) */
+    void *stackBase;                    /**< Base of stack (approx) */
     int peakStack;                      /**< Peak stack usage */
 #endif
     bool isWorker;                      /**< Is a worker thread */
@@ -7205,7 +7206,7 @@ typedef struct MprThreadLocal {
 #elif ME_WIN_LIKE
     DWORD key;
 #else
-    MprHash*store;                      /**< Thread local data store */
+    MprHash *store;                     /**< Thread local data store */
 #endif
 } MprThreadLocal;
 
@@ -7223,7 +7224,7 @@ typedef struct MprThreadLocal {
     @ingroup MprThread
     @stability Stable
  */
-PUBLIC MprThread*mprCreateThread(cchar*name, void*proc, void*data, ssize stackSize);
+PUBLIC MprThread *mprCreateThread(cchar *name, void *proc, void *data, ssize stackSize);
 
 /**
     Get the O/S thread
@@ -7242,14 +7243,14 @@ PUBLIC MprOsThread mprGetCurrentOsThread(void);
     @ingroup MprThread
     @stability Stable
  */
-PUBLIC MprThread*mprGetCurrentThread(void);
+PUBLIC MprThread *mprGetCurrentThread(void);
 
 /**
     Return the name of the current thread
     @return a static thread name.
     @stability Stable
  */
-PUBLIC cchar*mprGetCurrentThreadName(void);
+PUBLIC cchar *mprGetCurrentThreadName(void);
 
 /**
     Get the thread name.
@@ -7260,7 +7261,7 @@ PUBLIC cchar*mprGetCurrentThreadName(void);
     @ingroup MprThread
     @stability Stable
  */
-PUBLIC cchar*mprGetThreadName(MprThread*thread);
+PUBLIC cchar *mprGetThreadName(MprThread *thread);
 
 /**
     Set whether a thread can yield for GC
@@ -7269,7 +7270,7 @@ PUBLIC cchar*mprGetThreadName(MprThread*thread);
     @ingroup MprThread
     @stability Stable
  */
-PUBLIC bool mprSetThreadYield(MprThread*tp, bool on);
+PUBLIC bool mprSetThreadYield(MprThread *tp, bool on);
 
 /**
     Start a thread
@@ -7280,7 +7281,7 @@ PUBLIC bool mprSetThreadYield(MprThread*tp, bool on);
     @ingroup MprThread
     @stability Stable
  */
-PUBLIC int mprStartThread(MprThread*thread);
+PUBLIC int mprStartThread(MprThread *thread);
 
 /**
     Start an O/S thread
@@ -7293,7 +7294,7 @@ PUBLIC int mprStartThread(MprThread*thread);
     @ingroup MprThread
     @stability Stable
  */
-PUBLIC int mprStartOsThread(cchar*name, void*proc, void*data, MprThread*tp);
+PUBLIC int mprStartOsThread(cchar *name, void *proc, void *data, MprThread *tp);
 
 #define MPR_YIELD_DEFAULT  0x0      /**< mprYield flag if GC is required, yield and wait for mark phase to coplete,
                                          otherwise return without blocking.*/
@@ -7351,9 +7352,9 @@ PUBLIC void mprResetYield(void);
 PUBLIC int mprMapMprPriorityToOs(int mprPriority);
 PUBLIC int mprMapOsPriorityToMpr(int nativePriority);
 PUBLIC void mprSetThreadStackSize(ssize size);
-PUBLIC int mprSetThreadData(MprThreadLocal*tls, void*value);
-PUBLIC void*mprGetThreadData(MprThreadLocal*tls);
-PUBLIC MprThreadLocal*mprCreateThreadLocal(void);
+PUBLIC int mprSetThreadData(MprThreadLocal *tls, void *value);
+PUBLIC void *mprGetThreadData(MprThreadLocal *tls);
+PUBLIC MprThreadLocal *mprCreateThreadLocal(void);
 
 /******************************** I/O Wait ************************************/
 
@@ -7373,10 +7374,10 @@ typedef long (*MprMsgCallback)(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
     @stability Internal
  */
 typedef struct MprWaitService {
-    MprList*handlers;                       /* List of handlers */
+    MprList *handlers;                      /* List of handlers */
     int needRecall;                         /* A handler needs a recall due to buffered data */
     int wakeRequested;                      /* Wakeup of the wait service has been requested */
-    MprList*handlerMap;                     /* Map of fds to handlers */
+    MprList *handlerMap;                    /* Map of fds to handlers */
 #if ME_EVENT_NOTIFIER == MPR_EVENT_ASYNC
     ATOM wclass;                            /* Window class */
     HWND hwnd;                              /* Window handle */
@@ -7396,39 +7397,39 @@ typedef struct MprWaitService {
     int breakFd[2];                         /* Socket to wakeup select in [0] */
     struct sockaddr_in breakAddress;        /* Address of wakeup socket */
 #endif /* EVENT_SELECT || MPR_EVENT_SELECT_PIPE */
-    MprMutex*mutex;                         /* General multi-thread sync */
-    MprSpin*spin;                           /* Fast short locking */
+    MprMutex *mutex;                        /* General multi-thread sync */
+    MprSpin *spin;                          /* Fast short locking */
 } MprWaitService;
 
 /*
     Internal
  */
-PUBLIC MprWaitService*mprCreateWaitService(void);
-PUBLIC void mprTermOsWait(MprWaitService*ws);
+PUBLIC MprWaitService *mprCreateWaitService(void);
+PUBLIC void mprTermOsWait(MprWaitService *ws);
 PUBLIC void mprStopWaitService(void);
-PUBLIC void mprSetWaitServiceThread(MprWaitService*ws, MprThread*thread);
+PUBLIC void mprSetWaitServiceThread(MprWaitService *ws, MprThread *thread);
 PUBLIC void mprWakeNotifier(void);
 #if MPR_EVENT_ASYNC
-PUBLIC void mprManageAsync(MprWaitService*ws, int flags);
+PUBLIC void mprManageAsync(MprWaitService *ws, int flags);
 #endif
 #if MPR_EVENT_EPOLL
-PUBLIC void mprManageEpoll(MprWaitService*ws, int flags);
+PUBLIC void mprManageEpoll(MprWaitService *ws, int flags);
 #endif
 #if MPR_EVENT_KQUEUE
-PUBLIC void mprManageKqueue(MprWaitService*ws, int flags);
+PUBLIC void mprManageKqueue(MprWaitService *ws, int flags);
 #endif
 #if MPR_EVENT_SELECT
-PUBLIC void mprManageSelect(MprWaitService*ws, int flags);
+PUBLIC void mprManageSelect(MprWaitService *ws, int flags);
 #endif
 #if ME_WIN_LIKE
 PUBLIC void mprSetWinMsgCallback(MprMsgCallback callback);
-PUBLIC void mprServiceWinIO(MprWaitService*ws, int sockFd, int winMask);
-PUBLIC HWND mprCreateWindow(MprThread*tp);
-PUBLIC ATOM mprCreateWindowClass(cchar*name);
+PUBLIC void mprServiceWinIO(MprWaitService *ws, int sockFd, int winMask);
+PUBLIC HWND mprCreateWindow(MprThread *tp);
+PUBLIC ATOM mprCreateWindowClass(cchar *name);
 PUBLIC void mprDestroyWindow(HWND hwnd);
 PUBLIC void mprDestroyWindowClass(ATOM wclass);
-PUBLIC HWND mprGetWindow(bool*created);
-PUBLIC HWND mprSetWindowsThread(MprThread*tp);
+PUBLIC HWND mprGetWindow(bool *created);
+PUBLIC HWND mprSetWindowsThread(MprThread *tp);
 #else
     #define mprSetWindowsThread(tp)
 #endif
@@ -7443,7 +7444,7 @@ PUBLIC HWND mprSetWindowsThread(MprThread*tp);
     @ingroup MprWaitHandler
     @stability Stable
  */
-PUBLIC void mprWaitForIO(MprWaitService*ws, MprTicks timeout);
+PUBLIC void mprWaitForIO(MprWaitService *ws, MprTicks timeout);
 
 /**
     Wait for I/O on a file descriptor. No processing of the I/O event is done.
@@ -7480,13 +7481,13 @@ typedef struct MprWaitHandler {
     int fd;                             /**< O/S File descriptor (sp->sock) */
     int notifierIndex;                  /**< Index for notifier */
     int flags;                          /**< Control flags */
-    void*handlerData;                   /**< Argument to pass to proc - managed reference */
-    MprWaitService*service;             /**< Wait service pointer */
-    MprDispatcher*dispatcher;           /**< Event dispatcher to use for I/O events */
+    void *handlerData;                  /**< Argument to pass to proc - managed reference */
+    MprWaitService *service;            /**< Wait service pointer */
+    MprDispatcher *dispatcher;          /**< Event dispatcher to use for I/O events */
     MprEventProc proc;                  /**< Callback event procedure */
     struct MprWorker *requiredWorker;   /**< Designate the required worker thread to run the callback */
     struct MprThread *thread;           /**< Thread executing the callback, set even if worker is null */
-    MprCond*callbackComplete;           /**< Signalled when a callback is complete */
+    MprCond *callbackComplete;          /**< Signalled when a callback is complete */
 } MprWaitHandler;
 
 
@@ -7504,7 +7505,8 @@ typedef struct MprWaitHandler {
     @ingroup MprWaitHandler
     @stability Stable
  */
-PUBLIC MprWaitHandler*mprCreateWaitHandler(int fd, int mask, MprDispatcher*dispatcher, void*proc, void*data, int flags);
+PUBLIC MprWaitHandler *mprCreateWaitHandler(int fd, int mask, MprDispatcher *dispatcher, void *proc, void *data,
+                                            int flags);
 
 /**
     Destroy a wait handler
@@ -7512,7 +7514,7 @@ PUBLIC MprWaitHandler*mprCreateWaitHandler(int fd, int mask, MprDispatcher*dispa
     @ingroup MprWaitHandler
     @stability Stable
  */
-PUBLIC void mprDestroyWaitHandler(MprWaitHandler*wp);
+PUBLIC void mprDestroyWaitHandler(MprWaitHandler *wp);
 
 /**
     Remove a wait handler from the wait service
@@ -7520,14 +7522,14 @@ PUBLIC void mprDestroyWaitHandler(MprWaitHandler*wp);
     @ingroup MprWaitHandler
     @stability Stable
  */
-PUBLIC void mprRemoveWaitHandler(MprWaitHandler*wp);
+PUBLIC void mprRemoveWaitHandler(MprWaitHandler *wp);
 
 /**
     Queue an IO event for dispatch on the wait handler dispatcher
     @param wp Wait handler created via mprCreateWaitHandler
     @stability Stable
  */
-PUBLIC void mprQueueIOEvent(MprWaitHandler*wp);
+PUBLIC void mprQueueIOEvent(MprWaitHandler *wp);
 
 /**
     Recall a wait handler
@@ -7537,7 +7539,7 @@ PUBLIC void mprQueueIOEvent(MprWaitHandler*wp);
     @ingroup MprWaitHandler
     @stability Stable
  */
-PUBLIC void mprRecallWaitHandler(MprWaitHandler*wp);
+PUBLIC void mprRecallWaitHandler(MprWaitHandler *wp);
 
 /**
     Recall a wait handler by fd
@@ -7557,12 +7559,12 @@ PUBLIC void mprRecallWaitHandlerByFd(Socket fd);
     @ingroup MprWaitHandler
     @stability Stable
  */
-PUBLIC void mprWaitOn(MprWaitHandler*wp, int desiredMask);
+PUBLIC void mprWaitOn(MprWaitHandler *wp, int desiredMask);
 
 /*
    Internal
  */
-PUBLIC int mprDoWaitRecall(MprWaitService*ws);
+PUBLIC int mprDoWaitRecall(MprWaitService *ws);
 
 /******************************* Notification *********************************/
 /**
@@ -7570,7 +7572,7 @@ PUBLIC int mprDoWaitRecall(MprWaitService*ws);
     @ingroup MprWaitHandler
     @stability Internal
  */
-PUBLIC int mprCreateNotifierService(MprWaitService*ws);
+PUBLIC int mprCreateNotifierService(MprWaitService *ws);
 
 /**
     Begin I/O notification services on a wait handler
@@ -7580,7 +7582,7 @@ PUBLIC int mprCreateNotifierService(MprWaitService*ws);
     @ingroup MprWaithHandler
     @stability Internal
  */
-PUBLIC int mprNotifyOn(MprWaitHandler*wp, int mask);
+PUBLIC int mprNotifyOn(MprWaitHandler *wp, int mask);
 
 /********************************** Sockets ***********************************/
 /**
@@ -7588,7 +7590,7 @@ PUBLIC int mprNotifyOn(MprWaitHandler*wp, int mask);
     @ingroup MprSocket
     @stability Stable
  */
-typedef int (*MprSocketProc)(void*data, int mask);
+typedef int (*MprSocketProc)(void *data, int mask);
 
 /**
     Socket service provider interface.
@@ -7596,9 +7598,9 @@ typedef int (*MprSocketProc)(void*data, int mask);
     @stability Internal
  */
 typedef struct MprSocketProvider {
-    char*name;                                  /**< Socket provider name */
-    void*data;                                  /**< Socket provider private data (unmanaged) */
-    void*managed;                               /**< Socket provider private data managed */
+    char *name;                                  /**< Socket provider name */
+    void *data;                                  /**< Socket provider private data (unmanaged) */
+    void *managed;                               /**< Socket provider private data managed */
 
     /**
         Close a socket
@@ -7609,7 +7611,7 @@ typedef struct MprSocketProvider {
         @param graceful Set to true to do a graceful close. Otherwise, an abortive close will be performed.
         @stability Stable
      */
-    void(*closeSocket)(struct MprSocket *socket, bool graceful);
+    void (*closeSocket)(struct MprSocket *socket, bool graceful);
 
     /**
         Disconnect a socket by closing its underlying file descriptor.
@@ -7617,7 +7619,7 @@ typedef struct MprSocketProvider {
         @param socket Socket object
         @stability Stable
      */
-    void(*disconnectSocket)(struct MprSocket *socket);
+    void (*disconnectSocket)(struct MprSocket *socket);
 
     /**
         Flush a socket
@@ -7627,7 +7629,7 @@ typedef struct MprSocketProvider {
         @return A count of bytes actually written. Return a negative MPR error code on errors.
         @stability Stable
      */
-    ssize(*flushSocket)(struct MprSocket *socket);
+    ssize (*flushSocket)(struct MprSocket *socket);
 
     /**
         Preload SSL configuration
@@ -7636,7 +7638,7 @@ typedef struct MprSocketProvider {
         @return Zero if successful, otherwise a negative MPR error code.
         @stability Stable
      */
-    int(*preload)(struct MprSsl *ssl, int flags);
+    int (*preload)(struct MprSsl *ssl, int flags);
 
     /**
         Read from a socket
@@ -7651,7 +7653,7 @@ typedef struct MprSocketProvider {
             distinguision between EOF and errors.
         @stability Stable
      */
-    ssize(*readSocket)(struct MprSocket *socket, void *buf, ssize size);
+    ssize (*readSocket)(struct MprSocket *socket, void *buf, ssize size);
 
     /**
         Write to a socket
@@ -7664,7 +7666,7 @@ typedef struct MprSocketProvider {
         @return A count of bytes actually written. Return a negative MPR error code on errors.
         @stability Stable
      */
-    ssize(*writeSocket)(struct MprSocket *socket, cvoid *buf, ssize size);
+    ssize (*writeSocket)(struct MprSocket *socket, cvoid *buf, ssize size);
 
     /**
         Upgrade a socket to use SSL/TLS
@@ -7674,7 +7676,7 @@ typedef struct MprSocketProvider {
         @return Zero if successful, otherwise a negative MPR error code.
         @stability Stable
      */
-    int(*upgradeSocket)(struct MprSocket *socket, struct MprSsl *ssl, cchar *peerName);
+    int (*upgradeSocket)(struct MprSocket *socket, struct MprSsl *ssl, cchar *peerName);
 
     /**
         Get the socket state
@@ -7700,10 +7702,10 @@ typedef int (*MprSocketPrebind)(struct MprSocket *sock);
     @stability Internal
  */
 typedef struct MprSocketService {
-    MprSocketProvider*standardProvider;         /**< Socket provider for non-SSL connections */
-    MprSocketProvider*sslProvider;              /**< Socket provider for SSL connections */
+    MprSocketProvider *standardProvider;        /**< Socket provider for non-SSL connections */
+    MprSocketProvider *sslProvider;             /**< Socket provider for SSL connections */
     MprSocketPrebind prebind;                   /**< Prebind callback */
-    MprMutex*mutex;                             /**< Multithread locking */
+    MprMutex *mutex;                            /**< Multithread locking */
     int maxAccept;                              /**< Maximum number of accepted client socket connections */
     int numAccept;                              /**< Count of client socket connections */
     int hasIPv6;                                /**< System has supoprt for IPv6 */
@@ -7717,7 +7719,7 @@ typedef int Socklen;
 /*
     Internal
  */
-PUBLIC MprSocketService*mprCreateSocketService(void);
+PUBLIC MprSocketService *mprCreateSocketService(void);
 
 /**
     Determine if SSL is available
@@ -7801,28 +7803,28 @@ PUBLIC void mprSetSocketPrebindCallback(MprSocketPrebind callback);
     @stability Internal
  */
 typedef struct MprSocket {
-    MprSocketService*service;             /**< Socket service */
-    MprWaitHandler*handler;               /**< Wait handler */
-    char*acceptIp;                        /**< Server address that accepted a new connection (actual interface) */
-    char*ip;                              /**< Server listen address or remote client address */
-    char*errorMsg;                        /**< Connection related error messages */
+    MprSocketService *service;            /**< Socket service */
+    MprWaitHandler *handler;              /**< Wait handler */
+    char *acceptIp;                       /**< Server address that accepted a new connection (actual interface) */
+    char *ip;                             /**< Server listen address or remote client address */
+    char *errorMsg;                       /**< Connection related error messages */
     int acceptPort;                       /**< Server port doing the listening */
     int port;                             /**< Port to listen or connect on */
     Socket fd;                            /**< Actual socket file handle */
     int flags;                            /**< Current state flags */
-    MprSocketProvider*provider;           /**< Socket implementation provider */
+    MprSocketProvider *provider;          /**< Socket implementation provider */
     struct MprSocket *listenSock;         /**< Listening socket */
-    void*sslSocket;                       /**< Extended SSL socket state */
+    void *sslSocket;                      /**< Extended SSL socket state */
     struct MprSsl *ssl;                   /**< Selected SSL configuration */
-    cchar*protocol;                       /**< Selected SSL protocol */
-    cchar*cipher;                         /**< Selected SSL cipher */
-    cchar*session;                        /**< SSL session ID (dependent on SSL provider) */
-    cchar*peerName;                       /**< Peer common SSL name */
-    cchar*peerCert;                       /**< Peer SSL certificate */
-    cchar*peerCertIssuer;                 /**< Issuer of peer certificate */
+    cchar *protocol;                      /**< Selected SSL protocol */
+    cchar *cipher;                        /**< Selected SSL cipher */
+    cchar *session;                       /**< SSL session ID (dependent on SSL provider) */
+    cchar *peerName;                      /**< Peer common SSL name */
+    cchar *peerCert;                      /**< Peer SSL certificate */
+    cchar *peerCertIssuer;                /**< Issuer of peer certificate */
     bool secured;                         /**< SSL Peer verified */
-    MprMutex*mutex;                       /**< Multi-thread sync */
-    void*data;                            /**< Custom user data (unmanaged) */
+    MprMutex *mutex;                      /**< Multi-thread sync */
+    void *data;                           /**< Custom user data (unmanaged) */
 } MprSocket;
 
 
@@ -7831,7 +7833,7 @@ typedef struct MprSocket {
     @stability Internal
  */
 typedef struct MprIOVec {
-    char*start;                         /**< Start of block to write */
+    char *start;                        /**< Start of block to write */
     ssize len;                          /**< Length of block to write */
 } MprIOVec;
 
@@ -7843,7 +7845,7 @@ typedef struct MprIOVec {
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC MprSocket*mprAcceptSocket(MprSocket*listen);
+PUBLIC MprSocket *mprAcceptSocket(MprSocket *listen);
 
 /**
     Add a wait handler to a socket.
@@ -7859,8 +7861,8 @@ PUBLIC MprSocket*mprAcceptSocket(MprSocket*listen);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC MprWaitHandler*mprAddSocketHandler(MprSocket*sp, int mask, MprDispatcher*dispatcher, void*proc, void*data,
-                                          int flags);
+PUBLIC MprWaitHandler *mprAddSocketHandler(MprSocket *sp, int mask, MprDispatcher *dispatcher, void *proc, void *data,
+                                           int flags);
 
 /**
     Clone a socket object
@@ -7871,7 +7873,7 @@ PUBLIC MprWaitHandler*mprAddSocketHandler(MprSocket*sp, int mask, MprDispatcher*
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC MprSocket*mprCloneSocket(MprSocket*sp);
+PUBLIC MprSocket *mprCloneSocket(MprSocket *sp);
 
 /**
     Close a socket
@@ -7882,7 +7884,7 @@ PUBLIC MprSocket*mprCloneSocket(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC void mprCloseSocket(MprSocket*sp, bool graceful);
+PUBLIC void mprCloseSocket(MprSocket *sp, bool graceful);
 
 /**
     Connect a client socket
@@ -7901,7 +7903,7 @@ PUBLIC void mprCloseSocket(MprSocket*sp, bool graceful);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC int mprConnectSocket(MprSocket*sp, cchar*ip, int port, int flags);
+PUBLIC int mprConnectSocket(MprSocket *sp, cchar *ip, int port, int flags);
 
 /**
     Create a socket
@@ -7910,7 +7912,7 @@ PUBLIC int mprConnectSocket(MprSocket*sp, cchar*ip, int port, int flags);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC MprSocket*mprCreateSocket(void);
+PUBLIC MprSocket *mprCreateSocket(void);
 
 /**
     Disconnect a socket by closing its underlying file descriptor. This is used to prevent further I/O wait events while
@@ -7919,7 +7921,7 @@ PUBLIC MprSocket*mprCreateSocket(void);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC void mprDisconnectSocket(MprSocket*sp);
+PUBLIC void mprDisconnectSocket(MprSocket *sp);
 
 /**
     Enable socket events for a socket callback
@@ -7928,7 +7930,7 @@ PUBLIC void mprDisconnectSocket(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC void mprEnableSocketEvents(MprSocket*sp, int mask);
+PUBLIC void mprEnableSocketEvents(MprSocket *sp, int mask);
 
 /**
     Flush a socket
@@ -7940,7 +7942,7 @@ PUBLIC void mprEnableSocketEvents(MprSocket*sp, int mask);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC ssize mprFlushSocket(MprSocket*sp);
+PUBLIC ssize mprFlushSocket(MprSocket *sp);
 
 /**
     Get the socket blocking mode.
@@ -7950,7 +7952,7 @@ PUBLIC ssize mprFlushSocket(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC bool mprGetSocketBlockingMode(MprSocket*sp);
+PUBLIC bool mprGetSocketBlockingMode(MprSocket *sp);
 
 /**
     Get a socket error code
@@ -7960,7 +7962,7 @@ PUBLIC bool mprGetSocketBlockingMode(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC int mprGetSocketError(MprSocket*sp);
+PUBLIC int mprGetSocketError(MprSocket *sp);
 
 /**
     Get the socket file descriptor.
@@ -7970,7 +7972,7 @@ PUBLIC int mprGetSocketError(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC Socket mprGetSocketHandle(MprSocket*sp);
+PUBLIC Socket mprGetSocketHandle(MprSocket *sp);
 
 /**
     Get the socket for an IP:Port address
@@ -7984,7 +7986,7 @@ PUBLIC Socket mprGetSocketHandle(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC int mprGetSocketInfo(cchar*ip, int port, int*family, int*protocol, struct sockaddr **addr, Socklen *addrlen);
+PUBLIC int mprGetSocketInfo(cchar *ip, int port, int *family, int *protocol, struct sockaddr **addr, Socklen *addrlen);
 
 /**
     Get the port used by a socket
@@ -7994,7 +7996,7 @@ PUBLIC int mprGetSocketInfo(cchar*ip, int port, int*family, int*protocol, struct
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC int mprGetSocketPort(MprSocket*sp);
+PUBLIC int mprGetSocketPort(MprSocket *sp);
 
 /**
     Get the socket state
@@ -8004,7 +8006,7 @@ PUBLIC int mprGetSocketPort(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC char*mprGetSocketState(MprSocket*sp);
+PUBLIC char *mprGetSocketState(MprSocket *sp);
 
 /*
     Get a specific key value from the socket state
@@ -8014,7 +8016,7 @@ PUBLIC char*mprGetSocketState(MprSocket*sp);
     @ingroup MprSocket
     @stability Prototype
  */
-PUBLIC char*mprParseSocketState(MprSocket*sp, cchar*key);
+PUBLIC char *mprParseSocketState(MprSocket *sp, cchar *key);
 
 /**
     has the system got a dual IPv4 + IPv6 network stack
@@ -8040,7 +8042,7 @@ PUBLIC bool mprHasIPv6(void);
     @param len Length of buffered data in bytes
     @param dir Buffer direction. Set to MPR_READABLE for buffered read data and MPR_WRITABLE for buffered write data.
  */
-PUBLIC void mprHiddenSocketData(MprSocket*sp, ssize len, int dir);
+PUBLIC void mprHiddenSocketData(MprSocket *sp, ssize len, int dir);
 
 /**
     Determine if the IP address is an IPv6 address
@@ -8050,7 +8052,7 @@ PUBLIC void mprHiddenSocketData(MprSocket*sp, ssize len, int dir);
     @stability Stable
     @internal
  */
-PUBLIC bool mprIsIPv6(cchar*ip);
+PUBLIC bool mprIsIPv6(cchar *ip);
 
 /**
     Determine if the socket is secure
@@ -8060,7 +8062,7 @@ PUBLIC bool mprIsIPv6(cchar*ip);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC bool mprIsSocketSecure(MprSocket*sp);
+PUBLIC bool mprIsSocketSecure(MprSocket *sp);
 
 /**
     Determine if the socket is using IPv6
@@ -8071,7 +8073,7 @@ PUBLIC bool mprIsSocketSecure(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC bool mprIsSocketV6(MprSocket*sp);
+PUBLIC bool mprIsSocketV6(MprSocket *sp);
 
 /**
     Test if the other end of the socket has been closed.
@@ -8081,7 +8083,7 @@ PUBLIC bool mprIsSocketV6(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC bool mprIsSocketEof(MprSocket*sp);
+PUBLIC bool mprIsSocketEof(MprSocket *sp);
 
 /**
     Listen on a server socket for incoming connections
@@ -8101,7 +8103,7 @@ PUBLIC bool mprIsSocketEof(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC Socket mprListenOnSocket(MprSocket*sp, cchar*ip, int port, int flags);
+PUBLIC Socket mprListenOnSocket(MprSocket *sp, cchar *ip, int port, int flags);
 
 /**
     Parse an socket address IP address.
@@ -8119,7 +8121,7 @@ PUBLIC Socket mprListenOnSocket(MprSocket*sp, cchar*ip, int port, int flags);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC int mprParseSocketAddress(cchar*address, cchar**ip, int*port, int*secure, int defaultPort);
+PUBLIC int mprParseSocketAddress(cchar *address, cchar **ip, int *port, int *secure, int defaultPort);
 
 /**
     Read from a socket
@@ -8134,7 +8136,7 @@ PUBLIC int mprParseSocketAddress(cchar*address, cchar**ip, int*port, int*secure,
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC ssize mprReadSocket(MprSocket*sp, void*buf, ssize size);
+PUBLIC ssize mprReadSocket(MprSocket *sp, void *buf, ssize size);
 
 /**
     Remove a socket wait handler.
@@ -8143,7 +8145,7 @@ PUBLIC ssize mprReadSocket(MprSocket*sp, void*buf, ssize size);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC void mprRemoveSocketHandler(MprSocket*sp);
+PUBLIC void mprRemoveSocketHandler(MprSocket *sp);
 
 #if !ME_ROM
 /**
@@ -8164,8 +8166,8 @@ PUBLIC void mprRemoveSocketHandler(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC MprOff mprSendFileToSocket(MprSocket*sock, MprFile*file, MprOff offset, MprOff bytes, MprIOVec*beforeVec,
-                                  int beforeCount, MprIOVec*afterVec, int afterCount);
+PUBLIC MprOff mprSendFileToSocket(MprSocket *sock, MprFile *file, MprOff offset, MprOff bytes, MprIOVec *beforeVec,
+                                  int beforeCount, MprIOVec *afterVec, int afterCount);
 #endif
 
 /**
@@ -8178,7 +8180,7 @@ PUBLIC MprOff mprSendFileToSocket(MprSocket*sock, MprFile*file, MprOff offset, M
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC int mprSetSocketBlockingMode(MprSocket*sp, bool on);
+PUBLIC int mprSetSocketBlockingMode(MprSocket *sp, bool on);
 
 /**
     Set the dispatcher to use for socket events
@@ -8187,7 +8189,7 @@ PUBLIC int mprSetSocketBlockingMode(MprSocket*sp, bool on);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC void mprSetSocketDispatcher(MprSocket*sp, MprDispatcher*dispatcher);
+PUBLIC void mprSetSocketDispatcher(MprSocket *sp, MprDispatcher *dispatcher);
 
 /**
     Set an EOF condition on the socket
@@ -8196,7 +8198,7 @@ PUBLIC void mprSetSocketDispatcher(MprSocket*sp, MprDispatcher*dispatcher);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC void mprSetSocketEof(MprSocket*sp, bool eof);
+PUBLIC void mprSetSocketEof(MprSocket *sp, bool eof);
 
 /**
     Set the socket delay mode.
@@ -8209,7 +8211,7 @@ PUBLIC void mprSetSocketEof(MprSocket*sp, bool eof);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC int mprSetSocketNoDelay(MprSocket*sp, bool on);
+PUBLIC int mprSetSocketNoDelay(MprSocket *sp, bool on);
 
 /**
     Test if the socket is doing an SSL handshake
@@ -8218,7 +8220,7 @@ PUBLIC int mprSetSocketNoDelay(MprSocket*sp, bool on);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC bool mprSocketHandshaking(MprSocket*sp);
+PUBLIC bool mprSocketHandshaking(MprSocket *sp);
 
 /**
     Test if the socket has buffered data.
@@ -8228,7 +8230,7 @@ PUBLIC bool mprSocketHandshaking(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC bool mprSocketHasBuffered(MprSocket*sp);
+PUBLIC bool mprSocketHasBuffered(MprSocket *sp);
 
 /**
     Test if the socket has buffered read data.
@@ -8238,7 +8240,7 @@ PUBLIC bool mprSocketHasBuffered(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC bool mprSocketHasBufferedRead(MprSocket*sp);
+PUBLIC bool mprSocketHasBufferedRead(MprSocket *sp);
 
 /**
     Test if the socket has buffered write data.
@@ -8248,7 +8250,7 @@ PUBLIC bool mprSocketHasBufferedRead(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC bool mprSocketHasBufferedWrite(MprSocket*sp);
+PUBLIC bool mprSocketHasBufferedWrite(MprSocket *sp);
 
 /**
     Steal the socket handle
@@ -8258,7 +8260,7 @@ PUBLIC bool mprSocketHasBufferedWrite(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC Socket mprStealSocketHandle(MprSocket*sp);
+PUBLIC Socket mprStealSocketHandle(MprSocket *sp);
 
 /**
     Upgrade a socket to use SSL/TLS
@@ -8269,7 +8271,7 @@ PUBLIC Socket mprStealSocketHandle(MprSocket*sp);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC int mprUpgradeSocket(MprSocket*sp, struct MprSsl *ssl, cchar *peerName);
+PUBLIC int mprUpgradeSocket(MprSocket *sp, struct MprSsl *ssl, cchar *peerName);
 
 /**
     Write to a socket
@@ -8287,7 +8289,7 @@ PUBLIC int mprUpgradeSocket(MprSocket*sp, struct MprSsl *ssl, cchar *peerName);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC ssize mprWriteSocket(MprSocket*sp, cvoid*buf, ssize len);
+PUBLIC ssize mprWriteSocket(MprSocket *sp, cvoid *buf, ssize len);
 
 /**
     Write to a string to a socket
@@ -8299,7 +8301,7 @@ PUBLIC ssize mprWriteSocket(MprSocket*sp, cvoid*buf, ssize len);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC ssize mprWriteSocketString(MprSocket*sp, cchar*str);
+PUBLIC ssize mprWriteSocketString(MprSocket *sp, cchar *str);
 
 /**
     Write a vector of buffers to a socket
@@ -8316,7 +8318,7 @@ PUBLIC ssize mprWriteSocketString(MprSocket*sp, cchar*str);
     @ingroup MprSocket
     @stability Stable
  */
-PUBLIC ssize mprWriteSocketVector(MprSocket*sp, MprIOVec*iovec, int count);
+PUBLIC ssize mprWriteSocketVector(MprSocket *sp, MprIOVec *iovec, int count);
 
 /************************************ SSL *************************************/
 /*
@@ -8348,24 +8350,24 @@ PUBLIC ssize mprWriteSocketVector(MprSocket*sp, MprIOVec*iovec, int count);
     @ingroup MprSsl
     @stability Stable
  */
-typedef struct MprSsl*(*MprMatchSsl)(MprSocket*sp, cchar*hostname);
+typedef struct MprSsl*(*MprMatchSsl)(MprSocket *sp, cchar *hostname);
 
 /**
     SSL control structure
     @stability Internal
  */
 typedef struct MprSsl {
-    cchar*keyFile;                      /**< Alternatively, locate the key in a file */
-    cchar*certFile;                     /**< Certificate filename */
-    cchar*revoke;                       /**< Certificate revocation list */
-    cchar*caFile;                       /**< Certificate verification cert file or bundle */
-    cchar*caPath;                       /**< Certificate verification cert directory (OpenSSL only) */
-    cchar*ciphers;                      /**< Candidate ciphers to use */
-    cchar*device;                       /**< Crypto hardware device to use */
-    cchar*hostname;                     /**< Hostname when using SNI */
-    cchar*verifyPeer;                   /**< Verify the peer certificate (none, optional, require) */
-    MprList*alpn;                       /**< ALPN protocols */
-    void*config;                        /**< Extended provider SSL configuration */
+    cchar *keyFile;                     /**< Alternatively, locate the key in a file */
+    cchar *certFile;                    /**< Certificate filename */
+    cchar *revoke;                      /**< Certificate revocation list */
+    cchar *caFile;                      /**< Certificate verification cert file or bundle */
+    cchar *caPath;                      /**< Certificate verification cert directory (OpenSSL only) */
+    cchar *ciphers;                     /**< Candidate ciphers to use */
+    cchar *device;                      /**< Crypto hardware device to use */
+    cchar *hostname;                    /**< Hostname when using SNI */
+    cchar *verifyPeer;                  /**< Verify the peer certificate (none, optional, require) */
+    MprList *alpn;                      /**< ALPN protocols */
+    void *config;                       /**< Extended provider SSL configuration */
     bool changed;                       /**< Set if there is a change in the SSL config. Reset by providers */
     bool configured;                    /**< Set if this SSL configuration has been processed */
     bool ticket;                        /**< Enable session tickets */
@@ -8376,7 +8378,7 @@ typedef struct MprSsl {
     int verifyDepth;                    /**< Cert chain depth that should be verified */
     int protocols;                      /**< SSL protocols */
     MprMatchSsl matchSsl;               /**< Match the SSL configuration for SNI */
-    MprMutex*mutex;                     /**< Multithread sync */
+    MprMutex *mutex;                    /**< Multithread sync */
 } MprSsl;
 
 /*
@@ -8414,7 +8416,7 @@ PUBLIC struct MprSsl *mprCreateSsl(int server);
     @ingroup MprSsl
     @stability Stable
  */
-PUBLIC struct MprSsl *mprCloneSsl(MprSsl*src);
+PUBLIC struct MprSsl *mprCloneSsl(MprSsl *src);
 
 /**
     Load the SSL module.
@@ -8428,7 +8430,7 @@ PUBLIC int mprLoadSsl(void);
     @ingroup MprSsl
     @stability Stable
  */
-PUBLIC int mprSslInit(void*unused, MprModule*module);
+PUBLIC int mprSslInit(void *unused, MprModule *module);
 
 /**
     Preload SSL configuration
@@ -8480,7 +8482,7 @@ PUBLIC void mprSetSslCaPath(struct MprSsl *ssl, cchar *caPath);
     @ingroup MprSsl
     @stability Stable
  */
-PUBLIC void mprSetSslCiphers(MprSsl*ssl, cchar*ciphers);
+PUBLIC void mprSetSslCiphers(MprSsl *ssl, cchar *ciphers);
 
 /**
     Set the SSL Engine to use
@@ -8489,7 +8491,7 @@ PUBLIC void mprSetSslCiphers(MprSsl*ssl, cchar*ciphers);
     @ingroup MprSsl
     @stability Stable
  */
-PUBLIC void mprSetSslDevice(MprSsl*ssl, cchar*device);
+PUBLIC void mprSetSslDevice(MprSsl *ssl, cchar *device);
 
 /**
     Set the key file to use for SSL
@@ -8507,7 +8509,7 @@ PUBLIC void mprSetSslKeyFile(struct MprSsl *ssl, cchar *keyFile);
     @ingroup MprSsl
     @stability Stable
  */
-PUBLIC void mprSetSslHostname(MprSsl*ssl, cchar*hostname);
+PUBLIC void mprSetSslHostname(MprSsl *ssl, cchar *hostname);
 
 /**
     Set the SSL log level at which to start tracing SSL events
@@ -8542,7 +8544,7 @@ PUBLIC void mprSetSslProtocols(struct MprSsl *ssl, int protocols);
     @ingroup MprSsl
     @stability Stable
  */
-PUBLIC void mprSetSslProvider(MprSocketProvider*provider);
+PUBLIC void mprSetSslProvider(MprSocketProvider *provider);
 
 /**
     Control SSL session renegotiation
@@ -8551,7 +8553,7 @@ PUBLIC void mprSetSslProvider(MprSocketProvider*provider);
     @ingroup MprSsl
     @stability Internal
  */
-PUBLIC void mprSetSslRenegotiate(MprSsl*ssl, bool enable);
+PUBLIC void mprSetSslRenegotiate(MprSsl *ssl, bool enable);
 
 /**
     Define a list of certificates to revoke
@@ -8569,7 +8571,7 @@ PUBLIC void mprSetSslRevoke(struct MprSsl *ssl, cchar *revoke);
     @ingroup MprSsl
     @stability Stable
  */
-PUBLIC void mprSetSslTicket(MprSsl*ssl, bool enable);
+PUBLIC void mprSetSslTicket(MprSsl *ssl, bool enable);
 
 /**
     Control the depth of SSL SSL certificate verification
@@ -8610,7 +8612,7 @@ PUBLIC int mprCreateOpenSslModule(void);
     @ingroup MprWorker
     @stability Stable
  */
-typedef void (*MprWorkerProc)(void*data, struct MprWorker *worker);
+typedef void (*MprWorkerProc)(void *data, struct MprWorker *worker);
 
 /**
     Statistics for Workers
@@ -8632,7 +8634,7 @@ typedef struct MprWorkerStats {
     @ingroup MprWorker
     @stability Internal
  */
-PUBLIC void mprGetWorkerStats(MprWorkerStats*stats);
+PUBLIC void mprGetWorkerStats(MprWorkerStats *stats);
 
 /**
     Worker Thread Service
@@ -8641,15 +8643,15 @@ PUBLIC void mprGetWorkerStats(MprWorkerStats*stats);
     @stability Internal
  */
 typedef struct MprWorkerService {
-    MprList*busyThreads;                /**< List of threads to service tasks */
-    MprList*idleThreads;                /**< List of threads to service tasks */
+    MprList *busyThreads;               /**< List of threads to service tasks */
+    MprList *idleThreads;               /**< List of threads to service tasks */
     int maxThreads;                     /**< Max # threads in worker pool */
     int maxUsedThreads;                 /**< Max threads ever used */
     int minThreads;                     /**< Max # threads in worker pool */
     int nextThreadNum;                  /**< Unique next thread number */
     int numThreads;                     /**< Current number of threads in worker pool */
     ssize stackSize;                    /**< Stack size for worker threads */
-    MprMutex*mutex;                     /**< Per task synchronization */
+    MprMutex *mutex;                    /**< Per task synchronization */
     struct MprEvent *pruneTimer;        /**< Timer for excess threads pruner */
     MprWorkerProc startWorker;          /**< Worker thread startup hook */
 } MprWorkerService;
@@ -8658,7 +8660,7 @@ typedef struct MprWorkerService {
 /*
     Internal
  */
-PUBLIC MprWorkerService*mprCreateWorkerService(void);
+PUBLIC MprWorkerService *mprCreateWorkerService(void);
 PUBLIC int mprStartWorkerService(void);
 PUBLIC void mprStopWorkers(void);
 PUBLIC void mprSetWorkerStartCallback(MprWorkerProc start);
@@ -8728,19 +8730,19 @@ PUBLIC int mprGetMaxWorkers(void);
 typedef struct MprWorker {
     MprWorkerProc proc;                     /**< Procedure to run */
     MprWorkerProc cleanup;                  /**< Procedure to cleanup after run before sleeping */
-    void*data;                              /**< User per-worker data */
+    void *data;                             /**< User per-worker data */
     int state;                              /**< Worker state */
     int running;                            /**< Worker running a job */
-    MprThread*thread;                       /**< Thread associated with this worker */
+    MprThread *thread;                      /**< Thread associated with this worker */
     MprTicks lastActivity;                  /**< When the worker was last used */
-    MprWorkerService*workerService;         /**< Worker service */
-    MprCond*idleCond;                       /**< Used to wait for work */
+    MprWorkerService *workerService;        /**< Worker service */
+    MprCond *idleCond;                      /**< Used to wait for work */
 } MprWorker;
 
 /*
     Internal
  */
-PUBLIC void mprActivateWorker(MprWorker*worker, MprWorkerProc proc, void*data);
+PUBLIC void mprActivateWorker(MprWorker *worker, MprWorkerProc proc, void *data);
 
 /**
     Dedicate a worker thread to a current real thread. This implements thread affinity and is required on some platforms
@@ -8749,7 +8751,7 @@ PUBLIC void mprActivateWorker(MprWorker*worker, MprWorkerProc proc, void*data);
     @ingroup MprWorker
     @stability Internal
  */
-PUBLIC void mprDedicateWorker(MprWorker*worker);
+PUBLIC void mprDedicateWorker(MprWorker *worker);
 
 /**
     Get the worker object if the current thread is actually a worker thread.
@@ -8757,7 +8759,7 @@ PUBLIC void mprDedicateWorker(MprWorker*worker);
     @ingroup MprWorker
     @stability Stable
  */
-PUBLIC MprWorker*mprGetCurrentWorker(void);
+PUBLIC MprWorker *mprGetCurrentWorker(void);
 
 /**
     Get the count of workers in the busy queue.
@@ -8773,7 +8775,7 @@ PUBLIC ssize mprGetBusyWorkerCount(void);
     @param worker Worker thread reference
     @stability Internal
  */
-PUBLIC void mprReleaseWorker(MprWorker*worker);
+PUBLIC void mprReleaseWorker(MprWorker *worker);
 
 /**
     Start a worker thread
@@ -8783,7 +8785,7 @@ PUBLIC void mprReleaseWorker(MprWorker*worker);
     @return Zero if successful, otherwise a negative MPR error code.
     @stability Internal
  */
-PUBLIC int mprStartWorker(MprWorkerProc proc, void*data);
+PUBLIC int mprStartWorker(MprWorkerProc proc, void *data);
 
 /********************************** Crypto ************************************/
 /**
@@ -8802,7 +8804,7 @@ PUBLIC int mprRandom(void);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprDecode64(cchar*str);
+PUBLIC char *mprDecode64(cchar *str);
 
 /**
     Decode base 64 blocks up to a NULL or equals
@@ -8818,7 +8820,7 @@ PUBLIC char*mprDecode64(cchar*str);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprDecode64Block(cchar*buf, ssize*len, int flags);
+PUBLIC char *mprDecode64Block(cchar *buf, ssize *len, int flags);
 
 /**
     Encode a string using base-46 encoding.
@@ -8827,7 +8829,7 @@ PUBLIC char*mprDecode64Block(cchar*buf, ssize*len, int flags);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprEncode64(cchar*str);
+PUBLIC char *mprEncode64(cchar *str);
 
 //  Internal
 PUBLIC void mprEncodeGenerate(void);
@@ -8840,7 +8842,7 @@ PUBLIC void mprEncodeGenerate(void);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprEncode64Block(cchar*buf, ssize len);
+PUBLIC char *mprEncode64Block(cchar *buf, ssize len);
 
 /**
     Get an MD5 checksum
@@ -8849,7 +8851,7 @@ PUBLIC char*mprEncode64Block(cchar*buf, ssize len);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprGetMD5(cchar*str);
+PUBLIC char *mprGetMD5(cchar *str);
 
 /**
     Get an MD5 checksum with optional prefix string and buffer length
@@ -8860,7 +8862,7 @@ PUBLIC char*mprGetMD5(cchar*str);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprGetMD5WithPrefix(cchar*buf, ssize len, cchar*prefix);
+PUBLIC char *mprGetMD5WithPrefix(cchar *buf, ssize len, cchar *prefix);
 
 /**
     Get an SHA1 checksum
@@ -8869,7 +8871,7 @@ PUBLIC char*mprGetMD5WithPrefix(cchar*buf, ssize len, cchar*prefix);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprGetSHA(cchar*str);
+PUBLIC char *mprGetSHA(cchar *str);
 
 /**
     Get an SHA1 checksum with optional prefix string and buffer length
@@ -8880,7 +8882,7 @@ PUBLIC char*mprGetSHA(cchar*str);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprGetSHAWithPrefix(cchar*buf, ssize len, cchar*prefix);
+PUBLIC char *mprGetSHAWithPrefix(cchar *buf, ssize len, cchar *prefix);
 
 /**
     Get an SHA1 checksum of a null terminated string
@@ -8889,7 +8891,7 @@ PUBLIC char*mprGetSHAWithPrefix(cchar*buf, ssize len, cchar*prefix);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprGetSHABase64(cchar*str);
+PUBLIC char *mprGetSHABase64(cchar *str);
 
 /**
     Encrypt a password using the Blowfish algorithm
@@ -8900,7 +8902,7 @@ PUBLIC char*mprGetSHABase64(cchar*str);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprCryptPassword(cchar*password, cchar*salt, int rounds);
+PUBLIC char *mprCryptPassword(cchar *password, cchar *salt, int rounds);
 
 /**
     Get a password from the terminal console
@@ -8909,7 +8911,7 @@ PUBLIC char*mprCryptPassword(cchar*password, cchar*salt, int rounds);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprGetPassword(cchar*prompt);
+PUBLIC char *mprGetPassword(cchar *prompt);
 
 /**
     Make salt for adding to a password.
@@ -8918,7 +8920,7 @@ PUBLIC char*mprGetPassword(cchar*prompt);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprMakeSalt(ssize size);
+PUBLIC char *mprMakeSalt(ssize size);
 
 /**
     Make a password hash for a plain-text password using the Blowfish algorithm.
@@ -8929,7 +8931,7 @@ PUBLIC char*mprMakeSalt(ssize size);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprMakePassword(cchar*password, int saltLength, int rounds);
+PUBLIC char *mprMakePassword(cchar *password, int saltLength, int rounds);
 
 /**
     Check a plain-text password against the defined hashed password.
@@ -8939,7 +8941,7 @@ PUBLIC char*mprMakePassword(cchar*password, int saltLength, int rounds);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC bool mprCheckPassword(cchar*plainTextPassword, cchar*passwordHash);
+PUBLIC bool mprCheckPassword(cchar *plainTextPassword, cchar *passwordHash);
 
 /********************************* Encoding ***********************************/
 /*
@@ -8963,7 +8965,7 @@ PUBLIC bool mprCheckPassword(cchar*plainTextPassword, cchar*passwordHash);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprEscapeCmd(cchar*cmd, int escChar);
+PUBLIC char *mprEscapeCmd(cchar *cmd, int escChar);
 
 /**
     Encode a string by escaping typical HTML characters
@@ -8973,7 +8975,7 @@ PUBLIC char*mprEscapeCmd(cchar*cmd, int escChar);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprEscapeHtml(cchar*html);
+PUBLIC char *mprEscapeHtml(cchar *html);
 
 /**
     Encode a string by escaping SQL special characters
@@ -8983,7 +8985,7 @@ PUBLIC char*mprEscapeHtml(cchar*html);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprEscapeSQL(cchar*cmd);
+PUBLIC char *mprEscapeSQL(cchar *cmd);
 
 /**
     Encode a string by escaping URI characters
@@ -8994,7 +8996,7 @@ PUBLIC char*mprEscapeSQL(cchar*cmd);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprUriEncode(cchar*uri, int map);
+PUBLIC char *mprUriEncode(cchar *uri, int map);
 
 /**
     Decode a URI string by de-scaping URI characters
@@ -9004,7 +9006,7 @@ PUBLIC char*mprUriEncode(cchar*uri, int map);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprUriDecode(cchar*uri);
+PUBLIC char *mprUriDecode(cchar *uri);
 
 /**
     Decode a URI string by de-scaping URI characters
@@ -9015,7 +9017,7 @@ PUBLIC char*mprUriDecode(cchar*uri);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC char*mprUriDecodeInSitu(char*uri);
+PUBLIC char *mprUriDecodeInSitu(char *uri);
 
 /********************************* Signals ************************************/
 
@@ -9032,7 +9034,7 @@ PUBLIC char*mprUriDecodeInSitu(char*uri);
     @ingroup MprSignal
     @stability Stable
  */
-typedef void (*MprSignalProc)(void*arg, struct MprSignal *sp);
+typedef void (*MprSignalProc)(void *arg, struct MprSignal *sp);
 
 
 /**
@@ -9053,9 +9055,9 @@ typedef struct MprSignalInfo {
 typedef struct MprSignal {
     struct MprSignal *next;                                 /**< Chain of handlers on the same signo */
     MprSignalProc handler;                                  /**< Signal handler (non-native) */
-    void(*sigaction)(int, siginfo_t*, void*);               /**< Prior sigaction handler */
-    void*data;                                              /**< Handler data */
-    MprDispatcher*dispatcher;                               /**< Dispatcher to service handler */
+    void (*sigaction)(int, siginfo_t*, void*);              /**< Prior sigaction handler */
+    void *data;                                             /**< Handler data */
+    MprDispatcher *dispatcher;                              /**< Dispatcher to service handler */
     int flags;                                              /**< Control flags */
     int signo;                                              /**< Signal number */
 } MprSignal;
@@ -9067,9 +9069,9 @@ typedef struct MprSignal {
     @stability Internal
  */
 typedef struct MprSignalService {
-    MprSignal**signals;                     /**< Signal handlers */
-    MprList*standard;                       /**< Standard signal handlers */
-    MprMutex*mutex;                         /**< Multithread sync */
+    MprSignal **signals;                    /**< Signal handlers */
+    MprList *standard;                      /**< Standard signal handlers */
+    MprMutex *mutex;                        /**< Multithread sync */
     MprSignalInfo info[MPR_MAX_SIGNALS];    /**< Actual signal info and arg */
     int hasSignals;                         /**< Signal sent to process */
 #if ME_UNIX_LIKE
@@ -9081,9 +9083,9 @@ typedef struct MprSignalService {
 /*
     Internal
  */
-PUBLIC MprSignalService*mprCreateSignalService(void);
+PUBLIC MprSignalService *mprCreateSignalService(void);
 PUBLIC void mprStopSignalService(void);
-PUBLIC void mprRemoveSignalHandler(MprSignal*sp);
+PUBLIC void mprRemoveSignalHandler(MprSignal *sp);
 PUBLIC void mprServiceSignals(void);
 
 /**
@@ -9112,7 +9114,7 @@ PUBLIC void mprAddStandardSignals(void);
     @ingroup MprSignal
     @stability Stable
  */
-PUBLIC MprSignal*mprAddSignalHandler(int signo, void*handler, void*arg, MprDispatcher*dispatcher, int flags);
+PUBLIC MprSignal *mprAddSignalHandler(int signo, void *handler, void *arg, MprDispatcher *dispatcher, int flags);
 
 /******************************** Commands ************************************/
 /**
@@ -9120,22 +9122,22 @@ PUBLIC MprSignal*mprAddSignalHandler(int signo, void*handler, void*arg, MprDispa
     @ingroup MprCmd
     @stability Stable
  */
-typedef void (*MprForkCallback)(void*arg);
+typedef void (*MprForkCallback)(void *arg);
 
 /**
     Command execution service
     @stability Internal
  */
 typedef struct MprCmdService {
-    MprList*cmds;                   /* List of all commands. This is a static list and elements are not retained for GC
-                                    */
-    MprMutex*mutex;                 /* Multithread sync */
+    MprList *cmds;                   /* List of all commands. This is a static list and elements are not retained for GC
+                                      */
+    MprMutex *mutex;                 /* Multithread sync */
 } MprCmdService;
 
 /*
     Internal
  */
-PUBLIC MprCmdService*mprCreateCmdService(void);
+PUBLIC MprCmdService *mprCreateCmdService(void);
 PUBLIC void mprStopCmdService(void);
 
 #define MPR_CMD_EOF_COUNT       2
@@ -9167,7 +9169,7 @@ typedef void (*MprCmdProc)(struct MprCmd *cmd, int channel, void *data);
 #define MPR_CMD_ERR         0x4000      /**< mprRunCmd flag to capture stdout */
 
 typedef struct MprCmdFile {
-    char*name;
+    char *name;
     int fd;
     int clientFd;
 #if ME_WIN_LIKE
@@ -9187,7 +9189,7 @@ typedef struct MprCmdFile {
     @stability Internal
  */
 typedef struct MprCmd {
-    cchar*program;                      /**< Program path name */
+    cchar *program;                     /**< Program path name */
     int pid;                            /**< Process ID of the created process */
     int originalPid;                    /**< Persistent copy of the pid */
     int status;                         /**< Command exit status */
@@ -9198,26 +9200,26 @@ typedef struct MprCmd {
     int timedout;                       /**< Request has timedout */
     bool complete;                      /**< All channels EOF and status gathered */
     bool stopped;                       /**< Command stopped */
-    cchar**makeArgv;                    /**< Allocated argv */
-    cchar**argv;                        /**< List of args. Null terminated */
-    char*dir;                           /**< Current working dir for the process */
-    cchar**defaultEnv;                  /**< Environment to use if no env passed to mprStartCmd */
-    char*searchPath;                    /**< Search path to use to locate the command */
-    MprList*env;                        /**< List of environment variables. Null terminated. */
+    cchar **makeArgv;                   /**< Allocated argv */
+    cchar **argv;                       /**< List of args. Null terminated */
+    char *dir;                          /**< Current working dir for the process */
+    cchar **defaultEnv;                 /**< Environment to use if no env passed to mprStartCmd */
+    char *searchPath;                   /**< Search path to use to locate the command */
+    MprList *env;                       /**< List of environment variables. Null terminated. */
     MprCmdFile files[MPR_CMD_MAX_PIPE]; /**< Stdin, stdout for the command */
-    MprWaitHandler*handlers[MPR_CMD_MAX_PIPE];
-    MprDispatcher*dispatcher;           /**< Dispatcher to use for wait events */
+    MprWaitHandler *handlers[MPR_CMD_MAX_PIPE];
+    MprDispatcher *dispatcher;          /**< Dispatcher to use for wait events */
     MprCmdProc callback;                /**< Handler for client output and completion */
-    void*callbackData;                  /**< Managed callback data reference */
+    void *callbackData;                 /**< Managed callback data reference */
     MprForkCallback forkCallback;       /**< Forked client callback */
-    MprSignal*signal;                   /**< Signal handler for SIGCHLD */
-    void*forkData;                      /**< Managed fork callback data reference */
-    MprBuf*stdoutBuf;                   /**< Standard output from the client */
-    MprBuf*stderrBuf;                   /**< Standard error output from the client */
-    void*userData;                      /**< User data storage */
+    MprSignal *signal;                  /**< Signal handler for SIGCHLD */
+    void *forkData;                     /**< Managed fork callback data reference */
+    MprBuf *stdoutBuf;                  /**< Standard output from the client */
+    MprBuf *stderrBuf;                  /**< Standard error output from the client */
+    void *userData;                     /**< User data storage */
     int userFlags;                      /**< User flags storage */
 #if ME_WIN_LIKE
-    char*command;                       /**< Windows command line */
+    char *command;                      /**< Windows command line */
     HANDLE thread;                      /**< Handle of the primary thread for the created process */
     HANDLE process;                     /**< Process handle for the created process */
 #endif
@@ -9229,7 +9231,7 @@ typedef struct MprCmd {
     SEM_ID startCond;                   /**< Synchronization semaphore for task start */
     SEM_ID exitCond;                    /**< Synchronization semaphore for task exit */
 #endif
-    MprMutex*mutex;                     /**< Multithread sync */
+    MprMutex *mutex;                    /**< Multithread sync */
 } MprCmd;
 
 /**
@@ -9240,7 +9242,7 @@ typedef struct MprCmd {
     @ingroup MprCmd
     @stability Internal
  */
-PUBLIC bool mprAreCmdEventsEnabled(MprCmd*cmd, int channel);
+PUBLIC bool mprAreCmdEventsEnabled(MprCmd *cmd, int channel);
 
 /**
     Close the command channel
@@ -9249,7 +9251,7 @@ PUBLIC bool mprAreCmdEventsEnabled(MprCmd*cmd, int channel);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC void mprCloseCmdFd(MprCmd*cmd, int channel);
+PUBLIC void mprCloseCmdFd(MprCmd *cmd, int channel);
 
 /**
     Create a new Command object
@@ -9257,7 +9259,7 @@ PUBLIC void mprCloseCmdFd(MprCmd*cmd, int channel);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC MprCmd*mprCreateCmd(MprDispatcher*dispatcher);
+PUBLIC MprCmd *mprCreateCmd(MprDispatcher *dispatcher);
 
 /**
     Destroy the command
@@ -9265,7 +9267,7 @@ PUBLIC MprCmd*mprCreateCmd(MprDispatcher*dispatcher);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC void mprDestroyCmd(MprCmd*cmd);
+PUBLIC void mprDestroyCmd(MprCmd *cmd);
 
 /**
     Disable command I/O events. This disables events on a given channel.
@@ -9274,7 +9276,7 @@ PUBLIC void mprDestroyCmd(MprCmd*cmd);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC void mprDisableCmdEvents(MprCmd*cmd, int channel);
+PUBLIC void mprDisableCmdEvents(MprCmd *cmd, int channel);
 
 /**
     Disconnect a command its underlying I/O channels. This is used to prevent further I/O wait events while
@@ -9283,7 +9285,7 @@ PUBLIC void mprDisableCmdEvents(MprCmd*cmd, int channel);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC void mprDisconnectCmd(MprCmd*cmd);
+PUBLIC void mprDisconnectCmd(MprCmd *cmd);
 
 /**
     Enable command I/O events. This enables events on a given channel.
@@ -9292,7 +9294,7 @@ PUBLIC void mprDisconnectCmd(MprCmd*cmd);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC void mprEnableCmdEvents(MprCmd*cmd, int channel);
+PUBLIC void mprEnableCmdEvents(MprCmd *cmd, int channel);
 
 /**
     Enable command I/O events for the command's STDOUT and STDERR channels
@@ -9301,7 +9303,7 @@ PUBLIC void mprEnableCmdEvents(MprCmd*cmd, int channel);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC void mprEnableCmdOutputEvents(MprCmd*cmd, bool on);
+PUBLIC void mprEnableCmdOutputEvents(MprCmd *cmd, bool on);
 
 /**
     Finalize the writing of data to the command process
@@ -9309,7 +9311,7 @@ PUBLIC void mprEnableCmdOutputEvents(MprCmd*cmd, bool on);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC void mprFinalizeCmd(MprCmd*cmd);
+PUBLIC void mprFinalizeCmd(MprCmd *cmd);
 
 /**
     Get the count of active commands.
@@ -9328,7 +9330,7 @@ PUBLIC ssize mprGetActiveCmdCount(void);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC MprBuf*mprGetCmdBuf(MprCmd*cmd, int channel);
+PUBLIC MprBuf *mprGetCmdBuf(MprCmd *cmd, int channel);
 
 /**
     Get the command exit status
@@ -9338,7 +9340,7 @@ PUBLIC MprBuf*mprGetCmdBuf(MprCmd*cmd, int channel);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC int mprGetCmdExitStatus(MprCmd*cmd);
+PUBLIC int mprGetCmdExitStatus(MprCmd *cmd);
 
 /**
     Get the underlying file descriptor for an I/O channel
@@ -9348,14 +9350,14 @@ PUBLIC int mprGetCmdExitStatus(MprCmd*cmd);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC int mprGetCmdFd(MprCmd*cmd, int channel);
+PUBLIC int mprGetCmdFd(MprCmd *cmd, int channel);
 
 /**
     Test if a command is complete. A command is complete when the child has exited and all command output and error
     output has been received.
     @param cmd MprCmd object created via mprCreateCmd
  */
-PUBLIC int mprIsCmdComplete(MprCmd*cmd);
+PUBLIC int mprIsCmdComplete(MprCmd *cmd);
 
 /**
     Test if the command is still running.
@@ -9364,7 +9366,7 @@ PUBLIC int mprIsCmdComplete(MprCmd*cmd);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC bool mprIsCmdRunning(MprCmd*cmd);
+PUBLIC bool mprIsCmdRunning(MprCmd *cmd);
 
 #if ME_WIN_LIKE
 /**
@@ -9374,7 +9376,7 @@ PUBLIC bool mprIsCmdRunning(MprCmd*cmd);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC void mprPollWinCmd(MprCmd*cmd, MprTicks timeout);
+PUBLIC void mprPollWinCmd(MprCmd *cmd, MprTicks timeout);
 
 /**
    Start a timer calling mprPollWinCmd.
@@ -9383,7 +9385,7 @@ PUBLIC void mprPollWinCmd(MprCmd*cmd, MprTicks timeout);
    @ingroup MprCmd
    @stability Internal
  */
-PUBLIC void mprStartWinPollTimer(MprCmd*cmd);
+PUBLIC void mprStartWinPollTimer(MprCmd *cmd);
 #endif
 
 /**
@@ -9396,7 +9398,7 @@ PUBLIC void mprStartWinPollTimer(MprCmd*cmd);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC ssize mprReadCmd(MprCmd*cmd, int channel, char*buf, ssize bufsize);
+PUBLIC ssize mprReadCmd(MprCmd *cmd, int channel, char *buf, ssize bufsize);
 
 /**
     Reap the command. This waits for and collect the command exit status.
@@ -9406,7 +9408,7 @@ PUBLIC ssize mprReadCmd(MprCmd*cmd, int channel, char*buf, ssize bufsize);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC int mprReapCmd(MprCmd*cmd, MprTicks timeout);
+PUBLIC int mprReapCmd(MprCmd *cmd, MprTicks timeout);
 
 /**
     Run a simple blocking command using a string command line.
@@ -9420,7 +9422,8 @@ PUBLIC int mprReapCmd(MprCmd*cmd, MprTicks timeout);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC int mprRun(MprDispatcher*dispatcher, cchar*command, cchar*input, char**output, char**error, MprTicks timeout);
+PUBLIC int mprRun(MprDispatcher *dispatcher, cchar *command, cchar *input, char **output, char **error,
+                  MprTicks timeout);
 
 /**
     Run a command using a string command line. This starts the command via mprStartCmd() and waits for its completion.
@@ -9443,7 +9446,7 @@ PUBLIC int mprRun(MprDispatcher*dispatcher, cchar*command, cchar*input, char**ou
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC int mprRunCmd(MprCmd*cmd, cchar*command, cchar**envp, cchar*in, char**out, char**err, MprTicks timeout,
+PUBLIC int mprRunCmd(MprCmd *cmd, cchar *command, cchar **envp, cchar *in, char **out, char **err, MprTicks timeout,
                      int flags);
 
 /**
@@ -9467,7 +9470,7 @@ PUBLIC int mprRunCmd(MprCmd*cmd, cchar*command, cchar**envp, cchar*in, char**out
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC int mprRunCmdV(MprCmd*cmd, int argc, cchar**argv, cchar**envp, cchar*in, char**out, char**err,
+PUBLIC int mprRunCmdV(MprCmd *cmd, int argc, cchar **argv, cchar **envp, cchar *in, char **out, char **err,
                       MprTicks timeout, int flags);
 
 /**
@@ -9480,7 +9483,7 @@ PUBLIC int mprRunCmdV(MprCmd*cmd, int argc, cchar**argv, cchar**envp, cchar*in, 
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC void mprSetCmdCallback(MprCmd*cmd, MprCmdProc callback, void*data);
+PUBLIC void mprSetCmdCallback(MprCmd *cmd, MprCmdProc callback, void *data);
 
 /**
     Set the default environment to use for commands.
@@ -9491,7 +9494,7 @@ PUBLIC void mprSetCmdCallback(MprCmd*cmd, MprCmdProc callback, void*data);
     @stability Stable
     @internal
  */
-PUBLIC void mprSetCmdDefaultEnv(MprCmd*cmd, cchar**env);
+PUBLIC void mprSetCmdDefaultEnv(MprCmd *cmd, cchar **env);
 
 /**
     Set the home directory for the command
@@ -9500,7 +9503,7 @@ PUBLIC void mprSetCmdDefaultEnv(MprCmd*cmd, cchar**env);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC void mprSetCmdDir(MprCmd*cmd, cchar*dir);
+PUBLIC void mprSetCmdDir(MprCmd *cmd, cchar *dir);
 
 /**
     Set the command environment
@@ -9510,7 +9513,7 @@ PUBLIC void mprSetCmdDir(MprCmd*cmd, cchar*dir);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC void mprSetCmdEnv(MprCmd*cmd, cchar**env);
+PUBLIC void mprSetCmdEnv(MprCmd *cmd, cchar **env);
 
 /**
     Set the default command search path.
@@ -9520,7 +9523,7 @@ PUBLIC void mprSetCmdEnv(MprCmd*cmd, cchar**env);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC void mprSetCmdSearchPath(MprCmd*cmd, cchar*search);
+PUBLIC void mprSetCmdSearchPath(MprCmd *cmd, cchar *search);
 
 /**
     Start the command. This starts the command but does not wait for its completion. Once started, mprWriteCmd
@@ -9538,7 +9541,7 @@ PUBLIC void mprSetCmdSearchPath(MprCmd*cmd, cchar*search);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC int mprStartCmd(MprCmd*cmd, int argc, cchar**argv, cchar**envp, int flags);
+PUBLIC int mprStartCmd(MprCmd *cmd, int argc, cchar **argv, cchar **envp, int flags);
 
 /**
     Stop the command. The command is immediately killed.
@@ -9547,7 +9550,7 @@ PUBLIC int mprStartCmd(MprCmd*cmd, int argc, cchar**argv, cchar**envp, int flags
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC int mprStopCmd(MprCmd*cmd, int signal);
+PUBLIC int mprStopCmd(MprCmd *cmd, int signal);
 
 /**
     Wait for the command to complete.
@@ -9557,7 +9560,7 @@ PUBLIC int mprStopCmd(MprCmd*cmd, int signal);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC int mprWaitForCmd(MprCmd*cmd, MprTicks timeout);
+PUBLIC int mprWaitForCmd(MprCmd *cmd, MprTicks timeout);
 
 /**
     Write data to an I/O channel
@@ -9570,7 +9573,7 @@ PUBLIC int mprWaitForCmd(MprCmd*cmd, MprTicks timeout);
     @ingroup MprCmd
     @stability Stable
  */
-PUBLIC ssize mprWriteCmd(MprCmd*cmd, int channel, cchar*buf, ssize bufsize);
+PUBLIC ssize mprWriteCmd(MprCmd *cmd, int channel, cchar *buf, ssize bufsize);
 
 /**
     Write data to an I/O channel
@@ -9584,7 +9587,7 @@ PUBLIC ssize mprWriteCmd(MprCmd*cmd, int channel, cchar*buf, ssize bufsize);
     @stability Stable
     @internal
  */
-PUBLIC ssize mprWriteCmdBlock(MprCmd*cmd, int channel, cchar*buf, ssize bufsize);
+PUBLIC ssize mprWriteCmdBlock(MprCmd *cmd, int channel, cchar *buf, ssize bufsize);
 
 /********************************** Cache *************************************/
 /*
@@ -9624,9 +9627,9 @@ typedef void (*MprCacheProc)(struct MprCache *cache, cchar *key, cchar *data, in
     @stability Internal
  */
 typedef struct MprCache {
-    MprHash*store;                      /**< Key/value store */
-    MprMutex*mutex;                     /**< Cache lock */
-    MprEvent*timer;                     /**< Pruning timer */
+    MprHash *store;                     /**< Key/value store */
+    MprMutex *mutex;                    /**< Cache lock */
+    MprEvent *timer;                    /**< Pruning timer */
     MprTicks lifespan;                  /**< Default lifespan (msec) */
     MprCacheProc notify;                /* Notification callback for item expiry */
     int resolution;                     /**< Frequence for pruner */
@@ -9643,7 +9646,7 @@ typedef struct MprCache {
     @ingroup MprCache
     @stability Stable
  */
-PUBLIC MprCache*mprCreateCache(int options);
+PUBLIC MprCache *mprCreateCache(int options);
 
 /**
     Initialize the cache service on startup. Should only be called by the MPR init on startup.
@@ -9658,7 +9661,7 @@ PUBLIC int mprCreateCacheService(void);
     @ingroup MprCache
     @stability Stable
  */
-PUBLIC void*mprDestroyCache(MprCache*cache);
+PUBLIC void *mprDestroyCache(MprCache *cache);
 
 /**
     Set the expiry date for a cache item
@@ -9671,7 +9674,7 @@ PUBLIC void*mprDestroyCache(MprCache*cache);
     @ingroup MprCache
     @stability Stable
  */
-PUBLIC int mprExpireCacheItem(MprCache*cache, cchar*key, MprTicks expires);
+PUBLIC int mprExpireCacheItem(MprCache *cache, cchar *key, MprTicks expires);
 
 /**
     Get the Cache statistics
@@ -9682,7 +9685,7 @@ PUBLIC int mprExpireCacheItem(MprCache*cache, cchar*key, MprTicks expires);
     @stability Stable
     @internal
  */
-PUBLIC void mprGetCacheStats(MprCache*cache, int*numKeys, ssize*mem);
+PUBLIC void mprGetCacheStats(MprCache *cache, int *numKeys, ssize *mem);
 
 /**
     Increment a numeric cache item
@@ -9693,7 +9696,7 @@ PUBLIC void mprGetCacheStats(MprCache*cache, int*numKeys, ssize*mem);
     @ingroup MprCache
     @stability Stable
  */
-PUBLIC int64 mprIncCache(MprCache*cache, cchar*key, int64 amount);
+PUBLIC int64 mprIncCache(MprCache *cache, cchar *key, int64 amount);
 
 /**
     Lookup an item in the cache.
@@ -9708,7 +9711,7 @@ PUBLIC int64 mprIncCache(MprCache*cache, cchar*key, int64 amount);
     @ingroup MprCache
     @stability Stable
  */
-PUBLIC char*mprLookupCache(MprCache*cache, cchar*key, MprTime*modified, int64*version);
+PUBLIC char *mprLookupCache(MprCache *cache, cchar *key, MprTime *modified, int64 *version);
 
 /**
     Prune the cache
@@ -9717,7 +9720,7 @@ PUBLIC char*mprLookupCache(MprCache*cache, cchar*key, MprTime*modified, int64*ve
     @ingroup MprCache
     @stability Stable
  */
-PUBLIC void mprPruneCache(MprCache*cache);
+PUBLIC void mprPruneCache(MprCache *cache);
 
 /**
     Read an item from the cache.
@@ -9731,7 +9734,7 @@ PUBLIC void mprPruneCache(MprCache*cache);
     @ingroup MprCache
     @stability Stable
  */
-PUBLIC char*mprReadCache(MprCache*cache, cchar*key, MprTime*modified, int64*version);
+PUBLIC char *mprReadCache(MprCache *cache, cchar *key, MprTime *modified, int64 *version);
 
 /**
     Remove items from the cache
@@ -9741,7 +9744,7 @@ PUBLIC char*mprReadCache(MprCache*cache, cchar*key, MprTime*modified, int64*vers
     @ingroup MprCache
     @stability Stable
  */
-PUBLIC bool mprRemoveCache(MprCache*cache, cchar*key);
+PUBLIC bool mprRemoveCache(MprCache *cache, cchar *key);
 
 /**
     Set a notification callback to be invoked for events of interest on cached items.
@@ -9755,7 +9758,7 @@ PUBLIC bool mprRemoveCache(MprCache*cache, cchar*key);
     @ingroup MprCache
     @stability Stable
  */
-PUBLIC void mprSetCacheNotify(MprCache*cache, MprCacheProc notify);
+PUBLIC void mprSetCacheNotify(MprCache *cache, MprCacheProc notify);
 
 /**
     Set the cache resource limits
@@ -9768,7 +9771,7 @@ PUBLIC void mprSetCacheNotify(MprCache*cache, MprCacheProc notify);
     @ingroup MprCache
     @stability Stable
  */
-PUBLIC void mprSetCacheLimits(MprCache*cache, int64 keys, MprTicks lifespan, int64 memory, int resolution);
+PUBLIC void mprSetCacheLimits(MprCache *cache, int64 keys, MprTicks lifespan, int64 memory, int resolution);
 
 /**
     Set a linked managed memory reference for a cached item.
@@ -9778,7 +9781,7 @@ PUBLIC void mprSetCacheLimits(MprCache*cache, int64 keys, MprTicks lifespan, int
     @ingroup MprCache
     @stability Stable
  */
-PUBLIC int mprSetCacheLink(MprCache*cache, cchar*key, void*link);
+PUBLIC int mprSetCacheLink(MprCache *cache, cchar *key, void *link);
 
 /**
     Write a cache item
@@ -9806,7 +9809,7 @@ PUBLIC int mprSetCacheLink(MprCache*cache, cchar*key, void*link);
     @ingroup MprCache
     @stability Stable
  */
-PUBLIC ssize mprWriteCache(MprCache*cache, cchar*key, cchar*value, MprTime modified, MprTicks lifespan,
+PUBLIC ssize mprWriteCache(MprCache *cache, cchar *key, cchar *value, MprTime modified, MprTicks lifespan,
                            int64 version, int options);
 
 /******************************** Mime Types **********************************/
@@ -9817,8 +9820,8 @@ PUBLIC ssize mprWriteCache(MprCache*cache, cchar*key, cchar*value, MprTime modif
     @stability Internal
  */
 typedef struct MprMime {
-    char*type;                              /**< Mime type string */
-    char*program;                           /**< Mime type string */
+    char *type;                              /**< Mime type string */
+    char *program;                           /**< Mime type string */
 } MprMime;
 
 /**
@@ -9830,7 +9833,7 @@ typedef struct MprMime {
     @ingroup MprMime
     @stability Stable
  */
-PUBLIC MprMime*mprAddMime(MprHash*table, cchar*ext, cchar*mimeType);
+PUBLIC MprMime *mprAddMime(MprHash *table, cchar *ext, cchar *mimeType);
 
 /**
     Create the mime types
@@ -9839,7 +9842,7 @@ PUBLIC MprMime*mprAddMime(MprHash*table, cchar*ext, cchar*mimeType);
     @ingroup MprMime
     @stability Stable
  */
-PUBLIC MprHash*mprCreateMimeTypes(cchar*path);
+PUBLIC MprHash *mprCreateMimeTypes(cchar *path);
 
 /**
     Get the mime type program for a given mimeType
@@ -9849,7 +9852,7 @@ PUBLIC MprHash*mprCreateMimeTypes(cchar*path);
     @ingroup MprMime
     @stability Stable
  */
-PUBLIC cchar*mprGetMimeProgram(MprHash*table, cchar*mimeType);
+PUBLIC cchar *mprGetMimeProgram(MprHash *table, cchar *mimeType);
 
 /**
     Get the mime type for an extension.
@@ -9860,7 +9863,7 @@ PUBLIC cchar*mprGetMimeProgram(MprHash*table, cchar*mimeType);
     @ingroup MprMime
     @stability Stable
  */
-PUBLIC cchar*mprLookupMime(MprHash*table, cchar*ext);
+PUBLIC cchar *mprLookupMime(MprHash *table, cchar *ext);
 
 /**
     Set the mime type program
@@ -9872,7 +9875,7 @@ PUBLIC cchar*mprLookupMime(MprHash*table, cchar*ext);
     @ingroup MprMime
     @stability Stable
  */
-PUBLIC int mprSetMimeProgram(MprHash*table, cchar*mimeType, cchar*program);
+PUBLIC int mprSetMimeProgram(MprHash *table, cchar *mimeType, cchar *program);
 
 /************************************ MPR *************************************/
 /*
@@ -9939,31 +9942,31 @@ typedef void (*MprTerminator)(int state, int exitStrategy, int status);
     @stability Internal.
  */
 typedef struct Mpr {
-    MprHeap*heap;                           /**< Memory heap control */
+    MprHeap *heap;                          /**< Memory heap control */
     MprLogHandler logHandler;               /**< Current log handler callback */
-    MprFile*logFile;                        /**< Log file */
-    MprHash*mimeTypes;                      /**< Table of mime types */
-    MprHash*timeTokens;                     /**< Date/Time parsing tokens */
-    MprHash*keys;                           /**< Simple key/value store */
-    MprFile*stdError;                       /**< Standard error file */
-    MprFile*stdInput;                       /**< Standard input file */
-    MprFile*stdOutput;                      /**< Standard output file */
+    MprFile *logFile;                       /**< Log file */
+    MprHash *mimeTypes;                     /**< Table of mime types */
+    MprHash *timeTokens;                    /**< Date/Time parsing tokens */
+    MprHash *keys;                          /**< Simple key/value store */
+    MprFile *stdError;                      /**< Standard error file */
+    MprFile *stdInput;                      /**< Standard input file */
+    MprFile *stdOutput;                     /**< Standard output file */
     MprTime start;                          /**< When the MPR started */
     MprTicks exitTimeout;                   /**< Request timeout when exiting */
     ssize logSize;                          /**< Maximum log size */
-    cchar*appPath;                          /**< Path name of application executable */
-    cchar*appDir;                           /**< Path of directory containing app executable */
-    cchar**argv;                            /**< Application command line args (not alloced) */
-    char**argBuf;                           /**< Space for allocated argv */
-    cchar*logPath;                          /**< Log path name */
-    char*pathEnv;                           /**< Cached PATH env var. Used by MprCmd */
-    char*name;                              /**< Product name */
-    char*title;                             /**< Product title */
-    char*version;                           /**< Product version */
-    char*domainName;                        /**< Domain portion */
-    char*hostName;                          /**< Host name (fully qualified name) */
-    char*ip;                                /**< Public IP Address */
-    char*serverName;                        /**< Server name portion (no domain) */
+    cchar *appPath;                         /**< Path name of application executable */
+    cchar *appDir;                          /**< Path of directory containing app executable */
+    cchar **argv;                           /**< Application command line args (not alloced) */
+    char **argBuf;                          /**< Space for allocated argv */
+    cchar *logPath;                         /**< Log path name */
+    char *pathEnv;                          /**< Cached PATH env var. Used by MprCmd */
+    char *name;                             /**< Product name */
+    char *title;                            /**< Product title */
+    char *version;                          /**< Product version */
+    char *domainName;                       /**< Domain portion */
+    char *hostName;                         /**< Host name (fully qualified name) */
+    char *ip;                               /**< Public IP Address */
+    char *serverName;                       /**< Server name portion (no domain) */
     int argc;                               /**< Count of command line args */
     int eventing;                           /**< Servicing events thread is active */
     int exitStrategy;                       /**< How to exit the app */
@@ -9993,30 +9996,30 @@ typedef struct Mpr {
     /*
         These are here to optimize access to these singleton service objects
      */
-    void*appwebService;                     /**< Appweb service object */
-    void*ediService;                        /**< EDI object */
-    void*ejsService;                        /**< Ejscript service */
-    void*espService;                        /**< ESP service object */
-    void*httpService;                       /**< Http service object */
+    void *appwebService;                    /**< Appweb service object */
+    void *ediService;                       /**< EDI object */
+    void *ejsService;                       /**< Ejscript service */
+    void *espService;                       /**< ESP service object */
+    void *httpService;                      /**< Http service object */
 
-    MprList*fileSystems;                    /**< File system objects */
+    MprList *fileSystems;                   /**< File system objects */
     MprTicks shutdownStarted;               /**< When the shutdown started */
-    MprList*terminators;                    /**< Termination callbacks */
+    MprList *terminators;                   /**< Termination callbacks */
     MprIdleCallback idleCallback;           /**< Invoked to determine if the process is idle */
     MprOsThread mainOsThread;               /**< Main OS thread ID */
-    MprMutex*mutex;                         /**< Thread synchronization used for global lock */
-    MprSpin*spin;                           /**< Quick thread synchronization */
-    MprCond*cond;                           /**< Sync after starting events thread */
-    MprCond*stopCond;                       /**< Sync for stopping */
-    char*emptyString;                       /**< "" string */
-    char*oneString;                         /**< "1" string */
+    MprMutex *mutex;                        /**< Thread synchronization used for global lock */
+    MprSpin *spin;                          /**< Quick thread synchronization */
+    MprCond *cond;                          /**< Sync after starting events thread */
+    MprCond *stopCond;                      /**< Sync for stopping */
+    char *emptyString;                      /**< "" string */
+    char *oneString;                        /**< "1" string */
 #if ME_WIN_LIKE
     HINSTANCE appInstance;                  /**< Application instance (windows) */
 #endif
-    MprFileSystem*romfs;                    /**< Rom file system object */
+    MprFileSystem *romfs;                   /**< Rom file system object */
 } Mpr;
 
-PUBLIC void mprNop(void*ptr);
+PUBLIC void mprNop(void *ptr);
 
 #if DOXYGEN || ME_WIN_LIKE
 /**
@@ -10026,11 +10029,11 @@ PUBLIC void mprNop(void*ptr);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC Mpr*mprGetMpr(void);
+PUBLIC Mpr *mprGetMpr(void);
     #define MPR mprGetMpr()
 #else
     #define mprGetMpr() MPR
-PUBLIC_DATA Mpr*MPR;
+PUBLIC_DATA Mpr *MPR;
 #endif
 
 #define MPR_DISABLE_GC         0x1          /**< Disable GC */
@@ -10058,7 +10061,7 @@ PUBLIC_DATA Mpr*MPR;
            details.
         \n\n
         Services may also call #mprShouldDenyNewRequests to test if the MPR state is MPR_STOPPING and
-           #mprShouldAbortRequests
+ #mprShouldAbortRequests
         if the state is MPR_STOPPED.
     @param terminator MprTerminator callback function
     @ingroup Mpr
@@ -10096,7 +10099,7 @@ PUBLIC void mprAddTerminator(MprTerminator terminator);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC Mpr*mprCreate(int argc, char**argv, int flags);
+PUBLIC Mpr *mprCreate(int argc, char **argv, int flags);
 
 /**
     Convert the process into a daemon on unix systems
@@ -10147,7 +10150,7 @@ PUBLIC bool mprDestroy(void);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC char*mprEmptyString(void);
+PUBLIC char *mprEmptyString(void);
 
 /**
     Get the application directory
@@ -10156,7 +10159,7 @@ PUBLIC char*mprEmptyString(void);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC cchar*mprGetAppDir(void);
+PUBLIC cchar *mprGetAppDir(void);
 
 /**
     Get the application name defined via mprSetAppName
@@ -10164,7 +10167,7 @@ PUBLIC cchar*mprGetAppDir(void);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC cchar*mprGetAppName(void);
+PUBLIC cchar *mprGetAppName(void);
 
 /**
     Get the application executable path
@@ -10172,7 +10175,7 @@ PUBLIC cchar*mprGetAppName(void);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC cchar*mprGetAppPath(void);
+PUBLIC cchar *mprGetAppPath(void);
 
 /**
     Get the application title string
@@ -10180,7 +10183,7 @@ PUBLIC cchar*mprGetAppPath(void);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC cchar*mprGetAppTitle(void);
+PUBLIC cchar *mprGetAppTitle(void);
 
 /**
     Get the application version string
@@ -10188,7 +10191,7 @@ PUBLIC cchar*mprGetAppTitle(void);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC cchar*mprGetAppVersion(void);
+PUBLIC cchar *mprGetAppVersion(void);
 
 /**
     Get if command line logging is being used.
@@ -10217,7 +10220,7 @@ PUBLIC bool mprGetDebugMode(void);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC cchar*mprGetDomainName(void);
+PUBLIC cchar *mprGetDomainName(void);
 
 /**
     Return the endian byte ordering for the application
@@ -10253,7 +10256,7 @@ PUBLIC int mprGetExitStatus(void);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC cchar*mprGetHostName(void);
+PUBLIC cchar *mprGetHostName(void);
 
 /**
     Get the application IP address string
@@ -10261,7 +10264,7 @@ PUBLIC cchar*mprGetHostName(void);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC cchar*mprGetIpAddr(void);
+PUBLIC cchar *mprGetIpAddr(void);
 
 /**
     Get a key value
@@ -10269,7 +10272,7 @@ PUBLIC cchar*mprGetIpAddr(void);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC void*mprGetKey(cchar*key);
+PUBLIC void *mprGetKey(cchar *key);
 
 /**
     Get the current logging level
@@ -10288,7 +10291,7 @@ PUBLIC int mprGetLogLevel(void);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC int mprGetRandomBytes(char*buf, ssize size, bool block);
+PUBLIC int mprGetRandomBytes(char *buf, ssize size, bool block);
 
 /**
     Get some random data in ascii
@@ -10296,7 +10299,7 @@ PUBLIC int mprGetRandomBytes(char*buf, ssize size, bool block);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC char*mprGetRandomString(ssize size);
+PUBLIC char *mprGetRandomString(ssize size);
 
 /**
     Return the O/S error code.
@@ -10314,7 +10317,7 @@ PUBLIC int mprGetOsError(void);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC cchar*mprGetServerName(void);
+PUBLIC cchar *mprGetServerName(void);
 
 /**
     Get the MPR execution state
@@ -10398,7 +10401,7 @@ PUBLIC bool mprIsDestroying(void);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC int mprMakeArgv(cchar*command, cchar***argv, int flags);
+PUBLIC int mprMakeArgv(cchar *command, cchar ***argv, int flags);
 
 /**
     Nap for a while
@@ -10422,7 +10425,7 @@ PUBLIC void mprNap(MprTicks msec);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC int mprParseArgs(char*command, char**argv, int maxArgs);
+PUBLIC int mprParseArgs(char *command, char **argv, int maxArgs);
 
 /**
     Restart the application
@@ -10458,7 +10461,7 @@ PUBLIC bool mprServicesAreIdle(bool traceRequests);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC int mprSetAppName(cchar*name, cchar*title, cchar*version);
+PUBLIC int mprSetAppName(cchar *name, cchar *title, cchar *version);
 
 /**
     Set the application executable path
@@ -10466,7 +10469,7 @@ PUBLIC int mprSetAppName(cchar*name, cchar*title, cchar*version);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC void mprSetAppPath(cchar*path);
+PUBLIC void mprSetAppPath(cchar *path);
 
 /**
     Set if command line logging was requested.
@@ -10515,7 +10518,7 @@ PUBLIC void mprSetLogLevel(int level);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC void mprSetDomainName(cchar*s);
+PUBLIC void mprSetDomainName(cchar *s);
 
 /**
     Set an environment variable value
@@ -10524,7 +10527,7 @@ PUBLIC void mprSetDomainName(cchar*s);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC void mprSetEnv(cchar*key, cchar*value);
+PUBLIC void mprSetEnv(cchar *key, cchar *value);
 
 /**
     Set the error code.
@@ -10561,7 +10564,7 @@ PUBLIC void mprSetFilesLimit(int limit);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC void mprSetHostName(cchar*s);
+PUBLIC void mprSetHostName(cchar *s);
 
 /**
     Define a new idle callback to be invoked by mprIsIdle().
@@ -10577,7 +10580,7 @@ PUBLIC MprIdleCallback mprSetIdleCallback(MprIdleCallback idleCallback);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC void mprSetIpAddr(cchar*ip);
+PUBLIC void mprSetIpAddr(cchar *ip);
 
 /**
     Store a key/value pair
@@ -10586,7 +10589,7 @@ PUBLIC void mprSetIpAddr(cchar*ip);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC void mprSetKey(cchar*key, void*value);
+PUBLIC void mprSetKey(cchar *key, void *value);
 
 /**
     Set the O/S error code.
@@ -10602,7 +10605,7 @@ PUBLIC void mprSetOsError(int error);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC void mprSetServerName(cchar*s);
+PUBLIC void mprSetServerName(cchar *s);
 
 /**
     Test if requests should be aborted.
@@ -10771,7 +10774,7 @@ PUBLIC void mprSetSocketMessage(int message);
     @ingroup Mpr
     @stability Stable
  */
-PUBLIC MprList*mprListRegistry(cchar*key);
+PUBLIC MprList *mprListRegistry(cchar *key);
 
 /**
     Read a key from the Windows registry
@@ -10781,7 +10784,7 @@ PUBLIC MprList*mprListRegistry(cchar*key);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC char*mprReadRegistry(cchar*key, cchar*name);
+PUBLIC char *mprReadRegistry(cchar *key, cchar *name);
 
 /**
     Write a key value the Windows registry
@@ -10792,11 +10795,11 @@ PUBLIC char*mprReadRegistry(cchar*key, cchar*name);
     @ingroup Mpr
     @stability Stable.
  */
-PUBLIC int mprWriteRegistry(cchar*key, cchar*name, cchar*value);
+PUBLIC int mprWriteRegistry(cchar *key, cchar *name, cchar *value);
 #endif /* ME_WIN_LIKE || CYGWIN */
 
 #if VXWORKS
-PUBLIC int mprFindVxSym(SYMTAB_ID sid, char*name, char**pvalue);
+PUBLIC int mprFindVxSym(SYMTAB_ID sid, char *name, char **pvalue);
 PUBLIC pid_t mprGetPid(void);
     #ifndef getpid
         #define getpid mprGetPid
@@ -10806,7 +10809,7 @@ PUBLIC pid_t mprGetPid(void);
 /*
     Internal
  */
-PUBLIC void mprWriteToOsLog(cchar*msg, int level);
+PUBLIC void mprWriteToOsLog(cchar *msg, int level);
 
 #ifdef __cplusplus
 }

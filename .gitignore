@@ -1,5 +1,6 @@
 .cdrc
-.cdrc
+.cdrc.bat
+.claude
 .DS_Store
 .expansive-lastgen
 .install-certs-modified
@@ -7,13 +8,13 @@
 .port.log
 .profile
 .promoted
+.tags
 .tags*
 .version
 .vscode
 *.cgi
 *.dmp
 *.guid
-*.log
 *.swp
 **/*.guid
 /build
@@ -32,6 +33,7 @@ build/
 cache/
 Debug/
 diff
+node_modules
 paks/
 php.log
 projecs/*.sdf
@@ -52,13 +54,10 @@ test/.testme-pidfile
 test/*.log
 test/app/
 test/cache/
-test/cgiProgram.cgi
 test/cgi-bin/.prepared
 test/cgi-bin/*cgi*
-test/cgi-bin/cgiProgram
-test/cgi-bin/nph*
 test/cgi-bin/testScript
-test/debug.conf
+test/benchmark.conf
 test/error.log*
 test/exploits/
 test/fast-bin/fast*
@@ -73,9 +72,10 @@ test/trace.log*
 test/web/*K.txt
 test/web/*M.txt
 test/web/big*.txt
+test/web/huge.txt
 test/web/huge*.txt
 test/web/many
 test/web/tmp/
-test/web/upload/cgiProgram.cgi
 testme/
 XCBuildData/
+log.txt
