@@ -100,7 +100,7 @@
 
       <CustomBuildStep>
         <Command>cd ..\..\src\server
-if not exist "cache" md "cache"
+powershell -Command "New-Item -Path cache -ItemType Directory -Force | Out-Null"
 cd ..\..\projects\appweb-windows-default</Command>
         <Outputs>..\..\src\server\cache</Outputs>
       </CustomBuildStep>
@@ -109,5 +109,6 @@ cd ..\..\projects\appweb-windows-default</Command>
   <Import Project="$(VCTargetsPath)Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+
 
 </Project>

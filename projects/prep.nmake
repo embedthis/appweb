@@ -1,0 +1,4 @@
+    @if exist "$(USERPROFILE)/vcpkg/installed/$(ARCH)-windows/bin/libcrypto-3-$(ARCH).dll" powershell -Command "Copy-Item \"$(USERPROFILE)/vcpkg/installed/$(ARCH)-windows/bin/libcrypto-*.dll\" \"$(BUILD)/bin/\" -Force -ErrorAction SilentlyContinue" $(LOG)
+    @if exist "$(USERPROFILE)/vcpkg/installed/$(ARCH)-windows/bin/libssl-3-$(ARCH).dll" powershell -Command "Copy-Item \"$(USERPROFILE)/vcpkg/installed/$(ARCH)-windows/bin/libssl-*.dll\" \"$(BUILD)/bin/\" -Force -ErrorAction SilentlyContinue" $(LOG)
+    @if exist "$(ME_COM_OPENSSL_PATH)/bin/libcrypto-3-$(ARCH).dll" powershell -Command "Copy-Item \"$(ME_COM_OPENSSL_PATH)/bin/libcrypto-*.dll\" \"$(BUILD)/bin/\" -Force -ErrorAction SilentlyContinue" $(LOG)
+    @if exist "$(ME_COM_OPENSSL_PATH)/bin/libssl-3-$(ARCH).dll" powershell -Command "Copy-Item \"$(ME_COM_OPENSSL_PATH)/bin/libssl-*.dll\" \"$(BUILD)/bin/\" -Force -ErrorAction SilentlyContinue" $(LOG)

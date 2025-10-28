@@ -1,0 +1,3 @@
+test::
+    .\test\utils\prep-test.bat
+    tm 

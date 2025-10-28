@@ -3,8 +3,9 @@
 #
 
 NAME                  := appweb
-VERSION               := 9.0.5
-PROFILE               ?= default
+VERSION               := 9.1.0
+PROJECT               := appweb-linux-default
+PROFILE               ?= dev
 ARCH                  ?= $(shell uname -m | sed 's/i.86/x86/;s/x86_64/x64/;s/mips.*/mips/')
 CC_ARCH               ?= $(shell echo $(ARCH) | sed 's/x86/i686/;s/x64/x86_64/')
 OS                    ?= linux
@@ -23,7 +24,7 @@ ME_COM_COMPILER       ?= 1
 ME_COM_DIR            ?= 0
 ME_COM_EJS            ?= 0
 ME_COM_ESP            ?= 1
-ME_COM_FAST           ?= 0
+ME_COM_FAST           ?= 1
 ME_COM_HTTP           ?= 1
 ME_COM_LIB            ?= 1
 ME_COM_MBEDTLS        ?= 0
@@ -33,7 +34,7 @@ ME_COM_OPENSSL        ?= 1
 ME_COM_OSDEP          ?= 1
 ME_COM_PCRE           ?= 1
 ME_COM_PHP            ?= 0
-ME_COM_PROXY          ?= 0
+ME_COM_PROXY          ?= 1
 ME_COM_SQLITE         ?= 0
 ME_COM_SSL            ?= 1
 ME_COM_VXWORKS        ?= 0
@@ -60,8 +61,8 @@ ME_AUTHOR             ?= \"Embedthis Software\"
 ME_CERTS_GENDH        ?= 1
 ME_COMPANY            ?= \"embedthis\"
 ME_COMPAT             ?= 1
-ME_COMPATIBLE         ?= \"9.0\"
-ME_COMPILER_FORTIFY   ?= 1
+ME_COMPATIBLE         ?= \"9.1\"
+ME_COMPILER_FORTIFY   ?= 0
 ME_COMPILER_HAS_ATOMIC ?= 1
 ME_COMPILER_HAS_ATOMIC64 ?= 1
 ME_COMPILER_HAS_DOUBLE_BRACES ?= 1
@@ -80,7 +81,7 @@ ME_COMPILER_NOEXECSTACK ?= 1
 ME_COMPILER_WARN64TO32 ?= 0
 ME_COMPILER_WARN_UNUSED ?= 1
 ME_CONFIG_FILE        ?= \"appweb.conf\"
-ME_CONFIGURE          ?= \"me -d -q -platform linux-x64-default -configure . --with esp --with mdb --with cgi -gen make\"
+ME_CONFIGURE          ?= \"me -d -q -platform linux-x64-default -configure . --with esp --with mdb --with cgi --with fast --with proxy -gen make\"
 ME_CONFIGURED         ?= 1
 ME_DEBUG              ?= 1
 ME_DEPRECATED_WARNINGS ?= 0
@@ -123,17 +124,17 @@ ME_ROM                ?= 0
 ME_SERVER_ROOT        ?= \".\"
 ME_TITLE              ?= \"Embedthis Appweb\"
 ME_TUNE               ?= \"size\"
-ME_VERSION            ?= \"9.0.5\"
+ME_VERSION            ?= \"9.1.0\"
 ME_WATCHDOG_NAME      ?= \"appman\"
 ME_WEB_GROUP          ?= \"$(WEB_GROUP)\"
 ME_WEB_USER           ?= \"$(WEB_USER)\"
 
-CFLAGS                += -fPIC -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wl,-z,relro,-z,now -Wl,--as-needed -Wl,--no-copy-dt-needed-entries -Wl,-z,noexecheap -Wl,-z,noexecstack -Wl,--no-warn-execstack  -w
-DFLAGS                += -D_REENTRANT -DPIC $(patsubst %,-D%,$(filter ME_%,$(MAKEFLAGS))) -DME_COM_CGI=$(ME_COM_CGI) -DME_COM_COMPILER=$(ME_COM_COMPILER) -DME_COM_DIR=$(ME_COM_DIR) -DME_COM_EJS=$(ME_COM_EJS) -DME_COM_ESP=$(ME_COM_ESP) -DME_COM_FAST=$(ME_COM_FAST) -DME_COM_HTTP=$(ME_COM_HTTP) -DME_COM_LIB=$(ME_COM_LIB) -DME_COM_MBEDTLS=$(ME_COM_MBEDTLS) -DME_COM_MDB=$(ME_COM_MDB) -DME_COM_MPR=$(ME_COM_MPR) -DME_COM_OPENSSL=$(ME_COM_OPENSSL) -DME_COM_OSDEP=$(ME_COM_OSDEP) -DME_COM_PCRE=$(ME_COM_PCRE) -DME_COM_PHP=$(ME_COM_PHP) -DME_COM_PROXY=$(ME_COM_PROXY) -DME_COM_SQLITE=$(ME_COM_SQLITE) -DME_COM_SSL=$(ME_COM_SSL) -DME_COM_VXWORKS=$(ME_COM_VXWORKS) -DME_COM_WATCHDOG=$(ME_COM_WATCHDOG) -DME_CERTS_GENDH=$(ME_CERTS_GENDH) -DME_ESP_CMD=$(ME_ESP_CMD) -DME_ESP_LEGACY=$(ME_ESP_LEGACY) -DME_ESP_MODULE=$(ME_ESP_MODULE) -DME_ESP_NAME=$(ME_ESP_NAME) -DME_HTTP_BASIC=$(ME_HTTP_BASIC) -DME_HTTP_CACHE=$(ME_HTTP_CACHE) -DME_HTTP_CMD=$(ME_HTTP_CMD) -DME_HTTP_DEFENSE=$(ME_HTTP_DEFENSE) -DME_HTTP_DIGEST=$(ME_HTTP_DIGEST) -DME_HTTP_DIR=$(ME_HTTP_DIR) -DME_HTTP_HTTP2=$(ME_HTTP_HTTP2) -DME_HTTP_PAM=$(ME_HTTP_PAM) -DME_HTTP_SENDFILE=$(ME_HTTP_SENDFILE) -DME_HTTP_UPLOAD=$(ME_HTTP_UPLOAD) -DME_HTTP_WEBSOCKETS=$(ME_HTTP_WEBSOCKETS) -DME_MBEDTLS_COMPACT=$(ME_MBEDTLS_COMPACT) -DME_MPR_ALLOC=$(ME_MPR_ALLOC) -DME_MPR_LOGGING=$(ME_MPR_LOGGING) -DME_MPR_OSLOG=$(ME_MPR_OSLOG) -DME_MPR_ROMMOUNT=$(ME_MPR_ROMMOUNT) -DME_MPR_SSL=$(ME_MPR_SSL) -DME_MPR_THREADLIMITBYCORES=$(ME_MPR_THREADLIMITBYCORES) -DME_MPR_THREADSTACK=$(ME_MPR_THREADSTACK) -DME_OPENSSL_VERSION=$(ME_OPENSSL_VERSION) -DME_WATCHDOG_NAME=$(ME_WATCHDOG_NAME) 
+CFLAGS                += -Wno-unused-result -Wall -g -fPIC
+DFLAGS                += -DPIC -D_REENTRANT $(patsubst %,-D%,$(filter ME_%,$(MAKEFLAGS))) "-DME_COM_CGI=$(ME_COM_CGI)" "-DME_COM_COMPILER=$(ME_COM_COMPILER)" "-DME_COM_DIR=$(ME_COM_DIR)" "-DME_COM_EJS=$(ME_COM_EJS)" "-DME_COM_ESP=$(ME_COM_ESP)" "-DME_COM_FAST=$(ME_COM_FAST)" "-DME_COM_HTTP=$(ME_COM_HTTP)" "-DME_COM_LIB=$(ME_COM_LIB)" "-DME_COM_MBEDTLS=$(ME_COM_MBEDTLS)" "-DME_COM_MDB=$(ME_COM_MDB)" "-DME_COM_MPR=$(ME_COM_MPR)" "-DME_COM_OPENSSL=$(ME_COM_OPENSSL)" "-DME_COM_OSDEP=$(ME_COM_OSDEP)" "-DME_COM_PCRE=$(ME_COM_PCRE)" "-DME_COM_PHP=$(ME_COM_PHP)" "-DME_COM_PROXY=$(ME_COM_PROXY)" "-DME_COM_SQLITE=$(ME_COM_SQLITE)" "-DME_COM_SSL=$(ME_COM_SSL)" "-DME_COM_VXWORKS=$(ME_COM_VXWORKS)" "-DME_COM_WATCHDOG=$(ME_COM_WATCHDOG)" "-DME_CERTS_GENDH=$(ME_CERTS_GENDH)" "-DME_ESP_CMD=$(ME_ESP_CMD)" "-DME_ESP_LEGACY=$(ME_ESP_LEGACY)" "-DME_ESP_MODULE=$(ME_ESP_MODULE)" "-DME_ESP_NAME=$(ME_ESP_NAME)" "-DME_HTTP_BASIC=$(ME_HTTP_BASIC)" "-DME_HTTP_CACHE=$(ME_HTTP_CACHE)" "-DME_HTTP_CMD=$(ME_HTTP_CMD)" "-DME_HTTP_DEFENSE=$(ME_HTTP_DEFENSE)" "-DME_HTTP_DIGEST=$(ME_HTTP_DIGEST)" "-DME_HTTP_DIR=$(ME_HTTP_DIR)" "-DME_HTTP_HTTP2=$(ME_HTTP_HTTP2)" "-DME_HTTP_PAM=$(ME_HTTP_PAM)" "-DME_HTTP_SENDFILE=$(ME_HTTP_SENDFILE)" "-DME_HTTP_UPLOAD=$(ME_HTTP_UPLOAD)" "-DME_HTTP_WEBSOCKETS=$(ME_HTTP_WEBSOCKETS)" "-DME_MBEDTLS_COMPACT=$(ME_MBEDTLS_COMPACT)" "-DME_MPR_ALLOC=$(ME_MPR_ALLOC)" "-DME_MPR_LOGGING=$(ME_MPR_LOGGING)" "-DME_MPR_OSLOG=$(ME_MPR_OSLOG)" "-DME_MPR_ROMMOUNT=$(ME_MPR_ROMMOUNT)" "-DME_MPR_SSL=$(ME_MPR_SSL)" "-DME_MPR_THREADLIMITBYCORES=$(ME_MPR_THREADLIMITBYCORES)" "-DME_MPR_THREADSTACK=$(ME_MPR_THREADSTACK)" "-DME_OPENSSL_VERSION=$(ME_OPENSSL_VERSION)" "-DME_WATCHDOG_NAME=$(ME_WATCHDOG_NAME)" 
 IFLAGS                += "-I$(BUILD)/inc"
-LDFLAGS               += -z noexecstack -g -rdynamic -Wl,--enable-new-dtags -Wl,-rpath,$$ORIGIN/
-LIBPATHS              += -L$(BUILD)/bin
-LIBS                  += -lrt -ldl -lpthread -lm
+LDFLAGS               += "-g" "-rdynamic" "-Wl,--enable-new-dtags" "-Wl,-rpath,\$$ORIGIN/"
+LIBPATHS              += "-L$(BUILD)/bin"
+LIBS                  += "-lrt" "-ldl" "-lpthread" "-lm"
 
 OPTIMIZE              ?= debug
 CFLAGS-debug          ?= -g
@@ -170,11 +171,17 @@ WEB_GROUP             ?= $(shell egrep 'www-data|_www|nobody|nogroup' /etc/group
 
 TARGETS               += $(BUILD)/bin/appweb
 TARGETS               += $(BUILD)/bin/authpass
+ifeq ($(ME_COM_CGI),1)
+    TARGETS           += $(BUILD)/bin/cgiProgram
+endif
 ifeq ($(ME_COM_ESP),1)
     TARGETS           += $(BUILD)/bin/appweb-esp
 endif
 ifeq ($(ME_COM_ESP),1)
     TARGETS           += $(BUILD)/.extras-modified
+endif
+ifeq ($(ME_COM_FAST),1)
+    TARGETS           += $(BUILD)/bin/fastProgram
 endif
 ifeq ($(ME_COM_HTTP),1)
     TARGETS           += $(BUILD)/bin/http
@@ -210,17 +217,10 @@ prep:
 	@[ ! -x $(BUILD)/bin ] && mkdir -p $(BUILD)/bin; true
 	@[ ! -x $(BUILD)/inc ] && mkdir -p $(BUILD)/inc; true
 	@[ ! -x $(BUILD)/obj ] && mkdir -p $(BUILD)/obj; true
-	@[ ! -f $(BUILD)/inc/me.h ] && cp projects/appweb-linux-$(PROFILE)-me.h $(BUILD)/inc/me.h ; true
-	@if ! diff $(BUILD)/inc/me.h projects/appweb-linux-$(PROFILE)-me.h >/dev/null ; then\
-		cp projects/appweb-linux-$(PROFILE)-me.h $(BUILD)/inc/me.h  ; \
+	@[ ! -f $(BUILD)/inc/me.h ] && cp projects/$(PROJECT)-me.h $(BUILD)/inc/me.h ; true
+	@if ! diff $(BUILD)/inc/me.h projects/$(PROJECT)-me.h >/dev/null ; then\
+		cp projects/$(PROJECT)-me.h $(BUILD)/inc/me.h  ; \
 	fi; true
-	@if [ -f "$(BUILD)/.makeflags" ] ; then \
-		if [ "$(MAKEFLAGS)" != "`cat $(BUILD)/.makeflags`" ] ; then \
-			echo "   [Warning] Make flags have changed since the last build" ; \
-			echo "   [Warning] Previous build command: "`cat $(BUILD)/.makeflags`"" ; \
-		fi ; \
-	fi
-	@echo "$(MAKEFLAGS)" >$(BUILD)/.makeflags
 
 clean:
 	rm -f "$(BUILD)/obj/appweb.o"
@@ -250,8 +250,10 @@ clean:
 	rm -f "$(BUILD)/obj/watchdog.o"
 	rm -f "$(BUILD)/bin/appweb"
 	rm -f "$(BUILD)/bin/authpass"
+	rm -f "$(BUILD)/bin/cgiProgram"
 	rm -f "$(BUILD)/bin/appweb-esp"
 	rm -f "$(BUILD)/.extras-modified"
+	rm -f "$(BUILD)/bin/fastProgram"
 	rm -f "$(BUILD)/bin/http"
 	rm -f "$(BUILD)/.install-roots-modified"
 	rm -f "$(BUILD)/bin/libappweb.so"
@@ -541,7 +543,7 @@ DEPS_34 += $(BUILD)/inc/appweb.h
 $(BUILD)/obj/appweb.o: \
     src/server/appweb.c $(DEPS_34)
 	@echo '   [Compile] $(BUILD)/obj/appweb.o'
-	$(CC) -c -o $(BUILD)/obj/appweb.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/server/appweb.c
+	$(CC) -c -o "$(BUILD)/obj/appweb.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/server/appweb.c"
 
 #
 #   authpass.o
@@ -551,7 +553,7 @@ DEPS_35 += $(BUILD)/inc/appweb.h
 $(BUILD)/obj/authpass.o: \
     src/utils/authpass.c $(DEPS_35)
 	@echo '   [Compile] $(BUILD)/obj/authpass.o'
-	$(CC) -c -o $(BUILD)/obj/authpass.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/utils/authpass.c
+	$(CC) -c -o "$(BUILD)/obj/authpass.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/utils/authpass.c"
 
 #
 #   appweb.h
@@ -567,7 +569,7 @@ DEPS_37 += src/appweb.h
 $(BUILD)/obj/cgiHandler.o: \
     src/modules/cgiHandler.c $(DEPS_37)
 	@echo '   [Compile] $(BUILD)/obj/cgiHandler.o'
-	$(CC) -c -o $(BUILD)/obj/cgiHandler.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/modules/cgiHandler.c
+	$(CC) -c -o "$(BUILD)/obj/cgiHandler.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/modules/cgiHandler.c"
 
 #
 #   cgiProgram.o
@@ -576,7 +578,7 @@ $(BUILD)/obj/cgiHandler.o: \
 $(BUILD)/obj/cgiProgram.o: \
     src/utils/cgiProgram.c $(DEPS_38)
 	@echo '   [Compile] $(BUILD)/obj/cgiProgram.o'
-	$(CC) -c -o $(BUILD)/obj/cgiProgram.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/utils/cgiProgram.c
+	$(CC) -c -o "$(BUILD)/obj/cgiProgram.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/utils/cgiProgram.c"
 
 #
 #   config.o
@@ -587,7 +589,7 @@ DEPS_39 += $(BUILD)/inc/pcre.h
 $(BUILD)/obj/config.o: \
     src/config.c $(DEPS_39)
 	@echo '   [Compile] $(BUILD)/obj/config.o'
-	$(CC) -c -o $(BUILD)/obj/config.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/config.c
+	$(CC) -c -o "$(BUILD)/obj/config.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/config.c"
 
 #
 #   convenience.o
@@ -597,7 +599,7 @@ DEPS_40 += src/appweb.h
 $(BUILD)/obj/convenience.o: \
     src/convenience.c $(DEPS_40)
 	@echo '   [Compile] $(BUILD)/obj/convenience.o'
-	$(CC) -c -o $(BUILD)/obj/convenience.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/convenience.c
+	$(CC) -c -o "$(BUILD)/obj/convenience.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/convenience.c"
 
 #
 #   esp.h
@@ -614,7 +616,7 @@ DEPS_42 += $(BUILD)/inc/mpr-version.h
 $(BUILD)/obj/esp.o: \
     src/esp/esp.c $(DEPS_42)
 	@echo '   [Compile] $(BUILD)/obj/esp.o'
-	$(CC) -c -o $(BUILD)/obj/esp.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/esp/esp.c
+	$(CC) -c -o "$(BUILD)/obj/esp.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/esp/esp.c"
 
 #
 #   espHandler.o
@@ -625,7 +627,7 @@ DEPS_43 += $(BUILD)/inc/esp.h
 $(BUILD)/obj/espHandler.o: \
     src/modules/espHandler.c $(DEPS_43)
 	@echo '   [Compile] $(BUILD)/obj/espHandler.o'
-	$(CC) -c -o $(BUILD)/obj/espHandler.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/modules/espHandler.c
+	$(CC) -c -o "$(BUILD)/obj/espHandler.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/modules/espHandler.c"
 
 #
 #   espLib.o
@@ -637,7 +639,7 @@ DEPS_44 += $(BUILD)/inc/http.h
 $(BUILD)/obj/espLib.o: \
     src/esp/espLib.c $(DEPS_44)
 	@echo '   [Compile] $(BUILD)/obj/espLib.o'
-	$(CC) -c -o $(BUILD)/obj/espLib.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/esp/espLib.c
+	$(CC) -c -o "$(BUILD)/obj/espLib.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/esp/espLib.c"
 
 #
 #   fastHandler.o
@@ -647,7 +649,7 @@ DEPS_45 += src/appweb.h
 $(BUILD)/obj/fastHandler.o: \
     src/modules/fastHandler.c $(DEPS_45)
 	@echo '   [Compile] $(BUILD)/obj/fastHandler.o'
-	$(CC) -c -o $(BUILD)/obj/fastHandler.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/modules/fastHandler.c
+	$(CC) -c -o "$(BUILD)/obj/fastHandler.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/modules/fastHandler.c"
 
 #
 #   fcgiapp.h
@@ -663,7 +665,7 @@ DEPS_47 += ../../../..$(ME_INC_PREFIX)/fcgiapp.h
 $(BUILD)/obj/fastProgram.o: \
     src/utils/fastProgram.c $(DEPS_47)
 	@echo '   [Compile] $(BUILD)/obj/fastProgram.o'
-	$(CC) -c -o $(BUILD)/obj/fastProgram.o $(CFLAGS) $(DFLAGS) "-I$(ME_INC_PREFIX)" src/utils/fastProgram.c
+	$(CC) -c -o "$(BUILD)/obj/fastProgram.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) "-I$(ME_INC_PREFIX)" $(INPUT) "src/utils/fastProgram.c"
 
 #
 #   http.h
@@ -679,7 +681,7 @@ DEPS_49 += src/http/http.h
 $(BUILD)/obj/http.o: \
     src/http/http.c $(DEPS_49)
 	@echo '   [Compile] $(BUILD)/obj/http.o'
-	$(CC) -c -o $(BUILD)/obj/http.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/http/http.c
+	$(CC) -c -o "$(BUILD)/obj/http.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/http/http.c"
 
 #
 #   httpLib.o
@@ -690,7 +692,7 @@ DEPS_50 += $(BUILD)/inc/pcre.h
 $(BUILD)/obj/httpLib.o: \
     src/http/httpLib.c $(DEPS_50)
 	@echo '   [Compile] $(BUILD)/obj/httpLib.o'
-	$(CC) -c -o $(BUILD)/obj/httpLib.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/http/httpLib.c
+	$(CC) -c -o "$(BUILD)/obj/httpLib.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/http/httpLib.c"
 
 #
 #   makerom.o
@@ -700,7 +702,7 @@ DEPS_51 += $(BUILD)/inc/mpr.h
 $(BUILD)/obj/makerom.o: \
     src/makerom/makerom.c $(DEPS_51)
 	@echo '   [Compile] $(BUILD)/obj/makerom.o'
-	$(CC) -c -o $(BUILD)/obj/makerom.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/makerom/makerom.c
+	$(CC) -c -o "$(BUILD)/obj/makerom.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/makerom/makerom.c"
 
 #
 #   mpr-version.h
@@ -717,7 +719,7 @@ DEPS_53 += $(BUILD)/inc/pcre.h
 $(BUILD)/obj/mpr-version.o: \
     src/mpr-version/mpr-version.c $(DEPS_53)
 	@echo '   [Compile] $(BUILD)/obj/mpr-version.o'
-	$(CC) -c -o $(BUILD)/obj/mpr-version.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/mpr-version/mpr-version.c
+	$(CC) -c -o "$(BUILD)/obj/mpr-version.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/mpr-version/mpr-version.c"
 
 #
 #   mpr.h
@@ -733,7 +735,7 @@ DEPS_55 += src/mpr/mpr.h
 $(BUILD)/obj/mprLib.o: \
     src/mpr/mprLib.c $(DEPS_55)
 	@echo '   [Compile] $(BUILD)/obj/mprLib.o'
-	$(CC) -c -o $(BUILD)/obj/mprLib.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/mpr/mprLib.c
+	$(CC) -c -o "$(BUILD)/obj/mprLib.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/mpr/mprLib.c"
 
 #
 #   pcre.h
@@ -750,7 +752,7 @@ DEPS_57 += src/pcre/pcre.h
 $(BUILD)/obj/pcre.o: \
     src/pcre/pcre.c $(DEPS_57)
 	@echo '   [Compile] $(BUILD)/obj/pcre.o'
-	$(CC) -c -o $(BUILD)/obj/pcre.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/pcre/pcre.c
+	$(CC) -c -o "$(BUILD)/obj/pcre.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/pcre/pcre.c"
 
 #
 #   proxyHandler.o
@@ -760,7 +762,7 @@ DEPS_58 += src/appweb.h
 $(BUILD)/obj/proxyHandler.o: \
     src/modules/proxyHandler.c $(DEPS_58)
 	@echo '   [Compile] $(BUILD)/obj/proxyHandler.o'
-	$(CC) -c -o $(BUILD)/obj/proxyHandler.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/modules/proxyHandler.c
+	$(CC) -c -o "$(BUILD)/obj/proxyHandler.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/modules/proxyHandler.c"
 
 #
 #   rom.o
@@ -770,7 +772,7 @@ DEPS_59 += $(BUILD)/inc/mpr.h
 $(BUILD)/obj/rom.o: \
     src/rom.c $(DEPS_59)
 	@echo '   [Compile] $(BUILD)/obj/rom.o'
-	$(CC) -c -o $(BUILD)/obj/rom.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/rom.c
+	$(CC) -c -o "$(BUILD)/obj/rom.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/rom.c"
 
 #
 #   server.o
@@ -780,7 +782,7 @@ DEPS_60 += src/http/http.h
 $(BUILD)/obj/server.o: \
     src/http/server.c $(DEPS_60)
 	@echo '   [Compile] $(BUILD)/obj/server.o'
-	$(CC) -c -o $(BUILD)/obj/server.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/http/server.c
+	$(CC) -c -o "$(BUILD)/obj/server.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/http/server.c"
 
 #
 #   sqlite3.h
@@ -798,7 +800,7 @@ DEPS_62 += $(BUILD)/inc/windows.h
 $(BUILD)/obj/sqlite.o: \
     src/sqlite/sqlite.c $(DEPS_62)
 	@echo '   [Compile] $(BUILD)/obj/sqlite.o'
-	$(CC) -c -o $(BUILD)/obj/sqlite.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/sqlite/sqlite.c
+	$(CC) -c -o "$(BUILD)/obj/sqlite.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/sqlite/sqlite.c"
 
 #
 #   sqlite3.o
@@ -812,7 +814,7 @@ DEPS_63 += $(BUILD)/inc/sqlite3rtree.h
 $(BUILD)/obj/sqlite3.o: \
     src/sqlite/sqlite3.c $(DEPS_63)
 	@echo '   [Compile] $(BUILD)/obj/sqlite3.o'
-	$(CC) -c -o $(BUILD)/obj/sqlite3.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/sqlite/sqlite3.c
+	$(CC) -c -o "$(BUILD)/obj/sqlite3.o" $(CFLAGS) "-Wno-unused-result" "-g" "-fPIC" "-w" $(DFLAGS) $(IFLAGS) $(INPUT) "src/sqlite/sqlite3.c"
 
 #
 #   testHandler.o
@@ -822,7 +824,7 @@ DEPS_64 += src/appweb.h
 $(BUILD)/obj/testHandler.o: \
     src/modules/testHandler.c $(DEPS_64)
 	@echo '   [Compile] $(BUILD)/obj/testHandler.o'
-	$(CC) -c -o $(BUILD)/obj/testHandler.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/modules/testHandler.c
+	$(CC) -c -o "$(BUILD)/obj/testHandler.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/modules/testHandler.c"
 
 #
 #   testWebSocketsHandler.o
@@ -832,7 +834,7 @@ DEPS_65 += src/appweb.h
 $(BUILD)/obj/testWebSocketsHandler.o: \
     src/modules/testWebSocketsHandler.c $(DEPS_65)
 	@echo '   [Compile] $(BUILD)/obj/testWebSocketsHandler.o'
-	$(CC) -c -o $(BUILD)/obj/testWebSocketsHandler.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/modules/testWebSocketsHandler.c
+	$(CC) -c -o "$(BUILD)/obj/testWebSocketsHandler.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/modules/testWebSocketsHandler.c"
 
 #
 #   watchdog.o
@@ -842,7 +844,7 @@ DEPS_66 += $(BUILD)/inc/mpr.h
 $(BUILD)/obj/watchdog.o: \
     src/watchdog/watchdog.c $(DEPS_66)
 	@echo '   [Compile] $(BUILD)/obj/watchdog.o'
-	$(CC) -c -o $(BUILD)/obj/watchdog.o $(CFLAGS) $(DFLAGS) $(IFLAGS) src/watchdog/watchdog.c
+	$(CC) -c -o "$(BUILD)/obj/watchdog.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/watchdog/watchdog.c"
 
 #
 #   libmpr
@@ -873,7 +875,7 @@ endif
 
 $(BUILD)/bin/libmpr.so: $(DEPS_67)
 	@echo '      [Link] $(BUILD)/bin/libmpr.so'
-	$(CC) -shared -o $(BUILD)/bin/libmpr.so $(LDFLAGS) $(LIBPATHS) "$(BUILD)/obj/mprLib.o" $(LIBPATHS_67) $(LIBS_67) $(LIBS_67) $(LIBS) 
+	$(CC) -shared -o "$(BUILD)/bin/libmpr.so" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/mprLib.o" $(LIBPATHS_67) $(LIBS_67) $(LIBS_67) $(LIBS) 
 
 ifeq ($(ME_COM_PCRE),1)
 #
@@ -884,7 +886,7 @@ DEPS_68 += $(BUILD)/obj/pcre.o
 
 $(BUILD)/bin/libpcre.so: $(DEPS_68)
 	@echo '      [Link] $(BUILD)/bin/libpcre.so'
-	$(CC) -shared -o $(BUILD)/bin/libpcre.so $(LDFLAGS) $(LIBPATHS) "$(BUILD)/obj/pcre.o" $(LIBS) 
+	$(CC) -shared -o "$(BUILD)/bin/libpcre.so" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/pcre.o" $(LIBS) 
 endif
 
 ifeq ($(ME_COM_HTTP),1)
@@ -924,7 +926,7 @@ endif
 
 $(BUILD)/bin/libhttp.so: $(DEPS_69)
 	@echo '      [Link] $(BUILD)/bin/libhttp.so'
-	$(CC) -shared -o $(BUILD)/bin/libhttp.so $(LDFLAGS) $(LIBPATHS) "$(BUILD)/obj/httpLib.o" $(LIBPATHS_69) $(LIBS_69) $(LIBS_69) $(LIBS) 
+	$(CC) -shared -o "$(BUILD)/bin/libhttp.so" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/httpLib.o" $(LIBPATHS_69) $(LIBS_69) $(LIBS_69) $(LIBS) 
 endif
 
 #
@@ -935,7 +937,7 @@ DEPS_70 += $(BUILD)/obj/mpr-version.o
 
 $(BUILD)/bin/libmpr-version.a: $(DEPS_70)
 	@echo '      [Link] $(BUILD)/bin/libmpr-version.a'
-	$(AR) -cr $(BUILD)/bin/libmpr-version.a "$(BUILD)/obj/mpr-version.o"
+	$(AR) -cr "$(BUILD)/bin/libmpr-version.a" $(INPUT) "$(BUILD)/obj/mpr-version.o"
 
 ifeq ($(ME_COM_ESP),1)
 #
@@ -987,7 +989,7 @@ endif
 
 $(BUILD)/bin/libesp.so: $(DEPS_71)
 	@echo '      [Link] $(BUILD)/bin/libesp.so'
-	$(CC) -shared -o $(BUILD)/bin/libesp.so $(LDFLAGS) $(LIBPATHS) "$(BUILD)/obj/espLib.o" $(LIBPATHS_71) $(LIBS_71) $(LIBS_71) $(LIBS) 
+	$(CC) -shared -o "$(BUILD)/bin/libesp.so" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/espLib.o" $(LIBPATHS_71) $(LIBS_71) $(LIBS_71) $(LIBS) 
 endif
 
 #
@@ -1052,7 +1054,7 @@ endif
 
 $(BUILD)/bin/libappweb.so: $(DEPS_72)
 	@echo '      [Link] $(BUILD)/bin/libappweb.so'
-	$(CC) -shared -o $(BUILD)/bin/libappweb.so $(LDFLAGS) $(LIBPATHS) "$(BUILD)/obj/config.o" "$(BUILD)/obj/convenience.o" "$(BUILD)/obj/cgiHandler.o" "$(BUILD)/obj/espHandler.o" "$(BUILD)/obj/fastHandler.o" "$(BUILD)/obj/proxyHandler.o" "$(BUILD)/obj/testHandler.o" "$(BUILD)/obj/testWebSocketsHandler.o" "$(BUILD)/obj/rom.o" $(LIBPATHS_72) $(LIBS_72) $(LIBS_72) $(LIBS) 
+	$(CC) -shared -o "$(BUILD)/bin/libappweb.so" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/config.o" "$(BUILD)/obj/convenience.o" "$(BUILD)/obj/cgiHandler.o" "$(BUILD)/obj/espHandler.o" "$(BUILD)/obj/fastHandler.o" "$(BUILD)/obj/proxyHandler.o" "$(BUILD)/obj/testHandler.o" "$(BUILD)/obj/testWebSocketsHandler.o" "$(BUILD)/obj/rom.o" $(LIBPATHS_72) $(LIBS_72) $(LIBS_72) $(LIBS) 
 
 #
 #   appweb
@@ -1097,7 +1099,7 @@ LIBS_73 += -lappweb
 
 $(BUILD)/bin/appweb: $(DEPS_73)
 	@echo '      [Link] $(BUILD)/bin/appweb'
-	$(CC) -o $(BUILD)/bin/appweb $(LDFLAGS) $(LIBPATHS) "$(BUILD)/obj/appweb.o" $(LIBPATHS_73) $(LIBS_73) $(LIBS_73) $(LIBS) $(LIBS) 
+	$(CC) -o "$(BUILD)/bin/appweb" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/appweb.o" $(LIBPATHS_73) $(LIBS_73) $(LIBS_73) $(LIBS) $(LIBS) 
 
 #
 #   authpass
@@ -1142,63 +1144,74 @@ LIBS_74 += -lappweb
 
 $(BUILD)/bin/authpass: $(DEPS_74)
 	@echo '      [Link] $(BUILD)/bin/authpass'
-	$(CC) -o $(BUILD)/bin/authpass $(LDFLAGS) $(LIBPATHS) "$(BUILD)/obj/authpass.o" $(LIBPATHS_74) $(LIBS_74) $(LIBS_74) $(LIBS) $(LIBS) 
+	$(CC) -o "$(BUILD)/bin/authpass" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/authpass.o" $(LIBPATHS_74) $(LIBS_74) $(LIBS_74) $(LIBS) $(LIBS) 
+
+ifeq ($(ME_COM_CGI),1)
+#
+#   cgiProgram
+#
+DEPS_75 += $(BUILD)/obj/cgiProgram.o
+
+$(BUILD)/bin/cgiProgram: $(DEPS_75)
+	@echo '      [Link] $(BUILD)/bin/cgiProgram'
+	$(CC) -o "$(BUILD)/bin/cgiProgram" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/cgiProgram.o" $(LIBS) $(LIBS) 
+endif
 
 ifeq ($(ME_COM_ESP),1)
 #
 #   espcmd
 #
-DEPS_75 += $(BUILD)/bin/libesp.so
+DEPS_76 += $(BUILD)/bin/libesp.so
 ifeq ($(ME_COM_SQLITE),1)
-    DEPS_75 += $(BUILD)/bin/libsql.so
+    DEPS_76 += $(BUILD)/bin/libsql.so
 endif
-DEPS_75 += $(BUILD)/obj/esp.o
+DEPS_76 += $(BUILD)/obj/esp.o
 
-LIBS_75 += -lmpr
+LIBS_76 += -lmpr
 ifeq ($(ME_COM_MBEDTLS),1)
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_75 += -lmbedtls
+    LIBS_76 += -lmbedtls
 endif
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_75 += -lmbedcrypto
+    LIBS_76 += -lmbedcrypto
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_75 += -lmbedx509
+    LIBS_76 += -lmbedx509
 endif
 ifeq ($(ME_COM_OPENSSL),1)
 ifeq ($(ME_COM_SSL),1)
-    LIBS_75 += -lssl
+    LIBS_76 += -lssl
 endif
 endif
 ifeq ($(ME_COM_OPENSSL),1)
-    LIBS_75 += -lcrypto
+    LIBS_76 += -lcrypto
 endif
 ifeq ($(ME_COM_PCRE),1)
-    LIBS_75 += -lpcre
+    LIBS_76 += -lpcre
 endif
 ifeq ($(ME_COM_HTTP),1)
-    LIBS_75 += -lhttp
+    LIBS_76 += -lhttp
 endif
-LIBS_75 += -lmpr-version
-LIBS_75 += -lesp
+LIBS_76 += -lmpr-version
+LIBS_76 += -lesp
 ifeq ($(ME_COM_SQLITE),1)
-    LIBS_75 += -lsql
+    LIBS_76 += -lsql
 endif
 
-$(BUILD)/bin/appweb-esp: $(DEPS_75)
+$(BUILD)/bin/appweb-esp: $(DEPS_76)
 	@echo '      [Link] $(BUILD)/bin/appweb-esp'
-	$(CC) -o $(BUILD)/bin/appweb-esp $(LDFLAGS) $(LIBPATHS) "$(BUILD)/obj/esp.o" $(LIBPATHS_75) $(LIBS_75) $(LIBS_75) $(LIBS) $(LIBS) 
+	$(CC) -o "$(BUILD)/bin/appweb-esp" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/esp.o" $(LIBPATHS_76) $(LIBS_76) $(LIBS_76) $(LIBS) $(LIBS) 
 endif
 
 ifeq ($(ME_COM_ESP),1)
 #
 #   extras
 #
-DEPS_76 += src/esp/esp-compile.json
-DEPS_76 += src/esp/vcvars.bat
+DEPS_77 += src/esp/esp-compile.json
+DEPS_77 += src/esp/vcvars.bat
 
-$(BUILD)/.extras-modified: $(DEPS_76)
+$(BUILD)/.extras-modified: $(DEPS_77)
 	@echo '      [Copy] $(BUILD)/bin'
 	mkdir -p "$(BUILD)/bin"
 	cp src/esp/esp-compile.json $(BUILD)/bin/esp-compile.json
@@ -1206,48 +1219,59 @@ $(BUILD)/.extras-modified: $(DEPS_76)
 	touch "$(BUILD)/.extras-modified" 2>/dev/null
 endif
 
+ifeq ($(ME_COM_FAST),1)
+#
+#   fastProgram
+#
+DEPS_78 += $(BUILD)/obj/fastProgram.o
+
+$(BUILD)/bin/fastProgram: $(DEPS_78)
+	@echo '      [Link] $(BUILD)/bin/fastProgram'
+	$(CC) -o "$(BUILD)/bin/fastProgram" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/fastProgram.o" $(LIBS) "-lfcgi" $(LIBS) "-lfcgi" 
+endif
+
 ifeq ($(ME_COM_HTTP),1)
 #
 #   httpcmd
 #
-DEPS_77 += $(BUILD)/bin/libhttp.so
-DEPS_77 += $(BUILD)/obj/http.o
+DEPS_79 += $(BUILD)/bin/libhttp.so
+DEPS_79 += $(BUILD)/obj/http.o
 
-LIBS_77 += -lmpr
+LIBS_79 += -lmpr
 ifeq ($(ME_COM_MBEDTLS),1)
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_77 += -lmbedtls
+    LIBS_79 += -lmbedtls
 endif
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_77 += -lmbedcrypto
+    LIBS_79 += -lmbedcrypto
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_77 += -lmbedx509
+    LIBS_79 += -lmbedx509
 endif
 ifeq ($(ME_COM_OPENSSL),1)
 ifeq ($(ME_COM_SSL),1)
-    LIBS_77 += -lssl
+    LIBS_79 += -lssl
 endif
 endif
 ifeq ($(ME_COM_OPENSSL),1)
-    LIBS_77 += -lcrypto
+    LIBS_79 += -lcrypto
 endif
 ifeq ($(ME_COM_PCRE),1)
-    LIBS_77 += -lpcre
+    LIBS_79 += -lpcre
 endif
-LIBS_77 += -lhttp
+LIBS_79 += -lhttp
 
-$(BUILD)/bin/http: $(DEPS_77)
+$(BUILD)/bin/http: $(DEPS_79)
 	@echo '      [Link] $(BUILD)/bin/http'
-	$(CC) -o $(BUILD)/bin/http $(LDFLAGS) $(LIBPATHS) "$(BUILD)/obj/http.o" $(LIBPATHS_77) $(LIBS_77) $(LIBS_77) $(LIBS) $(LIBS) 
+	$(CC) -o "$(BUILD)/bin/http" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/http.o" $(LIBPATHS_79) $(LIBS_79) $(LIBS_79) $(LIBS) $(LIBS) 
 endif
 
 #
 #   installPrep
 #
 
-installPrep: $(DEPS_78)
+installPrep: $(DEPS_80)
 	if [ "`id -u`" != 0 ] ; \
 	then echo "Must run as root. Rerun with sudo." ; \
 	exit 255 ; \
@@ -1256,9 +1280,9 @@ installPrep: $(DEPS_78)
 #
 #   install-roots
 #
-DEPS_79 += certs/roots.crt
+DEPS_81 += certs/roots.crt
 
-$(BUILD)/.install-roots-modified: $(DEPS_79)
+$(BUILD)/.install-roots-modified: $(DEPS_81)
 	@echo '      [Copy] $(BUILD)/bin'
 	mkdir -p "$(BUILD)/bin"
 	cp certs/roots.crt $(BUILD)/bin/roots.crt
@@ -1268,100 +1292,52 @@ ifeq ($(ME_COM_SQLITE),1)
 #
 #   libsql
 #
-DEPS_80 += $(BUILD)/inc/sqlite3.h
-DEPS_80 += $(BUILD)/obj/sqlite3.o
+DEPS_82 += $(BUILD)/inc/sqlite3.h
+DEPS_82 += $(BUILD)/obj/sqlite3.o
 
-$(BUILD)/bin/libsql.so: $(DEPS_80)
+$(BUILD)/bin/libsql.so: $(DEPS_82)
 	@echo '      [Link] $(BUILD)/bin/libsql.so'
-	$(CC) -shared -o $(BUILD)/bin/libsql.so $(LDFLAGS) $(LIBPATHS) "$(BUILD)/obj/sqlite3.o" $(LIBS) 
+	$(CC) -shared -o "$(BUILD)/bin/libsql.so" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/sqlite3.o" $(LIBS) 
 endif
 
 #
 #   makerom
 #
-DEPS_81 += $(BUILD)/bin/libmpr.so
-DEPS_81 += $(BUILD)/obj/makerom.o
+DEPS_83 += $(BUILD)/bin/libmpr.so
+DEPS_83 += $(BUILD)/obj/makerom.o
 
-LIBS_81 += -lmpr
+LIBS_83 += -lmpr
 ifeq ($(ME_COM_MBEDTLS),1)
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_81 += -lmbedtls
+    LIBS_83 += -lmbedtls
 endif
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_81 += -lmbedcrypto
+    LIBS_83 += -lmbedcrypto
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_81 += -lmbedx509
+    LIBS_83 += -lmbedx509
 endif
 ifeq ($(ME_COM_OPENSSL),1)
 ifeq ($(ME_COM_SSL),1)
-    LIBS_81 += -lssl
+    LIBS_83 += -lssl
 endif
 endif
 ifeq ($(ME_COM_OPENSSL),1)
-    LIBS_81 += -lcrypto
+    LIBS_83 += -lcrypto
 endif
 
-$(BUILD)/bin/makerom: $(DEPS_81)
+$(BUILD)/bin/makerom: $(DEPS_83)
 	@echo '      [Link] $(BUILD)/bin/makerom'
-	$(CC) -o $(BUILD)/bin/makerom $(LDFLAGS) $(LIBPATHS) "$(BUILD)/obj/makerom.o" $(LIBPATHS_81) $(LIBS_81) $(LIBS_81) $(LIBS) $(LIBS) 
+	$(CC) -o "$(BUILD)/bin/makerom" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/makerom.o" $(LIBPATHS_83) $(LIBS_83) $(LIBS_83) $(LIBS) $(LIBS) 
 
 #
 #   server
 #
 ifeq ($(ME_COM_HTTP),1)
-    DEPS_82 += $(BUILD)/bin/libhttp.so
+    DEPS_84 += $(BUILD)/bin/libhttp.so
 endif
-DEPS_82 += $(BUILD)/obj/server.o
-
-LIBS_82 += -lmpr
-ifeq ($(ME_COM_MBEDTLS),1)
-ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_82 += -lmbedtls
-endif
-endif
-ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_82 += -lmbedcrypto
-endif
-ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_82 += -lmbedx509
-endif
-ifeq ($(ME_COM_OPENSSL),1)
-ifeq ($(ME_COM_SSL),1)
-    LIBS_82 += -lssl
-endif
-endif
-ifeq ($(ME_COM_OPENSSL),1)
-    LIBS_82 += -lcrypto
-endif
-ifeq ($(ME_COM_PCRE),1)
-    LIBS_82 += -lpcre
-endif
-ifeq ($(ME_COM_HTTP),1)
-    LIBS_82 += -lhttp
-endif
-
-$(BUILD)/bin/server: $(DEPS_82)
-	@echo '      [Link] $(BUILD)/bin/server'
-	$(CC) -o $(BUILD)/bin/server $(LDFLAGS) $(LIBPATHS) "$(BUILD)/obj/server.o" $(LIBPATHS_82) $(LIBS_82) $(LIBS_82) $(LIBS) $(LIBS) 
-
-#
-#   server-cache
-#
-
-src/server/cache: $(DEPS_83)
-	( \
-	cd src/server; \
-	mkdir -p "cache" ; \
-	)
-
-ifeq ($(ME_COM_WATCHDOG),1)
-#
-#   watchdog
-#
-DEPS_84 += $(BUILD)/bin/libmpr.so
-DEPS_84 += $(BUILD)/obj/watchdog.o
+DEPS_84 += $(BUILD)/obj/server.o
 
 LIBS_84 += -lmpr
 ifeq ($(ME_COM_MBEDTLS),1)
@@ -1383,25 +1359,73 @@ endif
 ifeq ($(ME_COM_OPENSSL),1)
     LIBS_84 += -lcrypto
 endif
+ifeq ($(ME_COM_PCRE),1)
+    LIBS_84 += -lpcre
+endif
+ifeq ($(ME_COM_HTTP),1)
+    LIBS_84 += -lhttp
+endif
 
-$(BUILD)/bin/appman: $(DEPS_84)
+$(BUILD)/bin/server: $(DEPS_84)
+	@echo '      [Link] $(BUILD)/bin/server'
+	$(CC) -o "$(BUILD)/bin/server" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/server.o" $(LIBPATHS_84) $(LIBS_84) $(LIBS_84) $(LIBS) $(LIBS) 
+
+#
+#   server-cache
+#
+
+src/server/cache: $(DEPS_85)
+	( \
+	cd src/server; \
+	mkdir -p "cache" ; \
+	)
+
+ifeq ($(ME_COM_WATCHDOG),1)
+#
+#   watchdog
+#
+DEPS_86 += $(BUILD)/bin/libmpr.so
+DEPS_86 += $(BUILD)/obj/watchdog.o
+
+LIBS_86 += -lmpr
+ifeq ($(ME_COM_MBEDTLS),1)
+ifeq ($(ME_COM_MBEDTLS),1)
+    LIBS_86 += -lmbedtls
+endif
+endif
+ifeq ($(ME_COM_MBEDTLS),1)
+    LIBS_86 += -lmbedcrypto
+endif
+ifeq ($(ME_COM_MBEDTLS),1)
+    LIBS_86 += -lmbedx509
+endif
+ifeq ($(ME_COM_OPENSSL),1)
+ifeq ($(ME_COM_SSL),1)
+    LIBS_86 += -lssl
+endif
+endif
+ifeq ($(ME_COM_OPENSSL),1)
+    LIBS_86 += -lcrypto
+endif
+
+$(BUILD)/bin/appman: $(DEPS_86)
 	@echo '      [Link] $(BUILD)/bin/appman'
-	$(CC) -o $(BUILD)/bin/appman $(LDFLAGS) $(LIBPATHS) "$(BUILD)/obj/watchdog.o" $(LIBPATHS_84) $(LIBS_84) $(LIBS_84) $(LIBS) $(LIBS) 
+	$(CC) -o "$(BUILD)/bin/appman" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/watchdog.o" $(LIBPATHS_86) $(LIBS_86) $(LIBS_86) $(LIBS) $(LIBS) 
 endif
 
 #
 #   stop
 #
-DEPS_85 += compile
+DEPS_87 += compile
 
-stop: $(DEPS_85)
+stop: $(DEPS_87)
 	@./$(BUILD)/bin/appman stop disable uninstall >/dev/null 2>&1 ; true
 
 #
 #   installBinary
 #
 
-installBinary: $(DEPS_86)
+installBinary: $(DEPS_88)
 	mkdir -p "$(ME_APP_PREFIX)" ; \
 	rm -f "$(ME_APP_PREFIX)/latest" ; \
 	ln -s "$(VERSION)" "$(ME_APP_PREFIX)/latest" ; \
@@ -1554,29 +1578,29 @@ installBinary: $(DEPS_86)
 #
 #   start
 #
-DEPS_87 += compile
-DEPS_87 += stop
+DEPS_89 += compile
+DEPS_89 += stop
 
-start: $(DEPS_87)
+start: $(DEPS_89)
 	./$(BUILD)/bin/appman install enable start
 
 #
 #   install
 #
-DEPS_88 += installPrep
-DEPS_88 += compile
-DEPS_88 += stop
-DEPS_88 += installBinary
-DEPS_88 += start
+DEPS_90 += installPrep
+DEPS_90 += compile
+DEPS_90 += stop
+DEPS_90 += installBinary
+DEPS_90 += start
 
-install: $(DEPS_88)
+install: $(DEPS_90)
 
 #
 #   run
 #
-DEPS_89 += compile
+DEPS_91 += compile
 
-run: $(DEPS_89)
+run: $(DEPS_91)
 	( \
 	cd src/server; \
 	../../$(BUILD)/bin/appweb --log stdout:2 ; \
@@ -1585,9 +1609,9 @@ run: $(DEPS_89)
 #
 #   uninstall
 #
-DEPS_90 += stop
+DEPS_92 += stop
 
-uninstall: $(DEPS_90)
+uninstall: $(DEPS_92)
 	( \
 	cd installs; \
 	rm -f "$(ME_ETC_PREFIX)/appweb.conf" ; \
@@ -1601,7 +1625,7 @@ uninstall: $(DEPS_90)
 #   uninstallBinary
 #
 
-uninstallBinary: $(DEPS_91)
+uninstallBinary: $(DEPS_93)
 	rm -fr "$(ME_WEB_PREFIX)" ; \
 	rm -fr "$(ME_SPOOL_PREFIX)" ; \
 	rm -fr "$(ME_CACHE_PREFIX)" ; \
@@ -1614,13 +1638,6 @@ uninstallBinary: $(DEPS_91)
 	rmdir -p "$(ME_CACHE_PREFIX)" 2>/dev/null ; true ; \
 	rm -f "$(ME_APP_PREFIX)/latest" ; \
 	rmdir -p "$(ME_APP_PREFIX)" 2>/dev/null ; true
-
-#
-#   version
-#
-
-version: $(DEPS_92)
-	echo $(VERSION)
 
 
 EXTRA_MAKEFILE := $(strip $(wildcard ./projects/extra.mk))

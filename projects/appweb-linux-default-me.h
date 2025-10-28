@@ -16,10 +16,10 @@
     #define ME_COMPAT 1
 #endif
 #ifndef ME_COMPATIBLE
-    #define ME_COMPATIBLE "9.0"
+    #define ME_COMPATIBLE "9.1"
 #endif
 #ifndef ME_COMPILER_FORTIFY
-    #define ME_COMPILER_FORTIFY 1
+    #define ME_COMPILER_FORTIFY 0
 #endif
 #ifndef ME_COMPILER_HAS_ATOMIC
     #define ME_COMPILER_HAS_ATOMIC 1
@@ -199,7 +199,7 @@
     #define ME_TUNE "size"
 #endif
 #ifndef ME_VERSION
-    #define ME_VERSION "9.0.5"
+    #define ME_VERSION "9.1.0"
 #endif
 #ifndef ME_WATCHDOG_NAME
     #define ME_WATCHDOG_NAME "appman"
@@ -228,7 +228,7 @@
     #define ME_APP_PREFIX "/usr/local/lib/appweb"
 #endif
 #ifndef ME_VAPP_PREFIX
-    #define ME_VAPP_PREFIX "/usr/local/lib/appweb/9.0.5"
+    #define ME_VAPP_PREFIX "/usr/local/lib/appweb/9.1.0"
 #endif
 #ifndef ME_BIN_PREFIX
     #define ME_BIN_PREFIX "/usr/local/bin"
@@ -264,7 +264,7 @@
     #define ME_CACHE_PREFIX "/var/spool/appweb/cache"
 #endif
 #ifndef ME_SRC_PREFIX
-    #define ME_SRC_PREFIX "appweb-9.0.5"
+    #define ME_SRC_PREFIX "appweb-9.1.0"
 #endif
 
 /* Suffixes */
@@ -286,7 +286,7 @@
 
 /* Profile */
 #ifndef ME_CONFIG_CMD
-    #define ME_CONFIG_CMD "me -d -q -platform linux-x64-default -configure . --with esp --with mdb --with cgi -gen make"
+    #define ME_CONFIG_CMD "me -d -q -platform linux-x64-default -configure . --with esp --with mdb --with cgi --with fast --with proxy -gen make"
 #endif
 #ifndef ME_APPWEB_PRODUCT
     #define ME_APPWEB_PRODUCT 1
@@ -303,13 +303,13 @@
     #define ME_MAJOR_VERSION 9
 #endif
 #ifndef ME_MINOR_VERSION
-    #define ME_MINOR_VERSION 0
+    #define ME_MINOR_VERSION 1
 #endif
 #ifndef ME_PATCH_VERSION
-    #define ME_PATCH_VERSION 5
+    #define ME_PATCH_VERSION 0
 #endif
 #ifndef ME_VNUM
-    #define ME_VNUM 900000005
+    #define ME_VNUM 900010000
 #endif
 
 /* Components */
@@ -329,7 +329,7 @@
     #define ME_COM_ESP 1
 #endif
 #ifndef ME_COM_FAST
-    #define ME_COM_FAST 0
+    #define ME_COM_FAST 1
 #endif
 #ifndef ME_COM_HTTP
     #define ME_COM_HTTP 1
@@ -359,7 +359,7 @@
     #define ME_COM_PHP 0
 #endif
 #ifndef ME_COM_PROXY
-    #define ME_COM_PROXY 0
+    #define ME_COM_PROXY 1
 #endif
 #ifndef ME_COM_SQLITE
     #define ME_COM_SQLITE 0
