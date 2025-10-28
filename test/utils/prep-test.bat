@@ -85,6 +85,15 @@ if not exist "test" (
 )
 
 cd test
+bun link testme
+if %errorlevel% neq 0 (
+    echo WARNING: Failed to link testme in test directory
+    cd ..
+    exit /b 1
+)
+cd ..
+
+cd test
 bun link ejscript
 if %errorlevel% neq 0 (
     echo WARNING: Failed to link ejscript in test directory

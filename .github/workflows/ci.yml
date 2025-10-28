@@ -43,7 +43,7 @@ jobs:
       - name: Install TestMe
         if: true
         run: |
-          bun install -g --trust @embedthis/testme
+          bun install --verbose -g --trust @embedthis/testme
 
       - name: Local TestMe
         if: false

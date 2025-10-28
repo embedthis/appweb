@@ -3,6 +3,7 @@
 #   Test prerequisites for running tests on Unix/Linux/macOS
 #
 
+set -x
 HAS_WARNING=0
 
 # Check for bun in PATH
@@ -98,6 +99,10 @@ else
 fi
 
 if [ -d "test" ]; then
+    (cd test && bun link testme) || {
+        echo "WARNING: Failed to link testme in test directory"
+        exit 1
+    }
     (cd test && bun link ejscript) || {
         echo "WARNING: Failed to link ejscript in test directory"
         exit 1
