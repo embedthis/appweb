@@ -1,0 +1,14 @@
+{
+  "name": "appweb-tests",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "version": "0.0.1",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "testme": "link:testme"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

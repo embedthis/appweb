@@ -9,7 +9,7 @@ static void foreignThread(uint64 seqno);
 
 ESP_EXPORT int esp_controller_app_foreign(HttpRoute *route)
 {
-    espAction(route, "request", serviceRequest);
+    espAction(route, "request", NULL, serviceRequest);
     return 0;
 }
 
