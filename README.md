@@ -1,13 +1,32 @@
 Embedthis Appweb
 ===
 
-Appweb is a compact, fast and secure web server for embedded applications. It
-supports HTTP/1 and HTTP/2 with a web server and HTTP client utility.
+<p align="center">
+  <a
+href="https://github.com/embedthis/appweb-core/actions/workflows/ci.yml"><img
+src="https://github.com/embedthis/appweb-core/actions/workflows/ci.yml/badge.svg" alt="CI  Status"></a>
+</p>
+
+Appweb is a compact, fast and secure embedded web server supporting HTTP/1,
+HTTP/2, and WebSockets. With a 1-4MB memory footprint, event-driven
+multi-threaded architecture, and comprehensive security features, it's
+optimized for embedded applications, IoT devices, and resource-constrained
+environments.
+
+**Key Features:**
+- **Compact & Fast**: 1-4MB footprint with exceptional throughput
+- **Protocol Support**: HTTP/1.0, HTTP/1.1, HTTP/2, WebSockets
+- **Security First**: Sandboxing, authentication (Basic, Digest, Form),
+SSL/TLS, defensive countermeasures
+- **Modular Architecture**: Loadable handlers for CGI, FastCGI, ESP, PHP, Proxy
+- **Production Ready**: Widely deployed in networking equipment, telephony,
+mobile devices
+- **Cross-Platform**: Linux, macOS, Windows, VxWorks, ESP32, FreeRTOS
 
 ## Status
 
-Appweb is in a maintenance phase. It is actively supported and will receive
-security updates as required, but it will not have new features added. 
+Appweb is in a **maintenance phase**. It is actively supported and will receive
+security updates as required, but it will not have new features added.
 
 If you are creating a new device or planning your upgrade path for the future,
 we recommend you consider the [Ioto Device
@@ -30,13 +49,36 @@ apply software updates to all your Appweb-enabled devices. The [EmbedThis
 Builder](https://www.embedthis.com/builder/) can be used to publish,
 distribute, manage and track software updates for your Appweb devices.
 
+## Tests
+
+The test suite is located in the `test/` directory. It is written in TypeScript
+and uses the [TestMe](https://www.embedthis.com/testme/) framework. The test
+suite is run with the `tm` command.
+
+    tm
+
+To run a specific test, use the `tm` command with the test name.
+
+    tm basic/
+
 ## Licensing
 
 See [LICENSE.md](LICENSE.md) for details.
 
 ## Documentation
 
-  See https://www.embedthis.com/appweb/doc/index.html.
+**Online Documentation:**
+- Complete User Guide: https://www.embedthis.com/appweb/doc/
+- Configuration Reference:
+https://www.embedthis.com/appweb/doc/users/configuration.html
+- Routing Guide: https://www.embedthis.com/appweb/doc/users/routing.html
+- Security Guide: https://www.embedthis.com/appweb/doc/users/security.html
+
+**Local Documentation:**
+- API Reference: `doc/index.html` (generate with `make doc`)
+- Design Document: `doc/DESIGN.md` (comprehensive architecture and
+implementation guide)
+- Build Guide: `CLAUDE.md` and `AGENTS.md`
 
 ## Building from Source
 
