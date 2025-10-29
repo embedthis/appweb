@@ -41,12 +41,12 @@ jobs:
         if: runner.os == 'Windows'
 
       - name: Install TestMe
-        if: true
+        if: false
         run: |
-          bun install --verbose -g --trust @embedthis/testme
+          bun install -g --trust @embedthis/testme
 
       - name: Local TestMe
-        if: false
+        if: true
         run: |
           bun install --verbose -g --trust "${{ github.workspace }}/local/testme.tgz"
 

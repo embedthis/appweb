@@ -99,10 +99,24 @@ else
 fi
 
 if [ -d "test" ]; then
+set -x 
+    echo @@@@ CHECK location of testme
+    find ~/.bun | grep testme
+    ls -l test/node_modules
+    ls -l /Users/runner/.bun/install/global/node_modules
+
+    echo EXECUTE bun link testme
+
     (cd test && bun link testme) || {
-        echo "WARNING: Failed to link testme in test directory"
+        echo "WARNING: Failed to add testme in test directory"
         exit 1
     }
+    echo AFTER LINK
+    cat test/package.json
+    ls -l test/node_modules
+    ls -l test/node_modules/testme
+    realpath test/node_modules/testme
+
     (cd test && bun link ejscript) || {
         echo "WARNING: Failed to link ejscript in test directory"
         exit 1
