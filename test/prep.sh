@@ -3,16 +3,15 @@
 #   prep.sh - TestMe setup script to start web
 #
 
-BIN=`realpath ${BIN}`
+BIN=$(cd "$(dirname "${BIN}")" && pwd)/$(basename "${BIN}")
 
 if [ "$TESTME_OS" = "windows" ] ; then
     EXE=".exe"
-    utils/prep-test.bat
+    (cd .. ; test/utils/prep-test.bat)
 else
     EXE=""
-    utils/prep-test.sh
+    (cd .. ; test/utils/prep-test.sh)
 fi
-
 
 mkdir -p cgi-bin fast-bin web/tmp
 
