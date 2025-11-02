@@ -7,9 +7,12 @@ BIN=`realpath ${BIN}`
 
 if [ "$TESTME_OS" = "windows" ] ; then
     EXE=".exe"
+    utils/prep-test.bat
 else
     EXE=""
+    utils/prep-test.sh
 fi
+
 
 mkdir -p cgi-bin fast-bin web/tmp
 
