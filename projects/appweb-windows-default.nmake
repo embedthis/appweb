@@ -481,7 +481,6 @@ LOG = >nul
 !ENDIF
 
 test::
-    .\test\utils\prep-test.bat
     tm 
 
 clean:
