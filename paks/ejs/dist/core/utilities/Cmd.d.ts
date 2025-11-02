@@ -111,9 +111,10 @@ export declare class Cmd extends Emitter {
     readLines(count?: number): Promise<string[] | null>;
     /**
      * Command output data as a string (cached)
-     * Note: This is now async - use await cmd.response or preferably await cmd.readString()
+     * Returns string if data is available synchronously (from constructor execution)
+     * Returns Promise if command was started with start() method
      */
-    get response(): Promise<string | null>;
+    get response(): string | Promise<string | null>;
     /**
      * Start the command
      * @param cmdline Command line (string or array)

@@ -85,9 +85,9 @@ if not exist "test" (
 )
 
 cd test
-bun add @embedthis/testme
+bun link testme
 if %errorlevel% neq 0 (
-    echo WARNING: Failed to add @embedthis/testme in test directory
+    echo WARNING: Failed to link testme in test directory
     cd ..
     exit /b 1
 )

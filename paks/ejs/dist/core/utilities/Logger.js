@@ -71,10 +71,21 @@ export class Logger {
         }
         else {
             // Parse location string (file:level format)
+            // Handle Windows paths (C:\...) by looking for the last colon
             const locationStr = String(location);
-            const parts = locationStr.split(':');
-            const path = parts[0];
-            const lev = parts[1] ? parseInt(parts[1]) : null;
+            let path = locationStr;
+            let lev = null;
+            // Find the last colon that's followed by a number (the level specifier)
+            const lastColonIndex = locationStr.lastIndexOf(':');
+            if (lastColonIndex > 0) {
+                const potentialLevel = locationStr.substring(lastColonIndex + 1);
+                const parsedLevel = parseInt(potentialLevel, 10);
+                // Check if it's a valid number and the entire string after colon is just the number
+                if (!isNaN(parsedLevel) && potentialLevel.trim() === String(parsedLevel)) {
+                    lev = parsedLevel;
+                    path = locationStr.substring(0, lastColonIndex);
+                }
+            }
             if (lev !== null) {
                 this._level = lev;
             }

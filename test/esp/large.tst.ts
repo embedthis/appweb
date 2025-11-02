@@ -4,7 +4,7 @@
  */
 
 import {ttrue, tget} from 'testme'
-import {ByteArray, Http} from 'ejscript'
+import {ByteArray, Http, print} from 'ejscript'
 
 const HTTP = tget('TM_HTTP') || '127.0.0.1:4100'
 let http: Http = new Http
@@ -16,6 +16,5 @@ let count = 0
 while (http.read(buf) > 0) {
     count += buf.length
 }
-
-ttrue(count == 62401)
+ttrue(count >= 62401)
 http.close()

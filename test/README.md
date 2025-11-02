@@ -717,7 +717,7 @@ killall appweb
 tm --verbose test-name
 
 # Check server log
-cat test/log.txt
+cat test/appweb.log
 
 # Run single test
 tm --workers 1 test-name
@@ -753,7 +753,7 @@ tm --workers 1 test-name
 
 # Check test artifacts
 ls -la .testme/       # Build artifacts (if exists)
-cat log.txt           # Server log
+cat appweb.log           # Server log
 ```
 
 ### Server Debugging

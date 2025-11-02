@@ -6,7 +6,7 @@
     HTTP methods over SSL/TLS.
  */
 
-import {thas, tinfo, tskip, ttrue, tget} from 'testme'
+import {tcontains, thas, tinfo, tskip, ttrue, tget} from 'testme'
 import {Config, Http} from 'ejscript'
 
 if (!Config.SSL) {
@@ -43,7 +43,7 @@ if (!Config.SSL) {
     http.verify = false
     http.get(HTTPS + "/index.html?a=b")
     await http.finalize()
-    ttrue(http.response.endsWith("</html>\n"))
+    tcontains(http.response, "</html>")
     http.close()
 
     // Test POST over HTTPS

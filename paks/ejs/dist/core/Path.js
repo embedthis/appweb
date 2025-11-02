@@ -370,6 +370,20 @@ export class Path {
             if (options?.user || options?.group) {
                 this.setAttributes(options);
             }
+            // Ensure directory metadata is available (important for CI environments)
+            // Use async access check with retry to wait for filesystem sync
+            let retries = 50;
+            while (retries > 0) {
+                try {
+                    await fsPromises.access(this._path, fs.constants.F_OK);
+                    break; // Directory exists, we can return
+                }
+                catch {
+                    // Directory not yet accessible, wait and retry
+                    await new Promise(resolve => setTimeout(resolve, 20));
+                    retries--;
+                }
+            }
             return true;
         }
         catch {
@@ -712,6 +726,30 @@ export class Path {
         combined.set(existingBytes);
         combined.set(newData, existingBytes.length);
         await Bun.write(this._path, combined);
+        // CRITICAL: Force filesystem sync
+        const fsPromises = await import('fs/promises');
+        const fh = await fsPromises.open(this._path, 'r+');
+        try {
+            await fh.sync();
+        }
+        finally {
+            await fh.close();
+        }
+        // Additional verification: ensure file is accessible after sync
+        // Use both async and sync checks to ensure cache coherency
+        let retries = 100;
+        while (retries > 0) {
+            try {
+                await fsPromises.stat(this._path);
+                // Also verify with sync stat to bust any caching between async/sync APIs
+                statSync(this._path);
+                break;
+            }
+            catch {
+                await new Promise(resolve => setTimeout(resolve, 10));
+                retries--;
+            }
+        }
     }
     /**
      * Write data to file (overwrites existing content)
@@ -730,6 +768,32 @@ export class Path {
             }
         }).join('');
         await Bun.write(this._path, content);
+        // CRITICAL: Force filesystem sync by opening file descriptor and calling fsync
+        // This ensures file is truly persisted before returning
+        const fsPromises = await import('fs/promises');
+        const fh = await fsPromises.open(this._path, 'r+');
+        try {
+            await fh.sync(); // Force kernel to flush to disk
+        }
+        finally {
+            await fh.close();
+        }
+        // Additional verification: ensure file is accessible after sync
+        // This handles edge cases where filesystem cache hasn't updated
+        // Use both async and sync checks to ensure cache coherency
+        let retries = 100;
+        while (retries > 0) {
+            try {
+                await fsPromises.stat(this._path);
+                // Also verify with sync stat to bust any caching between async/sync APIs
+                statSync(this._path);
+                break; // File is accessible via both methods
+            }
+            catch {
+                await new Promise(resolve => setTimeout(resolve, 10));
+                retries--;
+            }
+        }
     }
     /**
      * Read file contents as a ByteArray

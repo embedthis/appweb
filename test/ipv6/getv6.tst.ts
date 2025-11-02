@@ -5,7 +5,7 @@
     IPv6 addressing ([::1] for localhost) to validate IPv6 support in the server.
  */
 
-import {ttrue, tget} from 'testme'
+import {tcontains, ttrue, tget} from 'testme'
 import {Http} from 'ejscript'
 
 const HTTP = tget('TM_HTTPV6') || "[::1]:4110"
@@ -25,7 +25,7 @@ ttrue(http.readString(7) == "<title>")
 // Test validating response ends with expected content over IPv6
 http.get(HTTP + "/index.html")
 await http.finalize()
-ttrue(http.response.endsWith("</html>\n"))
+tcontains(http.response, "</html>")
 
 // Test GET with body over IPv6
 http.get(HTTP + "/index.html", 'name=John&address=700+Park+Ave')

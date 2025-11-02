@@ -3080,8 +3080,11 @@ static bool conditionalDefinition(MaState *state, cchar *key)
             result = ME_COM_PHP;
 
         } else if (scaselessmatch(key, "PROXY_MODULE")) {
+#if ME_UNIX_LIKE
             result = ME_COM_PROXY;
-
+#else
+            result = 0;
+#endif
         } else if (scaselessmatch(key, "SSL_MODULE")) {
             result = ME_COM_SSL;
 

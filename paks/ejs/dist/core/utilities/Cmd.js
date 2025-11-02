@@ -69,10 +69,35 @@ export class Cmd extends Emitter {
         let cmd;
         let args = [];
         if (typeof cmdline === 'string') {
-            cmd = '/bin/sh';
-            args = ['-c', cmdline];
+            // String commands are wrapped in a shell to support:
+            // - Shell built-ins (echo, cd, set, etc.)
+            // - Shell operators (|, >, <, &&, ||, &)
+            // - Wildcards/globbing (*.txt)
+            // - Variable expansion ($VAR, %VAR%)
+            // On Windows, use bash from Git for Windows if available, otherwise cmd.exe
+            // On Unix-like systems, use /bin/sh
+            if (Config.OS === 'win32' || Config.OS === 'windows' || Config.OS === 'cygwin') {
+                // Try bash first (from Git for Windows), fall back to cmd.exe
+                const bashPath = Cmd.locate('bash');
+                if (bashPath) {
+                    cmd = bashPath.toString();
+                    args = ['-c', cmdline];
+                }
+                else {
+                    cmd = 'cmd.exe';
+                    args = ['/c', cmdline];
+                }
+            }
+            else {
+                cmd = '/bin/sh';
+                args = ['-c', cmdline];
+            }
         }
         else {
+            // Array commands execute directly without shell wrapper (Unix philosophy)
+            // This provides better security (no shell injection) and performance
+            // Note: Arrays must use real executables, not shell built-ins
+            // (e.g., use ['bash', '--version'] not ['echo', 'test'] on Windows)
             cmd = cmdline[0];
             args = cmdline.slice(1);
         }
@@ -263,16 +288,25 @@ export class Cmd extends Emitter {
     }
     /**
      * Command output data as a string (cached)
-     * Note: This is now async - use await cmd.response or preferably await cmd.readString()
+     * Returns string if data is available synchronously (from constructor execution)
+     * Returns Promise if command was started with start() method
      */
     get response() {
-        if (!this._response) {
-            return this.readString().then(result => {
-                this._response = result;
-                return result;
-            });
+        // If already cached, return it
+        if (this._response) {
+            return this._response;
         }
-        return Promise.resolve(this._response);
+        // If process is not running and data is available, return synchronously
+        // This handles the case where constructor was called with a command
+        if (!this._readingStreams && this._stdoutData.length > 0) {
+            this._response = this._stdoutData.toString();
+            return this._response;
+        }
+        // Otherwise, async read (for commands started with start())
+        return this.readString().then(result => {
+            this._response = result;
+            return result;
+        });
     }
     /**
      * Start the command
@@ -287,16 +321,34 @@ export class Cmd extends Emitter {
         let cmd;
         let args = [];
         if (typeof cmdline === 'string') {
-            // Simple string command - let shell handle it
+            // String command - will be wrapped in shell
             cmd = cmdline;
         }
         else {
-            // Array of args
+            // Array of args - direct execution without shell
             cmd = cmdline[0];
             args = cmdline.slice(1);
         }
+        // String commands are wrapped in a shell to support shell features
+        // Array commands execute directly for security and performance
+        // On Windows, use bash from Git for Windows if available, otherwise cmd.exe
+        // On Unix-like systems, use /bin/sh
+        let shell;
+        if (Config.OS === 'win32' || Config.OS === 'windows' || Config.OS === 'cygwin') {
+            // Try bash first (from Git for Windows), fall back to cmd.exe
+            const bashPath = Cmd.locate('bash');
+            if (bashPath) {
+                shell = [bashPath.toString(), '-c'];
+            }
+            else {
+                shell = ['cmd.exe', '/c'];
+            }
+        }
+        else {
+            shell = ['/bin/sh', '-c'];
+        }
         // Spawn process
-        this._process = Bun.spawn(typeof cmdline === 'string' ? ['/bin/sh', '-c', cmd] : [cmd, ...args], {
+        this._process = Bun.spawn(typeof cmdline === 'string' ? [...shell, cmd] : [cmd, ...args], {
             cwd,
             env: this._env ? { ...process.env, ...this._env } : process.env,
             stdin: detach ? 'pipe' : 'inherit',
@@ -453,7 +505,7 @@ export class Cmd extends Emitter {
      * @returns Located path or null
      */
     static locate(program, search = []) {
-        const searchPaths = [...search, ...(App.getenv('PATH') || '').split(Config.OS === 'windows' ? ';' : ':')];
+        const searchPaths = [...search, ...(App.getenv('PATH') || '').split(Config.OS === 'win32' || Config.OS === 'windows' ? ';' : ':')];
         for (const dir of searchPaths) {
             const path = new Path(dir).join(program instanceof Path ? program.name : program);
             if (path.exists && !path.isDir) {
@@ -461,7 +513,7 @@ export class Cmd extends Emitter {
             }
         }
         // Windows extensions
-        if (Config.OS === 'windows' || Config.OS === 'cygwin') {
+        if (Config.OS === 'win32' || Config.OS === 'windows' || Config.OS === 'cygwin') {
             const prog = program instanceof Path ? program : new Path(program);
             if (!prog.extension) {
                 for (const ext of ['exe', 'bat', 'cmd']) {
@@ -549,7 +601,24 @@ export class Cmd extends Emitter {
      * @returns Command output
      */
     static async sh(command, options = {}, data = null) {
-        const shell = Cmd.locate('sh') || new Path('/bin/sh');
+        // On Windows, try bash first (from Git for Windows), fall back to cmd.exe
+        // On Unix-like systems, use sh
+        let shell;
+        let shellArgs;
+        if (Config.OS === 'win32' || Config.OS === 'windows' || Config.OS === 'cygwin') {
+            shell = Cmd.locate('bash');
+            if (shell) {
+                shellArgs = ['-c'];
+            }
+            else {
+                shell = new Path('cmd.exe');
+                shellArgs = ['/c'];
+            }
+        }
+        else {
+            shell = Cmd.locate('sh') || new Path('/bin/sh');
+            shellArgs = ['-c'];
+        }
         if (Array.isArray(command)) {
             // Quote arguments with spaces
             const quotedArgs = command.map(arg => {
@@ -559,10 +628,10 @@ export class Cmd extends Emitter {
                 }
                 return s;
             });
-            const result = await Cmd.run([shell.name, '-c', quotedArgs.join(' ')], options, data);
+            const result = await Cmd.run([shell.name, ...shellArgs, quotedArgs.join(' ')], options, data);
             return result?.trimEnd() || '';
         }
-        const result = await Cmd.run([shell.name, '-c', String(command).trimEnd()], options, data);
+        const result = await Cmd.run([shell.name, ...shellArgs, String(command).trimEnd()], options, data);
         return result?.trimEnd() || '';
     }
 }
