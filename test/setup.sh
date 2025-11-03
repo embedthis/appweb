@@ -4,7 +4,6 @@
 #
 
 set -m
-set -x
 
 if curl -s http://localhost:4100/ >/dev/null 2>&1; then
     echo "Appweb is already running on port 4100"

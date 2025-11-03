@@ -49,24 +49,6 @@ apply software updates to all your Appweb-enabled devices. The [EmbedThis
 Builder](https://www.embedthis.com/builder/) can be used to publish,
 distribute, manage and track software updates for your Appweb devices.
 
-## Tests
-
-The test suite is located in the `test/` directory. It is written in TypeScript
-and uses the [TestMe](https://www.embedthis.com/testme/) framework. 
-
-First time, run the tests with:
-
-    make test
-
-This will ensure that the test environment is prepared. After that, you can run
-the tests with the `tm` command or via `make test`.
-
-    tm
-
-To run a specific test or group of tests, use the `tm` command with the test
-name.
-
-    tm basic/
 
 ## Licensing
 
@@ -189,7 +171,38 @@ configured for testing. When using the src/server/appweb.conf, change to the
 src/server directory to run. When using the test/appweb.conf, change to the
 test directory to run.
 
-Resources
+## Testing
+
+The test suite is located in the `test/` directory and uses the
+[TestMe](https://www.embedthis.com/testme/) framework. 
+
+The test suite requires the following prerequisites:
+
+- **Bun**: v1.2.23 or later
+- **TestMe**: Test runner (installed globally)
+
+Install Bun by following the instructions at: 
+
+    https://bun.com/docs/installation
+
+Install TestMe globally with:
+
+    bun install -g --trust @embedthis/testme
+
+Run the tests with:
+
+    make test
+
+or manually via the `tm` command. 
+
+    tm
+
+To run a specific test or group of tests, use the `tm` command with the test
+name.
+
+    tm basic/
+
+## Resources
 ---
   - [Appweb web site](https://www.embedthis.com/)
   - [Embedthis web site](https://www.embedthis.com/)

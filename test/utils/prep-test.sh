@@ -89,7 +89,7 @@ fi
 # Link ejscript package for tests
 echo "Linking ejscript package for tests..."
 if [ -d "paks/ejs" ]; then
-    (cd paks/ejs && bun link) || {
+    (cd paks/ejs && bun link --silent) || {
         echo "WARNING: Failed to link ejscript from paks/ejs"
         exit 1
     }
@@ -99,12 +99,11 @@ else
 fi
 
 if [ -d "test" ]; then
-set -x 
-    (cd test && bun link testme) || {
+    (cd test && bun link testme --silent) || {
         echo "WARNING: Failed to add testme in test directory"
         exit 1
     }
-    (cd test && bun link ejscript) || {
+    (cd test && bun link ejscript --silent) || {
         echo "WARNING: Failed to link ejscript in test directory"
         exit 1
     }
