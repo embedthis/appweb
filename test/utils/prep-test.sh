@@ -3,7 +3,6 @@
 #   Test prerequisites for running tests on Unix/Linux/macOS
 #
 
-set -x
 HAS_WARNING=0
 
 # Check for bun in PATH
