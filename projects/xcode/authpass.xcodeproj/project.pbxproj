@@ -1,0 +1,398 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		3E53A52D2F4B131F9B4E936D /* libappweb.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A9C7DE554214C407705BC495 /* libappweb.dylib */; };
+		982D5A94F36EAE06C6C8F8D4 /* authpass.c in Sources */ = {isa = PBXBuildFile; fileRef = 4660E47C5D737FAE4D8F7ABC /* authpass.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		49F96F656BC51C97A87A45A5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = B47F3001DAA55FB341AC5641;
+			remoteInfo = libappweb.dylib;
+		};
+		9C33E1FEBDFF8F30FAB4B83E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 74308BC76D968D396131EA07;
+			remoteInfo = libappweb.dylib;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0A5163C6EE986BF872859A06 /* libappweb.dylib */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = appweb-lib.xcodeproj; path = "appweb-lib.xcodeproj"; sourceTree = SOURCE_ROOT; };
+		4660E47C5D737FAE4D8F7ABC /* authpass.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = authpass.c; path = ../../src/utils/authpass.c; sourceTree = "<group>"; };
+		8CA86AF2BB4EBEE414901932 /* authpass */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = authpass; path = authpass; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7946B762CBCCE2549E1145A2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3E53A52D2F4B131F9B4E936D /* libappweb.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BB9D684EC85A17C03D44868E /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXGroup section */
+		239C59091812D03B66E66F49 /* authpass */ = {
+			isa = PBXGroup;
+			children = (
+				4660E47C5D737FAE4D8F7ABC /* authpass.c */,
+				A6C936B49B3FADE6EA134CF4 /* Products */,
+				9D968EAA920D05DCE0E0A4EA /* Projects */,
+			);
+			name = authpass;
+			sourceTree = "<group>";
+		};
+		9D968EAA920D05DCE0E0A4EA /* Projects */ = {
+			isa = PBXGroup;
+			children = (
+				0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */,
+				0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */,
+			);
+			name = Projects;
+			sourceTree = "<group>";
+		};
+		A6C936B49B3FADE6EA134CF4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8CA86AF2BB4EBEE414901932 /* authpass */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C1B62405F147F2F7CC553245 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A9C7DE554214C407705BC495 /* libappweb.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5BB5AC9800084A4A124092D8 /* authpass */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6781FFC1BA082AB38C4C8E01 /* Build configuration list for PBXNativeTarget "authpass" */;
+			buildPhases = (
+				E92E38023BB462F40DF8C642 /* Resources */,
+				52DB5159A5617C4B77A5DF99 /* Sources */,
+				7946B762CBCCE2549E1145A2 /* Frameworks */,
+				BB9D684EC85A17C03D44868E /* Embed Libraries */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AF6E610EDF003000BA0D6F4E /* PBXTargetDependency */,
+				AF6E610EDF003000BA0D6F4E /* PBXTargetDependency */,
+			);
+			name = authpass;
+			productInstallPath = "$(HOME)/bin";
+			productName = authpass;
+			productReference = 8CA86AF2BB4EBEE414901932 /* authpass */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "authpass" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = 239C59091812D03B66E66F49 /* authpass */;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = C1B62405F147F2F7CC553245 /* Products */;
+					ProjectRef = 0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */;
+				},
+				{
+					ProductGroup = C1B62405F147F2F7CC553245 /* Products */;
+					ProjectRef = 0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				5BB5AC9800084A4A124092D8 /* authpass */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		A9C7DE554214C407705BC495 /* libappweb.dylib */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.dylib";
+			path = libappweb.dylib;
+			remoteRef = 49F96F656BC51C97A87A45A5 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E92E38023BB462F40DF8C642 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		52DB5159A5617C4B77A5DF99 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				982D5A94F36EAE06C6C8F8D4 /* authpass.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AF6E610EDF003000BA0D6F4E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = libappweb.dylib;
+			targetProxy = 9C33E1FEBDFF8F30FAB4B83E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		0A9B23D81757D34A8C424218 /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_VERSION=\\\"9.2.0\\\"",
+					"ME_APPWEB_PRODUCT=1",
+					"ME_APP_PREFIX=\\\"/usr/local/lib/appweb\\\"",
+					"ME_COM_CGI=1",
+					"ME_COM_FAST=1",
+					"ME_COM_PROXY=1",
+					"ME_HTTP_BASIC=1",
+					"ME_HTTP_CACHE=1",
+					"ME_HTTP_CMD=1",
+					"ME_HTTP_DEFENSE=1",
+					"ME_HTTP_DIGEST=1",
+					"ME_HTTP_DIR=1",
+					"ME_HTTP_HTTP2=1",
+					"ME_HTTP_PAM=1",
+					"ME_HTTP_SENDFILE=1",
+					"ME_HTTP_UPLOAD=1",
+					"ME_HTTP_WEB_SOCKETS=1",
+					"ME_COM_PCRE2=0",
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_SSL=1",
+					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
+					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+					"ME_DEBUG=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@loader_path/.",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					../../build/bin,
+				);
+				OBJROOT = "../../build/obj/authpass-macosx-debug";
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = (
+					"-Wno-sign-conversion",
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wno-sign-compare",
+					"-Wno-cast-function-type-mismatch",
+					"-Wno-shorten-64-to-32",
+				);
+				OTHER_LDFLAGS = (
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-lpam",
+					"-g",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				SYMROOT = ../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../src,
+					../../src/osdep,
+					../../src/mpr,
+					../../src/http,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = debug;
+		};
+		125B54124101A8049A430252 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_VERSION=\\\"9.2.0\\\"",
+					"ME_APPWEB_PRODUCT=1",
+					"ME_APP_PREFIX=\\\"/usr/local/lib/appweb\\\"",
+					"ME_COM_CGI=1",
+					"ME_COM_FAST=1",
+					"ME_COM_PROXY=1",
+					"ME_HTTP_BASIC=1",
+					"ME_HTTP_CACHE=1",
+					"ME_HTTP_CMD=1",
+					"ME_HTTP_DEFENSE=1",
+					"ME_HTTP_DIGEST=1",
+					"ME_HTTP_DIR=1",
+					"ME_HTTP_HTTP2=1",
+					"ME_HTTP_PAM=1",
+					"ME_HTTP_SENDFILE=1",
+					"ME_HTTP_UPLOAD=1",
+					"ME_HTTP_WEB_SOCKETS=1",
+					"ME_COM_PCRE2=0",
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_SSL=1",
+					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
+					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@loader_path/.",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					../../build/bin,
+				);
+				OBJROOT = "../../build/obj/authpass-macosx-release";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CFLAGS = (
+					"-Wno-sign-conversion",
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wno-sign-compare",
+					"-Wno-cast-function-type-mismatch",
+					"-Wno-shorten-64-to-32",
+				);
+				OTHER_LDFLAGS = (
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-lpam",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				SYMROOT = ../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../src,
+					../../src/osdep,
+					../../src/mpr,
+					../../src/http,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = release;
+		};
+		952F8627801BAC19C8017467 /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../build/bin;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = authpass;
+			};
+			name = debug;
+		};
+		E5ECC6E13C7A315314F34521 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../build/bin;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = authpass;
+			};
+			name = release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "authpass" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0A9B23D81757D34A8C424218 /* debug */,
+				125B54124101A8049A430252 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		6781FFC1BA082AB38C4C8E01 /* Build configuration list for PBXNativeTarget "authpass" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				952F8627801BAC19C8017467 /* debug */,
+				E5ECC6E13C7A315314F34521 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+/* End XCConfigurationList section */
+};
+rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}

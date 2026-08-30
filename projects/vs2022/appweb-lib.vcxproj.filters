@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="http">
+      <UniqueIdentifier>{C513987C-B14A-990D-5A37-7F10464D150F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="modules">
+      <UniqueIdentifier>{FEAC8BD4-6A8C-0A70-73A4-9546DF0271D1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="mpr">
+      <UniqueIdentifier>{7491880B-E09A-887C-6916-9F7CD51E947C}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\config.c" />
+    <ClCompile Include="..\..\src\convenience.c" />
+    <ClCompile Include="..\..\src\http\httpLib.c">
+      <Filter>http</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\modules\cgiHandler.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\modules\espHandler.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\modules\fastHandler.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\modules\proxyHandler.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\modules\testBenchHandler.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\modules\testHandler.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\modules\testWebSocketsHandler.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\mpr\mprLib.c">
+      <Filter>mpr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rom.c" />
+  </ItemGroup>
+</Project>

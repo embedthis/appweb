@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+	version = "1.0">
+	<FileRef
+		location = "group:appweb.xcodeproj">
+	</FileRef>
+	<FileRef
+		location = "group:appweb-lib.xcodeproj">
+	</FileRef>
+	<FileRef
+		location = "group:authpass.xcodeproj">
+	</FileRef>
+	<FileRef
+		location = "group:cgiProgram.xcodeproj">
+	</FileRef>
+	<FileRef
+		location = "group:fastProgram.xcodeproj">
+	</FileRef>
+	<FileRef
+		location = "group:watchdog.xcodeproj">
+	</FileRef>
+</Workspace>

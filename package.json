@@ -1,0 +1,41 @@
+{
+    "name": "appweb",
+    "description": "Embedthis Appweb",
+    "title": "Embedthis Appweb",
+    "version": "9.2.0",
+    "keywords": [
+        "appweb",
+        "http",
+        "webserver"
+    ],
+    "homepage": "https://www.embedthis.com/appweb/",
+    "author": {
+        "name": "Embedthis Software",
+        "email": "dev@embedthis.com",
+        "url": "https://www.embedthis.com"
+    },
+    "license": {
+        "type": "Commercial",
+        "url": "https://www.embedthis.com/licensing/"
+    },
+    "devDependencies": {
+        "@embedthis/ejscript": "^2.1.1",
+        "@embedthis/testme": "^0.8.32"
+    },
+    "repository": "git://github.com/embedthis/appweb.git",
+    "paks": {
+        "certs": "~1",
+        "http": "~9",
+        "makerom": "~1",
+        "mpr": "~9",
+        "osdep": "~1",
+        "watchdog": "~1"
+    },
+    "pak": {
+        "import": true,
+        "files": [
+            "dist/",
+            "doc/api/"
+        ]
+    }
+}

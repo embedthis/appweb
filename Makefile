@@ -1,113 +1,168 @@
 #
-#   Makefile - Embedthis Appweb Makefile wrapper for per-platform makefiles
+#   Makefile -- Appweb Top-level Makefile
 #
-#	This Makefile is for Unix/Linux and Cygwin. On windows, it can be invoked via make.bat.
+#   Uses pre-generated project files from projects/gmake2/.
+#   Auto-detects platform. No premake5 required for building.
 #
-#   You can use this Makefile and build via "make" with a pre-selected configuration. 
+#   Use "make help" for available targets and options.
 #
-#	See projects/$(OS)-$(ARCH)-default-me.h for configuration default settings. Can override
-#	via make environment variables. For example: make ME_COM_SQLITE=0. These are converted to
-#	DFLAGS and will then override the me.h default values. Use "make help" for a list of available
-#	make variable options.
-#
-NAME    := appweb
-OS      := $(shell uname | sed 's/CYGWIN.*/windows/;s/Darwin/macosx/' | tr '[A-Z]' '[a-z]')
-PROFILE ?= dev
 
-ifeq ($(ARCH),)
-	ifeq ($(OS),windows)
-		ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
-			ARCH?=x64
-		else
-			ARCH?=x86
-		endif
-	else
-		ARCH:= $(shell uname -m | sed 's/i.86/x86/;s/x86_64/x64/;;s/mips.*/mips/;s/aarch/arm/')
-	endif
-endif
+NAME        := appweb
+OPTIMIZE    ?= release
+TOP         := $(shell realpath .)
+BUILD       := build
+BIN         := $(TOP)/$(BUILD)/bin
+LOCAL       := $(strip $(wildcard ./.local.mk))
+SEC_SCAN_ROOT ?= $(shell if [ -d "$(TOP)/.sec-scan/fuzzcore" ] ; then realpath "$(TOP)/.sec-scan" ; elif [ -d "$(TOP)/../../sec/fuzzcore" ] ; then realpath "$(TOP)/../../sec" ; elif [ -d "$(TOP)/../../fuzzcore" ] ; then realpath "$(TOP)/../.." ; fi)
+SEC_SCAN    ?= $(if $(SEC_SCAN_ROOT),$(SEC_SCAN_ROOT)/bin/sec-scan,sec-scan)
 
-ifeq ($(OS),windows)
-    MAKE	:= MAKEFLAGS= projects/windows.bat $(ARCH) nmake -nologo
-    EXT 	:= nmake
+#
+#   Detect make command (prefer gmake)
+#
+MAKE        := $(shell if which gmake >/dev/null 2>&1; then echo gmake ; else echo make ; fi) --no-print-directory
+
+#
+#   Auto-detect platform from host OS
+#
+UNAME       := $(shell uname -s)
+ifeq ($(UNAME),Darwin)
+    PLATFORM := macosx
+else ifeq ($(UNAME),Linux)
+    PLATFORM := linux
+else ifeq ($(UNAME),FreeBSD)
+    PLATFORM := freebsd
 else
-	MAKE    := $(shell if which gmake >/dev/null 2>&1; then echo gmake ; else echo make ; fi) --no-print-directory
-	EXT     := mk
+    $(error Unsupported platform: $(UNAME). Use premake5 to regenerate for your OS.)
 endif
 
-BIN 		:= $(OS)-$(ARCH)-$(PROFILE)/bin
-PATH		:= $(PWD)/build/$(BIN):$(PATH)
-PROJECT 	:= projects/$(NAME)-$(OS)-default.mk
+CONFIG      := $(OPTIMIZE)_$(PLATFORM)
+PATH        := $(BIN):$(PATH)
+CDPATH      :=
 
 .EXPORT_ALL_VARIABLES:
-.PHONY: build doc test
 
-all build compile:
-	@if [ ! -f $(PROJECT) ] ; then \
-		echo "The build configuration $(PROJECT) is not supported" ; exit 255 ; \
+.PHONY: all build check-sync clean coverage help import release-check sec-lint sec-sync-check sec-test stats test verify-projects
+
+ifndef SHOW
+.SILENT:
+endif
+
+all: build
+
+build:
+	@if [ ! -f projects/gmake2/Makefile ] ; then \
+		echo "      [Error] projects/gmake2/Makefile not found. Run: cd projects && premake5 gmake" ; exit 255 ; \
 	fi
-	@echo '       [Run] $(MAKE) -f $(PROJECT) $@'
-	@$(MAKE) -f $(PROJECT) $@
-	@echo '      [Info] Run via: "make run". Run manually with "build/$(OS)-$(ARCH)-$(PROFILE)/bin" in your path.'
-	@echo ""
+	$(MAKE) -C projects/gmake2 config=$(CONFIG) verbose=$(SHOW)
+	@echo "      [Info] Appweb $(OPTIMIZE) [$(PLATFORM)]"
 
-clean clobber install installBinary uninstall run:
-	@echo '       [Run] $(MAKE) -f $(PROJECT) $@'
-	@$(MAKE) -f $(PROJECT) $@
-	@echo '      [Info] $@ complete'
+clean:
+	@echo "       [Run] clean"
+	rm -fr $(BUILD)
 
-test:
-	@test/utils/prep-test.sh
-	@tm test
+test: build
+	tm test
 
-deploy:
-	@echo '       [Deploy] $(MAKE) ME_ROOT_PREFIX=$(OS)-$(ARCH)-$(PROFILE)/deploy -f $(PROJECT) installBinary'
-	@$(MAKE) ME_ROOT_PREFIX=$(OS)-$(ARCH)-$(PROFILE)/deploy -f $(PROJECT) installBinary
+sec-lint:
+	$(SEC_SCAN) lint sec-scan.json5 --root $(TOP)
 
-version:
-	@$(MAKE) -f $(PROJECT) $@
+sec-sync-check:
+	$(SEC_SCAN) sync $(TOP)
+	git diff --exit-code -- sec-scan.json5 test/sec .claude/agents .claude/skills/sec-audit
+
+#
+#   Security gates. Deliberately NOT chained into `test`: sec-test hard-errors without a
+#   sec-scan checkout, and appweb's own suite must run for anyone who does not have the
+#   framework repo. CI invokes these explicitly with SEC_SCAN_ROOT set, so the gate is
+#   fail-closed where it matters without blocking a plain `make test`.
+#
+sec-test:
+	@if [ -z "$(SEC_SCAN_ROOT)" ] || [ ! -f "$(SEC_SCAN_ROOT)/fuzzcore/fuzz.c" ] ; then \
+		echo "      [Error] sec-scan checkout not found. Set SEC_SCAN_ROOT=/path/to/sec or checkout embedthis/sec into .sec-scan" ; \
+		exit 255 ; \
+	fi
+	$(MAKE) -C test/sec SECDIR="$(SEC_SCAN_ROOT)" test
+
+#
+#   Mechanical pre-release gate. Every check exists because the corresponding mistake was made here
+#   and found by hand. Does not build or run the suite -- "make test" does that.
+#
+release-check:
+	@bash bin/release-check.sh
+
+#
+#   Derived figures the compliance documents quote. Exits non-zero while a Critical is open.
+#
+stats:
+	@bash bin/compliance-stats.sh
+
+#
+#   Re-import the vendored amalgamations (src/mpr, src/http, src/osdep) from the module paks,
+#   then verify the result. There was no target for this flow at all, which is half of why 10132
+#   went unnoticed.
+#
+#   The verification is the point, not a formality. A pak's version does not change when the
+#   module is rebuilt after a fix, so paks/mpr carried pre-fix code under the same 9.2.0 version
+#   as the published pak -- indistinguishable to anything that resolves by version. Byte
+#   comparison is the only thing that can catch it, and an import that silently reverted 10023
+#   and 10056 would not have failed to build or failed a test.
+#
+#   Run "pak update" first when the upstream module has been rebuilt, so the global cache in
+#   ~/.paks is newer than what is already in src/.
+#
+#   Named "import" rather than "sync" because pak's package.json config calls this operation
+#   import, and because .local.mk already defines a "sync" target for the ejs test client.
+#
+import:
+	pak sync
+	@bash test/utils/check-amalgamation.sh
+
+#
+#   Verify the amalgamations match their pak sources. Changes nothing; safe to run any time.
+#
+check-sync:
+	@bash test/utils/check-amalgamation.sh
+
+#
+#   Prove projects/gmake2 is what projects/premake5.lua generates. A hand edit to a generated
+#   makefile survives until the next regeneration and is then silently reverted.
+#
+verify-projects:
+	@bash bin/verify-projects.sh
+
+#
+#   Instrumented build plus the suite, reporting line and branch coverage per source file.
+#
+#   Additive: the instrumentation is passed through CFLAGS and LDFLAGS, which the generated
+#   makefiles already honour, so no premake configuration is added and no generated file changes.
+#   The default build is untouched. See bin/coverage.sh and issue 10067.
+#
+coverage:
+	bin/coverage.sh
 
 help:
 	@echo '' >&2
-	@echo 'usage: make [clean, compile, deploy, install, run, uninstall]' >&2
+	@echo 'usage: make [clean, build, test]' >&2
 	@echo '' >&2
-	@echo 'The default configuration can be modified by setting make variables' >&2
-	@echo 'Set to 0 to disable and 1 to enable:' >&2
+	@echo 'Targets:' >&2
+	@echo '  build               Build libappweb and executables (default)' >&2
+	@echo '  clean               Remove build artifacts' >&2
+	@echo '  test                Run unit tests' >&2
+	@echo '  coverage            Build instrumented, run the suite, report line and branch coverage' >&2
+	@echo '  import              Re-import the module amalgamations from their paks, then verify' >&2
+	@echo '  check-sync          Verify the amalgamations match their pak sources (read-only)' >&2
+	@echo '  verify-projects     Verify projects/gmake2 matches what premake5.lua generates' >&2
+	@echo '  release-check       Mechanical pre-release gate (links, markers, advisories, SBOM)' >&2
+	@echo '  stats               Ticket corpus and severity figures for the compliance documents' >&2
+	@echo '  sec-lint            Run sec-scan anchor lint' >&2
+	@echo '  sec-sync-check      Verify sec-scan generated artifacts are current' >&2
+	@echo '  sec-test            Run generated test/sec security self-tests' >&2
 	@echo '' >&2
-	@echo '  ME_MPR_LOGGING    # Enable application logging' >&2
-	@echo '  ME_MPR_TRACING    # Enable debug tracing' >&2
-	@echo '  ME_COM_CGI        # Enable the CGI handler' >&2
-	@echo '  ME_COM_ESP        # Enable the ESP web framework' >&2
-	@echo '  ME_COM_MBEDTLS    # Enable the mbed TLS stack' >&2
-	@echo '  ME_COM_OPENSSL    # Enable the OpenSSL SSL stack, must set ME_COM_OPENSS_PATH' >&2
-	@echo '  ME_COM_SQLITE     # Enable the SQLite database' >&2
-	@echo '  ME_ROM            # Build for ROM without a file system' >&2
-	@echo '  ME_STACK_SIZE     # Define the VxWorks stack size' >&2
-	@echo '' >&2
-	@echo 'For example, to disable CGI:' >&2
-	@echo '' >&2
-	@echo '  ME_COM_CGI=0 make' >&2
-	@echo '' >&2
-	@echo 'Other make environment variables:' >&2
-	@echo '  ARCH               # CPU architecture (x86, x64, ppc, ...)' >&2
-	@echo '  OS                 # Operating system (linux, macosx, windows, vxworks, ...)' >&2
-	@echo '  CC                 # Compiler to use ' >&2
-	@echo '  LD                 # Linker to use' >&2
-	@echo '  CONFIG             # Output directory for built items. Defaults to OS-ARCH-PROFILE' >&2
-	@echo '  CFLAGS             # Add compiler options. For example: -Wall' >&2
-	@echo '  DEBUG              # Set to "debug" for symbols, "release" for optimized builds' >&2
-	@echo '  DFLAGS             # Add compiler defines. For example: -DCOLOR=blue' >&2
-	@echo '  IFLAGS             # Add compiler include directories. For example: -I/extra/includes' >&2
-	@echo '  LDFLAGS            # Add linker options' >&2
-	@echo '  LIBPATHS           # Add linker library search directories. For example: -L/libraries' >&2
-	@echo '  LIBS               # Add linker libraries. For example: -lpthreads' >&2
-	@echo '  PROFILE            # Set to "static" for static linking or "default" for dynamic' >&2
-	@echo '' >&2
-	@echo 'Use "SHOW=1 make" to show executed commands.' >&2
-	@echo 'Use "DEBUG=release make" to build for release.' >&2
+	@echo 'Make variables:' >&2
+	@echo '  OPTIMIZE=debug|release    Optimization level (default: release)' >&2
+	@echo '  SHOW=1                    Show build commands' >&2
 	@echo '' >&2
 
-LOCAL_MAKEFILE := $(strip $(wildcard ./.local.mk))
-
-ifneq ($(LOCAL_MAKEFILE),)
-include	$(LOCAL_MAKEFILE)
+ifneq ($(LOCAL),)
+include $(LOCAL)
 endif

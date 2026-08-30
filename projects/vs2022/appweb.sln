@@ -1,0 +1,53 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "appweb", "appweb.vcxproj", "{44944DF2-3036-78C8-19F1-8B1C0532FF18}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A89CE0CB-9454-2219-FD5B-FB74E932BD09} = {A89CE0CB-9454-2219-FD5B-FB74E932BD09}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "appweb-lib", "appweb-lib.vcxproj", "{A89CE0CB-9454-2219-FD5B-FB74E932BD09}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "authpass", "authpass.vcxproj", "{2E2B3245-1AF8-8C50-4311-7BF82F3DC2DE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A89CE0CB-9454-2219-FD5B-FB74E932BD09} = {A89CE0CB-9454-2219-FD5B-FB74E932BD09}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cgiProgram", "cgiProgram.vcxproj", "{90E707AB-7C9F-49F8-E5A6-2254D17DE4E8}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "watchdog", "watchdog.vcxproj", "{16E6EE8E-02B3-499A-2BCC-374217F87E28}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A89CE0CB-9454-2219-FD5B-FB74E932BD09} = {A89CE0CB-9454-2219-FD5B-FB74E932BD09}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		debug|windows = debug|windows
+		release|windows = release|windows
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{44944DF2-3036-78C8-19F1-8B1C0532FF18}.debug|windows.ActiveCfg = debug windows|x64
+		{44944DF2-3036-78C8-19F1-8B1C0532FF18}.debug|windows.Build.0 = debug windows|x64
+		{44944DF2-3036-78C8-19F1-8B1C0532FF18}.release|windows.ActiveCfg = release windows|x64
+		{44944DF2-3036-78C8-19F1-8B1C0532FF18}.release|windows.Build.0 = release windows|x64
+		{A89CE0CB-9454-2219-FD5B-FB74E932BD09}.debug|windows.ActiveCfg = debug windows|x64
+		{A89CE0CB-9454-2219-FD5B-FB74E932BD09}.debug|windows.Build.0 = debug windows|x64
+		{A89CE0CB-9454-2219-FD5B-FB74E932BD09}.release|windows.ActiveCfg = release windows|x64
+		{A89CE0CB-9454-2219-FD5B-FB74E932BD09}.release|windows.Build.0 = release windows|x64
+		{2E2B3245-1AF8-8C50-4311-7BF82F3DC2DE}.debug|windows.ActiveCfg = debug windows|x64
+		{2E2B3245-1AF8-8C50-4311-7BF82F3DC2DE}.debug|windows.Build.0 = debug windows|x64
+		{2E2B3245-1AF8-8C50-4311-7BF82F3DC2DE}.release|windows.ActiveCfg = release windows|x64
+		{2E2B3245-1AF8-8C50-4311-7BF82F3DC2DE}.release|windows.Build.0 = release windows|x64
+		{90E707AB-7C9F-49F8-E5A6-2254D17DE4E8}.debug|windows.ActiveCfg = debug windows|x64
+		{90E707AB-7C9F-49F8-E5A6-2254D17DE4E8}.debug|windows.Build.0 = debug windows|x64
+		{90E707AB-7C9F-49F8-E5A6-2254D17DE4E8}.release|windows.ActiveCfg = release windows|x64
+		{90E707AB-7C9F-49F8-E5A6-2254D17DE4E8}.release|windows.Build.0 = release windows|x64
+		{16E6EE8E-02B3-499A-2BCC-374217F87E28}.debug|windows.ActiveCfg = debug windows|x64
+		{16E6EE8E-02B3-499A-2BCC-374217F87E28}.debug|windows.Build.0 = debug windows|x64
+		{16E6EE8E-02B3-499A-2BCC-374217F87E28}.release|windows.ActiveCfg = release windows|x64
+		{16E6EE8E-02B3-499A-2BCC-374217F87E28}.release|windows.Build.0 = release windows|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

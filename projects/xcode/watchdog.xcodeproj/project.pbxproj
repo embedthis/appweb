@@ -1,0 +1,398 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		3E53A52D2F4B131F9B4E936D /* libappweb.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A9C7DE554214C407705BC495 /* libappweb.dylib */; };
+		A49EA764FFDFFAD6D33A45A4 /* watchdog.c in Sources */ = {isa = PBXBuildFile; fileRef = 2188EC4C389B877E28B7828C /* watchdog.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		49F96F656BC51C97A87A45A5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = B47F3001DAA55FB341AC5641;
+			remoteInfo = libappweb.dylib;
+		};
+		9C33E1FEBDFF8F30FAB4B83E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 74308BC76D968D396131EA07;
+			remoteInfo = libappweb.dylib;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0A5163C6EE986BF872859A06 /* libappweb.dylib */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = appweb-lib.xcodeproj; path = "appweb-lib.xcodeproj"; sourceTree = SOURCE_ROOT; };
+		2188EC4C389B877E28B7828C /* watchdog.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = watchdog.c; path = ../../src/watchdog/watchdog.c; sourceTree = "<group>"; };
+		349438DA633A8CCCBC7BE71A /* watchdog */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = watchdog; path = watchdog; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E3E7D14A366DFC3C08B25F8A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3E53A52D2F4B131F9B4E936D /* libappweb.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		52EC9C365FA94BA8D493BA76 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXGroup section */
+		218C47F11602BF2364D65E31 /* watchdog */ = {
+			isa = PBXGroup;
+			children = (
+				2188EC4C389B877E28B7828C /* watchdog.c */,
+				A6C936B49B3FADE6EA134CF4 /* Products */,
+				9D968EAA920D05DCE0E0A4EA /* Projects */,
+			);
+			name = watchdog;
+			sourceTree = "<group>";
+		};
+		9D968EAA920D05DCE0E0A4EA /* Projects */ = {
+			isa = PBXGroup;
+			children = (
+				0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */,
+				0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */,
+			);
+			name = Projects;
+			sourceTree = "<group>";
+		};
+		A6C936B49B3FADE6EA134CF4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				349438DA633A8CCCBC7BE71A /* watchdog */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C1B62405F147F2F7CC553245 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A9C7DE554214C407705BC495 /* libappweb.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		DCEB5D80813DFB32937643C0 /* watchdog */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D22319A924A9449BF6EDA7E9 /* Build configuration list for PBXNativeTarget "watchdog" */;
+			buildPhases = (
+				53CF51EAA6557CDC7899E02A /* Resources */,
+				BD7C6B4110029633E246F981 /* Sources */,
+				E3E7D14A366DFC3C08B25F8A /* Frameworks */,
+				52EC9C365FA94BA8D493BA76 /* Embed Libraries */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AF6E610EDF003000BA0D6F4E /* PBXTargetDependency */,
+				AF6E610EDF003000BA0D6F4E /* PBXTargetDependency */,
+			);
+			name = watchdog;
+			productInstallPath = "$(HOME)/bin";
+			productName = watchdog;
+			productReference = 349438DA633A8CCCBC7BE71A /* watchdog */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "watchdog" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = 218C47F11602BF2364D65E31 /* watchdog */;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = C1B62405F147F2F7CC553245 /* Products */;
+					ProjectRef = 0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */;
+				},
+				{
+					ProductGroup = C1B62405F147F2F7CC553245 /* Products */;
+					ProjectRef = 0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				DCEB5D80813DFB32937643C0 /* watchdog */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		A9C7DE554214C407705BC495 /* libappweb.dylib */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.dylib";
+			path = libappweb.dylib;
+			remoteRef = 49F96F656BC51C97A87A45A5 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		53CF51EAA6557CDC7899E02A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BD7C6B4110029633E246F981 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A49EA764FFDFFAD6D33A45A4 /* watchdog.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AF6E610EDF003000BA0D6F4E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = libappweb.dylib;
+			targetProxy = 9C33E1FEBDFF8F30FAB4B83E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		2F5EBC0F1A4AE2016230AA4F /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../build/bin;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = watchdog;
+			};
+			name = debug;
+		};
+		A1EA57C0AEA7073223917600 /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_VERSION=\\\"9.2.0\\\"",
+					"ME_APPWEB_PRODUCT=1",
+					"ME_APP_PREFIX=\\\"/usr/local/lib/appweb\\\"",
+					"ME_COM_CGI=1",
+					"ME_COM_FAST=1",
+					"ME_COM_PROXY=1",
+					"ME_HTTP_BASIC=1",
+					"ME_HTTP_CACHE=1",
+					"ME_HTTP_CMD=1",
+					"ME_HTTP_DEFENSE=1",
+					"ME_HTTP_DIGEST=1",
+					"ME_HTTP_DIR=1",
+					"ME_HTTP_HTTP2=1",
+					"ME_HTTP_PAM=1",
+					"ME_HTTP_SENDFILE=1",
+					"ME_HTTP_UPLOAD=1",
+					"ME_HTTP_WEB_SOCKETS=1",
+					"ME_COM_PCRE2=0",
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_SSL=1",
+					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
+					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+					"ME_DEBUG=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@loader_path/.",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					../../build/bin,
+				);
+				OBJROOT = "../../build/obj/watchdog-macosx-debug";
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = (
+					"-Wno-sign-conversion",
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wno-sign-compare",
+					"-Wno-cast-function-type-mismatch",
+					"-Wno-shorten-64-to-32",
+				);
+				OTHER_LDFLAGS = (
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-lpam",
+					"-g",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				SYMROOT = ../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../src,
+					../../src/osdep,
+					../../src/mpr,
+					../../src/http,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = debug;
+		};
+		BA4721FAE8ED75EC422ED03A /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_VERSION=\\\"9.2.0\\\"",
+					"ME_APPWEB_PRODUCT=1",
+					"ME_APP_PREFIX=\\\"/usr/local/lib/appweb\\\"",
+					"ME_COM_CGI=1",
+					"ME_COM_FAST=1",
+					"ME_COM_PROXY=1",
+					"ME_HTTP_BASIC=1",
+					"ME_HTTP_CACHE=1",
+					"ME_HTTP_CMD=1",
+					"ME_HTTP_DEFENSE=1",
+					"ME_HTTP_DIGEST=1",
+					"ME_HTTP_DIR=1",
+					"ME_HTTP_HTTP2=1",
+					"ME_HTTP_PAM=1",
+					"ME_HTTP_SENDFILE=1",
+					"ME_HTTP_UPLOAD=1",
+					"ME_HTTP_WEB_SOCKETS=1",
+					"ME_COM_PCRE2=0",
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_SSL=1",
+					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
+					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@loader_path/.",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					../../build/bin,
+				);
+				OBJROOT = "../../build/obj/watchdog-macosx-release";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CFLAGS = (
+					"-Wno-sign-conversion",
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wno-sign-compare",
+					"-Wno-cast-function-type-mismatch",
+					"-Wno-shorten-64-to-32",
+				);
+				OTHER_LDFLAGS = (
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-lpam",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				SYMROOT = ../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../src,
+					../../src/osdep,
+					../../src/mpr,
+					../../src/http,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = release;
+		};
+		C8C116C91F4E813BF7C79509 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../build/bin;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = watchdog;
+			};
+			name = release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "watchdog" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1EA57C0AEA7073223917600 /* debug */,
+				BA4721FAE8ED75EC422ED03A /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		D22319A924A9449BF6EDA7E9 /* Build configuration list for PBXNativeTarget "watchdog" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2F5EBC0F1A4AE2016230AA4F /* debug */,
+				C8C116C91F4E813BF7C79509 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+/* End XCConfigurationList section */
+};
+rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}
