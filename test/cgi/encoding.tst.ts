@@ -3,8 +3,8 @@
     Verifies that URL-encoded paths and query strings are properly decoded
  */
 
-import {ttrue, tget} from 'testme'
-import {Http, Path, print} from 'ejscript'
+import {ttrue, tget} from '@embedthis/testme'
+import {Http, Path, print} from '@embedthis/ejscript'
 
 const HTTP = tget('TM_HTTP') || '127.0.0.1:4100'
 let http: Http = new Http

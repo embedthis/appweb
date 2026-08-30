@@ -6,8 +6,8 @@
     that resources are isolated between virtual hosts.
  */
 
-import {ttrue, tget} from 'testme'
-import {Http, Uri} from 'ejscript'
+import {ttrue, tget} from '@embedthis/testme'
+import {Http, Uri} from '@embedthis/ejscript'
 
 let http: Http = new Http
 
@@ -44,8 +44,11 @@ async function namedHost() {
     // Test first vhost (localhost) can access vhost1.html
     http = new Http
     http.setHeader("Host", "localhost:" + new Uri(NAMED).port)
+    console.log("NAMED", NAMED + '/vhost1.html')
     http.get(NAMED + "/vhost1.html")
     await http.finalize()
+    console.log("http.status", http.status)
+    console.log("http.response", http.response)
     ttrue(http.status == 200)
     http.close()
 

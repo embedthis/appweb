@@ -2,8 +2,8 @@
     fast.ts - FAST support routines
  */
 
-import {ttrue} from 'testme'
-import {Http} from 'ejscript'
+import {ttrue} from '@embedthis/testme'
+import {Http} from '@embedthis/ejscript'
 
 export function contains(http: Http, pat: string): void {
     ttrue(http.response.contains(pat))

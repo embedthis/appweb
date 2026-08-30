@@ -5,8 +5,8 @@
     The test size scales with test depth (10KB to 5MB of output).
  */
 
-import {tdepth, tget, ttrue} from 'testme'
-import {Http} from 'ejscript'
+import {tdepth, tget, ttrue} from '@embedthis/testme'
+import {Http} from '@embedthis/ejscript'
 
 const HTTP = tget('TM_HTTP') || "127.0.0.1:4100"
 import {contains, keyword, match} from "./fast"

@@ -1,4 +1,0 @@
-<% 	
-    render(getSessionVar("value"));
-    setSessionVar("value", "77");
-%>

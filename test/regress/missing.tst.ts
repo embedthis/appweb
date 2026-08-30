@@ -5,8 +5,8 @@
     to a non-existent endpoint.
  */
 
-import {ttrue, tget} from 'testme'
-import {Http} from 'ejscript'
+import {ttrue, tget} from '@embedthis/testme'
+import {Http} from '@embedthis/ejscript'
 
 const HTTP = tget('TM_HTTP') || "127.0.0.1:4100"
 

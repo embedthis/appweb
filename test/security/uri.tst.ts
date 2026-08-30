@@ -7,8 +7,8 @@
     - URIs with backslashes
  */
 
-import {tfail, tget, ttrue} from 'testme'
-import {ByteArray, Socket, Uri} from 'ejscript'
+import {tfail, tget, ttrue} from '@embedthis/testme'
+import {ByteArray, Socket, Uri} from '@embedthis/ejscript'
 
 const HTTP = new Uri(tget('TM_HTTP') || "127.0.0.1:4100")
 

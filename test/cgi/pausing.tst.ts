@@ -3,8 +3,8 @@
     Verifies that server properly handles backpressure when client reads slowly
  */
 
-import {print, tdepth, tget, ttrue} from 'testme'
-import {App, ByteArray, File, Http, Path} from 'ejscript'
+import {print, tdepth, tget, ttrue} from '@embedthis/testme'
+import {App, ByteArray, File, Http, Path} from '@embedthis/ejscript'
 
 const HTTP = tget('TM_HTTP') || '127.0.0.1:4100'
 import {contains, keyword, match} from './cgi'

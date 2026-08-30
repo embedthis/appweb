@@ -1,0 +1,18 @@
+{
+    //
+    //  The ban test deliberately trips Defense/Monitor and must not share the
+    //  root group's server. Use a monitor-only config that arms the ban after
+    //  including the shared test server configuration.
+    //
+    environment: {
+        default: {
+            TM_APPWEB_CONFIG: 'monitor/appweb.conf',
+        },
+    },
+    services: {
+        prep: '../prep.sh',
+        setup: '../setup.sh',
+        cleanup: '../cleanup.sh',
+        healthcheck: { url: 'http://localhost:4100/index.html' },
+    },
+}

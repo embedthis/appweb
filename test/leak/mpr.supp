@@ -1,0 +1,84 @@
+#
+#   mpr.supp - Valgrind memcheck suppressions for the MPR runtime.
+#
+#   test/leak/valgrind.tst.ts names this file. It previously named
+#   ../../../build/bin/mpr.supp, which nothing in this repository ever produced -- not the build
+#   system, not paks/, not the source archive -- so valgrind answered
+#
+#       FATAL: can't open suppressions file "../../../build/bin/mpr.supp"
+#
+#   and refused to start. That, plus a dependency on an `http` client this repo does not build,
+#   is why the leak test had never executed on any machine (10344).
+#
+#   It lives here, beside the test that uses it and under version control, rather than in the
+#   git-ignored build/ output directory. A suppressions file is source, not a build artifact, and
+#   putting it in build/bin is exactly why its absence stayed invisible.
+#
+#   POLICY, and please keep to it: this file starts empty of blanket suppressions on purpose.
+#   The test has never produced a memcheck report, so nobody knows yet what it says. A suppression
+#   added before the report is read is indistinguishable from hiding a real leak, and would recreate
+#   the failure mode 10344 is about -- a check that reports success without checking.
+#
+#   Add an entry only when the finding under it has been read, understood and judged benign, and
+#   write down which of the two it is:
+#
+#     1. A genuine false positive. MPR allocates its heap with mmap and manages blocks itself, so
+#        memcheck cannot see the internal free lists and can report interior pointers oddly.
+#     2. A deliberate, documented one-time allocation held for process lifetime. Prefer
+#        "still reachable" (which --leak-check=yes does not report by default) over a suppression.
+#
+#   Every entry needs a comment naming the ticket or the reasoning. An unexplained suppression is
+#   a silenced bug.
+#
+#   Format reference:
+#
+#     {
+#         name-of-suppression
+#         Memcheck:Leak
+#         match-leak-kinds: definite
+#         fun:malloc
+#         fun:mprVirtAlloc
+#         ...
+#     }
+#
+
+#
+#   Entry 1 - glibc thread-local storage for a thread that outlives the process.
+#
+#   Read and judged benign on 2026-08-10, from the first memcheck report this test has ever
+#   produced (10344):
+#
+#       272 bytes in 1 blocks are possibly lost in loss record 1 of 1
+#          at calloc (vgpreload_memcheck-arm64-linux.so)
+#          by calloc (rtld-malloc.h:44)
+#          by allocate_dtv (dl-tls.c:370)
+#          by _dl_allocate_tls (dl-tls.c:629)
+#          by allocate_stack (allocatestack.c:429)
+#          by pthread_create@@GLIBC_2.34 (pthread_create.c:655)
+#          by mprStartOsThread (libappweb.so)
+#          by mprStartThread (libappweb.so)
+#          by mprCreate (libappweb.so)
+#
+#   This is glibc's dynamic thread vector, allocated inside pthread_create for the first thread
+#   MPR starts during mprCreate. glibc frees a thread's DTV when the thread is joined; a thread
+#   still running at process exit therefore leaves its DTV reachable only from thread-internal
+#   structures memcheck does not walk, and it is reported as "possibly lost". It is category 1 in
+#   the policy above: a memcheck limitation, not an MPR defect. The allocation is glibc's, not
+#   Appweb's, and its size is fixed per thread.
+#
+#   Guard against this hiding a real defect: it is scoped to mprStartOsThread and matched only as
+#   "possible". If the count ever exceeds one block, MPR is starting threads it never reaps, and
+#   this suppression must be revisited rather than widened. The test prints the possibly-lost byte
+#   total on every run so that change is visible.
+#
+{
+    glibc-pthread-create-tls-dtv
+    Memcheck:Leak
+    match-leak-kinds: possible
+    fun:calloc
+    ...
+    fun:_dl_allocate_tls
+    ...
+    fun:mprStartOsThread
+    ...
+}

@@ -5,8 +5,8 @@
     IPv6 addressing ([::1] for localhost) to validate IPv6 support in the server.
  */
 
-import {tcontains, ttrue, tget} from 'testme'
-import {Http} from 'ejscript'
+import {tcontains, ttrue, tget} from '@embedthis/testme'
+import {Http} from '@embedthis/ejscript'
 
 const HTTP = tget('TM_HTTPV6') || "[::1]:4110"
 let http: Http = new Http

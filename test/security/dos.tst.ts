@@ -8,8 +8,8 @@
     - Verifies server is still functional after the attack
  */
 
-import {tdepth, tget, tskip, ttrue} from 'testme'
-import {App, Config, Http, Socket, Uri} from 'ejscript'
+import {tdepth, tget, tskip, ttrue} from '@embedthis/testme'
+import {App, Config, Http, Socket, Uri} from '@embedthis/ejscript'
 
 const HTTP = new Uri(tget('TM_HTTP') || "127.0.0.1:4100")
 

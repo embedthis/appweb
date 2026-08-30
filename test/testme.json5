@@ -4,51 +4,76 @@
             gcc: {
                 flags: [
                     '-Wformat', '-Wformat-security', '-Wsign-compare', '-Wsign-conversion',
-                    '-I../build/${PLATFORM}-${PROFILE}/inc', '-L../build/${PLATFORM}-${PROFILE}/bin'
+                    '-I../src', '-I../src/osdep', '-I../src/mpr', '-I../src/http',
+                    '-L../build/bin',
+                    '-Wl,-rpath,${CONFIGDIR}/../build/bin',
                 ],
-                linux: {
-                    flags: ['-Wl,-rpath,$ORIGIN/${CONFIGDIR}/../build/${PLATFORM}-${PROFILE}/bin'],
-                },
-                macosx: {
-                    flags: ['-Wl,-rpath,@executable_path/${CONFIGDIR}/../build/${PLATFORM}-${PROFILE}/bin'],
-                },
-                libraries: ['appweb', 'esp', 'http', 'mpr', 'm', 'pcre', 'crypto', 'ssl'],
+                libraries: ['appweb', 'm'],
             },
             msvc: {
                 flags: [
                     '-GR-', '-MDd', '-wd4100',
-                    '/I../build/${PLATFORM}-${PROFILE}/inc', 
-                    '/LIBPATH:../build/${PLATFORM}-${PROFILE}/bin',
+                    '/I../src', '/I../src/osdep', '/I../src/mpr', '/I../src/http',
+                    '/LIBPATH:../build/bin',
                     '/I${ME_COM_OPENSSL_PATH}/include',
-                    '/LIBPATH:${ME_COM_OPENSSL_PATH}/lib/VC/x64/MDd',
-                    '/I${USERPROFILE}/vcpkg/installed/x64-windows/include',
-                    '/LIBPATH:${USERPROFILE}/vcpkg/installed/x64-windows/lib',
+                    '/LIBPATH:${ME_COM_OPENSSL_PATH}/lib/VC/${ARCH}/MDd',
+                    '/I${USERPROFILE}/vcpkg/installed/${ARCH}-windows/include',
+                    '/LIBPATH:${USERPROFILE}/vcpkg/installed/${ARCH}-windows/lib',
                 ],
-                libraries: ['libappweb', 'libesp', 'libhttp', 'libmpr', 'libpcre', 'libcrypto', 'libssl', 
+                libraries: ['libappweb',
                 'ws2_32.lib', 'advapi32.lib', 'user32.lib', 'kernel32.lib', 'oldnames.lib', 'shell32.lib'],
             },
         },
     },
+    /*
+        test/web is the document root the server serves, not a place tests live -- nothing under it
+        is tracked as a test. It must be excluded from discovery because tests write into it:
+        cmd/http.tst.ts uploads every file in its own directory, itself included, and the upload
+        filter stages them into web/tmp. TestMe then found web/tmp/http.tst.ts and ran it a second
+        time, from a different working directory, so every cmd/http result was reported twice and
+        the suite's test count changed depending on whether a previous run had left the copy behind.
+     */
+    patterns: {
+        exclude: ['**/web/**'],
+    },
     environment: {
         default: {
-            PATH: '../build/${PLATFORM}-${PROFILE}/bin:${PATH}',
-            BIN: '${../build/*/bin}',
+            PATH: '../build/bin:${PATH}',
+            BIN: '../build/bin',
             TM_HTTP: 'http://localhost:4100',
             TM_HTTPV6: 'http://[::1]:4100',
             TM_HTTPS: 'https://localhost:4443',
             TM_SELFCERT: 'https://localhost:5443',
             TM_CLIENTCERT: 'https://localhost:6443',
             TM_TESTCERT: 'https://localhost:7443',
+
+            /*
+                Certificate revocation endpoints. Ports only -- the probe drives openssl s_client
+                rather than an HTTP client. Defined with the endpoints in test/utils/make-pki.sh.
+             */
+            TM_CRLNONE: '8443',
+            TM_CRLEMPTY: '8444',
+            TM_CRLLEAF: '8445',
+            TM_CRLCHAIN: '8446',
+            TM_CRLEXPIRED: '8447',
+            TM_CRLLEAFONLY: '8448',
+
             TM_NAMED: 'http://localhost:4200',
             TM_VIRT: 'http://localhost:4300',
             TM_HTTP_PORT: '4100',
         },
         windows: {
-            PATH: '../build/${PLATFORM}-${PROFILE}/bin;C:/Program Files/OpenSSL;${USERPROFILE}/vcpkg/installed/x64-windows/bin;${PATH}',
+            PATH: '${../build/bin};C:/Program Files/OpenSSL;${USERPROFILE}/vcpkg/installed/${ARCH}-windows/bin;${PATH}',
         },
     },
     execution: {
         parallel: false,
+        /*
+            The default is 30 seconds, which is ample at depth 0 but not above it. auth/digest-replay
+            must wait out ME_DIGEST_NONCE_DURATION to observe a nonce expire, and the cgi size tests
+            scale their payloads with depth.
+         */
+        timeout: 120,
     },
     services: {
         cleanup: './cleanup.sh',

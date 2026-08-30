@@ -3,8 +3,8 @@
     Verifies that route update commands can execute and create files
  */
 
-import {ttrue, tget} from 'testme'
-import {Config, Http, Path} from 'ejscript'
+import {ttrue, tget} from '@embedthis/testme'
+import {Config, Http, Path} from '@embedthis/ejscript'
 
 const HTTP = tget('TM_HTTP') || '127.0.0.1:4100'
 let http: Http = new Http

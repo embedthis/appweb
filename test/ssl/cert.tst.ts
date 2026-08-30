@@ -1,73 +1,53 @@
 /*
-    Test SSL certificate verification and client certificate authentication
+    cert.tst - Server certificate verification, SNI selection and client certificates
 
-    This test verifies:
-    - Server certificate verification with and without CA validation
-    - Self-signed certificate handling
-    - Client certificate authentication
-    - Various SSL/TLS provider configurations (OpenSSL, MbedTLS, NanoSSL)
+    Verifies:
+    - a CA-issued server certificate validates against its CA
+    - verification actually rejects: the same endpoint fails against an unrelated CA, and the
+      self-signed virtual host fails against the real CA
+    - SNI selects between two virtual hosts sharing one port, each with a different certificate
+    - a client certificate is required where the endpoint demands one
+
+    The negative cases are the point. The previous revision of this file asserted only that four
+    endpoints returned 200, which a server that skipped verification entirely would also satisfy --
+    and it never ran at all, because it gated on the Ejscript client having TLS compiled in. See
+    issue 10047.
  */
 
-import {thas, tskip, ttrue, tget} from 'testme'
-import {App, Config, Http, Path} from 'ejscript'
+import {ttrue, tget} from '@embedthis/testme'
+import {get, cert} from './tls'
 
-if (!Config.SSL) {
-    tskip("ssl not enabled in ejs")
+const CA = cert('ca.crt')
+const HTTPS = tget('TM_HTTPS') || 'https://localhost:4443'
+const SELF = tget('TM_SELFCERT') || 'https://localhost:5443'
 
-} else if (thas('ME_SSL')) {
-    let http: Http
-    let top = new Path(App.getenv('TM_TOP'))
-    let bin = new Path(App.getenv('TM_BIN'))
+//  A CA-issued certificate validates against its own CA
+ttrue(await get(HTTPS + '/index.html', {ca: CA}) == '200')
 
-    if (1 || App.getenv('ME_MBEDTLS') == 1) {
-        http = new Http
-        let endpoint = tget('TM_HTTPS') || "https://localhost:4443"
-        endpoint = endpoint.replace('127.0.0.1', 'localhost')
-        http.ca = top.join('certs', 'ca.crt')
-        http.verify = true
-        http.key = null
-        http.certificate = null
+//  ... and the same endpoint is reachable without verification
+ttrue(await get(HTTPS + '/index.html', {insecure: true}) == '200')
 
-        // Verify the server certificate without a client certificate
-        ttrue(http.verify == true)
-        ttrue(http.verifyIssuer == true)
-        await http.get(endpoint + '/index.html')
-        ttrue(http.status == 200)
-        http.close()
+/*
+    Verification rejects. certs/self.crt is a self-signed certificate and never issued the server's,
+    so validating against it must fail -- curl reports 60 for a certificate that does not verify.
+    Without this assertion the two above cannot tell a working verifier from an absent one.
+ */
+ttrue((await get(HTTPS + '/index.html', {ca: cert('self.crt')})).startsWith('FAIL'))
 
-        // Connect without verifying the server certificate
-        endpoint = tget('TM_HTTPS') || "https://localhost:4443"
-        endpoint = endpoint.replace('127.0.0.1', 'localhost')
-        http.verify = false
-        ttrue(http.verify == false)
-        ttrue(http.verifyIssuer == false)
-        await http.get(endpoint + '/index.html')
-        ttrue(http.status == 200)
-        http.close()
+/*
+    Two virtual hosts share port 5443: ServerName localhost carries the CA-issued certificate and
+    ServerName 127.0.0.1 carries the self-signed one. curl sends SNI for a host name and none for an
+    IP literal, so the name selects the CA-issued host and the literal falls to the self-signed one.
+ */
+ttrue(await get(SELF.replace('127.0.0.1', 'localhost') + '/index.html', {ca: CA}) == '200')
 
-        if (!App.getenv('ME_NANOSSL')) {
-            // NanoSSL does not support multiple configurations
-            // Test a server self-signed certificate. Verify but not the issuer.
-            // Note: in a self-signed cert the subject == issuer
-            endpoint = tget('TM_SELFCERT') || "https://localhost:5443"
-            endpoint = endpoint.replace('127.0.0.1', 'localhost')
-            http.verify = true
-            http.verifyIssuer = false
-            await http.get(endpoint + '/index.html')
-            ttrue(http.status == 200)
-            http.close()
+//  The self-signed host is served, but does not validate against the real CA
+const selfHost = SELF.replace('localhost', '127.0.0.1')
+ttrue(await get(selfHost + '/index.html', {insecure: true}) == '200')
+ttrue((await get(selfHost + '/index.html', {ca: CA})).startsWith('FAIL'))
 
-            // Test SSL with a client certificate
-            endpoint = tget('TM_CLIENTCERT') || "https://localhost:6443"
-            endpoint = endpoint.replace('127.0.0.1', 'localhost')
-            http.key = top.join('certs', 'test.key')
-            http.certificate = top.join('certs', 'test.crt')
-            await http.get(endpoint + '/index.html')
-            ttrue(http.status == 200)
-        }
-        http.close()
-    }
-
-} else {
-    tskip("ssl not enabled")
-}
+//  An endpoint requiring a client certificate refuses a request without one, and serves one with it
+const CLIENT = tget('TM_CLIENTCERT') || 'https://localhost:6443'
+ttrue((await get(CLIENT + '/index.html', {insecure: true})).startsWith('FAIL'))
+ttrue(await get(CLIENT + '/index.html',
+    {insecure: true, clientCert: cert('test.crt'), key: cert('test.key')}) == '200')

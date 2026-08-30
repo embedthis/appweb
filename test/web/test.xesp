@@ -1,4 +1,0 @@
-<% 
-    setHeader("Content-Type", "text/plain");
-    render("{ number: %Ld, uri: '%s', query: '%s' }\r\n", mprGetTicks(), getUri(), getQuery()); 
-%>

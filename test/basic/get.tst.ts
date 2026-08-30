@@ -5,8 +5,8 @@
     and platform-specific behaviors like case-insensitive file access on Windows.
  */
 
-import {tcontains, ttrue, tget} from 'testme'
-import {Config, Http} from 'ejscript'
+import {tcontains, ttrue, tget} from '@embedthis/testme'
+import {Config, Http} from '@embedthis/ejscript'
 
 const HTTP = tget('TM_HTTP') || "127.0.0.1:4100"
 

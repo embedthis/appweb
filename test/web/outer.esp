@@ -1,8 +1,0 @@
-<html>
-<head>
-    <title>ESP Test Program</title>
-</head>
-<body>
-    <%^ include "inner.esp" %>
-</body>
-</html>

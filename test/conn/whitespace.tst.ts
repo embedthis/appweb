@@ -7,8 +7,8 @@
     - Multiple spaces after the URI
  */
 
-import {ttrue, tget} from 'testme'
-import {ByteArray, Socket, Uri} from 'ejscript'
+import {ttrue, tget} from '@embedthis/testme'
+import {ByteArray, Socket, Uri} from '@embedthis/ejscript'
 
 const HTTP = new Uri(tget('TM_HTTP') || "127.0.0.1:4100")
 

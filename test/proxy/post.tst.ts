@@ -1,31 +1,28 @@
 /*
     Test proxy handling of HTTP POST requests
 
-    This test verifies that the proxy correctly forwards POST form data and
-    returns responses from the backend server.
+    This test verifies that the proxy correctly forwards POST form data and returns responses
+    from the backend server. The backend echoes the form parameters it received.
  */
 
-import {thas, ttrue, tget} from 'testme'
-import {Http} from 'ejscript'
+import {ttrue, tget} from '@embedthis/testme'
+import {Http} from '@embedthis/ejscript'
 
 const HTTP = (tget('TM_HTTP') || "127.0.0.1:4100") + '/proxy'
 
 let http: Http = new Http
 
-if (thas('ME_ESP')) {
-    // Test simple form POST through proxy
-    http.form(HTTP + "/form.esp", {data: "Some data"})
+//  Test simple form POST through proxy
+http.form(HTTP + "/post", {data: "Some data"})
+await http.finalize()
+ttrue(http.status == 200)
+ttrue(http.response.contains('data=[Some data]'))
+http.close()
 
-    await http.finalize()
-    ttrue(http.status == 200)
-    http.close()
-
-    // Test multi-field form POST through proxy
-    http.form(HTTP + "/form.esp", {name: "John", address: "700 Park Ave"})
-
-    await http.finalize()
-    ttrue(http.status == 200)
-    ttrue(http.response.contains('FORM name=John'))
-    ttrue(http.response.contains('FORM address=700 Park Ave'))
-    http.close()
-}
+//  Test multi-field form POST through proxy
+http.form(HTTP + "/post", {name: "John", address: "700 Park Ave"})
+await http.finalize()
+ttrue(http.status == 200)
+ttrue(http.response.contains('name=[John]'))
+ttrue(http.response.contains('address=[700 Park Ave]'))
+http.close()

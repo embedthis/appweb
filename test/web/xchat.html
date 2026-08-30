@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset=utf-8>
+</head>
+
+<body>
+    <form id="chat" action="hello.html">
+        <input id="msg" name="msg" type="text">
+        <input type="submit" value="Send">
+    </form>
+    <div id="messages" />
+
+    <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+    <script>
+        $("#chat").submit(function(e) {
+            var text = $('#msg').val();
+            ws.send(text);
+            e.preventDefault();
+        });
+        var ws = new WebSocket('ws://localhost:4100/websockets/basic/chat', ['chat']);
+
+        ws.onopen = function (e) {
+            console.log("OPEN");
+            console.log(e.data);
+        };
+        ws.onmessage = function (e) {
+            console.log("MSG", e.data);
+            $("#messages").append("<p>" + e.data + "</p>");
+        };
+        ws.onclose = function (e) {
+            console.log("CLOSED");
+        };
+        ws.onerror = function (e) {
+            console.log("Error " + e);
+        };
+        // ws.close();
+    </script>
+
+</body>
+</html>

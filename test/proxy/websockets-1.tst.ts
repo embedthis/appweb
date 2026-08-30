@@ -5,11 +5,11 @@
     and forwards messages between client and backend.
  */
 
-import {tskip, ttrue, tget} from 'testme'
-import {WebSocket} from 'ejscript'
+import {tskip, ttrue, tget} from '@embedthis/testme'
+import {WebSocket} from '@embedthis/ejscript'
 
 const PORT = tget('TM_HTTP_PORT') || "4100"
-const WS = "ws://127.0.0.1:" + PORT + "/proxy/websockets/basic/send"
+const WS = "ws://127.0.0.1:" + PORT + "/proxy/ws/send"
 const TIMEOUT = 5000
 
 if (true) {

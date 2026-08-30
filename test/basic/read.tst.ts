@@ -1,40 +1,42 @@
 /*
-    read.tst - Various Http read tests
+    read.tst.ts - Response reading
 
-    Tests different HTTP response reading methods including reading into byte arrays,
-    reading line-by-line, and validating response content.
+    Covers reading a response into a ByteArray in chunks, and reading it as lines.
 
-    TODO - Add XML reading tests when XML support is available
+    The ByteArray case was previously gated on thas('ME_EJS') against a big.ejs endpoint that is
+    neither built nor served, so it never ran (10061). Retargeted at web/100K.txt, which prep.sh
+    generates at a known size.
  */
 
-import {thas, ttrue, tget} from 'testme'
-import {ByteArray, Http} from 'ejscript'
+import {teq, ttrue, tget} from '@embedthis/testme'
+import {ByteArray, Http} from '@embedthis/ejscript'
 
 const HTTP = tget('TM_HTTP') || "127.0.0.1:4100"
 let http: Http = new Http
 
-if (thas('ME_EJS')) {
-    // Test reading response into a byte array with chunked reading
-    http.get(HTTP + "/big.ejs")
-    await http.finalize()
-    let buf = new ByteArray
-    let count = 0
-    while (http.read(buf) > 0) {
-        count += buf.length
-    }
-    ttrue(count == 63201)
-    http.close()
-}
+//  Read a large response into a byte array, accumulating across reads
+http.get(HTTP + "/100K.txt")
+await http.finalize()
+teq(http.status, 200)
 
-// Test reading response as lines
+let buf = new ByteArray
+let count = 0
+while (http.read(buf) > 0) {
+    count += buf.length
+}
+teq(count, 102516)
+http.close()
+
+//  Read a response as lines
 http.get(HTTP + "/lines.txt")
 await http.finalize()
+teq(http.status, 200)
+
 let lines = http.readLines()
+ttrue(lines.length > 0)
 for (let l in lines) {
     let line = lines[l]
     ttrue(line.contains("LINE"))
-    ttrue(line.contains((Number(l)+1).toString()))
+    ttrue(line.contains((Number(l) + 1).toString()))
 }
-ttrue(http.status == 200)
-
 http.close()

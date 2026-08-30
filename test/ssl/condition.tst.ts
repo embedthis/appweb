@@ -1,48 +1,30 @@
 /*
-    Test conditional routing based on SSL certificate data
+    condition.tst - Route conditions on client certificate fields
 
-    This test verifies that routes can require client certificates and properly
-    reject connections without certificates while accepting connections with valid
-    client certificates.
+    The /ssl-match route on the client-certificate endpoint carries
+
+        Condition match ${ssl:CLIENT_S_CN} "localhost|example.com"
+
+    so reaching it requires both a client certificate and a subject common name the condition
+    accepts. This exercises the alternation-of-literals path in the native pattern matcher as well
+    as the TLS variable plumbing.
+
+    Rewritten off the Ejscript client, which has no TLS compiled in and so never ran this -- the
+    previous revision reported PASS having asserted nothing. See issue 10047.
  */
 
-import {thas, tskip, ttrue, tget} from 'testme'
-import {App, Config, Http, Path} from 'ejscript'
+import {ttrue, tget} from '@embedthis/testme'
+import {get, cert} from './tls'
 
-if (!Config.SSL) {
-    tskip("ssl not enabled in ejs")
+const CLIENT = (tget('TM_CLIENTCERT') || 'https://localhost:6443').replace('127.0.0.1', 'localhost')
 
-} else if (thas('ME_SSL')) {
-    let http: Http
-    let top = new Path(App.getenv('TM_TOP'))
+//  Without a client certificate the handshake is refused before routing is reached
+ttrue((await get(CLIENT + '/ssl-match/index.html', {insecure: true})).startsWith('FAIL'))
 
-    // NanoSSL does not support verifying client certificates
-    if (!App.getenv('ME_NANOSSL') == 1) {
-        http = new Http
-        http.verify = false
+//  With a certificate whose CN the condition accepts, the route is served
+ttrue(await get(CLIENT + '/ssl-match/index.html',
+    {insecure: true, clientCert: cert('test.crt'), key: cert('test.key')}) == '200')
 
-        // Should fail if no client certificate is provided
-        endpoint = tget('TM_CLIENTCERT') || "https://127.0.0.1:6443"
-        let caught
-        try {
-            // Server should deny and handshake should fail
-            await http.get(endpoint + '/ssl-match/index.html')
-            ttrue(http.status == 200)
-        } catch {
-            caught = true
-        }
-        ttrue(caught)
-        http.close()
-
-        // Should succeed when providing a valid client certificate
-        endpoint = tget('TM_CLIENTCERT') || "https://127.0.0.1:6443"
-        http.key = top.join('certs', 'test.key')
-        http.certificate = top.join('certs', 'test.crt')
-        await http.get(endpoint + '/ssl-match/index.html')
-        ttrue(http.status == 200)
-        http.close()
-    }
-
-} else {
-    tskip("ssl not enabled")
-}
+//  The same certificate reaches an unconditioned path on the same endpoint
+ttrue(await get(CLIENT + '/index.html',
+    {insecure: true, clientCert: cert('test.crt'), key: cert('test.key')}) == '200')

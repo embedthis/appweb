@@ -1,3 +1,23 @@
 {
-    enable: false,
+    /*
+        The stress tests flood the server by design: bad URLs, oversized forms, large posts and
+        rapid connections.
+
+        They were disabled because test/appweb.conf armed Monitor "NotFoundErrors > 190" 5sec deny
+        with Defense deny REMEDY=ban. The floods tripped it, the remedy banned the test runner's own
+        IP, and every test that ran afterwards failed with 406 regardless of its subject. That
+        directive now lives in test/monitor/appweb.conf, armed only for the group that tests it
+        (10300), so the ban no longer reaches this directory.
+
+        This is still its own configuration group rather than part of the root run: a group gets its
+        own server, so whatever state a flood leaves behind -- connection counters, memory high-water
+        marks, exhausted keep-alive slots -- dies with it instead of being inherited by the next
+        test. That isolation is the point, not a workaround.
+     */
+    services: {
+        prep: '../prep.sh',
+        setup: '../setup.sh',
+        cleanup: '../cleanup.sh',
+        healthcheck: { url: 'http://localhost:4100/index.html' },
+    },
 }

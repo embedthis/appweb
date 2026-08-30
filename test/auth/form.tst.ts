@@ -1,77 +1,72 @@
 /*
-    form.tst - Form-based authentication tests
+    form.tst.ts - Form-based authentication
 
-    Tests HTML form-based authentication with session management. This authentication
-    method is typically used for web applications and involves login forms, session
-    cookies, and logout functionality. Form authentication redirects unauthenticated
-    users to a login page.
+    Covers the form-auth round trip: an unauthenticated request redirects to the login page,
+    valid credentials establish a session, the session admits the protected resource, and
+    logout retires it so the resource redirects again.
+
+    The whole body was previously behind `thas('ME_SSL') && false` -- dead twice over: the flag
+    is exported by nowhere, and the `&& false` disabled it regardless (10061).
+
+    The ME_SSL intent was sound. The /auth/form routes are configured secure and answer a plain
+    HTTP request with a 301 to https://, so the flow only completes over TLS. The Ejscript Http
+    client is built without TLS (Config.SSL is false), so this drives curl through ssl/tls.ts --
+    the same helper, and the same reason, as the ssl/ group after 10047.
+
+    Reviving it surfaced 10097: the redirect Location combines the https scheme with the
+    plaintext port from CanonicalName, so following it hangs. The reachable part of the flow is
+    asserted below; the Location is asserted for the defect it currently has, with the correct
+    assertion recorded and pending. Not fixed here -- this feature is test-only.
  */
 
-import {thas, tskip, ttrue, tget} from 'testme'
-import {Http} from 'ejscript'
+import {teq, tinfo, ttrue, tget} from '@embedthis/testme'
+import {fetch} from '../ssl/tls'
 
-const HTTP = tget('TM_HTTP') || "127.0.0.1:4100"
-const HTTPS = tget('TM_HTTPS') || "https://127.0.0.1:4443"
+const HTTPS = (tget('TM_HTTPS') || 'https://127.0.0.1:4443')
 
-let http: Http = new Http
+//  An unauthenticated request is redirected to the login page
+let r = await fetch(HTTPS + '/auth/form/index.html', {creds: 'anybody:wrong password'})
+teq(r.status, '302')
+ttrue(r.headers['location'].contains('login.html'))
 
-if (thas('ME_SSL') && false) {
-    // Appweb uses a self-signed cert
-    http.verify = false
+/*
+    10097: the Location keeps the https scheme but takes host:port from CanonicalName, which
+    names the plaintext listener -- so the URL is unreachable and curl hangs on it. Asserted as
+    it currently behaves so the defect cannot regress further unnoticed. When 10097 is fixed
+    this becomes: ttrue(await fetch(r.headers['location'])).status == '200'
+ */
+ttrue(r.headers['location'].startsWith('https://'))
+tinfo('10097: login redirect names the plaintext port -- ' + r.headers['location'])
 
-    // Test access to protected resource without authentication - should redirect to login page
-    http.setCredentials("anybody", "wrong password")
-    http.get(HTTP + "/auth/form/index.html")
-    await http.finalize()
-    ttrue(http.status == 302)
-    let location = http.header('location')
-    ttrue(location.contains('http'))
-    ttrue(location.contains('login.esp'))
+//  The login page itself is served over TLS, and carries the form that posts to the login route
+r = await fetch(HTTPS + '/auth/form/login.html')
+teq(r.status, '200')
+ttrue(r.body.contains('<form'))
+ttrue(r.body.contains('action="/auth/form/login"'))
 
-    // Test accessing the login page - should return the login form
-    http.get(location)
-    await http.finalize()
-    ttrue(http.status == 200)
-    ttrue(http.response.contains("<form"))
-    ttrue(http.response.contains('action="/auth/form/login"'))
+//  Valid credentials establish a session and redirect back into the protected area
+r = await fetch(HTTPS + '/auth/form/login', {form: {username: 'joshua', password: 'pass1'}})
+teq(r.status, '302')
+ttrue(r.headers['location'].contains('/auth/form'))
 
-    // Test submitting login form with valid credentials - should redirect to original resource
-    http.reset()
-    http.form(HTTP + "/auth/form/login", {username: "joshua", password: "pass1"})
-    await http.finalize()
-    ttrue(http.status == 302)
-    location = http.header('location')
-    ttrue(location.contains('http://'))
-    ttrue(location.contains('/auth/form'))
-    let cookie = http.header("Set-Cookie")
-    ttrue(cookie.match(/(-http-session-=.*);/)[1])
+//  A session cookie is issued, and is flagged httponly so script cannot read it
+let setCookie = r.headers['set-cookie']
+ttrue(setCookie != null)
+ttrue(setCookie.contains('-http-session-='))
+ttrue(setCookie.toLowerCase().contains('httponly'))
 
-    // Test accessing protected resource with valid session cookie - should succeed
-    http.reset()
-    http.setCookie(cookie)
-    http.get(HTTP + "/auth/form/index.html")
-    await http.finalize()
-    ttrue(http.status == 200)
+let cookie = setCookie.split(';')[0]
 
-    // Test logout - should redirect to login page
-    http.reset()
-    http.setCookie(cookie)
-    http.post(HTTP + "/auth/form/logout")
-    await http.finalize()
-    ttrue(http.status == 302)
-    location = http.header('location')
-    ttrue(location.contains('http'))
-    ttrue(location.contains('login.esp'))
+//  The session cookie admits the protected resource
+r = await fetch(HTTPS + '/auth/form/index.html', {cookie: cookie})
+teq(r.status, '200')
 
-    // Test accessing protected resource after logout - should redirect to login page again
-    http.get(HTTP + "/auth/form/index.html")
-    await http.finalize()
-    ttrue(http.status == 302)
-    location = http.header('location')
-    ttrue(location.contains('http'))
-    ttrue(location.contains('login.esp'))
+//  Logout retires the session and redirects to the login page
+r = await fetch(HTTPS + '/auth/form/logout', {cookie: cookie, method: 'POST'})
+teq(r.status, '302')
+ttrue(r.headers['location'].contains('login.html'))
 
-    http.close()
-} else {
-    tskip("SSL tests not enabled")
-}
+//  The retired session no longer admits the resource
+r = await fetch(HTTPS + '/auth/form/index.html', {cookie: cookie})
+teq(r.status, '302')
+ttrue(r.headers['location'].contains('login.html'))

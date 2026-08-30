@@ -1,5 +1,14 @@
 {
+    //
+    //  This directory needs a skip script, and having a testme.json5 makes it a separate
+    //  configuration group. Groups do not share services and run after the root group has
+    //  torn down its server, so reference the shared test services here as well.
+    //
     services: {
         skip: './skip.sh',
+        prep: '../prep.sh',
+        setup: '../setup.sh',
+        cleanup: '../cleanup.sh',
+        healthcheck: { url: 'http://localhost:4100/index.html' },
     },
 }

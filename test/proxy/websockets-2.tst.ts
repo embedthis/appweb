@@ -6,11 +6,11 @@
     are not yet implemented.
  */
 
-import {tskip, ttrue, tget} from 'testme'
-import {App, ByteArray, WebSocket} from 'ejscript'
+import {tskip, ttrue, tget} from '@embedthis/testme'
+import {App, ByteArray, WebSocket} from '@embedthis/ejscript'
 
 const PORT = tget('TM_HTTP_PORT') || "4100"
-const WS = "ws://127.0.0.1:" + PORT + "/proxy/websockets/basic/len"
+const WS = "ws://127.0.0.1:" + PORT + "/proxy/ws/len"
 
 const TIMEOUT = 10000
 const LEN = 10 * 1024 * 10

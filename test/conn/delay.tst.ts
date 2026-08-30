@@ -6,8 +6,8 @@
     send requests in fragments with delays between writes.
  */
 
-import {ttrue, tget} from 'testme'
-import {App, ByteArray, Socket, Uri} from 'ejscript'
+import {ttrue, tget} from '@embedthis/testme'
+import {App, ByteArray, Socket, Uri} from '@embedthis/ejscript'
 
 const HTTP = new Uri(tget('TM_HTTP') || "127.0.0.1:4100")
 const DELAY  = 500

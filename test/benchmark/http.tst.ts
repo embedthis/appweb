@@ -8,15 +8,21 @@
     TODO - Remove --zero flag once no longer needed
  */
 
-import {tdepth, tget, tinfo, tskip, ttrue, twrite} from 'testme'
-import {Cmd} from 'ejscript'
+import {tdepth, tget, tinfo, tskip, ttrue, twrite} from '@embedthis/testme'
+import {Cmd, Config, Path} from '@embedthis/ejscript'
 
 if (tdepth() >= 6) {
 
     const HTTP = tget('TM_HTTP') || "127.0.0.1:4100"
+    const HTTP_CLIENT = new Path("../build/bin/http" + (Config.OS == 'windows' ? ".exe" : ""))
     const ITER = 10000
 
-    let command = Cmd.locate("http").portable + " --host " + HTTP + " "
+    if (!HTTP_CLIENT.exists) {
+        tskip("http client is not built by this Appweb checkout")
+        process.exit(0)
+    }
+
+    let command = HTTP_CLIENT.toString() + " --host " + HTTP + " "
 
     // Helper function to run http command and validate results
     function run(args): String | null {

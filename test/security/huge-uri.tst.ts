@@ -7,8 +7,8 @@
     413 Request Entity Too Large, then confirms the server is still operational.
  */
 
-import {tfail, tget, ttrue} from 'testme'
-import {App, ByteArray, Http, Socket, Uri} from 'ejscript'
+import {tfail, tget, ttrue} from '@embedthis/testme'
+import {App, ByteArray, Http, Socket, Uri} from '@embedthis/ejscript'
 
 const HTTP = new Uri(tget('TM_HTTP') || "127.0.0.1:4100")
 

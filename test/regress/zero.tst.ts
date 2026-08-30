@@ -5,8 +5,8 @@
     with Content-Length: 0 (empty body).
  */
 
-import {ttrue, tget} from 'testme'
-import {Http} from 'ejscript'
+import {ttrue, tget} from '@embedthis/testme'
+import {Http} from '@embedthis/ejscript'
 
 const HTTP = tget('TM_HTTP') || "127.0.0.1:4100"
 
@@ -15,7 +15,7 @@ let http: Http = new Http
 // POST with zero content length
 http.setHeader('Content-Length', 0)
 http.setHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8')
-http.post(HTTP + '/test.esp', '')
+http.post(HTTP + '/post', '')
 
 await http.finalize()
 ttrue(http.status == 200)

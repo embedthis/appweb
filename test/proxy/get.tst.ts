@@ -9,8 +9,8 @@
     - Case-insensitive file matching on Windows
  */
 
-import {ttrue, tget} from 'testme'
-import {Config, Http} from 'ejscript'
+import {ttrue, tget} from '@embedthis/testme'
+import {Config, Http} from '@embedthis/ejscript'
 
 const HTTP = (tget('TM_HTTP') || "127.0.0.1:4100") + '/proxy'
 let http: Http = new Http

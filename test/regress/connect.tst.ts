@@ -5,8 +5,8 @@
     (typically used for proxying) with a 400 Bad Request response.
  */
 
-import {ttrue, tget, tcontains} from 'testme'
-import {ByteArray, Socket, Uri} from 'ejscript'
+import {ttrue, tget, tcontains} from '@embedthis/testme'
+import {ByteArray, Socket, Uri} from '@embedthis/ejscript'
 
 const HTTP = new Uri(tget('TM_HTTP') || "127.0.0.1:4100")
 

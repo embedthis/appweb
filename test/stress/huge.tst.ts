@@ -3,8 +3,8 @@
     Verifies that server can handle very large files (5GB) and range requests
  */
 
-import {tdepth, tget, tinfo, tskip, ttrue} from 'testme'
-import {ByteArray, File, Http, Path} from 'ejscript'
+import {tdepth, tget, tinfo, tskip, ttrue} from '@embedthis/testme'
+import {ByteArray, File, Http, Path} from '@embedthis/ejscript'
 
 const HTTP = tget('TM_HTTP') || '127.0.0.1:4100'
 const TIMEOUT = 10000

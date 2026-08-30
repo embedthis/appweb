@@ -146,13 +146,8 @@ test/
 - `upload.tst.ts` - File uploads
 - `vhost.tst.ts` - Virtual host support
 
-#### benchmark/
-**Purpose**: Performance measurement
-
-**Tests**:
-- `http.tst.ts` - HTTP throughput benchmarking
-
-**Configuration**: `benchmark.conf` with optimized settings
+#### bench/
+**Purpose**: Benchmark Suite
 
 #### cache/, esp/caching/
 **Purpose**: Response caching tests
@@ -482,17 +477,6 @@ test/
 - Proxy backend configuration
 - ProxyConnect directives
 - Upstream server settings
-
-### benchmark.conf
-
-**Purpose**: Performance benchmarking configuration
-
-**Location**: `test/benchmark.conf`
-
-**Optimizations**:
-- Minimal logging
-- Large connection limits
-- Optimized buffer sizes
 
 ---
 

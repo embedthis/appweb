@@ -1,36 +1,20 @@
 /*
-    Test basic SSL functionality with mutual authentication
+    ssl.tst - Mutual TLS authentication
 
-    This test verifies:
-    - Server certificate verification using CA
-    - Client certificate authentication
-    - Full mutual TLS connection
+    The endpoint verifies the server certificate against the CA and requires a client certificate.
+    Both directions are asserted, including the refusal when the client presents none -- see the
+    note in cert.tst.ts about why the negative case carries the weight.
  */
 
-import {thas, tskip, ttrue, tget} from 'testme'
-import {App, Config, Http, Path} from 'ejscript'
+import {ttrue, tget} from '@embedthis/testme'
+import {get, cert} from './tls'
 
-if (!Config.SSL) {
-    tskip("ssl not enabled in ejs")
+const CA = cert('ca.crt')
+const ENDPOINT = (tget('TM_TESTCERT') || 'https://localhost:7443').replace('127.0.0.1', 'localhost')
 
-} else if (thas('ME_SSL')) {
-    let http: Http = new Http
-    let top: Path = tget('TM_TOP')
+//  Server verified against the CA, client certificate presented
+ttrue(await get(ENDPOINT + '/index.html',
+    {ca: CA, clientCert: cert('test.crt'), key: cert('test.key')}) == '200')
 
-    http.retries = 0
-    http.ca = top.join('certs', 'ca.crt')
-    ttrue(http.verify == true)
-
-    // Verify the server certificate and send a client certificate
-    endpoint = tget('TM_TESTCERT') || "https://127.0.0.1:7443"
-    endpoint = endpoint.replace('127.0.0.1', 'localhost')
-    http.key = top.join('certs', 'test.key')
-    http.certificate = top.join('certs', 'test.crt')
-    await http.get(endpoint + '/index.html')
-    ttrue(http.status == 200)
-
-    http.close()
-
-} else {
-    tskip("SSL not enabled")
-}
+//  The same request without a client certificate is refused
+ttrue((await get(ENDPOINT + '/index.html', {ca: CA})).startsWith('FAIL'))

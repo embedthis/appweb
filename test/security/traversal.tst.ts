@@ -9,8 +9,8 @@
     - Deep traversal chains
  */
 
-import {ttrue, tget} from 'testme'
-import {Http, Uri} from 'ejscript'
+import {ttrue, tget} from '@embedthis/testme'
+import {Http, Uri} from '@embedthis/ejscript'
 
 const HTTP = new Uri(tget('TM_HTTP') || "127.0.0.1:4100")
 

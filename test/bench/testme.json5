@@ -1,0 +1,59 @@
+{
+    /*
+        Benchmarks, not tests. Manual by design: they run for minutes and measure throughput
+        rather than asserting behaviour, so they do not belong in a normal suite run.
+
+        The configuration had rotted while nobody invoked it. It linked "pcre", which the
+        pcre-removal feature deleted from the product, and pointed at a
+        build/${PLATFORM}-${PROFILE} layout that this repository has not used for some time, so
+        the group could not have built even when asked for. Repaired to match the parent
+        testme.json5, which is the one config that stays current because the suite runs it.
+
+        Run with:  cd test/bench && tm --enable
+     */
+    enable: 'manual',
+
+    compiler: {
+        c: {
+            gcc: {
+                flags: [
+                    '-I../../src', '-I../../src/osdep', '-I../../src/mpr', '-I../../src/http',
+                    '-L../../build/bin',
+                    '-Wl,-rpath,${CONFIGDIR}/../../build/bin',
+                ],
+                libraries: ['appweb', 'm'],
+            },
+            msvc: {
+                flags: [
+                    '-GR-', '-MDd', '-wd4100',
+                    '/I../../src', '/I../../src/osdep', '/I../../src/mpr', '/I../../src/http',
+                    '/LIBPATH:../../build/bin',
+                ],
+                libraries: ['libappweb',
+                'ws2_32.lib', 'advapi32.lib', 'user32.lib', 'kernel32.lib', 'oldnames.lib', 'shell32.lib'],
+            },
+        },
+    },
+
+    /*
+        The benchmark endpoints, in one place. bench/appweb.conf listens on these and
+        bench-test.h reads them from here rather than carrying a third copy.
+     */
+    environment: {
+        default: {
+            TM_BENCH_HTTP: 'http://localhost:4200',
+            TM_BENCH_HTTPS: 'https://localhost:4201',
+        },
+    },
+
+    execution: {
+        timeout: 1800,  // 30 minutes for long-running benchmarks
+    },
+
+    services: {
+        prep: './prep.sh',
+        setup: './setup.sh',
+        cleanup: './cleanup.sh',
+        healthcheck: { url: 'http://localhost:4200/index.html' },
+    },
+}

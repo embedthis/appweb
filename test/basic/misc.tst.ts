@@ -5,8 +5,8 @@
     based on file extensions.
  */
 
-import {ttrue} from 'testme'
-import {Uri} from 'ejscript'
+import {ttrue} from '@embedthis/testme'
+import {Uri} from '@embedthis/ejscript'
 
 // Test MIME type detection for common file extensions
 ttrue(new Uri("a.txt").mimeType == "text/plain")

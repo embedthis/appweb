@@ -1,0 +1,15 @@
+{
+    /*
+        The guard group verifies the suite itself, not the server, so it needs no appweb
+        instance and must not inherit the parent's setup service. It runs last by convention:
+        the guards read the state of the other groups' sources, not their results.
+     */
+    services: {
+        setup: '',
+        prep: '',
+        cleanup: '',
+    },
+    execution: {
+        timeout: 60,
+    },
+}

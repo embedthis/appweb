@@ -5,8 +5,8 @@
     file uploads using both direct and streaming methods.
  */
 
-import {ttrue, tget} from 'testme'
-import {ByteArray, File, Http, Path} from 'ejscript'
+import {ttrue, tget} from '@embedthis/testme'
+import {ByteArray, File, Http, Path} from '@embedthis/ejscript'
 
 const HTTP = (tget('TM_HTTP') || "127.0.0.1:4100") + '/proxy'
 let http: Http = new Http
