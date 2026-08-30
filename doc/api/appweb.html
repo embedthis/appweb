@@ -1,4 +1,4 @@
-<h1>APPWEB API</h1>
+<h1>Appweb API</h1>
 <a name="appweb.h"></a>
 <p>Embedthis Appweb HTTP Web Server header.</p>
 <p><h1><bold>Description</bold>:</h1><p>This header provides the core API for the Embedthis Appweb embedded web server. Appweb is a compact, fast embedded web server supporting HTTP/1 and HTTP/2 protocols. It includes configuration parsing, module loading, and server management functionality. </p><h1><bold>API</bold> Stability:</h1><p>Stable </p></p>
@@ -8,22 +8,22 @@
 
 <h2>Function Index</h2>
   <table class="apiIndex" title="Function Index">
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1a38bb895e832d5e4da727510b895f46da" class="nameRef">httpCgiInit</a>(<a href="http.html#group___http" class="ref">Http</a> *http, <a href="mpr.html#struct_mpr_module" class="ref">MprModule</a> *mp)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Initialize the CGI handler module.</td></tr>
-<tr class="apiDef"><td class="apiType">void</td><td><a href="#appweb_8h_1a0625b7b754d921353acac4505eb9de02" class="nameRef">maAddDirective</a>(<a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *directive, <a href="#appweb_8h_1a77e98d350eaa12e72d0caee671b4d0d2" class="ref">MaDirective</a> proc)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Define a new appweb configuration file directive.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1a3a076271dc5d0227cf3e4c79dcb3f026" class="nameRef">maConfigureServer</a>(<a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *configFile, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *home, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *documents, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *ip, int port)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Configure a web server.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1a38bb895e832d5e4da727510b895f46da" class="nameRef">httpCgiInit</a>(Http *http, MprModule *mp)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Initialize the CGI handler module.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#appweb_8h_1a0625b7b754d921353acac4505eb9de02" class="nameRef">maAddDirective</a>(cchar *directive, <a href="#appweb_8h_1a77e98d350eaa12e72d0caee671b4d0d2" class="ref">MaDirective</a> proc)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Define a new appweb configuration file directive.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1a3a076271dc5d0227cf3e4c79dcb3f026" class="nameRef">maConfigureServer</a>(cchar *configFile, cchar *home, cchar *documents, cchar *ip, int port)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Configure a web server.</td></tr>
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#appweb_8h_1a2fa468906087c5703a5b71b6b2612ba6" class="nameRef">maGetNextArg</a>(char *s, char **tok)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the next argument in a directive.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1a94cd7d8346894055cff0fc79dcd09a48" class="nameRef">maLoadModule</a>(<a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *libname)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Load an appweb module.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1a94cd7d8346894055cff0fc79dcd09a48" class="nameRef">maLoadModule</a>(cchar *name, cchar *libname)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Load an appweb module.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1aa70fb4c9b9835739719c049af17180ef" class="nameRef">maLoadModules</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Load default modules.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1ae9c5d28320c9ebe7f2a6e810215be37c" class="nameRef">maParseConfig</a>(<a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse an Appweb configuration file.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1af65d5f6135abce2b2cbf625e02a5d1f4" class="nameRef">maParseFile</a>(<a href="#struct_ma_state" class="ref">MaState</a> *state, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse a configuration file with state context.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1ae9c5d28320c9ebe7f2a6e810215be37c" class="nameRef">maParseConfig</a>(cchar *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse an Appweb configuration file.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1af65d5f6135abce2b2cbf625e02a5d1f4" class="nameRef">maParseFile</a>(<a href="#struct_ma_state" class="ref">MaState</a> *state, cchar *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse a configuration file with state context.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="#struct_ma_state" class="ref">MaState</a> *</td><td><a href="#appweb_8h_1aa57a0e83512cf5b3602fdf16753b54cb" class="nameRef">maPopState</a>(<a href="#struct_ma_state" class="ref">MaState</a> *state)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Pop the state.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="#struct_ma_state" class="ref">MaState</a> *</td><td><a href="#appweb_8h_1a7ffec8dc7add955aa09bc22b8edbd9c0" class="nameRef">maPushState</a>(<a href="#struct_ma_state" class="ref">MaState</a> *state)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Push the state.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1a88a2bd1d0f26f024e6cb2d693c13e4f7" class="nameRef">maRunSimpleWebServer</a>(<a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *ip, int port, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *home, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *documents)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Create and run a simple web server listening on a single IP address.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1a4994c273e87409b094418dd7bd370ee4" class="nameRef">maRunWebServer</a>(<a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *configFile)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Create and run a web server based on a configuration file.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#group___osdep_1gad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#appweb_8h_1abb856e86d408307d5e31ad0ff2d2f69a" class="nameRef">maTokenize</a>(<a href="#struct_ma_state" class="ref">MaState</a> *state, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Tokenize a string based on route data.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1ab9ca39c44d32b5584a7c50b1e31b679e" class="nameRef">maTraceDirective</a>(<a href="#struct_ma_state" class="ref">MaState</a> *state, <a href="http.html#group___http_trace" class="ref">HttpTrace</a> *trace, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Process trace directive.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1a4133c42c6d33689799eebe3393d1b13b" class="nameRef">maTraceLogDirective</a>(<a href="#struct_ma_state" class="ref">MaState</a> *state, <a href="http.html#group___http_trace" class="ref">HttpTrace</a> *trace, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Process trace log directive.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1a125d43a26297a6cd53871c147773c4dd" class="nameRef">maWriteAuthFile</a>(<a href="http.html#group___http_auth" class="ref">HttpAuth</a> *auth, char *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Save the authorization configuration to a file.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1a88a2bd1d0f26f024e6cb2d693c13e4f7" class="nameRef">maRunSimpleWebServer</a>(cchar *ip, int port, cchar *home, cchar *documents)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Create and run a simple web server listening on a single IP address.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1a4994c273e87409b094418dd7bd370ee4" class="nameRef">maRunWebServer</a>(cchar *configFile)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Create and run a web server based on a configuration file.</td></tr>
+<tr class="apiDef"><td class="apiType">bool</td><td><a href="#appweb_8h_1abb856e86d408307d5e31ad0ff2d2f69a" class="nameRef">maTokenize</a>(<a href="#struct_ma_state" class="ref">MaState</a> *state, cchar *str, cchar *fmt, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Tokenize a string based on route data.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1ab9ca39c44d32b5584a7c50b1e31b679e" class="nameRef">maTraceDirective</a>(<a href="#struct_ma_state" class="ref">MaState</a> *state, HttpTrace *trace, cchar *key, cchar *value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Process trace directive.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1a4133c42c6d33689799eebe3393d1b13b" class="nameRef">maTraceLogDirective</a>(<a href="#struct_ma_state" class="ref">MaState</a> *state, HttpTrace *trace, cchar *key, cchar *value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Process trace log directive.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#appweb_8h_1a125d43a26297a6cd53871c147773c4dd" class="nameRef">maWriteAuthFile</a>(HttpAuth *auth, char *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Save the authorization configuration to a file.</td></tr>
 </table>
 <a name="Typedefs"></a>
 
@@ -41,13 +41,17 @@
 </tr>
 <tr class="apiBrief"><td>&nbsp;</td><td>Command file being parsed by a utility program.</td></tr>
 <tr class="apiDef">
+<td>#define</td><td><a href="#appweb_8h_1a1068b784c6e4747e0632536f8638d97c" class="nameRef">MA_PARSE_PROXY_CLIENT</a>&nbsp;&nbsp;&nbsp;0x2</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Directives in scope configure an outbound TLS client.</td></tr>
+<tr class="apiDef">
 <td>#define</td><td><a href="#appweb_8h_1aba0a3eb51d76651562bc5c0bb2c0f424" class="nameRef">MA_UNLOAD_TIMEOUT</a>&nbsp;&nbsp;&nbsp;&quot;5mins&quot;</td>
 </tr>
 <tr class="apiBrief"><td>&nbsp;</td><td>Default module inactivity timeout.</td></tr>
 <tr class="apiDef">
 <td>#define</td><td><a href="#appweb_8h_1a60c99d1c1454634714995f965027d05c" class="nameRef">ME_COM_ESP</a>&nbsp;&nbsp;&nbsp;0</td>
 </tr>
-<tr class="apiBrief"><td>&nbsp;</td><td>Enable ESP web framework.</td></tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Enable ESP web framework (separate add-on product).</td></tr>
 <tr class="apiDef">
 <td>#define</td><td><a href="#appweb_8h_1a8425eadea77fb7634a65c3595350bfc5" class="nameRef">ME_COM_FAST</a>&nbsp;&nbsp;&nbsp;0</td>
 </tr>
@@ -159,7 +163,7 @@ Top level state.
   <div class="prototype">
     int
     httpCgiInit
-(<a href="http.html#group___http" class="ref">Http</a> *http, <a href="mpr.html#struct_mpr_module" class="ref">MprModule</a> *mp)
+(Http *http, MprModule *mp)
   </div>
   <div class="apiDetail">
 <p>Initialize the CGI handler module.</p>
@@ -178,7 +182,7 @@ Top level state.
   <div class="prototype">
     void
     maAddDirective
-(<a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *directive, <a href="#appweb_8h_1a77e98d350eaa12e72d0caee671b4d0d2" class="ref">MaDirective</a> proc)
+(cchar *directive, <a href="#appweb_8h_1a77e98d350eaa12e72d0caee671b4d0d2" class="ref">MaDirective</a> proc)
   </div>
   <div class="apiDetail">
 <p>Define a new appweb configuration file directive.</p>
@@ -196,7 +200,7 @@ Top level state.
   <div class="prototype">
     int
     maConfigureServer
-(<a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *configFile, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *home, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *documents, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *ip, int port)
+(cchar *configFile, cchar *home, cchar *documents, cchar *ip, int port)
   </div>
   <div class="apiDetail">
 <p>Configure a web server.</p>
@@ -237,7 +241,7 @@ Top level state.
   <div class="prototype">
     int
     maLoadModule
-(<a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *libname)
+(cchar *name, cchar *libname)
   </div>
   <div class="apiDetail">
 <p>Load an appweb module.</p>
@@ -270,7 +274,7 @@ Top level state.
   <div class="prototype">
     int
     maParseConfig
-(<a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)
+(cchar *path)
   </div>
   <div class="apiDetail">
 <p>Parse an Appweb configuration file.</p>
@@ -288,7 +292,7 @@ Top level state.
   <div class="prototype">
     int
     maParseFile
-(<a href="#struct_ma_state" class="ref">MaState</a> *state, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)
+(<a href="#struct_ma_state" class="ref">MaState</a> *state, cchar *path)
   </div>
   <div class="apiDetail">
 <p>Parse a configuration file with state context.</p>
@@ -343,7 +347,7 @@ Top level state.
   <div class="prototype">
     int
     maRunSimpleWebServer
-(<a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *ip, int port, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *home, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *documents)
+(cchar *ip, int port, cchar *home, cchar *documents)
   </div>
   <div class="apiDetail">
 <p>Create and run a simple web server listening on a single IP address.</p>
@@ -364,7 +368,7 @@ Top level state.
   <div class="prototype">
     int
     maRunWebServer
-(<a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *configFile)
+(cchar *configFile)
   </div>
   <div class="apiDetail">
 <p>Create and run a web server based on a configuration file.</p>
@@ -380,9 +384,9 @@ Top level state.
 <a name="appweb_8h_1abb856e86d408307d5e31ad0ff2d2f69a"></a>
 <div class="api">
   <div class="prototype">
-    <a href="osdep.html#group___osdep_1gad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    bool
     maTokenize
-(<a href="#struct_ma_state" class="ref">MaState</a> *state, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)
+(<a href="#struct_ma_state" class="ref">MaState</a> *state, cchar *str, cchar *fmt, ...)
   </div>
   <div class="apiDetail">
 <p>Tokenize a string based on route data.</p>
@@ -402,7 +406,7 @@ Top level state.
   <div class="prototype">
     int
     maTraceDirective
-(<a href="#struct_ma_state" class="ref">MaState</a> *state, <a href="http.html#group___http_trace" class="ref">HttpTrace</a> *trace, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value)
+(<a href="#struct_ma_state" class="ref">MaState</a> *state, HttpTrace *trace, cchar *key, cchar *value)
   </div>
   <div class="apiDetail">
 <p>Process trace directive.</p>
@@ -423,7 +427,7 @@ Top level state.
   <div class="prototype">
     int
     maTraceLogDirective
-(<a href="#struct_ma_state" class="ref">MaState</a> *state, <a href="http.html#group___http_trace" class="ref">HttpTrace</a> *trace, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#group___osdep_1ga0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value)
+(<a href="#struct_ma_state" class="ref">MaState</a> *state, HttpTrace *trace, cchar *key, cchar *value)
   </div>
   <div class="apiDetail">
 <p>Process trace log directive.</p>
@@ -444,7 +448,7 @@ Top level state.
   <div class="prototype">
     int
     maWriteAuthFile
-(<a href="http.html#group___http_auth" class="ref">HttpAuth</a> *auth, char *path)
+(HttpAuth *auth, char *path)
   </div>
   <div class="apiDetail">
 <p>Save the authorization configuration to a file.</p>

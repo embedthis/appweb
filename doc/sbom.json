@@ -1,0 +1,440 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:dfabfa0c-0ab2-4719-8952-caf88ef52cbe",
+  "version": 2,
+  "metadata": {
+    "timestamp": "2026-08-24T11:00:16Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "release-skill",
+          "publisher": "EmbedThis Software",
+          "version": "1.0.0"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "bom-ref": "appweb",
+      "name": "appweb",
+      "version": "9.2.0",
+      "description": "Embedthis Appweb - compact, fast embedded web server supporting HTTP/1 and HTTP/2",
+      "supplier": {
+        "name": "EmbedThis Software",
+        "url": [
+          "https://www.embedthis.com"
+        ],
+        "contact": [
+          {
+            "name": "EmbedThis Security",
+            "email": "security@embedthis.com"
+          }
+        ]
+      },
+      "author": "EmbedThis Software",
+      "licenses": [
+        {
+          "expression": "GPL-2.0-only OR LicenseRef-EmbedThis-Commercial OR LicenseRef-EmbedThis-Evaluation"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://www.embedthis.com/appweb/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "embedthis:license-authority",
+          "value": "LICENSE.md is the authoritative license document delivered with the software and offers the product under three licenses: GPL-2.0-only, the Embedthis Commercial License, and the Embedthis Evaluation License. The SPDX expression above encodes that triple. package.json records only the primary 'Commercial' license in its single-value license field; this is the established Embedthis house convention (GoAhead's package.json / LICENSE.md follow the identical pattern) and is not a discrepancy \u2014 the manifest field names the default commercial offering while LICENSE.md governs the full set."
+        }
+      ]
+    },
+    "manufacture": {
+      "name": "EmbedThis Software",
+      "url": [
+        "https://www.embedthis.com"
+      ]
+    },
+    "properties": [
+      {
+        "name": "embedthis:vulnerability-scan",
+        "value": "Run 2026-08-24. npm components audited with \"npm audit\" (22 packages resolved, 0 advisories). The TLS provider is not shipped and carries no version here, so there is nothing to scan: see each provider component embedthis:version-authority. The Embedthis-authored components are first party - their known vulnerabilities are the APPWEB-SA-2026 advisory set and the issue tracker, not an external database."
+      },
+      {
+        "name": "embedthis:regenerated",
+        "value": "Timestamp refreshed and revision bumped at package rehearsal, 2026-08-24. Nothing generates this file: it is maintained by hand and must be reviewed against the shipped component set when the release is cut."
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "http",
+      "name": "http",
+      "version": "9.2.0",
+      "description": "Embedthis Http Library - HTTP/1 and HTTP/2 protocol stack",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "name": "LicenseRef-EmbedThis-Commercial"
+          }
+        }
+      ],
+      "purl": "pkg:generic/http@9.2.0",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/embedthis/http"
+        }
+      ],
+      "properties": [
+        {
+          "name": "embedthis:usage",
+          "value": "shipped"
+        },
+        {
+          "name": "embedthis:vendored-path",
+          "value": "src/http/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "mpr",
+      "name": "mpr",
+      "version": "9.2.0",
+      "description": "Embedthis Multithreaded Portable Runtime",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "name": "LicenseRef-EmbedThis-Commercial"
+          }
+        }
+      ],
+      "purl": "pkg:generic/mpr@9.2.0",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/embedthis/mpr"
+        }
+      ],
+      "properties": [
+        {
+          "name": "embedthis:usage",
+          "value": "shipped"
+        },
+        {
+          "name": "embedthis:vendored-path",
+          "value": "src/mpr/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "osdep",
+      "name": "osdep",
+      "version": "1.2.0",
+      "description": "O/S Dependent Layer",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "name": "LicenseRef-EmbedThis-Commercial"
+          }
+        }
+      ],
+      "purl": "pkg:generic/osdep@1.2.0",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/embedthis/osdep"
+        }
+      ],
+      "properties": [
+        {
+          "name": "embedthis:usage",
+          "value": "shipped"
+        },
+        {
+          "name": "embedthis:vendored-path",
+          "value": "src/osdep/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "watchdog",
+      "name": "watchdog",
+      "version": "1.0.0",
+      "description": "Embedthis Watchdog - process supervisor",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "name": "LicenseRef-EmbedThis-Commercial"
+          }
+        }
+      ],
+      "purl": "pkg:generic/watchdog@1.0.0",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/embedthis/watchdog"
+        }
+      ],
+      "properties": [
+        {
+          "name": "embedthis:usage",
+          "value": "shipped"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "makerom",
+      "name": "makerom",
+      "version": "1.0.0",
+      "description": "Embedthis Makerom - ROM filesystem generator",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:generic/makerom@1.0.0",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/embedthis/makerom"
+        }
+      ],
+      "properties": [
+        {
+          "name": "embedthis:usage",
+          "value": "build-tool"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "certs",
+      "name": "certs",
+      "version": "1.2.0",
+      "description": "Test Certificates",
+      "scope": "optional",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:generic/certs@1.2.0",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/embedthis/certs"
+        }
+      ],
+      "properties": [
+        {
+          "name": "embedthis:usage",
+          "value": "test-certificates - shipped in the source archive under certs/ for development only. These are NOT production key material and must never be deployed."
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "openssl",
+      "name": "openssl",
+      "description": "OpenSSL TLS provider - linked from the build host, not vendored",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:generic/openssl",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://www.openssl.org/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "embedthis:usage",
+          "value": "shipped - default TLS provider (ME_COM_OPENSSL)"
+        },
+        {
+          "name": "embedthis:version-authority",
+          "value": "The integrator fixes the version at link time. Appweb does not pin or vendor OpenSSL, so this BOM asserts no version. The integrator must record the linked version in their own BOM and track its CVEs."
+        },
+        {
+          "name": "embedthis:build-host-observed",
+          "value": "This release was built and tested against OpenSSL 3.6.3 (9 Jun 2026) on macOS arm64, linked from /opt/homebrew/opt/openssl@3. Informational only - not an assertion about any other build."
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "mbedtls",
+      "name": "mbedtls",
+      "description": "MbedTLS TLS provider - alternative TLS backend, linked from the build host, not vendored",
+      "scope": "optional",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:generic/mbedtls",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://www.trustedfirmware.org/projects/mbed-tls/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "embedthis:usage",
+          "value": "optional TLS provider (ME_COM_MBEDTLS), off by default"
+        },
+        {
+          "name": "embedthis:version-authority",
+          "value": "The integrator fixes the version at link time. Appweb does not pin or vendor MbedTLS, so this BOM asserts no version."
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "ejscript",
+      "name": "@embedthis/ejscript",
+      "version": "2.1.1",
+      "description": "Ejscript - used by the test harness only",
+      "scope": "excluded",
+      "licenses": [
+        {
+          "license": {
+            "name": "LicenseRef-EmbedThis-Commercial"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40embedthis/ejscript@2.1.1",
+      "properties": [
+        {
+          "name": "embedthis:usage",
+          "value": "development/test only - not shipped in the product"
+        },
+        {
+          "name": "embedthis:declared-range",
+          "value": "^2.1.1"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "testme",
+      "name": "@embedthis/testme",
+      "version": "0.8.32",
+      "description": "TestMe unit test runner - used by the test harness only",
+      "scope": "excluded",
+      "licenses": [
+        {
+          "license": {
+            "name": "LicenseRef-EmbedThis-Commercial"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40embedthis/testme@0.8.32",
+      "properties": [
+        {
+          "name": "embedthis:usage",
+          "value": "development/test only - not shipped in the product"
+        },
+        {
+          "name": "embedthis:declared-range",
+          "value": "^0.8.32"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "appweb",
+      "dependsOn": [
+        "http",
+        "mpr",
+        "osdep",
+        "watchdog",
+        "makerom",
+        "certs",
+        "openssl",
+        "mbedtls"
+      ]
+    },
+    {
+      "ref": "http",
+      "dependsOn": [
+        "mpr",
+        "osdep",
+        "certs"
+      ]
+    },
+    {
+      "ref": "mpr",
+      "dependsOn": [
+        "osdep",
+        "certs",
+        "openssl"
+      ]
+    },
+    {
+      "ref": "watchdog",
+      "dependsOn": [
+        "mpr"
+      ]
+    },
+    {
+      "ref": "makerom",
+      "dependsOn": [
+        "mpr"
+      ]
+    },
+    {
+      "ref": "osdep",
+      "dependsOn": []
+    },
+    {
+      "ref": "certs",
+      "dependsOn": []
+    },
+    {
+      "ref": "openssl",
+      "dependsOn": []
+    },
+    {
+      "ref": "mbedtls",
+      "dependsOn": []
+    },
+    {
+      "ref": "ejscript",
+      "dependsOn": []
+    },
+    {
+      "ref": "testme",
+      "dependsOn": []
+    }
+  ]
+}

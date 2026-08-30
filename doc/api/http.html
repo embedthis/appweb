@@ -3446,7 +3446,7 @@ The pre-supplied types are &apos;basic&apos;, &apos;digest&apos; and &apos;form&
   </div>
   <div class="apiDetail">
 <p>Set the global verify callback for an authentication store.</p>
-    <dl><dt><b>Description</b>:</dt><dd>The verification callback is invoked to verify user credentials when authentication is required. The callback has the signature: typedef bool (*HttpVerifyUser)(HttpStream *stream, cchar *username, cchar *password);.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>The verification callback is invoked to verify user credentials when authentication is required. The callback has the signature: typedef bool (*HttpVerifyUser)(HttpStream *stream, cchar *username, cchar password);.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">store</td><td>AuthStore object allocated by <a class="ref" href="#group___http_auth_1ga4b2da0955db11765aee7236045a418a4">httpCreateAuthStore</a></td></tr>
@@ -3466,7 +3466,7 @@ The pre-supplied types are &apos;basic&apos;, &apos;digest&apos; and &apos;form&
   </div>
   <div class="apiDetail">
 <p>Set the global verify callback for an authentication store.</p>
-    <dl><dt><b>Description</b>:</dt><dd>The verification callback is invoked to verify user credentials when authentication is required. The callback has the signature: typedef bool (*HttpVerifyUser)(HttpStream *stream, cchar *username, cchar *password);.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>The verification callback is invoked to verify user credentials when authentication is required. The callback has the signature: typedef bool (*HttpVerifyUser)(HttpStream *stream, cchar *username, cchar password);.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">storeName</td><td>String name of the store.</td></tr>
@@ -8499,7 +8499,8 @@ Also see <a class="ref" href="#group___http_route_1ga3f2d0695fb36005d115487911ca
     <tr><td class="param">route</td><td>Route to modify.</td></tr>
     <tr><td class="param">name</td><td>Target rule to add. Supported update rules include: &quot;close&quot;, &quot;redirect&quot;, &quot;run&quot; and &quot;write&quot;. <br/><br/>
  The &quot;close&quot; rule is used to do abortive closes for the request. This is useful for ward off known security attackers. For example: &quot;close immediate&quot;. The &quot;close&quot; rule takes no addition parameters. <br/><br/>
- The &quot;redirect&quot; rule is used to redirect the request to a new resource. For example: &quot;redirect 302 /tryAgain.html&quot;. The &quot;redirect&quot; takes the form: &quot;redirect status URI&quot;. The status code is used as the HTTP response code. The URI can be a fully qualified URI beginning with &quot;http&quot; or it can be a relative URI. <br/><br/>
+ The &quot;redirect&quot; rule is used to redirect the request to a new resource. For example: &quot;redirect 302
+       /tryAgain.html&quot;. The &quot;redirect&quot; takes the form: &quot;redirect status URI&quot;. The status code is used as the HTTP response code. The URI can be a fully qualified URI beginning with &quot;http&quot; or it can be a relative URI. <br/><br/>
  The &quot;run&quot; target is used to run the configured handler to respond to the request. For example: &quot;file ${DOCUMENTS}/${request.uri}.gz&quot;. <br/><br/>
  The &quot;write&quot; rule is used to write literal data back to the client. For example: &quot;write 200 Hello World\r\n&quot;. The &quot;write&quot; rule takes the form: &quot;write [-r] status message&quot;. Write data is by default HTML encoded to help eliminate XSS security exposures. The &quot;-r&quot; option selects &quot;raw&quot; output and bypasses the HTML encoding of the write data string. <br/><br/>
  WARNING: Take great care when using raw writes with tokens. Write data is not HTML encoded and echoing back to raw data to the client can cause XSS and other security issues. The status field defines the HTTP status code to use in the response.</td></tr>
@@ -10988,7 +10989,7 @@ This will define a &quot;Content-Type: multipart/form-data...&quot; header and w
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">seqno</td><td>HttpStream stream sequence number retrieved from HttpStream.seqno.</td></tr>
-    <tr><td class="param">proc</td><td>Callback function to invoke with the signature void (*HttpEventProc)(struct HttpStream *stream, void *data);.</td></tr>
+    <tr><td class="param">proc</td><td>Callback function to invoke with the signature void (*HttpEventProc)(struct HttpStream *stream, void data);.</td></tr>
     <tr><td class="param">data</td><td>Data to pass to the callback.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>The steam object reference. Returns NULL if the stream is not found. Only use this value if invoked in an MPR thread. While foreign threads using this API may return a stream reference, the stream may be destroyed before the reference can be used.</dd></dl>
