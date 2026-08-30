@@ -1,15 +1,19 @@
 /*
     espHandler.c -- ESP Appweb handler
 
+    ESP is a separate add-on product. This file is the glue that binds ESP into Appweb and compiles
+    to nothing unless ME_COM_ESP is set and the ESP add-on is installed under src/esp.
+
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
 
 /********************************** Includes **********************************/
 
 #include    "appweb.h"
-#include    "esp.h"
 
 #if ME_COM_ESP
+#include    "esp.h"
+
 /************************************* Code ***********************************/
 /*
     EspApp /path/to/some*dir/esp.json
