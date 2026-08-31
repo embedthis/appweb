@@ -14,11 +14,13 @@ import {Cmd, Config, Path} from '@embedthis/ejscript'
 if (tdepth() >= 6) {
 
     const HTTP = tget('TM_HTTP') || "127.0.0.1:4100"
-    const HTTP_CLIENT = new Path("../build/bin/http" + (Config.OS == 'windows' ? ".exe" : ""))
+    //  Two levels up: tests run with the working directory set to their own directory
+    const HTTP_CLIENT = new Path(import.meta.dir).dirname.dirname
+        .join("build/bin/http" + (Config.OS == 'windows' ? ".exe" : ""))
     const ITER = 10000
 
     if (!HTTP_CLIENT.exists) {
-        tskip("http client is not built by this Appweb checkout")
+        tskip("the http client is not built; run 'make build' at the top of the checkout")
         process.exit(0)
     }
 

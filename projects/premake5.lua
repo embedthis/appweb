@@ -1,7 +1,7 @@
 --
 --  projects/premake5.lua -- Appweb Web Server Build
 --
---  Builds libappweb (shared library), appweb, authpass, cgiProgram, fastProgram, watchdog.
+--  Builds libappweb (shared library), appweb, http, authpass, cgiProgram, fastProgram, watchdog.
 --
 --  Usage (run from the projects/ directory):
 --      premake5 gmake2                    # Generate GNU Makefiles for all platforms
@@ -459,6 +459,29 @@ project "appweb"
     libdirs    { ROOT .. "/build/bin" }
 
     files { ROOT .. "/src/server/appweb.c" }
+
+    filter "platforms:windows"
+        links   { "ws2_32", "advapi32", "user32", "kernel32", "oldnames", "shell32" }
+    filter {}
+
+
+---------------------------------------------------------------------
+--  httpcmd (http client utility)
+---------------------------------------------------------------------
+
+--
+--  The target is named "http", matching doc/man/http.1 and the upstream http repository's own
+--  httpcmd project. The premake project cannot also be called "http": the source file it builds
+--  is src/http/http.c and premake derives object paths from the project name.
+--
+project "httpcmd"
+    kind       "ConsoleApp"
+    targetname "http"
+    links      { "appweb-lib" }
+    dependson  { "appweb-lib" }
+    libdirs    { ROOT .. "/build/bin" }
+
+    files { ROOT .. "/src/http/http.c" }
 
     filter "platforms:windows"
         links   { "ws2_32", "advapi32", "user32", "kernel32", "oldnames", "shell32" }

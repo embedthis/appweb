@@ -51,6 +51,7 @@ check() {
 
 check paks/http/dist/httpLib.c  src/http/httpLib.c
 check paks/http/dist/http.h     src/http/http.h
+check paks/http/dist/http.c     src/http/http.c
 check paks/mpr/dist/mprLib.c    src/mpr/mprLib.c
 check paks/mpr/dist/mpr.h       src/mpr/mpr.h
 check paks/osdep/dist/osdep.h   src/osdep/osdep.h

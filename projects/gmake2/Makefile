@@ -11,6 +11,7 @@ endif
 ifeq ($(config),debug_macosx)
   appweb_lib_config = debug_macosx
   appweb_config = debug_macosx
+  httpcmd_config = debug_macosx
   authpass_config = debug_macosx
   cgiProgram_config = debug_macosx
   fastProgram_config = debug_macosx
@@ -19,6 +20,7 @@ ifeq ($(config),debug_macosx)
 else ifeq ($(config),debug_linux)
   appweb_lib_config = debug_linux
   appweb_config = debug_linux
+  httpcmd_config = debug_linux
   authpass_config = debug_linux
   cgiProgram_config = debug_linux
   fastProgram_config = debug_linux
@@ -27,6 +29,7 @@ else ifeq ($(config),debug_linux)
 else ifeq ($(config),debug_freebsd)
   appweb_lib_config = debug_freebsd
   appweb_config = debug_freebsd
+  httpcmd_config = debug_freebsd
   authpass_config = debug_freebsd
   cgiProgram_config = debug_freebsd
   fastProgram_config = debug_freebsd
@@ -35,6 +38,7 @@ else ifeq ($(config),debug_freebsd)
 else ifeq ($(config),release_macosx)
   appweb_lib_config = release_macosx
   appweb_config = release_macosx
+  httpcmd_config = release_macosx
   authpass_config = release_macosx
   cgiProgram_config = release_macosx
   fastProgram_config = release_macosx
@@ -43,6 +47,7 @@ else ifeq ($(config),release_macosx)
 else ifeq ($(config),release_linux)
   appweb_lib_config = release_linux
   appweb_config = release_linux
+  httpcmd_config = release_linux
   authpass_config = release_linux
   cgiProgram_config = release_linux
   fastProgram_config = release_linux
@@ -51,6 +56,7 @@ else ifeq ($(config),release_linux)
 else ifeq ($(config),release_freebsd)
   appweb_lib_config = release_freebsd
   appweb_config = release_freebsd
+  httpcmd_config = release_freebsd
   authpass_config = release_freebsd
   cgiProgram_config = release_freebsd
   fastProgram_config = release_freebsd
@@ -60,7 +66,7 @@ else
   $(error "invalid configuration $(config)")
 endif
 
-PROJECTS := appweb-lib appweb authpass cgiProgram fastProgram watchdog
+PROJECTS := appweb-lib appweb httpcmd authpass cgiProgram fastProgram watchdog
 
 .PHONY: all clean help $(PROJECTS) 
 
@@ -74,6 +80,11 @@ endif
 appweb: appweb-lib
 ifneq (,$(appweb_config))
 	@${MAKE} --no-print-directory -C . -f appweb.make config=$(appweb_config)
+endif
+
+httpcmd: appweb-lib
+ifneq (,$(httpcmd_config))
+	@${MAKE} --no-print-directory -C . -f httpcmd.make config=$(httpcmd_config)
 endif
 
 authpass: appweb-lib
@@ -99,6 +110,7 @@ endif
 clean:
 	@${MAKE} --no-print-directory -C . -f appweb-lib.make clean
 	@${MAKE} --no-print-directory -C . -f appweb.make clean
+	@${MAKE} --no-print-directory -C . -f httpcmd.make clean
 	@${MAKE} --no-print-directory -C . -f authpass.make clean
 	@${MAKE} --no-print-directory -C . -f cgiProgram.make clean
 	@${MAKE} --no-print-directory -C . -f fastProgram.make clean
@@ -120,6 +132,7 @@ help:
 	@echo "   clean"
 	@echo "   appweb-lib"
 	@echo "   appweb"
+	@echo "   httpcmd"
 	@echo "   authpass"
 	@echo "   cgiProgram"
 	@echo "   fastProgram"

@@ -10,10 +10,18 @@ import {tcontains, tdepth, tget, thas, tskip, ttrue} from '@embedthis/testme'
 import {App, Cmd, Config, Path, print} from '@embedthis/ejscript'
 
 const HTTP = tget('TM_HTTP') || "127.0.0.1:4100"
-const HTTP_CLIENT = new Path("../build/bin/http" + (Config.OS == 'windows' ? ".exe" : ""))
+
+/*
+    The client lives in the build tree at the top of the checkout. Tests run with the working
+    directory set to their own directory -- this file's other paths ("../web/tmp", ".") depend on
+    that -- so the binary is two levels up, not one. Written as one level it never resolved, and the
+    skip below then reported "not built" on every run of a checkout that built it perfectly well.
+ */
+const HTTP_CLIENT = new Path(import.meta.dir).dirname.dirname
+    .join("build/bin/http" + (Config.OS == 'windows' ? ".exe" : ""))
 
 if (!HTTP_CLIENT.exists) {
-    tskip("http client is not built by this Appweb checkout")
+    tskip("the http client is not built; run 'make build' at the top of the checkout")
     process.exit(0)
 }
 

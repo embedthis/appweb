@@ -1,0 +1,398 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		3E53A52D2F4B131F9B4E936D /* libappweb.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A9C7DE554214C407705BC495 /* libappweb.dylib */; };
+		81B868E27B1E6A546EB9C722 /* http.c in Sources */ = {isa = PBXBuildFile; fileRef = 43F894EAE7441E1C0214EB2A /* http.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		49F96F656BC51C97A87A45A5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = B47F3001DAA55FB341AC5641;
+			remoteInfo = libappweb.dylib;
+		};
+		9C33E1FEBDFF8F30FAB4B83E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 74308BC76D968D396131EA07;
+			remoteInfo = libappweb.dylib;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0A5163C6EE986BF872859A06 /* libappweb.dylib */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = appweb-lib.xcodeproj; path = "appweb-lib.xcodeproj"; sourceTree = SOURCE_ROOT; };
+		43F894EAE7441E1C0214EB2A /* http.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = http.c; path = ../../src/http/http.c; sourceTree = "<group>"; };
+		A3853929F60B641BC84FC769 /* http */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = http; path = http; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		9C1F02190631840B9F5C7059 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3E53A52D2F4B131F9B4E936D /* libappweb.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		F5B33CC52E6E0337BE053B05 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXGroup section */
+		9D968EAA920D05DCE0E0A4EA /* Projects */ = {
+			isa = PBXGroup;
+			children = (
+				0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */,
+				0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */,
+			);
+			name = Projects;
+			sourceTree = "<group>";
+		};
+		A6C936B49B3FADE6EA134CF4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A3853929F60B641BC84FC769 /* http */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BA939E344D9EF72695D3EC74 /* httpcmd */ = {
+			isa = PBXGroup;
+			children = (
+				43F894EAE7441E1C0214EB2A /* http.c */,
+				A6C936B49B3FADE6EA134CF4 /* Products */,
+				9D968EAA920D05DCE0E0A4EA /* Projects */,
+			);
+			name = httpcmd;
+			sourceTree = "<group>";
+		};
+		C1B62405F147F2F7CC553245 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A9C7DE554214C407705BC495 /* libappweb.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D8860FEF2899A4A1AB17D62F /* httpcmd */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8A5A4A78F46CCC6A8D97B8B8 /* Build configuration list for PBXNativeTarget "httpcmd" */;
+			buildPhases = (
+				0C0682B9761904AB0F43F0F9 /* Resources */,
+				75B39C10DFC61E0278F10A50 /* Sources */,
+				9C1F02190631840B9F5C7059 /* Frameworks */,
+				F5B33CC52E6E0337BE053B05 /* Embed Libraries */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AF6E610EDF003000BA0D6F4E /* PBXTargetDependency */,
+				AF6E610EDF003000BA0D6F4E /* PBXTargetDependency */,
+			);
+			name = httpcmd;
+			productInstallPath = "$(HOME)/bin";
+			productName = httpcmd;
+			productReference = A3853929F60B641BC84FC769 /* http */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "httpcmd" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = BA939E344D9EF72695D3EC74 /* httpcmd */;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = C1B62405F147F2F7CC553245 /* Products */;
+					ProjectRef = 0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */;
+				},
+				{
+					ProductGroup = C1B62405F147F2F7CC553245 /* Products */;
+					ProjectRef = 0A5163C6EE986BF872859A06 /* appweb-lib.xcodeproj */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				D8860FEF2899A4A1AB17D62F /* http */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		A9C7DE554214C407705BC495 /* libappweb.dylib */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.dylib";
+			path = libappweb.dylib;
+			remoteRef = 49F96F656BC51C97A87A45A5 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0C0682B9761904AB0F43F0F9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		75B39C10DFC61E0278F10A50 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				81B868E27B1E6A546EB9C722 /* http.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AF6E610EDF003000BA0D6F4E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = libappweb.dylib;
+			targetProxy = 9C33E1FEBDFF8F30FAB4B83E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		808E05D879F4074A6D8F6418 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../build/bin;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = http;
+			};
+			name = release;
+		};
+		D1FE285D7650C60F88890E9D /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_VERSION=\\\"9.2.0\\\"",
+					"ME_APPWEB_PRODUCT=1",
+					"ME_APP_PREFIX=\\\"/usr/local/lib/appweb\\\"",
+					"ME_COM_CGI=1",
+					"ME_COM_FAST=1",
+					"ME_COM_PROXY=1",
+					"ME_HTTP_BASIC=1",
+					"ME_HTTP_CACHE=1",
+					"ME_HTTP_CMD=1",
+					"ME_HTTP_DEFENSE=1",
+					"ME_HTTP_DIGEST=1",
+					"ME_HTTP_DIR=1",
+					"ME_HTTP_HTTP2=1",
+					"ME_HTTP_PAM=1",
+					"ME_HTTP_SENDFILE=1",
+					"ME_HTTP_UPLOAD=1",
+					"ME_HTTP_WEB_SOCKETS=1",
+					"ME_COM_PCRE2=0",
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_SSL=1",
+					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
+					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@loader_path/.",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					../../build/bin,
+				);
+				OBJROOT = "../../build/obj/httpcmd-macosx-release";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CFLAGS = (
+					"-Wno-sign-conversion",
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wno-sign-compare",
+					"-Wno-cast-function-type-mismatch",
+					"-Wno-shorten-64-to-32",
+				);
+				OTHER_LDFLAGS = (
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-lpam",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				SYMROOT = ../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../src,
+					../../src/osdep,
+					../../src/mpr,
+					../../src/http,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = release;
+		};
+		EE56696391A1F295AC72BFA3 /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_VERSION=\\\"9.2.0\\\"",
+					"ME_APPWEB_PRODUCT=1",
+					"ME_APP_PREFIX=\\\"/usr/local/lib/appweb\\\"",
+					"ME_COM_CGI=1",
+					"ME_COM_FAST=1",
+					"ME_COM_PROXY=1",
+					"ME_HTTP_BASIC=1",
+					"ME_HTTP_CACHE=1",
+					"ME_HTTP_CMD=1",
+					"ME_HTTP_DEFENSE=1",
+					"ME_HTTP_DIGEST=1",
+					"ME_HTTP_DIR=1",
+					"ME_HTTP_HTTP2=1",
+					"ME_HTTP_PAM=1",
+					"ME_HTTP_SENDFILE=1",
+					"ME_HTTP_UPLOAD=1",
+					"ME_HTTP_WEB_SOCKETS=1",
+					"ME_COM_PCRE2=0",
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_SSL=1",
+					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
+					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+					"ME_DEBUG=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@loader_path/.",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					../../build/bin,
+				);
+				OBJROOT = "../../build/obj/httpcmd-macosx-debug";
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = (
+					"-Wno-sign-conversion",
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wno-sign-compare",
+					"-Wno-cast-function-type-mismatch",
+					"-Wno-shorten-64-to-32",
+				);
+				OTHER_LDFLAGS = (
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-lpam",
+					"-g",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				SYMROOT = ../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../src,
+					../../src/osdep,
+					../../src/mpr,
+					../../src/http,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = debug;
+		};
+		F1B69B5EF2699850664B699E /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../build/bin;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = http;
+			};
+			name = debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "httpcmd" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EE56696391A1F295AC72BFA3 /* debug */,
+				D1FE285D7650C60F88890E9D /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		8A5A4A78F46CCC6A8D97B8B8 /* Build configuration list for PBXNativeTarget "http" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F1B69B5EF2699850664B699E /* debug */,
+				808E05D879F4074A6D8F6418 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+/* End XCConfigurationList section */
+};
+rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}

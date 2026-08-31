@@ -15,6 +15,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "authpass", "authpass.vcxpro
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cgiProgram", "cgiProgram.vcxproj", "{90E707AB-7C9F-49F8-E5A6-2254D17DE4E8}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "httpcmd", "httpcmd.vcxproj", "{39ED7060-A5CC-EFFB-AEE4-7AD21A43565D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A89CE0CB-9454-2219-FD5B-FB74E932BD09} = {A89CE0CB-9454-2219-FD5B-FB74E932BD09}
+	EndProjectSection
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "watchdog", "watchdog.vcxproj", "{16E6EE8E-02B3-499A-2BCC-374217F87E28}"
 	ProjectSection(ProjectDependencies) = postProject
 		{A89CE0CB-9454-2219-FD5B-FB74E932BD09} = {A89CE0CB-9454-2219-FD5B-FB74E932BD09}
@@ -42,6 +47,10 @@ Global
 		{90E707AB-7C9F-49F8-E5A6-2254D17DE4E8}.debug|windows.Build.0 = debug windows|x64
 		{90E707AB-7C9F-49F8-E5A6-2254D17DE4E8}.release|windows.ActiveCfg = release windows|x64
 		{90E707AB-7C9F-49F8-E5A6-2254D17DE4E8}.release|windows.Build.0 = release windows|x64
+		{39ED7060-A5CC-EFFB-AEE4-7AD21A43565D}.debug|windows.ActiveCfg = debug windows|x64
+		{39ED7060-A5CC-EFFB-AEE4-7AD21A43565D}.debug|windows.Build.0 = debug windows|x64
+		{39ED7060-A5CC-EFFB-AEE4-7AD21A43565D}.release|windows.ActiveCfg = release windows|x64
+		{39ED7060-A5CC-EFFB-AEE4-7AD21A43565D}.release|windows.Build.0 = release windows|x64
 		{16E6EE8E-02B3-499A-2BCC-374217F87E28}.debug|windows.ActiveCfg = debug windows|x64
 		{16E6EE8E-02B3-499A-2BCC-374217F87E28}.debug|windows.Build.0 = debug windows|x64
 		{16E6EE8E-02B3-499A-2BCC-374217F87E28}.release|windows.ActiveCfg = release windows|x64

@@ -17,6 +17,9 @@
 		location = "group:fastProgram.xcodeproj">
 	</FileRef>
 	<FileRef
+		location = "group:httpcmd.xcodeproj">
+	</FileRef>
+	<FileRef
 		location = "group:watchdog.xcodeproj">
 	</FileRef>
 </Workspace>
