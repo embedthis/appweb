@@ -87,6 +87,28 @@ static MprSocket *handshake(cchar *path, cchar *key, cchar *version, char *respo
 }
 
 
+/*
+    Return the numeric status from the response line, or 0 if there is no response line.
+
+    Searching the whole response for "101" is not a status check. The response to a request the
+    upgrade was correctly refused for is an ordinary 200 whose ETag, Content-Length, Date and body
+    are all digits, and ETag is inode + size + mtime, so whether those digits happen to spell 101
+    is decided by the machine the test runs on. It did on a CI runner.
+ */
+static int responseStatus(cchar *response)
+{
+    cchar *cp;
+
+    if (!sstarts(response, "HTTP/")) {
+        return 0;
+    }
+    if ((cp = schr(response, ' ')) == 0) {
+        return 0;
+    }
+    return (int) stoi(cp + 1);
+}
+
+
 static void closeSocket(MprSocket *sp)
 {
     if (sp) {
@@ -242,7 +264,7 @@ static void expectCloseAfterDeclaredLength(uint64 declaredLength, cchar *message
     ssize     len;
 
     sp = handshake("/ws/echo", WS_KEY, "13", response, sizeof(response));
-    tcontains(response, "101", "invalid-length test must start from an upgraded websocket");
+    teqi(responseStatus(response), 101, "invalid-length test must start from an upgraded websocket");
     writeDeclaredLength64(sp, declaredLength);
     len = readReply(sp, frame, sizeof(frame));
     ttrue(len > 0, "%s", message);
@@ -250,7 +272,7 @@ static void expectCloseAfterDeclaredLength(uint64 declaredLength, cchar *message
     closeSocket(sp);
 
     sp = handshake("/ws/echo", WS_KEY, "13", response, sizeof(response));
-    tcontains(response, "101", "invalid frame length must not wedge the websocket route");
+    teqi(responseStatus(response), 101, "invalid frame length must not wedge the websocket route");
     closeSocket(sp);
 }
 
@@ -275,7 +297,7 @@ int main(int argc, char **argv)
      */
     sp = handshake("/ws/echo", WS_KEY, "13", response, MAX_RESPONSE);
     ttrue(sp != 0, "must connect to the websocket route");
-    tcontains(response, "101", "a valid handshake must be upgraded");
+    teqi(responseStatus(response), 101, "a valid handshake must be upgraded");
     tcontains(response, "Sec-WebSocket-Accept:", "the upgrade must carry an accept token");
 
     /*
@@ -312,7 +334,7 @@ int main(int argc, char **argv)
         extendedPayload[i] = 'a';
     }
     sp = handshake("/ws/echo", WS_KEY, "13", response, MAX_RESPONSE);
-    tcontains(response, "101", "extended-length test must start from an upgraded websocket");
+    teqi(responseStatus(response), 101, "extended-length test must start from an upgraded websocket");
     writeExtendedTextFrame(sp, extendedPayload, sizeof(extendedPayload));
     len = readReply(sp, frame, MAX_RESPONSE);
     ttrue(len > 0, "the handler must answer a valid 16-bit extended length frame");
@@ -328,7 +350,7 @@ int main(int argc, char **argv)
         largePayload[i] = 'a';
     }
     sp = handshake("/ws/echo", WS_KEY, "13", response, MAX_RESPONSE);
-    tcontains(response, "101", "64-bit extended-length test must start from an upgraded websocket");
+    teqi(responseStatus(response), 101, "64-bit extended-length test must start from an upgraded websocket");
     writeExtendedBinaryFrame64(sp, largePayload, LARGE_64_LEN);
     len = readReply(sp, frame, MAX_RESPONSE);
     ttrue(len > 0, "the handler must answer a valid 64-bit extended length frame");
@@ -348,28 +370,28 @@ int main(int argc, char **argv)
         The upgrade is confined to the configured route.
      */
     sp = handshake("/index.html", WS_KEY, "13", response, MAX_RESPONSE);
-    ttrue(scontains(response, "101") == 0, "a path outside /ws/ must not be upgraded");
+    tneqi(responseStatus(response), 101, "a path outside /ws/ must not be upgraded");
     closeSocket(sp);
 
     /*
         A handshake missing the key is not a handshake.
      */
     sp = handshake("/ws/echo", 0, "13", response, MAX_RESPONSE);
-    ttrue(scontains(response, "101") == 0, "a handshake without a key must be refused");
+    tneqi(responseStatus(response), 101, "a handshake without a key must be refused");
     closeSocket(sp);
 
     /*
         RFC 6455 4.2.1: only version 13 is defined. An older draft version must be refused.
      */
     sp = handshake("/ws/echo", WS_KEY, "7", response, MAX_RESPONSE);
-    ttrue(scontains(response, "101") == 0, "an unsupported websocket version must be refused");
+    tneqi(responseStatus(response), 101, "an unsupported websocket version must be refused");
     closeSocket(sp);
 
     /*
         A second connection succeeds after the first has closed, so the route is not left wedged.
      */
     sp = handshake("/ws/echo", WS_KEY, "13", response, MAX_RESPONSE);
-    tcontains(response, "101", "a second upgrade must succeed after the first closed");
+    teqi(responseStatus(response), 101, "a second upgrade must succeed after the first closed");
     writeTextFrame(sp, "again");
     len = readReply(sp, frame, MAX_RESPONSE);
     ttrue(len > 0, "the second connection must be served too");

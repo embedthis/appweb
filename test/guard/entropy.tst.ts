@@ -22,7 +22,8 @@
  */
 
 import {teq, tinfo, ttrue} from '@embedthis/testme'
-import {Cmd, Path} from '@embedthis/ejscript'
+import {Path} from '@embedthis/ejscript'
+import {body, read, stripComments} from './csource.ts'
 
 const SRC = new Path(import.meta.dir).dirname.dirname.join('src/mpr/mprLib.c')
 
@@ -42,55 +43,7 @@ const SOURCES: any = {
 //  Weak PRNGs. Reaching for either inside this function is the defect, whatever else the body does.
 const WEAK = ['rand', 'random', 'srand', 'mprRandom']
 
-function stripComments(text: string): string {
-    let out = ''
-    let i = 0
-    let n = text.length
-    while (i < n) {
-        if (text[i] == '/' && i + 1 < n && text[i + 1] == '*') {
-            let end = text.indexOf('*/', i + 2)
-            i = end < 0 ? n : end + 2
-            out += ' '
-        } else if (text[i] == '/' && i + 1 < n && text[i + 1] == '/') {
-            let end = text.indexOf('\n', i)
-            i = end < 0 ? n : end
-            out += ' '
-        } else if (text[i] == '"') {
-            //  Keep string literals: "/dev/urandom" is how the Unix implementation names its source
-            let j = i + 1
-            while (j < n && text[j] != '"') {
-                j += text[j] == '\\' ? 2 : 1
-            }
-            out += text.slice(i, Math.min(j + 1, n))
-            i = j + 1
-        } else {
-            out += text[i]
-            i++
-        }
-    }
-    return out
-}
-
-//  Return the brace-matched body that follows the signature at the given offset
-function body(text: string, from: number): string {
-    let open = text.indexOf('{', from)
-    if (open < 0) {
-        return ''
-    }
-    let depth = 0
-    for (let i = open; i < text.length; i++) {
-        if (text[i] == '{') {
-            depth++
-        } else if (text[i] == '}') {
-            if (--depth == 0) {
-                return text.slice(open, i + 1)
-            }
-        }
-    }
-    return ''
-}
-
-let source = stripComments(await Cmd.sh("cat '" + SRC + "'"))
+let source = stripComments(await read(SRC))
 
 //  The amalgamation must have been read, or every check below is vacuous
 ttrue(source.length > 0)

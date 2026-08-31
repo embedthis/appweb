@@ -27,7 +27,8 @@
  */
 
 import {teq, ttrue} from '@embedthis/testme'
-import {Cmd, Path} from '@embedthis/ejscript'
+import {Path} from '@embedthis/ejscript'
+import {body, definition, read, stripComments} from './csource.ts'
 
 const ROOT = new Path(import.meta.dir).dirname.dirname
 const MPR_H = ROOT.join('src/mpr/mpr.h')
@@ -40,90 +41,6 @@ const MPR_C = ROOT.join('src/mpr/mprLib.c')
 const ARGV_SPAWNS = ['src/modules/cgiHandler.c', 'src/http/httpLib.c']
 
 const FLAG = 'MPR_CMD_ALLOW_SHELL'
-
-function stripComments(text: string): string {
-    let out = ''
-    let i = 0
-    let n = text.length
-    while (i < n) {
-        if (text[i] == '/' && i + 1 < n && text[i + 1] == '*') {
-            let end = text.indexOf('*/', i + 2)
-            i = end < 0 ? n : end + 2
-            out += ' '
-        } else if (text[i] == '/' && i + 1 < n && text[i + 1] == '/') {
-            let end = text.indexOf('\n', i)
-            i = end < 0 ? n : end
-            out += ' '
-        } else if (text[i] == '"') {
-            //  Keep string literals: the promotion names "cmd.exe", "/Q" and "/C" as strings
-            let j = i + 1
-            while (j < n && text[j] != '"') {
-                j += text[j] == '\\' ? 2 : 1
-            }
-            out += text.slice(i, Math.min(j + 1, n))
-            i = j + 1
-        } else {
-            out += text[i]
-            i++
-        }
-    }
-    return out
-}
-
-/*
-    Return the body of the function defined at "re", skipping forward declarations. The amalgamation
-    declares its statics at the top of each module, so matching the first occurrence of a signature
-    lands on a prototype and brace-matches whatever function happens to follow it.
- */
-function definition(text: string, re: RegExp): string {
-    let m
-    re.lastIndex = 0
-    while ((m = re.exec(text)) != null) {
-        let depth = 0
-        let i = text.indexOf('(', m.index)
-        for (; i < text.length; i++) {
-            if (text[i] == '(') {
-                depth++
-            } else if (text[i] == ')' && --depth == 0) {
-                break
-            }
-        }
-        let j = i + 1
-        while (j < text.length && /\s/.test(text[j])) {
-            j++
-        }
-        if (text[j] == '{') {
-            return body(text, j)
-        }
-    }
-    return ''
-}
-
-//  Return the brace-matched block that follows the offset
-function body(text: string, from: number): string {
-    let open = text.indexOf('{', from)
-    if (open < 0) {
-        return ''
-    }
-    let depth = 0
-    for (let i = open; i < text.length; i++) {
-        if (text[i] == '{') {
-            depth++
-        } else if (text[i] == '}') {
-            if (--depth == 0) {
-                return text.slice(open, i + 1)
-            }
-        }
-    }
-    return ''
-}
-
-async function read(path: Path): Promise<string> {
-    let text = await Cmd.sh("cat '" + path + "'")
-    //  Every assertion below is vacuous against an empty read
-    ttrue(text.length > 0, 'cannot read ' + path)
-    return text
-}
 
 //  1. The flag must exist. Without it there is nothing for the gate to test and nothing to opt into
 let header = stripComments(await read(MPR_H))

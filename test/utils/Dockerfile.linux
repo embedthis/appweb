@@ -1,0 +1,37 @@
+#
+#   Dockerfile.linux -- Linux test image for "make test-linux".
+#
+#   Built and run by bin/test-linux.sh with Apple's "container" tool. Ubuntu 24.04 is what CI's
+#   ubuntu-latest runner is, and the package list below is the same one .github/workflows/ci.yml
+#   installs, so a failure here is a failure CI would also see -- with the single exception of
+#   architecture: Apple's container runs arm64 Linux only, and the CI runner is x86_64.
+#
+#   Nothing from the repository is copied in. The working tree is mounted at run time, so the
+#   image only has to carry the toolchain and stays valid across source changes.
+#
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+#
+#   Beyond the CI list: rsync stages the working tree into the build volume, curl and unzip install
+#   bun, and psmisc supplies the killall that test/cleanup.sh uses to reap fastProgram and
+#   proxyServer. Ubuntu's base image has none of them, and a missing killall leaves those two
+#   holding their listening ports for the rest of the run.
+#
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        gcc build-essential libc6-dev openssl libssl-dev libfcgi-dev \
+        ca-certificates curl unzip rsync git psmisc procps \
+    && rm -rf /var/lib/apt/lists/*
+
+#
+#   TestMe runs under bun. The install script places it in /root/.bun/bin.
+#
+ENV BUN_INSTALL=/root/.bun
+ENV PATH=/root/.bun/bin:$PATH
+
+RUN curl -fsSL https://bun.sh/install | bash
+
+RUN bun install -g --trust @embedthis/testme
+
+WORKDIR /work
