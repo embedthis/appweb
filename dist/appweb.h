@@ -13,25 +13,25 @@
 /********************************* Configuration ******************************/
 
 /*
-    ME_COM defaults -- must be before includes so dependent headers see them.
+    ME_COM defaults. Must be before includes so dependent headers see them.
  */
 #ifndef ME_NAME
-    #define ME_NAME "appweb"
+    #define ME_NAME                "appweb"
 #endif
 #ifndef ME_TITLE
-    #define ME_TITLE "Embedthis Appweb"
+    #define ME_TITLE               "Embedthis Appweb"
 #endif
 #ifndef ME_APPWEB_PRODUCT
-    #define ME_APPWEB_PRODUCT 1
+    #define ME_APPWEB_PRODUCT      1
 #endif
 #ifndef ME_DEPRECATED_WARNINGS
     #define ME_DEPRECATED_WARNINGS 0
 #endif
 #ifndef ME_TUNE_SIZE
-    #define ME_TUNE_SIZE 1
+    #define ME_TUNE_SIZE           1
 #endif
 #ifndef ME_APP_PREFIX
-    #define ME_APP_PREFIX "/usr/local/lib/appweb"
+    #define ME_APP_PREFIX          "/usr/local/lib/appweb"
 #endif
 
 /********************************* Includes ***********************************/
@@ -172,14 +172,14 @@ extern "C" {
     Indicates that the configuration file is being parsed by a utility program
     rather than the main server. This affects how certain directives are processed.
  */
-#define MA_PARSE_NON_SERVER 0x1         /**< Command file being parsed by a utility program */
+#define MA_PARSE_NON_SERVER   0x1       /**< Command file being parsed by a utility program */
 
 /*
     MA_PARSE_PROXY_CLIENT: the directives in this scope configure an outbound TLS client, not a
     listener. Set inside a <ProxyConfig> block, where the SSL object being built becomes the client
-    side of the reverse-proxy connection to the backend. Verification defaults are chosen by role --
-    a listener does not demand a certificate from arbitrary browsers, but a client must authenticate
-    the server it dials -- so the parser has to know which one it is building.
+    side of the reverse-proxy connection to the backend. Verification defaults are chosen by role: a
+    listener does not demand a certificate from arbitrary browsers, but a client must authenticate
+    the server it dials, so the parser has to know which one it is building.
  */
 #define MA_PARSE_PROXY_CLIENT 0x2       /**< Directives in scope configure an outbound TLS client */
 

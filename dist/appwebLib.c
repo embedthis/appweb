@@ -247,7 +247,7 @@ static int parseFileInner(MaState *state, cchar *path)
                 nested one. </if> always pops a state, so skipping the open without skipping the close
                 pops the enclosing block instead. The parser then continues with the wrong state: the
                 directives after the block attach to a route that has already been finalized, and the
-                rest of the file is silently discarded -- including any authorization it defines. A
+                rest of the file is silently discarded, including any authorization it defines. A
                 nested <if> still evaluates to disabled here, because maPushState inherits enabled.
              */
             if (sncaselesscmp(key, "<if", 3) != 0 && sncaselesscmp(key, "</if", 4) != 0) {
@@ -283,10 +283,10 @@ static int parseFileInner(MaState *state, cchar *path)
 /*
     Action mimeType program
 
-    The program is tokenized with %T so ${HOME} and friends expand. %S leaves the text verbatim,
-    which made "${HOME}/utils/php.cgi" -- the form every other path directive here takes -- resolve
-    to a literal directory named "${HOME}". %P is not used: it would also make the program absolute
-    against Home, and a bare program name is legitimately resolved from PATH by mprSearchPath.
+    The program is tokenized with %T so ${HOME} and friends expand. %S leaves the text verbatim, so
+    "${HOME}/utils/php.cgi" would resolve to a literal directory named "${HOME}". %P is not used: it
+    would also make the program absolute against Home, and a bare program name is legitimately
+    resolved from PATH by mprSearchPath.
 
     NOTE: the mime table is shared by reference with the parent route (route->mimeTypes), so an
     Action inside a <Route> block writes into the same table every other route reads. Action is
@@ -2471,8 +2471,8 @@ static void checkSsl(MaState *state)
 
     /*
         Inside <ProxyConfig> the object being built is the client side of the connection to the
-        backend, so it takes the client defaults -- verify the peer, verify the issuer, and load the
-        system root bundle. A proxy client SSL object does not inherit the enclosing route's listener 
+        backend, so it takes the client defaults: verify the peer, verify the issuer, and load the
+        system root bundle. A proxy client SSL object does not inherit the enclosing route's listener
         identity.
      */
     server = (state->flags & MA_PARSE_PROXY_CLIENT) ? 0 : 1;
@@ -4491,8 +4491,8 @@ static bool parseCgiHeaders(Cgi *cgi, HttpPacket *packet)
                 len--;
             }
             /*
-                An embedded CR or LF would split the response header block for a downstream client, cache or proxy, 
-                so fail the request rather than sanitize it. A CGI emitting a control character here is malfunctioning 
+                An embedded CR or LF would split the response header block for a downstream client, cache or proxy,
+                so fail the request rather than sanitize it. A CGI emitting a control character here is malfunctioning
                 or compromised.
              */
             if (schr(value, '\r') || schr(value, '\n')) {
@@ -4607,7 +4607,7 @@ static void buildArgs(HttpStream *stream, int *argcp, cchar ***argvp)
         /*
             Action is keyed by MIME type, so the extension must be resolved to one first.
             mprGetMimeProgram matches on the type and its first-character guard makes a mismatch
-            silent -- an extension passed here never matches any entry and no interpreter is selected.
+            silent: an extension passed here never matches any entry and no interpreter is selected.
          */
         mimeType = mprLookupMime(rx->route->mimeTypes, tx->ext);
         actionProgram = mprGetMimeProgram(rx->route->mimeTypes, mimeType);
@@ -4736,7 +4736,7 @@ static int copyInner(HttpStream *stream, cchar **envv, int index, cchar *key, cc
     }
     /*
         Test the name the child would actually receive, after prefixing and conversion. Without this
-        a client-supplied request header sets the matching HTTP_ variable in the child -- HTTP_PROXY
+        a client-supplied request header sets the matching HTTP_ variable in the child, HTTP_PROXY
         being the httpoxy case.
      */
     if (httpIsCgiVarBlocked(name)) {
@@ -5032,9 +5032,9 @@ static cchar *fastTypes[FAST_MAX + 1] = {
 #define FAST_Q_SIZE           ((FAST_PACKET_SIZE + 65535 + 8) * 2)
 
 #define FAST_REQUEST_COMPLETE 0             //  End Request response status for request complete
-#define FAST_CANT_MPX_CONN    1             //  Request rejected -- FastCGI app cannot multiplex requests
-#define FAST_OVERLOADED       2             //  Request rejected -- app server is overloaded
-#define FAST_UNKNOWN_ROLE     3             //  Request rejected -- unknown role
+#define FAST_CANT_MPX_CONN    1             //  Request rejected, FastCGI app cannot multiplex requests
+#define FAST_OVERLOADED       2             //  Request rejected, app server is overloaded
+#define FAST_UNKNOWN_ROLE     3             //  Request rejected, unknown role
 
 #ifndef FAST_WAIT_TIMEOUT
 #define FAST_WAIT_TIMEOUT     (10 * TPS)    //  Time to wait for a app
@@ -5313,7 +5313,7 @@ static int fastOpenRequest(HttpQueue *q)
     q->queueData = q->pair->queueData = req;
 
     /*
-        The app can die between being launched and this request being registered on it. 
+        The app can die between being launched and this request being registered on it.
         Re-check now that the request is registered. After this point the reap handler owns the
         notification and there is no window.
      */
@@ -5514,7 +5514,7 @@ static void fastIncomingRequestPacket(HttpQueue *q, HttpPacket *packet)
     /*
         Body packets are sent to this routine directly, so stream->readq->count never increments and the generic
         room test upstream always finds space no matter how far behind the FastCGI app is. Suspend the read queue
-        while the app is behind; fastConnectorOutgoingService resumes it as the connection drains. 
+        while the app is behind; fastConnectorOutgoingService resumes it as the connection drains.
      */
     if (req->socket && req->connWriteq->count >= req->connWriteq->max) {
         httpSuspendQueue(q);
@@ -5638,7 +5638,7 @@ static void fastHandlerResponse(FastRequest *req, int type, HttpPacket *packet)
 /*
     Reconcile the Content-Length the FastCGI app declared against the body bytes it actually produced.
     The declared value frames the response and disables chunking, so a disagreement puts bytes on the
-    wire that do not match the response's own framing statement. 
+    wire that do not match the response's own framing statement.
  */
 static void checkFastLength(FastRequest *req)
 {
@@ -5993,14 +5993,12 @@ static FastApp *startFastApp(Fast *fast, HttpStream *stream)
             app->signal = mprAddSignalHandler(SIGCHLD, reapSignalHandler, app, NULL, MPR_SIGNAL_BEFORE);
         }
         /*
-            Exec status pipe. The child's write end is close-on-exec, so a successful execve closes it
-            and the parent reads EOF; a failed execve writes errno instead. The parent must know which
-            happened before it hands the app to a request, and waiting for SIGCHLD is too late: the
-            child holds the listening socket it was given, so until it exits the parent's connect()
-            completes against the backlog of a socket that is already doomed. The request is then
-            written into a connection the kernel has reset, which aborts it -- the client gets a dropped
-            connection where it is owed a 502. Which side wins that race is scheduling, so the same
-            missing launch program answered 502 on macOS and nothing at all on Linux.
+            Exec status pipe. The child's write end is close-on-exec, so a successful execve closes
+            it and the parent reads EOF; a failed execve writes errno instead. The parent must know
+            which happened before it hands the app to a request, and waiting for SIGCHLD is too
+            late: the child holds the listening socket it was given, so until it exits the parent's
+            connect() completes against the backlog of a socket that is already doomed, and the
+            request is written into a connection the kernel has reset where it is owed a 502.
          */
         if (pipe(execStatus) < 0) {
             httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot create FastCGI exec status pipe");
@@ -6040,7 +6038,7 @@ static FastApp *startFastApp(Fast *fast, HttpStream *stream)
             close(execStatus[1]);
 
             /*
-                Blocks only until the child execs or dies -- both close the write end -- so it cannot
+                Blocks only until the child execs or dies (both close the write end), so it cannot
                 outlast the fork it is reporting on.
              */
             execErrno = 0;
@@ -6051,8 +6049,9 @@ static FastApp *startFastApp(Fast *fast, HttpStream *stream)
 
             if (nbytes > 0) {
                 /*
-                    A deployment fault the operator has to see by name -- at level 0, where a production
-                    error log will carry it -- because from the outside it presents as the site being down.
+                    A deployment fault the operator has to see by name, so it is logged at level 0
+                    where a production error log will carry it. From the outside it presents as the
+                    site being down.
                  */
                 mprLog("error fast", 0, "Cannot execute FastCGI program \"%s\": %s. Check the FastConnect "
                        "launch path exists and is executable.", command, strerror(execErrno));
@@ -6111,22 +6110,13 @@ static cchar *buildFastArgs(FastApp *app, HttpStream *stream, int *argcp, cchar 
         }
     }
     /*
-        No ISINDEX arguments. A FastCGI app is a persistent server launched once and then reused for
-        every request on the route, so anything taken from the launching request lands in the argv of
-        a process that goes on to serve requests that know nothing about it -- the app's command line
-        would be decided by whichever request happened to arrive first.
+        No ISINDEX arguments. A FastCGI app is launched once and reused for every request on the
+        route, so arguments taken from the launching request would decide the command line of a
+        process that serves all later requests. A non-option argument is also, by convention, the
+        endpoint the app should listen on, so it would displace the descriptor the app was handed.
 
-        It is also destructive. A non-option argument is by convention the endpoint a FastCGI app
-        should listen on, so "GET /fast-bin/app?a+b+c" launched the app as "app a b c" and the app
-        closed the descriptor it had been handed to open "a" instead. The request that launched it
-        then waited forever on a socket nobody would accept, the route's one app slot stayed occupied
-        by that request, and every later request to the route timed out waiting for a free app and was
-        answered 404 Cannot allocate FastCGI app. The whole route failed for the life of the server,
-        and which request launched the app is a race -- so it failed about one run in ten.
-
-        The request is carried in FCGI_PARAMS, where a FastCGI app reads it. CGI keeps ISINDEX
-        (cgiHandler.c, RFC 3875 4.4): a CGI program is forked per request, so there the arguments
-        belong to the request that supplied them.
+        The request is carried in FCGI_PARAMS instead. CGI keeps ISINDEX (cgiHandler.c, RFC 3875
+        4.4) because a CGI program is forked per request.
      */
     len = (argc + 1) * sizeof(char*);
     argv = mprAlloc(len);
@@ -6838,7 +6828,7 @@ static void copyFastInner(HttpPacket *packet, cchar *key, cchar *value, cchar *p
     }
     /*
         FastCGI params become environment variables in the application, so the same names a CGI child
-        must not receive are unsafe here -- HTTP_PROXY above all. See httpIsCgiVarBlocked().
+        must not receive are unsafe here, HTTP_PROXY above all. See httpIsCgiVarBlocked().
      */
     if (httpIsCgiVarBlocked(key)) {
         httpLog(req->trace, "tx.fast", "detail", "msg:Dropped unsafe FastCGI env, key:%s", key);
@@ -7820,7 +7810,7 @@ static void proxyStreamIncoming(HttpQueue *q)
     //  Client stream
     stream = req->stream;
 
-    //  If client write queue (browser) is suspended -- cannot transfer any packets here
+    //  If client write queue (browser) is suspended, cannot transfer any packets here
     if (httpIsQueueSuspended(stream->writeq)) {
         httpSuspendQueue(q);
         return;
@@ -7948,7 +7938,7 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
                 /*
                     No CanonicalName. Do not build an absolute URL out of rx->parsedUri: its host is
                     the client's own Host header, checked for character class and nothing else, so the
-                    client would be choosing the domain it is redirected to. Emit a relative reference instead. 
+                    client would be choosing the domain it is redirected to. Emit a relative reference instead.
                  */
                 uri = httpCloneUri(target, 0);
                 uri->scheme = 0;
@@ -8694,11 +8684,8 @@ PUBLIC int httpTestInit(Http *http, MprModule *module)
     Provides minimal action handlers for performance benchmarking and for the session tests, which
     need a live server-issued session id obtained without authenticating.
 
-    Gated on ME_COM_TEST, the switch that means "build the test modules" -- the same one testHandler.c
-    uses. It was gated on ME_DEBUG, which conflates "test fixtures wanted" with "optimization level".
-    That held only while the default build happened to be debug; once the default became release
-    (10184) the fixtures vanished from "make test" and every session test 404ed. A production build
-    turns these off with ME_COM_TEST=0, which is what that switch is for.
+    Gated on ME_COM_TEST, the switch that means "build the test modules", the same one testHandler.c
+    uses. A production build turns these off with ME_COM_TEST=0.
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
@@ -8763,19 +8750,16 @@ static void testBenchUpload(HttpStream *stream)
 
 
 /*
-    Report what the upload filter staged, so an upload can be verified behind a handler that is not a
-    gateway. Without this the only route carrying uploadFilter targets a CGI program, and the filter's
-    behaviour under fileHandler, fastHandler and proxyHandler is inferred rather than tested.
+    Report what the upload filter staged, so an upload can be verified behind a handler that is not
+    a gateway.
 
-    Prints one line per staged file from rx->files -- which is the filter's own record, not a
-    re-derivation of it -- then every request parameter, which is where the filter's own
-    FILE_SIZE_<name> and FILE_CLIENT_FILENAME_<name> land. A test can assert the two agree. The
-    FILE_<n>_* spelling is not among them: those are synthesised by httpCreateCGIParams for a
-    gateway, so they appear on the CGI and FastCGI routes and not here.
+    Prints one line per staged file from rx->files, the filter's own record, then every request
+    parameter, which is where the filter's FILE_SIZE_<name> and FILE_CLIENT_FILENAME_<name> land.
+    A test can assert the two agree. The FILE_<n>_* spelling is not among them: httpCreateCGIParams
+    synthesises those for a gateway, so they appear on the CGI and FastCGI routes and not here.
 
-    ITERATE_ITEMS leaves index already advanced past the item it yielded, so index is the 1-based
-    file number. This is the same convention var.c uses for FILE_<n>_*, and why the CGI tests
-    assert CGI_FILE_1_SIZE for a single upload.
+    ITERATE_ITEMS leaves index advanced past the item it yielded, so index is the 1-based file
+    number, the same convention var.c uses for FILE_<n>_*.
  */
 static void uploadReportAction(HttpStream *stream)
 {
@@ -8805,15 +8789,13 @@ static void uploadReportAction(HttpStream *stream)
 /*
     Write "size" bytes of a repeating printable pattern, for the response flow-control tests.
 
-    HTTP_BLOCK is the whole point of this fixture and must not be relaxed to a buffering write. An
-    action runs on a worker thread, so blocking there is legitimate, and a blocking write is the only
-    mode that actually stops when the write queue fills and resumes when it drains. A buffered write
-    would queue the entire body regardless of whether the server has any backpressure at all, so a
-    slow-reader test built on it would pass against a server with flow control removed -- it would be
-    measuring the queue's capacity, not the mechanism.
+    HTTP_BLOCK must not be relaxed to a buffering write. An action runs on a worker thread, so
+    blocking is legitimate, and only a blocking write stops when the write queue fills and resumes
+    when it drains. A buffered write queues the whole body regardless of backpressure, so a
+    slow-reader test built on it would pass against a server with flow control removed.
 
-    The size is clamped. An unclamped size parameter would make this an unauthenticated
-    memory-exhaustion endpoint in every ME_COM_TEST build, which is a poor trade for a test fixture.
+    The size is clamped: unclamped it would be an unauthenticated memory-exhaustion endpoint in
+    every ME_COM_TEST build.
  */
 static void streamAction(HttpStream *stream)
 {
@@ -8832,8 +8814,8 @@ static void streamAction(HttpStream *stream)
     }
     /*
         A 50-digit line plus a newline, so a test can check structure at the tail as well as the
-        total -- a flow-control defect that drops a window mid-body leaves the total wrong, and one
-        that duplicates a window leaves the structure wrong. Neither check alone catches both.
+        total. A defect that drops a window mid-body leaves the total wrong; one that duplicates a
+        window leaves the structure wrong. Neither check alone catches both.
      */
     for (i = 0; i < STREAM_CHUNK; i++) {
         pattern[i] = (char) (((i + 1) % 51 == 0) ? '\n' : ('0' + (i % 10)));
@@ -8885,17 +8867,15 @@ static void sessionTestAction(HttpStream *stream)
 /*
     Stream-notifier leak probe.
 
-    A handler that installs a stream notifier owns it for one request only. On a keep-alive
-    connection the stream is reset and reused, so a notifier left installed then runs for a request
-    served by a different handler -- and every such notifier reads the handler queue's queueData as
-    its own private type, which is a wild pointer read once another handler owns that queue. The
-    proxy handler installs one, so the pairing is reachable in an ordinary configuration.
+    A handler that installs a stream notifier owns it for one request. On a keep-alive connection
+    the stream is reset and reused, so a notifier left installed runs for a request served by a
+    different handler, and reads that handler's queueData as its own private type. The proxy
+    handler installs one, so the pairing is reachable in an ordinary configuration.
 
-    The probe makes the leak observable without depending on that misread crashing. The route
-    /action/notifier-probe installs a notifier that counts every firing which does not belong to its
-    own request, and /action/notifier-leaks reports the count. Zero is the invariant. The route is
-    unique to the probe, so comparing rx->uri identifies a firing exactly; a firing after the reset
-    sees a fresh rx with no uri at all, which is likewise not the probe's own.
+    /action/notifier-probe installs a notifier that counts every firing not belonging to its own
+    request; /action/notifier-leaks reports the count. Zero is the invariant. The route is unique to
+    the probe, so rx->uri identifies a firing exactly; a firing after the reset sees a fresh rx with
+    no uri, which is likewise not the probe's own.
  */
 static volatile int notifierLeakCount;
 
@@ -8944,9 +8924,8 @@ PUBLIC int httpTestBenchInit(Http *http, MprModule *module)
 
     /*
         Scenario-test fixtures. actionHandler dispatches on an exact rx->pathInfo match, so each
-        needs its own entry -- a prefix will not do. /wsecho reuses testBenchWs rather than adding a
-        second echo: the callback is already correct and a copy would be one more thing to keep in
-        step.
+        needs its own entry; a prefix will not do. /wsecho reuses testBenchWs rather than adding a
+        second echo.
      */
     httpDefineAction("/action/stream", streamAction);
     httpDefineAction("/action/upload", uploadReportAction);
