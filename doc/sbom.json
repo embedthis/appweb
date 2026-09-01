@@ -3,9 +3,9 @@
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
   "serialNumber": "urn:uuid:dfabfa0c-0ab2-4719-8952-caf88ef52cbe",
-  "version": 2,
+  "version": 4,
   "metadata": {
-    "timestamp": "2026-08-24T11:00:16Z",
+    "timestamp": "2026-09-01T06:16:45Z",
     "tools": {
       "components": [
         {
@@ -62,11 +62,11 @@
     "properties": [
       {
         "name": "embedthis:vulnerability-scan",
-        "value": "Run 2026-08-24. npm components audited with \"npm audit\" (22 packages resolved, 0 advisories). The TLS provider is not shipped and carries no version here, so there is nothing to scan: see each provider component embedthis:version-authority. The Embedthis-authored components are first party - their known vulnerabilities are the APPWEB-SA-2026 advisory set and the issue tracker, not an external database."
+        "value": "Re-run 2026-09-01 at the release cut, superseding the 2026-08-24 result it agrees with. npm components audited with \"npm audit\" over a lockfile resolved from this package.json (22 packages resolved, 0 advisories at any severity, against @embedthis/ejscript 2.1.2 and @embedthis/testme 0.8.34). The repository carries no lockfile, so the scan resolves one into a scratch directory; that is why this answer is point-in-time and must be re-run whenever the release is re-cut. The TLS provider is not shipped and carries no version here, so there is nothing to scan: see each provider component embedthis:version-authority. The Embedthis-authored components are first party - their known vulnerabilities are the APPWEB-SA-2026 advisory set and the issue tracker, not an external database."
       },
       {
         "name": "embedthis:regenerated",
-        "value": "Timestamp refreshed and revision bumped at package rehearsal, 2026-08-24. Nothing generates this file: it is maintained by hand and must be reviewed against the shipped component set when the release is cut."
+        "value": "Timestamp refreshed and revision bumped to 4 on 2026-09-01 at the release cut (the timestamp above is UTC; local time was 2026-09-01 16:16 AEST). The component set was re-read against the paks actually imported - http 9.2.0, mpr 9.2.0, osdep 1.2.0, watchdog 1.0.0, makerom 1.0.0, certs 1.2.0. The shipped set is unchanged since revision 2; the two npm devDependencies moved, from 2.1.1 to 2.1.2 and from 0.8.32 to 0.8.34, and are recorded at what the lockfile resolves today. Both are scope excluded - test harness only, linked into no delivered binary - so the change alters no shipped component. The testme move matters to the test evidence rather than to the product: 0.8.34 fixed a defect by which a failed assertion did not necessarily fail its test, so assertion counts before and after it are not comparable. The recorded build-host OpenSSL was re-checked: libappweb links libssl.3 from /opt/homebrew/opt/openssl@3 and openssl version reports 3.6.3. Nothing generates this file: it is maintained by hand, make package does not touch it, and it must be reviewed against the shipped component set again whenever the release is re-cut. The vulnerability scan above is a point-in-time npm result and must be re-run then."
       }
     ]
   },
@@ -321,7 +321,7 @@
       "type": "library",
       "bom-ref": "ejscript",
       "name": "@embedthis/ejscript",
-      "version": "2.1.1",
+      "version": "2.1.2",
       "description": "Ejscript - used by the test harness only",
       "scope": "excluded",
       "licenses": [
@@ -331,7 +331,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40embedthis/ejscript@2.1.1",
+      "purl": "pkg:npm/%40embedthis/ejscript@2.1.2",
       "properties": [
         {
           "name": "embedthis:usage",
@@ -339,7 +339,7 @@
         },
         {
           "name": "embedthis:declared-range",
-          "value": "^2.1.1"
+          "value": "^2.1.2"
         }
       ]
     },
@@ -347,7 +347,7 @@
       "type": "library",
       "bom-ref": "testme",
       "name": "@embedthis/testme",
-      "version": "0.8.32",
+      "version": "0.8.34",
       "description": "TestMe unit test runner - used by the test harness only",
       "scope": "excluded",
       "licenses": [
@@ -357,7 +357,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40embedthis/testme@0.8.32",
+      "purl": "pkg:npm/%40embedthis/testme@0.8.34",
       "properties": [
         {
           "name": "embedthis:usage",
@@ -365,7 +365,7 @@
         },
         {
           "name": "embedthis:declared-range",
-          "value": "^0.8.32"
+          "value": "^0.8.33"
         }
       ]
     }

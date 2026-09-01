@@ -19,8 +19,8 @@
         "url": "https://www.embedthis.com/licensing/"
     },
     "devDependencies": {
-        "@embedthis/ejscript": "^2.1.1",
-        "@embedthis/testme": "^0.8.32"
+        "@embedthis/ejscript": "^2.1.2",
+        "@embedthis/testme": "^0.8.33"
     },
     "repository": "git://github.com/embedthis/appweb.git",
     "paks": {

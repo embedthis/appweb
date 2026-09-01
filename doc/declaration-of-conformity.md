@@ -6,8 +6,12 @@
 >
 > This document is drawn up in final form but has not been issued. Section 9 attests conformity with
 > CRA Annex I, which includes the requirement that the product be delivered without known exploitable
-> vulnerabilities. That requirement is not met at the time of writing: the manufacturer's own security
-> review has identified defects that are recorded, tracked and not yet repaired.
+> vulnerabilities. Every defect the manufacturer's own security review identified at that severity is
+> now repaired, verified, and covered by a regression test. The verification that was outstanding when
+> this notice was written is complete: the test suite passes on macOS, Linux and Windows at this
+> version, including under the load and longevity settings that exercise resource limits. The
+> declaration is unsigned solely because the release has not yet been issued. Lower-severity findings
+> remain open, are tracked, and are addressed under the manufacturer's stated support policy.
 >
 > Until it is signed, this is not a declaration. The product to which it refers must not be placed on
 > the market on the basis of this document.
@@ -87,8 +91,8 @@ Signed for and on behalf of EmbedThis Software:
 |---|---|
 | Place | Bentleigh, Victoria, Australia |
 | Date | [FILL: date of signature — not before the conditions in the status notice are met and the gate is re-run] |
-| Name | [FILL: signatory name] |
-| Title | [FILL: signatory title] |
+| Name | Michael O'Brien |
+| Title | Chief Executive Officer |
 
 [FILL: signature — this declaration is unsigned and therefore not valid. See the status
 notice at the head of this file.]
