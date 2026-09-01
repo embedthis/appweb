@@ -521,7 +521,13 @@ static void benchPut(BenchApp *app, Ticks duration, bool recordResults, MprJson 
             if (classDuration < 500) {
                 classDuration = 500;
             }
-            snprintf(url, sizeof(url), "%s/upload/test-%s.dat", httpEndpoint, fileClasses[i].name);
+            /*
+                /put/ is the route that accepts PUT -- "Methods add GET PUT DELETE" in appweb.conf,
+                writing into site/put, which cleanup.sh empties. /upload/ is not a route at all: it
+                is the UploadDir for multipart uploads through /test/, so every PUT here answered 404
+                and the benchmark reported errors it then blamed on the server.
+             */
+            snprintf(url, sizeof(url), "%s/put/test-%s.dat", httpEndpoint, fileClasses[i].name);
             app->testData = app->testDataArray[i];
             start = mprGetTicks();
             app->errorCount = 0;
@@ -737,7 +743,12 @@ static void benchActions(BenchApp *app, Ticks duration, bool recordResults, MprJ
     if (recordResults) {
         tinfo("Benchmarking action handlers...");
     }
-    snprintf(urls[0], sizeof(urls[0]), "%s/test/bench", httpEndpoint);
+    /*
+        Trailing slash required: testBenchHandler registers the action as "/test/bench/" and an action
+        is matched on the exact URI path, so "/test/bench" is a 404. Verified against a running server:
+        /test/bench answers 404 and /test/bench/ answers 200.
+     */
+    snprintf(urls[0], sizeof(urls[0]), "%s/test/bench/", httpEndpoint);
     totalResults = 2;  // 1 action x 2 modes (warm + cold)
 
     // Divide duration by 2 to account for warm + cold iterations

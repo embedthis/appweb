@@ -14,8 +14,7 @@ body a client library will not produce, and the straddle case needs the body div
 offset rather than wherever the client flushes.
 
 The routes they use are in `../appweb.conf` and `../proxy.conf`; the `/action/upload` reporting
-fixture is `src/modules/testBenchHandler.c`. See
-[`doc/features/scenario-tests/`](../../doc/features/scenario-tests/feature.md).
+fixture is `src/modules/testBenchHandler.c`.
 
 This directory previously held `test-sizes.es` and `test-cgi-upload.es`, manual Ejscript scripts for
 an Appweb 4 server. Nothing ran them and Ejscript is not part of Appweb; they were deleted rather

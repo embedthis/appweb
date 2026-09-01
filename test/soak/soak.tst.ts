@@ -1,11 +1,9 @@
 /*
     soak.tst.ts - A sustained mixed workload, and what the server's resource use does across it
 
-    The suite had no test that ran anything for a duration. Everything scales with request size or
-    request count -- stress/, security/dos.tst.ts, cgi-dos -- so nothing observed what happens to
-    memory, file descriptors or child processes over time. doc/compliance/traceability.md records the
-    consequence directly: SEC-013 (resource limits and DoS resilience) is Partial, annotated
-    "no load or DoS metrics captured as evidence". This produces those metrics.
+    Every other load test scales with request size or request count (stress/, security/dos.tst.ts,
+    cgi-dos), so none observes what happens to memory, file descriptors or child processes over
+    time. This produces the load and DoS metrics for SEC-013, resource limits and DoS resilience.
 
     WHAT IS AND IS NOT MEASURED. This samples the operating system's view of the process: resident
     memory, open descriptors, child processes. It cannot see inside the MPR heap, and a clean result

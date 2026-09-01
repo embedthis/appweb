@@ -23,7 +23,7 @@
 import {ttrue} from '@embedthis/testme'
 import {mkdirSync, rmSync, writeFileSync} from 'node:fs'
 import {resolve} from 'node:path'
-import {BIN, TESTDIR, waitForServer, workDir} from '../security/server'
+import {BIN, TESTDIR, waitForPortFree, waitForServer, workDir} from '../security/server'
 
 const PORT = 4527
 const REALM = 'example.com'
@@ -32,11 +32,26 @@ const REALM = 'example.com'
     Run appweb on a JSON configuration and return the diagnostic it exited with, or null if the
     configuration was accepted. Being killed after five seconds is not a rejection -- a server that started
     perfectly well must not be read as one.
+
+    Two things this has to get right, and it got both wrong before (10385).
+
+    Every call binds the same port, and each rejected configuration is parsed by a server that has already
+    created its listening endpoint. Killing that server and starting the next one immediately races the
+    release of the socket: kill() returns when the signal is delivered, not when the port is free. So wait
+    for the port before spawning.
+
+    And a server that cannot bind exits non-zero with a diagnostic, exactly like a server that refused the
+    configuration -- so the caller read "address already in use" as "the configuration was rejected". That
+    is a false pass on four of the six assertions here and a false failure on the other two, in a test whose
+    subject is a configuration that silently serves every client. Refuse to answer rather than answer
+    wrongly: a startup failure that is not about the configuration fails the test where it happens.
  */
 async function load(name: string, http: object): Promise<string | null> {
     let work = workDir(name)
     let conf = resolve(work, 'appweb.json')
     let killed = false
+
+    ttrue(await waitForPortFree(PORT), `port ${PORT} must be free before starting a server on it`)
 
     rmSync(work, {recursive: true, force: true})
     mkdirSync(work, {recursive: true})
@@ -57,6 +72,9 @@ async function load(name: string, http: object): Promise<string | null> {
         let error = server.stderr ? await new Response(server.stderr).text() : ''
         let status = await server.exited
         clearTimeout(timer)
+        if (!killed && status != 0 && /socket|address|bind|in use/i.test(error)) {
+            ttrue(false, `the server could not start for a reason unrelated to the configuration: ${error.trim()}`)
+        }
         return killed || status == 0 ? null : error
     } finally {
         server.kill('SIGKILL')

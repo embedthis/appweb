@@ -2,14 +2,9 @@
 #
 #   logging.tst.sh - Credentials must not reach the log (SEC-014)
 #
-#   doc/compliance/traceability.md records SEC-014 as the one security requirement with no
-#   executing verification: "No test asserts that a credential does not reach the log at any
-#   trace level." Its recorded mitigation is "header tracing off by default and requiring level 3;
-#   credentials not written by the auth path" (10072).
-#
-#   The first clause holds. The second does not, and this test is what found that: it is not the
-#   auth path that writes the credential, it is the header tracer, which writes the request header
-#   block verbatim without consulting a deny list. See 10131.
+#   SEC-014 asserts that a credential does not reach the log at any trace level. Header tracing is
+#   off by default and requires level 3, but the auth path is not the only writer: the header tracer
+#   writes the request header block verbatim without consulting a deny list.
 #
 #   Asserted as it currently behaves, so the leak cannot widen unnoticed, with the assertions that
 #   must replace it recorded alongside. Not fixed here -- this feature is test-only.

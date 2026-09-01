@@ -220,8 +220,8 @@ test/
 **Purpose**: ESP (Embedded Server Pages) framework testing
 
 **Subdirectories**:
-ESP is a **separate add-on product** and is not part of this repository -- see the project
-CLAUDE.md. Neither `src/esp` nor `test/esp` exists. The `esp/` tree this section used to describe,
+ESP is a **separate add-on product** and is not part of this repository -- see the top-level
+README. Neither `src/esp` nor `test/esp` exists. The `esp/` tree this section used to describe,
 including an `esp/websockets/` directory of thirteen WebSocket tests, was documentation for a layout
 that has not shipped here for years. WebSocket coverage lives in `ws/`; see below.
 
@@ -373,8 +373,8 @@ Uploads through the proxy are covered by `upload/handlers.tst.ts`, and proxied f
 
 **Tests**:
 - `boundary.tst.ts` - Every documented rejection path in `uploadFilter.c`, and the client-filename
-  policy. Pins [#10367](../doc/issues/tickets/10367.md): a malformed multipart gets no response and
-  the connection is held
+  policy. Pins the case where a malformed multipart gets no response and the connection is held for
+  the full inactivity timeout
 - `handlers.tst.ts` - The same upload behind `fileHandler`, `cgiHandler`, `fastHandler`,
   `proxyHandler` and PHP through CGI. The PHP arm runs when `php-cgi` is on `PATH`
 - `sizes.tst.ts` - Zero bytes upward, a boundary straddling a write, and `LimitUpload`
@@ -408,8 +408,9 @@ against a server with backpressure removed.
 - `close.tst.c` - The close handshake: valid and reserved status codes, UTF-8 reasons
 - `control.tst.c` - Ping/pong, the 125-byte control limit, fragmented control frames, reserved opcodes
 - `message.tst.c` - Fragmentation and reassembly, opcode sequencing, UTF-8 validation,
-  `LimitWebSocketsMessage`. Pins [#10370](../doc/issues/tickets/10370.md) and
-  [#10099](../doc/issues/tickets/10099.md)
+  `LimitWebSocketsMessage`. Pins two defects: the message cap bounding a frame rather than a
+  message, so fragmentation evades it, and an unmasked client frame never being rejected (RFC 6455
+  5.1)
 - `flow.tst.c` - A 1MB fragmented message echoed to a client reading 16K at a time
 - `limit-websockets.tst.ts` - `LimitWebSockets` caps concurrent upgrades
 - `websockets.tst.ts` - A conventional client opens and closes on the primary endpoint
@@ -438,7 +439,7 @@ baseline.
 **Duration by depth**: 3s, 10s, 30s, 60s, 120s, 240s, 480s, 900s, 1800s, 3600s. Depth 0 is a smoke
 test of the harness; the real runs are `tm --depth 3 soak` and above, invoked by hand.
 
-This produces the load evidence `doc/compliance/traceability.md` records as SEC-013's gap. It sees the
+This produces the load evidence for SEC-013, resource limits and DoS resilience. It sees the
 operating system's view of the process only -- it cannot see inside the MPR heap, and a clean result
 is not a statement that the server does not leak. See `leak/valgrind.tst.ts` for the same limit from
 the other side.
@@ -864,8 +865,7 @@ When adding new tests:
 
 - [TestMe Documentation](https://www.embedthis.com/testme/) (if available)
 - [Appweb Documentation](https://www.embedthis.com/appweb/doc/)
-- [Build Guide](../CLAUDE.md)
-- [Development Procedures](../AI/procedures/PROCEDURE.md)
+- [Build Guide](../README.md)
 
 ---
 

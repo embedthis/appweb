@@ -44,7 +44,7 @@ export async function send(request: string, marker: string, detectClose: boolean
     s.connect(HTTP.address)
     try {
         await s.write(request)
-        for (let i = 0; i < 20 && !response.toString().includes(marker); i++) {
+        for (let i = 0; i < 20 && !dechunk(response.toString()).includes(marker); i++) {
             if ((await s.read(response, -1)) == null) {
                 closed = true
                 break
@@ -60,6 +60,39 @@ export async function send(request: string, marker: string, detectClose: boolean
     }
     s.close()
     return {text: response.toString(), closed}
+}
+
+/*
+    Decode a chunked body so a marker matches the content a client would see rather than the wire bytes.
+    A chunk-size line can land in the middle of the marker, and where that boundary falls depends on the
+    size of the CGI environment dump, so a raw substring match passes or fails by luck.
+
+    Tolerates a truncated stream: this runs on a partially read response while deciding whether to keep
+    reading, so it decodes as far as the bytes allow and returns that. A response that is not chunked,
+    or whose headers have not arrived yet, is returned unchanged.
+ */
+export function dechunk(text: string): string {
+    let sep = text.indexOf('\r\n\r\n')
+    if (sep < 0 || !/^transfer-encoding:[ \t]*chunked/im.test(text.slice(0, sep))) {
+        return text
+    }
+    let headers = text.slice(0, sep + 4)
+    let body = ''
+    let pos = sep + 4
+    while (pos < text.length) {
+        let eol = text.indexOf('\r\n', pos)
+        if (eol < 0) {
+            break
+        }
+        //  NaN from a truncated size line, or 0 for the terminating chunk, both end the decode
+        let size = parseInt(text.slice(pos, eol).split(';')[0], 16)
+        if (!(size > 0)) {
+            break
+        }
+        body += text.slice(eol + 2, eol + 2 + size)
+        pos = eol + 2 + size + 2
+    }
+    return headers + body
 }
 
 /*
@@ -89,9 +122,10 @@ export async function reject(name: string, request: string, status: string): Pro
  */
 export async function accept(name: string, request: string, marker: string): Promise<void> {
     let reply = await send(request, marker)
-    if (!reply.text.includes('200 OK') || !reply.text.includes(marker)) {
+    let body = dechunk(reply.text)
+    if (!reply.text.includes('200 OK') || !body.includes(marker)) {
         console.log(name + ' expected a 200 containing "' + marker + '" but got:\n' + reply.text)
     }
     ttrue(reply.text.includes('200 OK'))
-    ttrue(reply.text.includes(marker))
+    ttrue(body.includes(marker))
 }

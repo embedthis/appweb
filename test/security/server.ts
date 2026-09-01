@@ -54,16 +54,46 @@ export async function removeDir(dir: string, exited?: Promise<unknown>): Promise
     server.
  */
 async function portInUse(port: number): Promise<boolean> {
+    /*
+        Ask by binding, not by connecting.
+
+        This used to connect and treat a successful connect as "in use". It never once returned true.
+        Against a listening socket the connect produced no 'connect' event inside the 500ms window and
+        the timeout branch answered "free"; against a closed port it answered "free" as well. So both
+        callers -- withServer's orphan guard, which exists to refuse to run against a server from an
+        earlier run, and waitForPortFree below -- have been asking a question that always came back the
+        same way. A check that cannot fail is worse than no check: it reads as coverage.
+
+        Binding is decisive. If the address is taken the listen fails with EADDRINUSE, which is exactly
+        the condition the caller is about to hit.
+     */
     return await new Promise(resolvePromise => {
-        let socket = net.connect(port, '127.0.0.1')
-        let done = (inUse: boolean) => {
-            socket.destroy()
-            resolvePromise(inUse)
-        }
-        socket.setTimeout(500, () => done(false))
-        socket.on('connect', () => done(true))
-        socket.on('error', () => done(false))
+        let probe = net.createServer()
+        probe.once('error', (err: NodeJS.ErrnoException) => {
+            resolvePromise(err.code == 'EADDRINUSE' || err.code == 'EACCES')
+        })
+        probe.once('listening', () => probe.close(() => resolvePromise(false)))
+        probe.listen(port, '127.0.0.1')
     })
+}
+
+/*
+    Wait for a port to become free, and say whether it did.
+
+    A test that starts a server, kills it, and starts another on the same port is racing the kernel:
+    kill() returns when the signal is delivered, not when the listening socket is released, so the
+    second server can fail to bind. Alone that race is almost never lost and the test looks solid; in
+    a full-suite run it is lost often enough to produce a failure that passes on its own, which is the
+    least useful kind of test failure there is.
+ */
+export async function waitForPortFree(port: number, tries = 40): Promise<boolean> {
+    for (let i = 0; i < tries; i++) {
+        if (!(await portInUse(port))) {
+            return true
+        }
+        await Bun.sleep(100)
+    }
+    return false
 }
 
 export async function waitForServer(port: number): Promise<boolean> {
