@@ -122,8 +122,19 @@ PUBLIC int main(int argc, char *argv[])
     if (smatch(cipher, "md5")) {
         encodedPassword = mprGetMD5(sfmt("%s:%s:%s", username, realm, password));
     } else {
-        /* This uses the more secure blowfish cipher */
+        /*
+            Blowfish (BF2). Hash the user and realm with the password so a stolen hash cannot be
+            reused for another account or realm. BF2 digests the whole string first, so the added
+            user and realm text does not crowd out the password.
+         */
         encodedPassword = mprMakePassword(sfmt("%s:%s:%s", username, realm, password), 16, 128);
+    }
+    /*
+        mprMakePassword returns 0 when the salt fails or the input exceeds the password limit.
+     */
+    if (encodedPassword == 0) {
+        mprLog("error authpass", 0, "Cannot encode password for user \"%s\"", username);
+        exit(9);
     }
     if (authFile) {
         httpRemoveUser(auth, username);
@@ -209,7 +220,7 @@ static void printUsage(cchar *programName)
 {
     mprEprintf("usage: %s [--cipher cipher] [--file path] [--password password] realm user roles...\n"
                "Options:\n"
-               "    --cipher md5|blowfish Select the encryption cipher. Defaults to md5\n"
+               "    --cipher md5|blowfish Select the encryption cipher. Defaults to blowfish\n"
                "    --file filename       Modify the password file\n"
                "    --password password   Use the specified password\n"
                "\n", programName);
