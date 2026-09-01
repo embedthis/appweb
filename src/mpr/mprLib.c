@@ -1,8 +1,1023 @@
 /*
- * Embedthis MPR Library Source 9.0.5
+    mprLib.c -- MPR Library Source
+
+    This file is a catenation of all the source code. Amalgamating into a
+    single file makes embedding simpler and the resulting application faster,
+    by using compiler optimization within the MPR library.
+
+    Prepared by: buildLib.sh
  */
 
 #include "mpr.h"
+
+#if ME_COM_MPR
+
+
+/********* Start of file src/mpr.c ************/
+
+/*
+    mpr.c - Multithreaded Portable Runtime (MPR). Initialization, start/stop and control of the MPR.
+
+    Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+/********************************** Includes **********************************/
+
+#include    "mpr.h"
+
+/*********************************** Locals ***********************************/
+/*
+    Define an illegal exit status value
+ */
+#define NO_STATUS 0x100000
+
+static int mprExitStatus;
+static int mprState;
+
+/**************************** Forward Declarations ****************************/
+
+static int initStdio(Mpr *mpr, MprFileSystem *fs);
+static void manageMpr(Mpr *mpr, int flags);
+static void serviceEventsThread(void *data, MprThread *tp);
+static void setArgs(Mpr *mpr, int argc, char **argv);
+
+/************************************* Code ***********************************/
+/*
+    Create and initialize the MPR service.
+ */
+PUBLIC Mpr *mprCreate(int argc, char **argv, int flags)
+{
+    Mpr           *mpr;
+    MprFileSystem *fs;
+
+    srand((uint) time(NULL));
+
+    if (flags & MPR_DAEMON) {
+        mprDaemon();
+    }
+    mprAtomicOpen();
+    if ((mpr = mprCreateMemService((MprManager) manageMpr, flags)) == 0) {
+        assert(mpr);
+        return 0;
+    }
+    mpr->flags = flags;
+    mpr->start = mprGetTime();
+    mpr->exitStrategy = 0;
+    mpr->emptyString = sclone("");
+    mpr->oneString = sclone("1");
+    mpr->idleCallback = mprServicesAreIdle;
+    mpr->mimeTypes = mprCreateMimeTypes(NULL);
+    mpr->terminators = mprCreateList(0, MPR_LIST_STATIC_VALUES);
+    mpr->keys = mprCreateHash(0, 0);
+    mpr->verifySsl = 1;
+    mpr->fileSystems = mprCreateList(0, 0);
+
+    fs = mprCreateDiskFileSystem("/");
+    mprAddFileSystem(fs);
+    initStdio(mpr, fs);
+
+    setArgs(mpr, argc, argv);
+    mprCreateOsService();
+    mprCreateTimeService();
+    mpr->mutex = mprCreateLock();
+    mpr->spin = mprCreateSpinLock();
+
+    mprCreateLogService();
+    mprCreateCacheService();
+
+    mpr->signalService = mprCreateSignalService();
+    mpr->threadService = mprCreateThreadService();
+    mpr->moduleService = mprCreateModuleService();
+    mpr->eventService = mprCreateEventService();
+    mpr->cmdService = mprCreateCmdService();
+    mpr->workerService = mprCreateWorkerService();
+    mpr->waitService = mprCreateWaitService();
+    mpr->socketService = mprCreateSocketService();
+    mpr->pathEnv = sclone(getenv("PATH"));
+    mpr->cond = mprCreateCond();
+    mpr->stopCond = mprCreateCond();
+
+    mpr->dispatcher = mprCreateDispatcher("main", 0);
+    mpr->nonBlock = mprCreateDispatcher("nonblock", 0);
+    mprSetDispatcherImmediate(mpr->nonBlock);
+
+    if (flags & MPR_USER_EVENTS_THREAD) {
+        if (!(flags & MPR_NO_WINDOW)) {
+            /* Used by apps that need to use FindWindow after calling mprCreate() (appwebMonitor) */
+            mprSetWindowsThread(0);
+        }
+    } else {
+        mprStartEventsThread();
+    }
+    if (!(flags & MPR_DELAY_GC_THREAD)) {
+        mprStartGCService();
+    }
+    mprState = MPR_CREATED;
+    mprExitStatus = NO_STATUS;
+
+    if (MPR->hasError || mprHasMemError()) {
+        return 0;
+    }
+    return mpr;
+}
+
+
+static void manageMpr(Mpr *mpr, int flags)
+{
+    if (flags & MPR_MANAGE_MARK) {
+        mprMark(mpr->logFile);
+        mprMark(mpr->mimeTypes);
+        mprMark(mpr->timeTokens);
+        mprMark(mpr->keys);
+        mprMark(mpr->stdError);
+        mprMark(mpr->stdInput);
+        mprMark(mpr->stdOutput);
+        mprMark(mpr->appPath);
+        mprMark(mpr->appDir);
+        /*
+            Argv will do a single allocation into argv == argBuf. May reallocate the program name in argv[0]
+         */
+        mprMark(mpr->argv);
+        if (mpr->argv) {
+            mprMark(mpr->argv[0]);
+        }
+        mprMark(mpr->logPath);
+        mprMark(mpr->pathEnv);
+        mprMark(mpr->name);
+        mprMark(mpr->title);
+        mprMark(mpr->version);
+        mprMark(mpr->domainName);
+        mprMark(mpr->hostName);
+        mprMark(mpr->ip);
+        mprMark(mpr->serverName);
+        mprMark(mpr->cmdService);
+        mprMark(mpr->eventService);
+        mprMark(mpr->fileSystems);
+        mprMark(mpr->moduleService);
+        mprMark(mpr->osService);
+        mprMark(mpr->signalService);
+        mprMark(mpr->socketService);
+        mprMark(mpr->threadService);
+        mprMark(mpr->workerService);
+        mprMark(mpr->waitService);
+        mprMark(mpr->dispatcher);
+        mprMark(mpr->nonBlock);
+        mprMark(mpr->appwebService);
+        mprMark(mpr->ediService);
+        mprMark(mpr->ejsService);
+        mprMark(mpr->espService);
+        mprMark(mpr->httpService);
+        mprMark(mpr->terminators);
+        mprMark(mpr->mutex);
+        mprMark(mpr->spin);
+        mprMark(mpr->cond);
+        mprMark(mpr->romfs);
+        mprMark(mpr->stopCond);
+        mprMark(mpr->emptyString);
+        mprMark(mpr->oneString);
+    }
+}
+
+
+static int initStdio(Mpr *mpr, MprFileSystem *fs)
+{
+    if ((mpr->stdError = mprAllocStruct(MprFile)) == 0) {
+        return MPR_ERR_MEMORY;
+    }
+    mprSetName(mpr->stdError, "stderr");
+    mpr->stdError->fd = 2;
+    mpr->stdError->fileSystem = fs;
+    mpr->stdError->mode = O_WRONLY;
+
+    if ((mpr->stdInput = mprAllocStruct(MprFile)) == 0) {
+        return MPR_ERR_MEMORY;
+    }
+    mprSetName(mpr->stdInput, "stdin");
+    mpr->stdInput->fd = 0;
+    mpr->stdInput->fileSystem = fs;
+    mpr->stdInput->mode = O_RDONLY;
+
+    if ((mpr->stdOutput = mprAllocStruct(MprFile)) == 0) {
+        return MPR_ERR_MEMORY;
+    }
+    mprSetName(mpr->stdOutput, "stdout");
+    mpr->stdOutput->fd = 1;
+    mpr->stdOutput->fileSystem = fs;
+    mpr->stdOutput->mode = O_WRONLY;
+    return 0;
+}
+
+
+/*
+    The monitor event is invoked from mprShutdown() for graceful shutdowns if the application has requests still
+       running.
+    This event monitors the application to see when it becomes is idle.
+    WARNING: this races with other threads
+ */
+static void shutdownMonitor(void *data, MprEvent *event)
+{
+    MprTicks remaining;
+
+    if (mprIsIdle(1)) {
+        if (mprState <= MPR_STOPPING) {
+            mprLog("info mpr", 2, "Shutdown proceeding, system is idle");
+            mprState = MPR_STOPPED;
+        }
+        return;
+    }
+    remaining = mprGetRemainingTicks(MPR->shutdownStarted, MPR->exitTimeout);
+    if (remaining <= 0) {
+        if (MPR->exitStrategy & MPR_EXIT_SAFE && mprCancelShutdown()) {
+            mprLog("warn mpr", 2, "Shutdown cancelled due to continuing requests");
+        } else {
+            mprLog("warn mpr", 6, "Timeout while waiting for requests to complete");
+            if (mprState <= MPR_STOPPING) {
+                mprState = MPR_STOPPED;
+            }
+        }
+    } else {
+        if (!mprGetDebugMode()) {
+            mprLog("info mpr", 2, "Waiting for requests to complete, %lld secs remaining ...", remaining / TPS);
+        }
+        mprRescheduleEvent(event, 1000);
+    }
+}
+
+
+/*
+    Start shutdown of the Mpr. This sets the state to stopping and invokes the shutdownMonitor. This is done for
+    all shutdown strategies regardless. Immediate shutdowns must still give threads some time to exit.
+    This routine does no destructive actions.
+    WARNING: this races with other threads.
+ */
+PUBLIC void mprShutdown(int how, int exitStatus, MprTicks timeout)
+{
+    MprTerminator terminator;
+    int           next;
+
+    mprGlobalLock();
+    if (mprState >= MPR_STOPPING) {
+        mprGlobalUnlock();
+        return;
+    }
+    mprState = MPR_STOPPING;
+    mprSignalMultiCond(MPR->stopCond);
+    mprGlobalUnlock();
+
+    MPR->exitStrategy = how;
+    mprExitStatus = exitStatus;
+    MPR->exitTimeout = (timeout >= 0) ? timeout : MPR->exitTimeout;
+    if (mprGetDebugMode()) {
+        MPR->exitTimeout = MPR_MAX_TIMEOUT;
+    }
+    MPR->shutdownStarted = mprGetTicks();
+
+    if (how & MPR_EXIT_RESTART) {
+        mprLog("info mpr", 3, "Abort with restart.");
+        mprRestart();
+        /* No continue */
+    } else if (how & MPR_EXIT_ABORT) {
+        mprLog("info mpr", 3, "Abortive exit.");
+        exit(exitStatus);
+    }
+
+    if (!mprIsIdle(0)) {
+        mprLog("info mpr", 6, "Application exit, waiting for existing requests to complete.");
+        mprCreateTimerEvent(NULL, "shutdownMonitor", 0, shutdownMonitor, 0, MPR_EVENT_QUICK);
+    }
+    mprWakeDispatchers();
+    mprWakeNotifier();
+
+    /*
+        Note: terminators must take not destructive actions for the MPR_STOPPED state
+     */
+    for (ITERATE_ITEMS(MPR->terminators, terminator, next)) {
+        (terminator) (mprState, how, mprExitStatus & ~NO_STATUS);
+    }
+}
+
+
+PUBLIC bool mprCancelShutdown()
+{
+    mprGlobalLock();
+    if (mprState == MPR_STOPPING) {
+        mprState = MPR_STARTED;
+        mprGlobalUnlock();
+        return 1;
+    }
+    mprGlobalUnlock();
+    return 0;
+}
+
+
+/*
+    Destroy the Mpr and all services
+    If the application has a user events thread and mprShutdown was called, then we will come here when already idle.
+    This routine will call service terminators to allow them to shutdown their services in an orderly manner
+ */
+PUBLIC bool mprDestroy()
+{
+    MprTerminator terminator;
+    MprTicks      timeout;
+    int           i, next;
+
+    if (mprState < MPR_STOPPING) {
+        mprShutdown(MPR->exitStrategy, mprExitStatus, MPR->exitTimeout);
+    }
+    mprGC(MPR_GC_FORCE | MPR_GC_COMPLETE);
+
+    timeout = MPR->exitTimeout;
+    if (MPR->shutdownStarted) {
+        timeout -= (mprGetTicks() - MPR->shutdownStarted);
+    }
+    /*
+        Wait for events thread to exit and the app to become idle
+     */
+    while (!mprIsIdle(0) || MPR->eventing) {
+        mprWakeNotifier();
+        mprWaitForCond(MPR->cond, 10);
+        if (mprGetRemainingTicks(MPR->shutdownStarted, timeout) <= 0) {
+            break;
+        }
+    }
+    if (!mprIsIdle(0) || MPR->eventing) {
+        if (MPR->exitStrategy & MPR_EXIT_SAFE) {
+            /* Note: Pending outside events will pause GC which will make mprIsIdle return false */
+            mprLog("warn mpr", 2, "Cancel termination due to continuing requests, application resumed.");
+            mprCancelShutdown();
+        } else if (MPR->exitTimeout > 0) {
+            /* If a non-zero graceful timeout applies, always exit with non-zero status */
+            exit(mprExitStatus != NO_STATUS ? mprExitStatus : 1);
+        } else {
+            exit(mprExitStatus & ~NO_STATUS);
+        }
+        return 0;
+    }
+    mprGlobalLock();
+    if (mprState == MPR_STARTED) {
+        mprGlobalUnlock();
+        /* User cancelled shutdown */
+        return 0;
+    }
+    /*
+        Point of no return
+     */
+    mprState = MPR_DESTROYING;
+    mprGlobalUnlock();
+
+    for (ITERATE_ITEMS(MPR->terminators, terminator, next)) {
+        (terminator) (mprState, MPR->exitStrategy, mprExitStatus & ~NO_STATUS);
+    }
+    mprStopWorkers();
+    mprStopCmdService();
+    mprStopModuleService();
+    mprStopEventService();
+    mprStopThreadService();
+    mprStopWaitService();
+
+    /*
+        Run GC to finalize all memory until we are not freeing any memory. This IS deterministic.
+     */
+    for (i = 0; i < 25; i++) {
+        if (mprGC(MPR_GC_FORCE | MPR_GC_COMPLETE) == 0) {
+            break;
+        }
+    }
+    mprState = MPR_DESTROYED;
+
+    if (MPR->exitStrategy & MPR_EXIT_RESTART) {
+        mprLog("info mpr", 2, "Restarting");
+    }
+    mprStopModuleService();
+    mprStopSignalService();
+    mprStopGCService();
+    mprStopOsService();
+
+    if (MPR->exitStrategy & MPR_EXIT_RESTART) {
+        mprRestart();
+    }
+    mprDestroyMemService();
+    return 1;
+}
+
+
+static void setArgs(Mpr *mpr, int argc, char **argv)
+{
+    cchar *appPath;
+
+    if (argv) {
+#if ME_WIN_LIKE
+        if (argc >= 2 && strstr(argv[1], "--cygroot") != 0) {
+            /*
+                Cygwin shebang is broken. It will catenate args into argv[1]
+             */
+            char *args, *arg0;
+            int  i;
+            args = argv[1];
+            for (i = 2; i < argc; i++) {
+                args = sjoin(args, " ", argv[i], NULL);
+            }
+            arg0 = argv[0];
+            argc = mprMakeArgv(args, &mpr->argBuf, MPR_ARGV_ARGS_ONLY);
+            argv = mpr->argBuf;
+            argv[0] = arg0;
+            mpr->argv = (cchar**) argv;
+        } else {
+            mpr->argv = mprAllocZeroed(sizeof(void*) * (argc + 1));
+            memcpy((char*) mpr->argv, argv, sizeof(void*) * argc);
+        }
+#else
+        mpr->argv = mprAllocZeroed(sizeof(void*) * (argc + 1));
+        memcpy((char*) mpr->argv, argv, sizeof(void*) * argc);
+#endif
+        mpr->argc = argc;
+
+        appPath = mprGetAppPath();
+        if (smatch(appPath, ".")) {
+            mpr->argv[0] = sclone(ME_NAME);
+        } else if (mprIsPathAbs(mpr->argv[0])) {
+            mpr->argv[0] = sclone(mprGetAppPath());
+        } else {
+            mpr->argv[0] = mprGetAppPath();
+        }
+    } else {
+        mpr->name = sclone(ME_NAME);
+        mpr->argv = mprAllocZeroed(2 * sizeof(void*));
+        mpr->argv[0] = mpr->name;
+        mpr->argc = 0;
+    }
+    mpr->name = mprTrimPathExt(mprGetPathBase(mpr->argv[0]));
+    mpr->title = sfmt("%s %s", stitle(ME_COMPANY), stitle(mpr->name));
+    mpr->version = sclone(ME_VERSION);
+}
+
+
+PUBLIC int mprGetExitStatus()
+{
+    return mprExitStatus & ~NO_STATUS;
+}
+
+
+PUBLIC void mprSetExitStatus(int status)
+{
+    mprExitStatus = status;
+}
+
+
+PUBLIC void mprAddTerminator(MprTerminator terminator)
+{
+    mprAddItem(MPR->terminators, terminator);
+}
+
+
+PUBLIC void mprRestart()
+{
+#if ME_UNIX_LIKE
+    int i;
+
+    for (i = 3; i < MPR_MAX_FILE; i++) {
+        close(i);
+    }
+    execv(MPR->argv[0], (char*const *) MPR->argv);
+
+    /*
+        Last-ditch trace. Can only use stdout. Logging may be closed.
+     */
+    printf("Failed to exec errno %d: ", errno);
+    for (i = 0; MPR->argv[i]; i++) {
+        printf("%s ", MPR->argv[i]);
+    }
+    printf("\n");
+#else
+    mprLog("error mpr", 0, "mprRestart not supported on this platform");
+#endif
+}
+
+
+PUBLIC int mprStart()
+{
+    int rc;
+
+    rc = mprStartOsService();
+    rc += mprStartModuleService();
+    rc += mprStartWorkerService();
+    if (rc != 0) {
+        mprLog("error mpr", 0, "Cannot start MPR services");
+        return MPR_ERR_CANT_INITIALIZE;
+    }
+    mprState = MPR_STARTED;
+    return 0;
+}
+
+
+PUBLIC int mprStartEventsThread()
+{
+    MprThread *tp;
+    MprTicks  timeout;
+
+    if ((tp = mprCreateThread("events", serviceEventsThread, NULL, 0)) == 0) {
+        MPR->hasError = 1;
+    } else {
+        MPR->threadService->eventsThread = tp;
+        MPR->cond = mprCreateCond();
+        mprStartThread(tp);
+        timeout = mprGetDebugMode() ? MPR_MAX_TIMEOUT : MPR_TIMEOUT_START_TASK;
+        mprWaitForCond(MPR->cond, timeout);
+    }
+    return 0;
+}
+
+
+static void serviceEventsThread(void *data, MprThread *tp)
+{
+    mprLog("info mpr", 2, "Service thread started");
+    mprSetWindowsThread(tp);
+    mprSignalCond(MPR->cond);
+    mprServiceEvents(-1, 0);
+    mprRescheduleDispatcher(MPR->dispatcher);
+}
+
+
+/*
+    Services should call this to determine if they should accept new services
+ */
+PUBLIC bool mprShouldAbortRequests()
+{
+    return mprIsStopped();
+}
+
+
+/*
+    Deny new work while the application is stopping, or while memory use is at or above the configured
+    limit. With no limit configured, which is the default, only the stopping state denies.
+ */
+PUBLIC bool mprShouldDenyNewRequests()
+{
+    return mprIsStopping() || mprIsMemoryOverLimit();
+}
+
+
+PUBLIC bool mprIsStopping()
+{
+    return mprState >= MPR_STOPPING;
+}
+
+
+PUBLIC bool mprIsStopped()
+{
+    return mprState >= MPR_STOPPED;
+}
+
+
+PUBLIC bool mprIsDestroying()
+{
+    return mprState >= MPR_DESTROYING;
+}
+
+
+PUBLIC bool mprIsDestroyed()
+{
+    return mprState >= MPR_DESTROYED;
+}
+
+
+PUBLIC int mprGetState()
+{
+    return mprState;
+}
+
+
+PUBLIC void mprSetState(int state)
+{
+    // OPT - Don't need lock around simple assignment
+    mprGlobalLock();
+    mprState = state;
+    mprGlobalUnlock();
+}
+
+
+
+/*
+    Test if the Mpr services are idle. Use mprIsIdle to determine if the entire process is idle.
+    Note: this counts worker threads but ignores other threads created via mprCreateThread
+ */
+PUBLIC bool mprServicesAreIdle(bool traceRequests)
+{
+    bool idle;
+
+    /*
+        Only test top level services. Dispatchers may have timers scheduled, but that is okay. If not, users can install
+        their own idleCallback.
+     */
+    idle = mprGetBusyWorkerCount() == 0 && mprGetActiveCmdCount() == 0;
+    if (!idle && traceRequests) {
+        mprDebug("mpr", 3, "Services are not idle: cmds %d, busy threads %d, eventing %d",
+                 mprGetListLength(MPR->cmdService->cmds), mprGetListLength(
+                     MPR->workerService->busyThreads), MPR->eventing);
+    }
+    return idle;
+}
+
+
+PUBLIC bool mprIsIdle(bool traceRequests)
+{
+    return (MPR->idleCallback)(traceRequests);
+}
+
+
+/*
+    Parse the args and return the count of args. If argv is NULL, the args are parsed read-only. If argv is set,
+    then the args will be extracted, back-quotes removed and argv will be set to point to all the args.
+    NOTE: this routine does not allocate.
+ */
+PUBLIC int mprParseArgs(char *args, char **argv, int maxArgc)
+{
+    char *dest, *src, *start;
+    int  quote, argc;
+
+    /*
+        Example     "showColors" red 'light blue' "yellow white" 'Cannot \"render\"'
+        Becomes:    ["showColors", "red", "light blue", "yellow white", "Cannot \"render\""]
+     */
+    for (argc = 0, src = args; src && *src != '\0' && argc < maxArgc; argc++) {
+        while (isspace((uchar) * src)) {
+            src++;
+        }
+        if (*src == '\0') {
+            break;
+        }
+        start = dest = src;
+        if (*src == '"' || *src == '\'') {
+            quote = *src;
+            src++;
+            dest++;
+        } else {
+            quote = 0;
+        }
+        if (argv) {
+            argv[argc] = src;
+        }
+        while (*src) {
+            if (*src == '\\' && src[1] && (src[1] == '\\' || src[1] == '"' || src[1] == '\'')) {
+                src++;
+            } else {
+                if (quote) {
+                    if (*src == quote && !(src > start && src[-1] == '\\')) {
+                        break;
+                    }
+                } else if (*src == ' ') {
+                    break;
+                }
+            }
+            if (argv) {
+                *dest++ = *src;
+            }
+            src++;
+        }
+        if (*src != '\0') {
+            src++;
+        }
+        if (argv) {
+            *dest++ = '\0';
+        }
+    }
+    return argc;
+}
+
+
+/*
+    Make an argv array. All args are in a single memory block of which argv points to the start.
+    Set MPR_ARGV_ARGS_ONLY if not passing in a program name.
+    Always returns and argv[0] reserved for the program name or empty string.  First arg starts at argv[1].
+ */
+PUBLIC int mprMakeArgv(cchar *command, cchar ***argvp, int flags)
+{
+    char  **argv, *vector, *args;
+    ssize len;
+    int   argc;
+
+    assert(command);
+    if (!command) {
+        return MPR_ERR_BAD_ARGS;
+    }
+    /*
+        Allocate one vector for argv and the actual args themselves
+     */
+    len = slen(command) + 1;
+    argc = mprParseArgs((char*) command, NULL, INT_MAX);
+    if (flags & MPR_ARGV_ARGS_ONLY) {
+        argc++;
+    }
+    if ((vector = (char*) mprAlloc(((argc + 1) * sizeof(char*)) + len)) == 0) {
+        assert(!MPR_ERR_MEMORY);
+        return MPR_ERR_MEMORY;
+    }
+    args = &vector[(argc + 1) * sizeof(char*)];
+    strcpy(args, command);
+    argv = (char**) vector;
+
+    if (flags & MPR_ARGV_ARGS_ONLY) {
+        mprParseArgs(args, &argv[1], argc);
+        argv[0] = MPR->emptyString;
+    } else {
+        mprParseArgs(args, argv, argc);
+    }
+    argv[argc] = 0;
+    *argvp = (cchar**) argv;
+    return argc;
+}
+
+
+PUBLIC MprIdleCallback mprSetIdleCallback(MprIdleCallback idleCallback)
+{
+    MprIdleCallback old;
+
+    old = MPR->idleCallback;
+    MPR->idleCallback = idleCallback;
+    return old;
+}
+
+
+PUBLIC int mprSetAppName(cchar *name, cchar *title, cchar *version)
+{
+    char *cp;
+
+    if (name) {
+        if ((MPR->name = (char*) mprGetPathBase(name)) == 0) {
+            return MPR_ERR_CANT_ALLOCATE;
+        }
+        if ((cp = strrchr(MPR->name, '.')) != 0) {
+            *cp = '\0';
+        }
+    }
+    if (title) {
+        if ((MPR->title = sclone(title)) == 0) {
+            return MPR_ERR_CANT_ALLOCATE;
+        }
+    }
+    if (version) {
+        if ((MPR->version = sclone(version)) == 0) {
+            return MPR_ERR_CANT_ALLOCATE;
+        }
+    }
+    return 0;
+}
+
+
+PUBLIC cchar *mprGetAppName()
+{
+    return MPR->name;
+}
+
+
+PUBLIC cchar *mprGetAppTitle()
+{
+    return MPR->title;
+}
+
+
+/*
+    Full host name with domain. E.g. "server.domain.com"
+ */
+PUBLIC void mprSetHostName(cchar *s)
+{
+    MPR->hostName = sclone(s);
+}
+
+
+/*
+    Return the fully qualified host name
+ */
+PUBLIC cchar *mprGetHostName()
+{
+    return MPR->hostName;
+}
+
+
+/*
+    Server name portion (no domain name)
+ */
+PUBLIC void mprSetServerName(cchar *s)
+{
+    MPR->serverName = sclone(s);
+}
+
+
+PUBLIC cchar *mprGetServerName()
+{
+    return MPR->serverName;
+}
+
+
+PUBLIC void mprSetDomainName(cchar *s)
+{
+    MPR->domainName = sclone(s);
+}
+
+
+PUBLIC cchar *mprGetDomainName()
+{
+    return MPR->domainName;
+}
+
+
+/*
+    Set the IP address
+ */
+PUBLIC void mprSetIpAddr(cchar *s)
+{
+    MPR->ip = sclone(s);
+}
+
+
+/*
+    Return the IP address
+ */
+PUBLIC cchar *mprGetIpAddr()
+{
+    return MPR->ip;
+}
+
+
+PUBLIC cchar *mprGetAppVersion()
+{
+    return MPR->version;
+}
+
+
+PUBLIC bool mprGetDebugMode()
+{
+    return MPR->debugMode;
+}
+
+
+PUBLIC void mprSetDebugMode(bool on)
+{
+    MPR->debugMode = on;
+}
+
+
+PUBLIC MprDispatcher *mprGetDispatcher()
+{
+    return MPR->dispatcher;
+}
+
+
+PUBLIC MprDispatcher *mprGetNonBlockDispatcher()
+{
+    return MPR->nonBlock;
+}
+
+
+PUBLIC cchar *mprCopyright(void)
+{
+    return "Copyright (c) Embedthis Software. All Rights Reserved.\n"
+           "Copyright (c) Michael O'Brien. All Rights Reserved.";
+}
+
+
+PUBLIC int mprGetEndian()
+{
+    char *probe;
+    int  test;
+
+    test = 1;
+    probe = (char*) &test;
+    return (*probe == 1) ? ME_LITTLE_ENDIAN : ME_BIG_ENDIAN;
+}
+
+
+PUBLIC char *mprEmptyString()
+{
+    return MPR->emptyString;
+}
+
+
+PUBLIC void mprSetEnv(cchar *key, cchar *value)
+{
+#if ME_UNIX_LIKE
+    setenv(key, value, 1);
+#else
+    char *cmd = sjoin(key, "=", value, NULL);
+    putenv(cmd);
+#endif
+    if (scaselessmatch(key, "PATH")) {
+        MPR->pathEnv = sclone(value);
+    }
+}
+
+
+PUBLIC void mprSetExitTimeout(MprTicks timeout)
+{
+    MPR->exitTimeout = timeout;
+}
+
+
+PUBLIC void mprNop(void *ptr)
+{
+}
+
+
+/*
+    This should not be called after mprCreate() as it will orphan the GC and events threads.
+ */
+PUBLIC int mprDaemon()
+{
+#if ME_UNIX_LIKE
+    struct sigaction act, old;
+    int              i, pid, status;
+
+    /*
+        Ignore child death signals
+     */
+    memset(&act, 0, sizeof(act));
+    act.sa_sigaction = (void (*)(int, siginfo_t*, void*)) SIG_DFL;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = SA_NOCLDSTOP | SA_RESTART | SA_SIGINFO;
+
+    if (sigaction(SIGCHLD, &act, &old) < 0) {
+        fprintf(stderr, "Cannot initialize signals");
+        return MPR_ERR_BAD_STATE;
+    }
+    /*
+        Close stdio so shells won't hang
+     */
+    for (i = 0; i < 3; i++) {
+        close(i);
+    }
+    /*
+        Fork twice to get a free child with no parent
+     */
+    if ((pid = fork()) < 0) {
+        fprintf(stderr, "Fork failed for background operation");
+        return MPR_ERR;
+
+    } else if (pid == 0) {
+        /* Child of first fork */
+        if ((pid = fork()) < 0) {
+            fprintf(stderr, "Second fork failed");
+            exit(127);
+
+        } else if (pid > 0) {
+            /* Parent of second child -- must exit. This is waited for below */
+            exit(0);
+        }
+
+        /*
+            This is the real child that will continue as a daemon
+         */
+        setsid();
+        if (sigaction(SIGCHLD, &old, 0) < 0) {
+            fprintf(stderr, "Cannot restore signals");
+            return MPR_ERR_BAD_STATE;
+        }
+        return 0;
+    }
+
+    /*
+        Original (parent) process waits for first child here. Must get child death notification with a successful exit
+           status.
+     */
+    while (waitpid(pid, &status, 0) != pid) {
+        if (errno == EINTR) {
+            mprSleep(100);
+            continue;
+        }
+        fprintf(stderr, "Cannot wait for daemon parent.");
+        exit(0);
+    }
+    if (WEXITSTATUS(status) != 0) {
+        fprintf(stderr, "Daemon parent had bad exit status.");
+        exit(0);
+    }
+    if (sigaction(SIGCHLD, &old, 0) < 0) {
+        fprintf(stderr, "Cannot restore signals");
+        return MPR_ERR_BAD_STATE;
+    }
+    exit(0);
+#else
+    return 0;
+#endif
+}
+
+
+PUBLIC void mprSetKey(cchar *key, void *value)
+{
+    mprAddKey(MPR->keys, key, value);
+}
+
+
+PUBLIC void *mprGetKey(cchar *key)
+{
+    return mprLookupKey(MPR->keys, key);
+}
+
+
+/*
+    Copyright (c) Embedthis Software. All Rights Reserved.
+    This software is distributed under a commercial license. Consult the LICENSE.md
+    distributed with this software for full details and copyrights.
+ */
 
 
 /********* Start of file src/mem.c ************/
@@ -43,7 +1058,14 @@
 
 /********************************* Includes ***********************************/
 
+#include    "mpr.h"
 
+#if ME_WIN_LIKE
+/*
+    For GetProcessMemoryInfo in mprGetMem. Not in osdep.h, which is shared with products that do not need it.
+ */
+#include    <psapi.h>
+#endif
 
 /********************************** Defines ***********************************/
 
@@ -2047,6 +3069,11 @@ static void allocException(int cause, size_t size)
 
     } else if (cause == MPR_MEM_LIMIT) {
         mprLog("error mpr memory", 0, "Memory request for %'zd bytes exceeds memory limit.", size);
+        /*
+            Prune under every policy. The allocation cannot be refused, so reclaiming cache is the only
+            way memory returns below the limit.
+         */
+        mprPruneCache(NULL);
         printMemWarn(used, 1);
     }
 
@@ -2235,8 +3262,8 @@ PUBLIC MprMemStats *mprGetMemStats()
 
 /*
     Return the amount of memory currently in use. This routine may open files and thus is not very quick on some
-    platforms. On FREEBDS it returns the peak resident set size using getrusage. If a suitable O/S API is not available,
-    the amount of heap memory allocated by the MPR is returned.
+    platforms. On FREEBDS it returns the peak resident set size using getrusage. On Windows it returns the process
+    working set. If a suitable O/S API is not available, the amount of heap memory allocated by the MPR is returned.
  */
 PUBLIC size_t mprGetMem()
 {
@@ -2276,6 +3303,11 @@ PUBLIC size_t mprGetMem()
     struct rusage rusage;
     getrusage(RUSAGE_SELF, &rusage);
     size = rusage.ru_maxrss;
+#elif ME_WIN_LIKE
+    PROCESS_MEMORY_COUNTERS info;
+    if (GetProcessMemoryInfo(GetCurrentProcess(), &info, sizeof(info))) {
+        size = info.WorkingSetSize;
+    }
 #endif
     if (size == 0) {
         size = (size_t) heap->stats.bytesAllocated;
@@ -2472,6 +3504,17 @@ PUBLIC void mprSetMemPolicy(int policy)
 }
 
 
+/*
+    Test if memory use has reached the configured maximum. The default maxHeap is (size_t) -1, so this is
+    false unless a limit has been set. The allocator cannot refuse an allocation because callers do not
+    check for a null return, so servers enforce the limit by shedding load via mprShouldDenyNewRequests.
+ */
+PUBLIC bool mprIsMemoryOverLimit(void)
+{
+    return mprGetMem() >= heap->stats.maxHeap;
+}
+
+
 PUBLIC void mprSetMemError()
 {
     heap->hasError = 1;
@@ -2612,1009 +3655,6 @@ static ME_INLINE bool needGC(MprHeap *heap)
  */
 
 
-/********* Start of file src/mpr.c ************/
-
-/*
-    mpr.c - Multithreaded Portable Runtime (MPR). Initialization, start/stop and control of the MPR.
-
-    Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
- */
-
-/********************************** Includes **********************************/
-
-
-
-/*********************************** Locals ***********************************/
-/*
-    Define an illegal exit status value
- */
-#define NO_STATUS 0x100000
-
-static int mprExitStatus;
-static int mprState;
-
-/**************************** Forward Declarations ****************************/
-
-static int initStdio(Mpr *mpr, MprFileSystem *fs);
-static void manageMpr(Mpr *mpr, int flags);
-static void serviceEventsThread(void *data, MprThread *tp);
-static void setArgs(Mpr *mpr, int argc, char **argv);
-
-/************************************* Code ***********************************/
-/*
-    Create and initialize the MPR service.
- */
-PUBLIC Mpr *mprCreate(int argc, char **argv, int flags)
-{
-    Mpr           *mpr;
-    MprFileSystem *fs;
-
-    srand((uint) time(NULL));
-
-    if (flags & MPR_DAEMON) {
-        mprDaemon();
-    }
-    mprAtomicOpen();
-    if ((mpr = mprCreateMemService((MprManager) manageMpr, flags)) == 0) {
-        assert(mpr);
-        return 0;
-    }
-    mpr->flags = flags;
-    mpr->start = mprGetTime();
-    mpr->exitStrategy = 0;
-    mpr->emptyString = sclone("");
-    mpr->oneString = sclone("1");
-    mpr->idleCallback = mprServicesAreIdle;
-    mpr->mimeTypes = mprCreateMimeTypes(NULL);
-    mpr->terminators = mprCreateList(0, MPR_LIST_STATIC_VALUES);
-    mpr->keys = mprCreateHash(0, 0);
-    mpr->verifySsl = 1;
-    mpr->fileSystems = mprCreateList(0, 0);
-
-    fs = mprCreateDiskFileSystem("/");
-    mprAddFileSystem(fs);
-    initStdio(mpr, fs);
-
-    setArgs(mpr, argc, argv);
-    mprCreateOsService();
-    mprCreateTimeService();
-    mpr->mutex = mprCreateLock();
-    mpr->spin = mprCreateSpinLock();
-
-    mprCreateLogService();
-    mprCreateCacheService();
-
-    mpr->signalService = mprCreateSignalService();
-    mpr->threadService = mprCreateThreadService();
-    mpr->moduleService = mprCreateModuleService();
-    mpr->eventService = mprCreateEventService();
-    mpr->cmdService = mprCreateCmdService();
-    mpr->workerService = mprCreateWorkerService();
-    mpr->waitService = mprCreateWaitService();
-    mpr->socketService = mprCreateSocketService();
-    mpr->pathEnv = sclone(getenv("PATH"));
-    mpr->cond = mprCreateCond();
-    mpr->stopCond = mprCreateCond();
-
-    mpr->dispatcher = mprCreateDispatcher("main", 0);
-    mpr->nonBlock = mprCreateDispatcher("nonblock", 0);
-    mprSetDispatcherImmediate(mpr->nonBlock);
-
-    if (flags & MPR_USER_EVENTS_THREAD) {
-        if (!(flags & MPR_NO_WINDOW)) {
-            /* Used by apps that need to use FindWindow after calling mprCreate() (appwebMonitor) */
-            mprSetWindowsThread(0);
-        }
-    } else {
-        mprStartEventsThread();
-    }
-    if (!(flags & MPR_DELAY_GC_THREAD)) {
-        mprStartGCService();
-    }
-    mprState = MPR_CREATED;
-    mprExitStatus = NO_STATUS;
-
-    if (MPR->hasError || mprHasMemError()) {
-        return 0;
-    }
-    return mpr;
-}
-
-
-static void manageMpr(Mpr *mpr, int flags)
-{
-    if (flags & MPR_MANAGE_MARK) {
-        mprMark(mpr->logFile);
-        mprMark(mpr->mimeTypes);
-        mprMark(mpr->timeTokens);
-        mprMark(mpr->keys);
-        mprMark(mpr->stdError);
-        mprMark(mpr->stdInput);
-        mprMark(mpr->stdOutput);
-        mprMark(mpr->appPath);
-        mprMark(mpr->appDir);
-        /*
-            Argv will do a single allocation into argv == argBuf. May reallocate the program name in argv[0]
-         */
-        mprMark(mpr->argv);
-        if (mpr->argv) {
-            mprMark(mpr->argv[0]);
-        }
-        mprMark(mpr->logPath);
-        mprMark(mpr->pathEnv);
-        mprMark(mpr->name);
-        mprMark(mpr->title);
-        mprMark(mpr->version);
-        mprMark(mpr->domainName);
-        mprMark(mpr->hostName);
-        mprMark(mpr->ip);
-        mprMark(mpr->serverName);
-        mprMark(mpr->cmdService);
-        mprMark(mpr->eventService);
-        mprMark(mpr->fileSystems);
-        mprMark(mpr->moduleService);
-        mprMark(mpr->osService);
-        mprMark(mpr->signalService);
-        mprMark(mpr->socketService);
-        mprMark(mpr->threadService);
-        mprMark(mpr->workerService);
-        mprMark(mpr->waitService);
-        mprMark(mpr->dispatcher);
-        mprMark(mpr->nonBlock);
-        mprMark(mpr->appwebService);
-        mprMark(mpr->ediService);
-        mprMark(mpr->ejsService);
-        mprMark(mpr->espService);
-        mprMark(mpr->httpService);
-        mprMark(mpr->terminators);
-        mprMark(mpr->mutex);
-        mprMark(mpr->spin);
-        mprMark(mpr->cond);
-        mprMark(mpr->romfs);
-        mprMark(mpr->stopCond);
-        mprMark(mpr->emptyString);
-        mprMark(mpr->oneString);
-    }
-}
-
-
-static int initStdio(Mpr *mpr, MprFileSystem *fs)
-{
-    if ((mpr->stdError = mprAllocStruct(MprFile)) == 0) {
-        return MPR_ERR_MEMORY;
-    }
-    mprSetName(mpr->stdError, "stderr");
-    mpr->stdError->fd = 2;
-    mpr->stdError->fileSystem = fs;
-    mpr->stdError->mode = O_WRONLY;
-
-    if ((mpr->stdInput = mprAllocStruct(MprFile)) == 0) {
-        return MPR_ERR_MEMORY;
-    }
-    mprSetName(mpr->stdInput, "stdin");
-    mpr->stdInput->fd = 0;
-    mpr->stdInput->fileSystem = fs;
-    mpr->stdInput->mode = O_RDONLY;
-
-    if ((mpr->stdOutput = mprAllocStruct(MprFile)) == 0) {
-        return MPR_ERR_MEMORY;
-    }
-    mprSetName(mpr->stdOutput, "stdout");
-    mpr->stdOutput->fd = 1;
-    mpr->stdOutput->fileSystem = fs;
-    mpr->stdOutput->mode = O_WRONLY;
-    return 0;
-}
-
-
-/*
-    The monitor event is invoked from mprShutdown() for graceful shutdowns if the application has requests still
-       running.
-    This event monitors the application to see when it becomes is idle.
-    WARNING: this races with other threads
- */
-static void shutdownMonitor(void *data, MprEvent *event)
-{
-    MprTicks remaining;
-
-    if (mprIsIdle(1)) {
-        if (mprState <= MPR_STOPPING) {
-            mprLog("info mpr", 2, "Shutdown proceeding, system is idle");
-            mprState = MPR_STOPPED;
-        }
-        return;
-    }
-    remaining = mprGetRemainingTicks(MPR->shutdownStarted, MPR->exitTimeout);
-    if (remaining <= 0) {
-        if (MPR->exitStrategy & MPR_EXIT_SAFE && mprCancelShutdown()) {
-            mprLog("warn mpr", 2, "Shutdown cancelled due to continuing requests");
-        } else {
-            mprLog("warn mpr", 6, "Timeout while waiting for requests to complete");
-            if (mprState <= MPR_STOPPING) {
-                mprState = MPR_STOPPED;
-            }
-        }
-    } else {
-        if (!mprGetDebugMode()) {
-            mprLog("info mpr", 2, "Waiting for requests to complete, %lld secs remaining ...", remaining / TPS);
-        }
-        mprRescheduleEvent(event, 1000);
-    }
-}
-
-
-/*
-    Start shutdown of the Mpr. This sets the state to stopping and invokes the shutdownMonitor. This is done for
-    all shutdown strategies regardless. Immediate shutdowns must still give threads some time to exit.
-    This routine does no destructive actions.
-    WARNING: this races with other threads.
- */
-PUBLIC void mprShutdown(int how, int exitStatus, MprTicks timeout)
-{
-    MprTerminator terminator;
-    int           next;
-
-    mprGlobalLock();
-    if (mprState >= MPR_STOPPING) {
-        mprGlobalUnlock();
-        return;
-    }
-    mprState = MPR_STOPPING;
-    mprSignalMultiCond(MPR->stopCond);
-    mprGlobalUnlock();
-
-    MPR->exitStrategy = how;
-    mprExitStatus = exitStatus;
-    MPR->exitTimeout = (timeout >= 0) ? timeout : MPR->exitTimeout;
-    if (mprGetDebugMode()) {
-        MPR->exitTimeout = MPR_MAX_TIMEOUT;
-    }
-    MPR->shutdownStarted = mprGetTicks();
-
-    if (how & MPR_EXIT_RESTART) {
-        mprLog("info mpr", 3, "Abort with restart.");
-        mprRestart();
-        /* No continue */
-    } else if (how & MPR_EXIT_ABORT) {
-        mprLog("info mpr", 3, "Abortive exit.");
-        exit(exitStatus);
-    }
-
-    if (!mprIsIdle(0)) {
-        mprLog("info mpr", 6, "Application exit, waiting for existing requests to complete.");
-        mprCreateTimerEvent(NULL, "shutdownMonitor", 0, shutdownMonitor, 0, MPR_EVENT_QUICK);
-    }
-    mprWakeDispatchers();
-    mprWakeNotifier();
-
-    /*
-        Note: terminators must take not destructive actions for the MPR_STOPPED state
-     */
-    for (ITERATE_ITEMS(MPR->terminators, terminator, next)) {
-        (terminator) (mprState, how, mprExitStatus & ~NO_STATUS);
-    }
-}
-
-
-PUBLIC bool mprCancelShutdown()
-{
-    mprGlobalLock();
-    if (mprState == MPR_STOPPING) {
-        mprState = MPR_STARTED;
-        mprGlobalUnlock();
-        return 1;
-    }
-    mprGlobalUnlock();
-    return 0;
-}
-
-
-/*
-    Destroy the Mpr and all services
-    If the application has a user events thread and mprShutdown was called, then we will come here when already idle.
-    This routine will call service terminators to allow them to shutdown their services in an orderly manner
- */
-PUBLIC bool mprDestroy()
-{
-    MprTerminator terminator;
-    MprTicks      timeout;
-    int           i, next;
-
-    if (mprState < MPR_STOPPING) {
-        mprShutdown(MPR->exitStrategy, mprExitStatus, MPR->exitTimeout);
-    }
-    mprGC(MPR_GC_FORCE | MPR_GC_COMPLETE);
-
-    timeout = MPR->exitTimeout;
-    if (MPR->shutdownStarted) {
-        timeout -= (mprGetTicks() - MPR->shutdownStarted);
-    }
-    /*
-        Wait for events thread to exit and the app to become idle
-     */
-    while (!mprIsIdle(0) || MPR->eventing) {
-        mprWakeNotifier();
-        mprWaitForCond(MPR->cond, 10);
-        if (mprGetRemainingTicks(MPR->shutdownStarted, timeout) <= 0) {
-            break;
-        }
-    }
-    if (!mprIsIdle(0) || MPR->eventing) {
-        if (MPR->exitStrategy & MPR_EXIT_SAFE) {
-            /* Note: Pending outside events will pause GC which will make mprIsIdle return false */
-            mprLog("warn mpr", 2, "Cancel termination due to continuing requests, application resumed.");
-            mprCancelShutdown();
-        } else if (MPR->exitTimeout > 0) {
-            /* If a non-zero graceful timeout applies, always exit with non-zero status */
-            exit(mprExitStatus != NO_STATUS ? mprExitStatus : 1);
-        } else {
-            exit(mprExitStatus & ~NO_STATUS);
-        }
-        return 0;
-    }
-    mprGlobalLock();
-    if (mprState == MPR_STARTED) {
-        mprGlobalUnlock();
-        /* User cancelled shutdown */
-        return 0;
-    }
-    /*
-        Point of no return
-     */
-    mprState = MPR_DESTROYING;
-    mprGlobalUnlock();
-
-    for (ITERATE_ITEMS(MPR->terminators, terminator, next)) {
-        (terminator) (mprState, MPR->exitStrategy, mprExitStatus & ~NO_STATUS);
-    }
-    mprStopWorkers();
-    mprStopCmdService();
-    mprStopModuleService();
-    mprStopEventService();
-    mprStopThreadService();
-    mprStopWaitService();
-
-    /*
-        Run GC to finalize all memory until we are not freeing any memory. This IS deterministic.
-     */
-    for (i = 0; i < 25; i++) {
-        if (mprGC(MPR_GC_FORCE | MPR_GC_COMPLETE) == 0) {
-            break;
-        }
-    }
-    mprState = MPR_DESTROYED;
-
-    if (MPR->exitStrategy & MPR_EXIT_RESTART) {
-        mprLog("info mpr", 2, "Restarting");
-    }
-    mprStopModuleService();
-    mprStopSignalService();
-    mprStopGCService();
-    mprStopOsService();
-
-    if (MPR->exitStrategy & MPR_EXIT_RESTART) {
-        mprRestart();
-    }
-    mprDestroyMemService();
-    return 1;
-}
-
-
-static void setArgs(Mpr *mpr, int argc, char **argv)
-{
-    cchar *appPath;
-
-    if (argv) {
-#if ME_WIN_LIKE
-        if (argc >= 2 && strstr(argv[1], "--cygroot") != 0) {
-            /*
-                Cygwin shebang is broken. It will catenate args into argv[1]
-             */
-            char *args, *arg0;
-            int  i;
-            args = argv[1];
-            for (i = 2; i < argc; i++) {
-                args = sjoin(args, " ", argv[i], NULL);
-            }
-            arg0 = argv[0];
-            argc = mprMakeArgv(args, &mpr->argBuf, MPR_ARGV_ARGS_ONLY);
-            argv = mpr->argBuf;
-            argv[0] = arg0;
-            mpr->argv = (cchar**) argv;
-        } else {
-            mpr->argv = mprAllocZeroed(sizeof(void*) * (argc + 1));
-            memcpy((char*) mpr->argv, argv, sizeof(void*) * argc);
-        }
-#else
-        mpr->argv = mprAllocZeroed(sizeof(void*) * (argc + 1));
-        memcpy((char*) mpr->argv, argv, sizeof(void*) * argc);
-#endif
-        mpr->argc = argc;
-
-        appPath = mprGetAppPath();
-        if (smatch(appPath, ".")) {
-            mpr->argv[0] = sclone(ME_NAME);
-        } else if (mprIsPathAbs(mpr->argv[0])) {
-            mpr->argv[0] = sclone(mprGetAppPath());
-        } else {
-            mpr->argv[0] = mprGetAppPath();
-        }
-    } else {
-        mpr->name = sclone(ME_NAME);
-        mpr->argv = mprAllocZeroed(2 * sizeof(void*));
-        mpr->argv[0] = mpr->name;
-        mpr->argc = 0;
-    }
-    mpr->name = mprTrimPathExt(mprGetPathBase(mpr->argv[0]));
-    mpr->title = sfmt("%s %s", stitle(ME_COMPANY), stitle(mpr->name));
-    mpr->version = sclone(ME_VERSION);
-}
-
-
-PUBLIC int mprGetExitStatus()
-{
-    return mprExitStatus & ~NO_STATUS;
-}
-
-
-PUBLIC void mprSetExitStatus(int status)
-{
-    mprExitStatus = status;
-}
-
-
-PUBLIC void mprAddTerminator(MprTerminator terminator)
-{
-    mprAddItem(MPR->terminators, terminator);
-}
-
-
-PUBLIC void mprRestart()
-{
-#if ME_UNIX_LIKE
-    int i;
-
-    for (i = 3; i < MPR_MAX_FILE; i++) {
-        close(i);
-    }
-    execv(MPR->argv[0], (char*const *) MPR->argv);
-
-    /*
-        Last-ditch trace. Can only use stdout. Logging may be closed.
-     */
-    printf("Failed to exec errno %d: ", errno);
-    for (i = 0; MPR->argv[i]; i++) {
-        printf("%s ", MPR->argv[i]);
-    }
-    printf("\n");
-#else
-    mprLog("error mpr", 0, "mprRestart not supported on this platform");
-#endif
-}
-
-
-PUBLIC int mprStart()
-{
-    int rc;
-
-    rc = mprStartOsService();
-    rc += mprStartModuleService();
-    rc += mprStartWorkerService();
-    if (rc != 0) {
-        mprLog("error mpr", 0, "Cannot start MPR services");
-        return MPR_ERR_CANT_INITIALIZE;
-    }
-    mprState = MPR_STARTED;
-    return 0;
-}
-
-
-PUBLIC int mprStartEventsThread()
-{
-    MprThread *tp;
-    MprTicks  timeout;
-
-    if ((tp = mprCreateThread("events", serviceEventsThread, NULL, 0)) == 0) {
-        MPR->hasError = 1;
-    } else {
-        MPR->threadService->eventsThread = tp;
-        MPR->cond = mprCreateCond();
-        mprStartThread(tp);
-        timeout = mprGetDebugMode() ? MPR_MAX_TIMEOUT : MPR_TIMEOUT_START_TASK;
-        mprWaitForCond(MPR->cond, timeout);
-    }
-    return 0;
-}
-
-
-static void serviceEventsThread(void *data, MprThread *tp)
-{
-    mprLog("info mpr", 2, "Service thread started");
-    mprSetWindowsThread(tp);
-    mprSignalCond(MPR->cond);
-    mprServiceEvents(-1, 0);
-    mprRescheduleDispatcher(MPR->dispatcher);
-}
-
-
-/*
-    Services should call this to determine if they should accept new services
- */
-PUBLIC bool mprShouldAbortRequests()
-{
-    return mprIsStopped();
-}
-
-
-PUBLIC bool mprShouldDenyNewRequests()
-{
-    return mprIsStopping();
-}
-
-
-PUBLIC bool mprIsStopping()
-{
-    return mprState >= MPR_STOPPING;
-}
-
-
-PUBLIC bool mprIsStopped()
-{
-    return mprState >= MPR_STOPPED;
-}
-
-
-PUBLIC bool mprIsDestroying()
-{
-    return mprState >= MPR_DESTROYING;
-}
-
-
-PUBLIC bool mprIsDestroyed()
-{
-    return mprState >= MPR_DESTROYED;
-}
-
-
-PUBLIC int mprGetState()
-{
-    return mprState;
-}
-
-
-PUBLIC void mprSetState(int state)
-{
-    // OPT - Don't need lock around simple assignment
-    mprGlobalLock();
-    mprState = state;
-    mprGlobalUnlock();
-}
-
-
-
-/*
-    Test if the Mpr services are idle. Use mprIsIdle to determine if the entire process is idle.
-    Note: this counts worker threads but ignores other threads created via mprCreateThread
- */
-PUBLIC bool mprServicesAreIdle(bool traceRequests)
-{
-    bool idle;
-
-    /*
-        Only test top level services. Dispatchers may have timers scheduled, but that is okay. If not, users can install
-        their own idleCallback.
-     */
-    idle = mprGetBusyWorkerCount() == 0 && mprGetActiveCmdCount() == 0;
-    if (!idle && traceRequests) {
-        mprDebug("mpr", 3, "Services are not idle: cmds %d, busy threads %d, eventing %d",
-                 mprGetListLength(MPR->cmdService->cmds), mprGetListLength(
-                     MPR->workerService->busyThreads), MPR->eventing);
-    }
-    return idle;
-}
-
-
-PUBLIC bool mprIsIdle(bool traceRequests)
-{
-    return (MPR->idleCallback)(traceRequests);
-}
-
-
-/*
-    Parse the args and return the count of args. If argv is NULL, the args are parsed read-only. If argv is set,
-    then the args will be extracted, back-quotes removed and argv will be set to point to all the args.
-    NOTE: this routine does not allocate.
- */
-PUBLIC int mprParseArgs(char *args, char **argv, int maxArgc)
-{
-    char *dest, *src, *start;
-    int  quote, argc;
-
-    /*
-        Example     "showColors" red 'light blue' "yellow white" 'Cannot \"render\"'
-        Becomes:    ["showColors", "red", "light blue", "yellow white", "Cannot \"render\""]
-     */
-    for (argc = 0, src = args; src && *src != '\0' && argc < maxArgc; argc++) {
-        while (isspace((uchar) * src)) {
-            src++;
-        }
-        if (*src == '\0') {
-            break;
-        }
-        start = dest = src;
-        if (*src == '"' || *src == '\'') {
-            quote = *src;
-            src++;
-            dest++;
-        } else {
-            quote = 0;
-        }
-        if (argv) {
-            argv[argc] = src;
-        }
-        while (*src) {
-            if (*src == '\\' && src[1] && (src[1] == '\\' || src[1] == '"' || src[1] == '\'')) {
-                src++;
-            } else {
-                if (quote) {
-                    if (*src == quote && !(src > start && src[-1] == '\\')) {
-                        break;
-                    }
-                } else if (*src == ' ') {
-                    break;
-                }
-            }
-            if (argv) {
-                *dest++ = *src;
-            }
-            src++;
-        }
-        if (*src != '\0') {
-            src++;
-        }
-        if (argv) {
-            *dest++ = '\0';
-        }
-    }
-    return argc;
-}
-
-
-/*
-    Make an argv array. All args are in a single memory block of which argv points to the start.
-    Set MPR_ARGV_ARGS_ONLY if not passing in a program name.
-    Always returns and argv[0] reserved for the program name or empty string.  First arg starts at argv[1].
- */
-PUBLIC int mprMakeArgv(cchar *command, cchar ***argvp, int flags)
-{
-    char  **argv, *vector, *args;
-    ssize len;
-    int   argc;
-
-    assert(command);
-    if (!command) {
-        return MPR_ERR_BAD_ARGS;
-    }
-    /*
-        Allocate one vector for argv and the actual args themselves
-     */
-    len = slen(command) + 1;
-    argc = mprParseArgs((char*) command, NULL, INT_MAX);
-    if (flags & MPR_ARGV_ARGS_ONLY) {
-        argc++;
-    }
-    if ((vector = (char*) mprAlloc(((argc + 1) * sizeof(char*)) + len)) == 0) {
-        assert(!MPR_ERR_MEMORY);
-        return MPR_ERR_MEMORY;
-    }
-    args = &vector[(argc + 1) * sizeof(char*)];
-    strcpy(args, command);
-    argv = (char**) vector;
-
-    if (flags & MPR_ARGV_ARGS_ONLY) {
-        mprParseArgs(args, &argv[1], argc);
-        argv[0] = MPR->emptyString;
-    } else {
-        mprParseArgs(args, argv, argc);
-    }
-    argv[argc] = 0;
-    *argvp = (cchar**) argv;
-    return argc;
-}
-
-
-PUBLIC MprIdleCallback mprSetIdleCallback(MprIdleCallback idleCallback)
-{
-    MprIdleCallback old;
-
-    old = MPR->idleCallback;
-    MPR->idleCallback = idleCallback;
-    return old;
-}
-
-
-PUBLIC int mprSetAppName(cchar *name, cchar *title, cchar *version)
-{
-    char *cp;
-
-    if (name) {
-        if ((MPR->name = (char*) mprGetPathBase(name)) == 0) {
-            return MPR_ERR_CANT_ALLOCATE;
-        }
-        if ((cp = strrchr(MPR->name, '.')) != 0) {
-            *cp = '\0';
-        }
-    }
-    if (title) {
-        if ((MPR->title = sclone(title)) == 0) {
-            return MPR_ERR_CANT_ALLOCATE;
-        }
-    }
-    if (version) {
-        if ((MPR->version = sclone(version)) == 0) {
-            return MPR_ERR_CANT_ALLOCATE;
-        }
-    }
-    return 0;
-}
-
-
-PUBLIC cchar *mprGetAppName()
-{
-    return MPR->name;
-}
-
-
-PUBLIC cchar *mprGetAppTitle()
-{
-    return MPR->title;
-}
-
-
-/*
-    Full host name with domain. E.g. "server.domain.com"
- */
-PUBLIC void mprSetHostName(cchar *s)
-{
-    MPR->hostName = sclone(s);
-}
-
-
-/*
-    Return the fully qualified host name
- */
-PUBLIC cchar *mprGetHostName()
-{
-    return MPR->hostName;
-}
-
-
-/*
-    Server name portion (no domain name)
- */
-PUBLIC void mprSetServerName(cchar *s)
-{
-    MPR->serverName = sclone(s);
-}
-
-
-PUBLIC cchar *mprGetServerName()
-{
-    return MPR->serverName;
-}
-
-
-PUBLIC void mprSetDomainName(cchar *s)
-{
-    MPR->domainName = sclone(s);
-}
-
-
-PUBLIC cchar *mprGetDomainName()
-{
-    return MPR->domainName;
-}
-
-
-/*
-    Set the IP address
- */
-PUBLIC void mprSetIpAddr(cchar *s)
-{
-    MPR->ip = sclone(s);
-}
-
-
-/*
-    Return the IP address
- */
-PUBLIC cchar *mprGetIpAddr()
-{
-    return MPR->ip;
-}
-
-
-PUBLIC cchar *mprGetAppVersion()
-{
-    return MPR->version;
-}
-
-
-PUBLIC bool mprGetDebugMode()
-{
-    return MPR->debugMode;
-}
-
-
-PUBLIC void mprSetDebugMode(bool on)
-{
-    MPR->debugMode = on;
-}
-
-
-PUBLIC MprDispatcher *mprGetDispatcher()
-{
-    return MPR->dispatcher;
-}
-
-
-PUBLIC MprDispatcher *mprGetNonBlockDispatcher()
-{
-    return MPR->nonBlock;
-}
-
-
-PUBLIC cchar *mprCopyright(void)
-{
-    return "Copyright (c) Embedthis Software. All Rights Reserved.\n"
-           "Copyright (c) Michael O'Brien. All Rights Reserved.";
-}
-
-
-PUBLIC int mprGetEndian()
-{
-    char *probe;
-    int  test;
-
-    test = 1;
-    probe = (char*) &test;
-    return (*probe == 1) ? ME_LITTLE_ENDIAN : ME_BIG_ENDIAN;
-}
-
-
-PUBLIC char *mprEmptyString()
-{
-    return MPR->emptyString;
-}
-
-
-PUBLIC void mprSetEnv(cchar *key, cchar *value)
-{
-#if ME_UNIX_LIKE
-    setenv(key, value, 1);
-#else
-    char *cmd = sjoin(key, "=", value, NULL);
-    putenv(cmd);
-#endif
-    if (scaselessmatch(key, "PATH")) {
-        MPR->pathEnv = sclone(value);
-    }
-}
-
-
-PUBLIC void mprSetExitTimeout(MprTicks timeout)
-{
-    MPR->exitTimeout = timeout;
-}
-
-
-PUBLIC void mprNop(void *ptr)
-{
-}
-
-
-/*
-    This should not be called after mprCreate() as it will orphan the GC and events threads.
- */
-PUBLIC int mprDaemon()
-{
-#if ME_UNIX_LIKE
-    struct sigaction act, old;
-    int              i, pid, status;
-
-    /*
-        Ignore child death signals
-     */
-    memset(&act, 0, sizeof(act));
-    act.sa_sigaction = (void (*)(int, siginfo_t*, void*)) SIG_DFL;
-    sigemptyset(&act.sa_mask);
-    act.sa_flags = SA_NOCLDSTOP | SA_RESTART | SA_SIGINFO;
-
-    if (sigaction(SIGCHLD, &act, &old) < 0) {
-        fprintf(stderr, "Cannot initialize signals");
-        return MPR_ERR_BAD_STATE;
-    }
-    /*
-        Close stdio so shells won't hang
-     */
-    for (i = 0; i < 3; i++) {
-        close(i);
-    }
-    /*
-        Fork twice to get a free child with no parent
-     */
-    if ((pid = fork()) < 0) {
-        fprintf(stderr, "Fork failed for background operation");
-        return MPR_ERR;
-
-    } else if (pid == 0) {
-        /* Child of first fork */
-        if ((pid = fork()) < 0) {
-            fprintf(stderr, "Second fork failed");
-            exit(127);
-
-        } else if (pid > 0) {
-            /* Parent of second child -- must exit. This is waited for below */
-            exit(0);
-        }
-
-        /*
-            This is the real child that will continue as a daemon
-         */
-        setsid();
-        if (sigaction(SIGCHLD, &old, 0) < 0) {
-            fprintf(stderr, "Cannot restore signals");
-            return MPR_ERR_BAD_STATE;
-        }
-        return 0;
-    }
-
-    /*
-        Original (parent) process waits for first child here. Must get child death notification with a successful exit
-           status.
-     */
-    while (waitpid(pid, &status, 0) != pid) {
-        if (errno == EINTR) {
-            mprSleep(100);
-            continue;
-        }
-        fprintf(stderr, "Cannot wait for daemon parent.");
-        exit(0);
-    }
-    if (WEXITSTATUS(status) != 0) {
-        fprintf(stderr, "Daemon parent had bad exit status.");
-        exit(0);
-    }
-    if (sigaction(SIGCHLD, &old, 0) < 0) {
-        fprintf(stderr, "Cannot restore signals");
-        return MPR_ERR_BAD_STATE;
-    }
-    exit(0);
-#else
-    return 0;
-#endif
-}
-
-
-PUBLIC void mprSetKey(cchar *key, void *value)
-{
-    mprAddKey(MPR->keys, key, value);
-}
-
-
-PUBLIC void *mprGetKey(cchar *key)
-{
-    return mprLookupKey(MPR->keys, key);
-}
-
-
-/*
-    Copyright (c) Embedthis Software. All Rights Reserved.
-    This software is distributed under a commercial license. Consult the LICENSE.md
-    distributed with this software for full details and copyrights.
- */
-
-
 /********* Start of file src/async.c ************/
 
 /**
@@ -3630,7 +3670,7 @@ PUBLIC void *mprGetKey(cchar *key)
 
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 #if ME_EVENT_NOTIFIER == MPR_EVENT_ASYNC
 
@@ -3978,7 +4018,7 @@ void asyncDummy(void)
 
 /*********************************** Includes *********************************/
 
-
+#include    "mpr.h"
 
 /*********************************** Local ************************************/
 
@@ -4168,7 +4208,7 @@ PUBLIC void mprAtomicListInsert(void **head, void **link, void *item)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /********************************** Forwards **********************************/
 
@@ -4901,7 +4941,7 @@ PUBLIC ssize mprPutStringToWideBuf(MprBuf *bp, cchar *str)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /************************************ Locals **********************************/
 
@@ -5012,6 +5052,7 @@ PUBLIC int64 mprIncCache(MprCache *cache, cchar *key, int64 amount)
 {
     CacheItem *item;
     int64     value;
+    ssize     oldLen;
 
     assert(cache);
     assert(key && *key);
@@ -5023,18 +5064,23 @@ PUBLIC int64 mprIncCache(MprCache *cache, cchar *key, int64 amount)
     value = amount;
 
     lock(cache);
+    oldLen = 0;
     if ((item = mprLookupKey(cache->store, key)) == 0) {
         if ((item = mprAllocObj(CacheItem, manageCacheItem)) == 0) {
+            unlock(cache);
             return 0;
         }
+        mprAddKey(cache->store, key, item);
+        item->key = sclone(key);
+        item->lifespan = cache->lifespan;
+        item->version = 0;
     } else {
         value += stoi(item->data);
-    }
-    if (item->data) {
-        cache->usedMem -= slen(item->data);
+        oldLen = slen(item->key) + slen(item->data);
     }
     item->data = itos(value);
-    cache->usedMem += slen(item->data);
+    item->lastModified = mprGetTime();
+    cache->usedMem += (slen(item->key) + slen(item->data)) - oldLen;
     item->version++;
     item->lastAccessed = mprGetTicks();
     item->expires = item->lastAccessed + item->lifespan;
@@ -5118,7 +5164,6 @@ PUBLIC bool mprRemoveCache(MprCache *cache, cchar *key)
     bool      result;
 
     assert(cache);
-    assert(key && *key);
 
     if (cache->shared) {
         cache = cache->shared;
@@ -5127,8 +5172,7 @@ PUBLIC bool mprRemoveCache(MprCache *cache, cchar *key)
     lock(cache);
     if (key) {
         if ((item = mprLookupKey(cache->store, key)) != 0) {
-            cache->usedMem -= (slen(key) + slen(item->data));
-            mprRemoveKey(cache->store, key);
+            removeItem(cache, item);
             result = 1;
         } else {
             result = 0;
@@ -5230,6 +5274,7 @@ PUBLIC ssize mprWriteCache(MprCache *cache, cchar *key, cchar *value, MprTime mo
         }
         mprAddKey(cache->store, key, item);
         item->key = sclone(key);
+        item->version = 0;
         set = 1;
     }
     oldLen = (item->data) ? (slen(item->key) + slen(item->data)) : 0;
@@ -5237,7 +5282,8 @@ PUBLIC ssize mprWriteCache(MprCache *cache, cchar *key, cchar *value, MprTime mo
         item->data = sclone(value);
     } else if (add) {
         if (exists) {
-            return 0;
+            unlock(cache);
+            return MPR_ERR_ALREADY_EXISTS;
         }
         item->data = sclone(value);
     } else if (append) {
@@ -5261,9 +5307,9 @@ PUBLIC ssize mprWriteCache(MprCache *cache, cchar *key, cchar *value, MprTime mo
     }
     if (cache->notify) {
         if (exists) {
-            event = MPR_CACHE_NOTIFY_CREATE;
-        } else {
             event = MPR_CACHE_NOTIFY_UPDATE;
+        } else {
+            event = MPR_CACHE_NOTIFY_CREATE;
         }
         (cache->notify)(cache, item->key, item->data, event);
     }
@@ -5439,6 +5485,9 @@ static void manageCacheItem(CacheItem *item, int flags)
 
 PUBLIC void mprGetCacheStats(MprCache *cache, int *numKeys, ssize *mem)
 {
+    if (cache->shared) {
+        cache = cache->shared;
+    }
     if (numKeys) {
         *numKeys = mprGetHashLength(cache->store);
     }
@@ -5465,7 +5514,7 @@ PUBLIC void mprGetCacheStats(MprCache *cache, int *numKeys, ssize *mem)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /******************************* Forward Declarations *************************/
 
@@ -5782,6 +5831,11 @@ PUBLIC int mprRunCmd(MprCmd *cmd, cchar *command, cchar **envp, cchar *in, char 
         return MPR_ERR_BAD_ARGS;
     }
     cmd->makeArgv = argv;
+    /*
+        The string-command API takes a command line, so a .cmd/.bat target is in contract. mprRunCmdV
+        callers do not get the shell fallback: there the program name can come from a request.
+     */
+    flags |= MPR_CMD_ALLOW_SHELL;
     return mprRunCmdV(cmd, argc, argv, envp, in, out, err, timeout, flags);
 }
 
@@ -6682,7 +6736,7 @@ static void prepWinProgram(MprCmd *cmd)
     /*
         Support ".cmd" and ".bat" files that take precedence
      */
-    if ((ext = mprGetPathExt(path)) == 0) {
+    if ((cmd->flags & MPR_CMD_ALLOW_SHELL) && (ext = mprGetPathExt(path)) == 0) {
         if ((bat = mprSearchPath(mprJoinPathExt(path, ".cmd"), MPR_SEARCH_EXE, cmd->searchPath, NULL)) == 0) {
             bat = mprSearchPath(mprJoinPathExt(path, ".bat"), MPR_SEARCH_EXE, cmd->searchPath, NULL);
         }
@@ -6756,19 +6810,19 @@ static void prepWinCommand(MprCmd *cmd)
             Cygwin will parse as  argv[1] == c:/path \a \b
             Windows will parse as argv[1] == c:/path "a b"
      */
-    cchar **ap, *start, *cp;
+    cchar **ap, *cp;
     char  *dp;
     ssize len;
-    int   argc, quote;
+    int   argc, backslashes, i, quote;
 
     /*
-        Create the command line
+        Create the command line. Worst case an argument doubles in length: a run of N backslashes
+        before a quote is emitted as 2N+1 backslashes plus the escaped quote, which is 2 output
+        characters per source character, and a run of N before the closing quote as 2N. Add the two
+        enclosing quotes and the separating space.
      */
     argc = 0;
     for (len = 0, ap = cmd->argv; *ap; ap++) {
-        /*
-            Space and possible quotes and worst case backquoting
-         */
         len += (slen(*ap) * 2) + 2 + 1;
         argc++;
     }
@@ -6776,20 +6830,43 @@ static void prepWinCommand(MprCmd *cmd)
     cmd->command[len] = '\0';
 
     /*
-        Add quotes around all args that have spaces and backquote double quotes.
-        Example:    ["showColors", "red", "light blue", "Cannot \"render\""]
-        Becomes:    "showColors" "red" "light blue" "Cannot \"render\""
+        Quote every argument that contains a space or a quote, and escape it. An argument with
+        neither is emitted as-is: a backslash that does not precede a quote is literal to the
+        parser, so it needs no quoting either way.
+        Example:    ["showColors", "light blue", "Cannot \"render\""]
+        Becomes:    showColors "light blue" "Cannot \\\"render\\\""
+
+        Every argument is data. No case treats one as pre-formatted command-line syntax: a leading
+        quote is a character in the argument like any other, so skipping such an argument as
+        "already quoted" would let its producer choose the token boundaries the child sees.
      */
     dp = cmd->command;
     for (ap = &cmd->argv[0]; *ap; ) {
-        start = cp = *ap;
+        cp = *ap;
         quote = '"';
-        if (cp[0] != quote && (strchr(cp, ' ') != 0 || strchr(cp, quote) != 0)) {
-            for (*dp++ = quote; *cp; ) {
-                if (*cp == quote && !(cp > start && cp[-1] == '\\')) {
+        if (strchr(cp, ' ') != 0 || strchr(cp, quote) != 0) {
+            /*
+                Escape by the rule the child's parser applies (CommandLineToArgvW and the CRT startup
+                code): a backslash is literal unless it precedes a quote, so a run of N backslashes
+                before a literal quote is emitted as 2N+1, and a run of N before the closing quote as
+                2N so that quote still terminates the argument.
+             */
+            *dp++ = quote;
+            while (*cp) {
+                for (backslashes = 0; *cp == '\\'; cp++) {
+                    backslashes++;
+                }
+                if (*cp == '\0') {
+                    backslashes *= 2;
+                } else if (*cp == quote) {
+                    backslashes = backslashes * 2 + 1;
+                }
+                for (i = 0; i < backslashes; i++) {
                     *dp++ = '\\';
                 }
-                *dp++ = *cp++;
+                if (*cp) {
+                    *dp++ = *cp++;
+                }
             }
             *dp++ = quote;
         } else {
@@ -6810,45 +6887,99 @@ static void prepWinCommand(MprCmd *cmd)
 static int startProcess(MprCmd *cmd)
 {
     PROCESS_INFORMATION procInfo;
-    STARTUPINFO         startInfo;
-    cchar               *envBlock;
-    int                 err;
+
+#if defined(PROC_THREAD_ATTRIBUTE_HANDLE_LIST) && defined(EXTENDED_STARTUPINFO_PRESENT)
+    STARTUPINFOEX startInfo;
+#else
+    STARTUPINFO startInfo;
+#endif
+    LPSTARTUPINFO startupInfo;
+    HANDLE        handles[MPR_CMD_MAX_PIPE];
+    cchar         *envBlock;
+    SIZE_T        attrSize;
+    DWORD         createFlags;
+    int           err, i, inheritCount;
 
     memset(&startInfo, 0, sizeof(startInfo));
-    startInfo.cb = sizeof(startInfo);
+#if defined(PROC_THREAD_ATTRIBUTE_HANDLE_LIST) && defined(EXTENDED_STARTUPINFO_PRESENT)
+    startupInfo = &startInfo.StartupInfo;
+#else
+    startupInfo = &startInfo;
+#endif
+    startupInfo->cb = sizeof(startInfo);
 
-    startInfo.dwFlags = STARTF_USESHOWWINDOW;
+    startupInfo->dwFlags = STARTF_USESHOWWINDOW;
     if (cmd->flags & MPR_CMD_SHOW) {
-        startInfo.wShowWindow = SW_SHOW;
+        startupInfo->wShowWindow = SW_SHOW;
     } else {
-        startInfo.wShowWindow = SW_HIDE;
+        startupInfo->wShowWindow = SW_HIDE;
     }
-    startInfo.dwFlags |= STARTF_USESTDHANDLES;
+    startupInfo->dwFlags |= STARTF_USESTDHANDLES;
 
     if (cmd->flags & MPR_CMD_IN) {
         if (cmd->files[MPR_CMD_STDIN].clientFd > 0) {
-            startInfo.hStdInput = (HANDLE) _get_osfhandle(cmd->files[MPR_CMD_STDIN].clientFd);
+            startupInfo->hStdInput = (HANDLE) _get_osfhandle(cmd->files[MPR_CMD_STDIN].clientFd);
         }
     } else {
-        startInfo.hStdInput = (HANDLE) _get_osfhandle((int) fileno(stdin));
+        startupInfo->hStdInput = (HANDLE) _get_osfhandle((int) fileno(stdin));
     }
     if (cmd->flags & MPR_CMD_OUT) {
         if (cmd->files[MPR_CMD_STDOUT].clientFd > 0) {
-            startInfo.hStdOutput = (HANDLE) _get_osfhandle(cmd->files[MPR_CMD_STDOUT].clientFd);
+            startupInfo->hStdOutput = (HANDLE) _get_osfhandle(cmd->files[MPR_CMD_STDOUT].clientFd);
         }
     } else {
-        startInfo.hStdOutput = (HANDLE) _get_osfhandle((int) fileno(stdout));
+        startupInfo->hStdOutput = (HANDLE) _get_osfhandle((int) fileno(stdout));
     }
     if (cmd->flags & MPR_CMD_ERR) {
         if (cmd->files[MPR_CMD_STDERR].clientFd > 0) {
-            startInfo.hStdError = (HANDLE) _get_osfhandle(cmd->files[MPR_CMD_STDERR].clientFd);
+            startupInfo->hStdError = (HANDLE) _get_osfhandle(cmd->files[MPR_CMD_STDERR].clientFd);
         }
     } else {
-        startInfo.hStdError = (HANDLE) _get_osfhandle((int) fileno(stderr));
+        startupInfo->hStdError = (HANDLE) _get_osfhandle((int) fileno(stderr));
     }
+    inheritCount = 0;
+    handles[inheritCount++] = startupInfo->hStdInput;
+    if (startupInfo->hStdOutput != startupInfo->hStdInput) {
+        handles[inheritCount++] = startupInfo->hStdOutput;
+    }
+    if (startupInfo->hStdError != startupInfo->hStdInput && startupInfo->hStdError != startupInfo->hStdOutput) {
+        handles[inheritCount++] = startupInfo->hStdError;
+    }
+    for (i = 0; i < inheritCount; ) {
+        if (handles[i] == 0 || handles[i] == INVALID_HANDLE_VALUE) {
+            handles[i] = handles[--inheritCount];
+        } else {
+            i++;
+        }
+    }
+    createFlags = 0;
+#if defined(PROC_THREAD_ATTRIBUTE_HANDLE_LIST) && defined(EXTENDED_STARTUPINFO_PRESENT)
+    attrSize = 0;
+    InitializeProcThreadAttributeList(NULL, 1, 0, &attrSize);
+    if (inheritCount > 0 && attrSize > 0) {
+        startInfo.lpAttributeList = mprAlloc(attrSize);
+        if (startInfo.lpAttributeList &&
+            InitializeProcThreadAttributeList(startInfo.lpAttributeList, 1, 0, &attrSize) &&
+            UpdateProcThreadAttribute(startInfo.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+                                      handles, sizeof(HANDLE) * inheritCount, NULL, NULL)) {
+            createFlags |= EXTENDED_STARTUPINFO_PRESENT;
+        } else if (startInfo.lpAttributeList) {
+            DeleteProcThreadAttributeList(startInfo.lpAttributeList);
+            startInfo.lpAttributeList = 0;
+        }
+    }
+#else
+    attrSize = 0;
+#endif
     envBlock = makeWinEnvBlock(cmd);
-    if (!CreateProcess(0, wide(cmd->command), 0, 0, 1, 0, (char*) envBlock, wide(cmd->dir), &startInfo, &procInfo)) {
+    if (!CreateProcess(0, wide(cmd->command), 0, 0, inheritCount > 0, createFlags, (char*) envBlock, wide(cmd->dir),
+                       (LPSTARTUPINFO) &startInfo, &procInfo)) {
         err = mprGetOsError();
+#if defined(PROC_THREAD_ATTRIBUTE_HANDLE_LIST) && defined(EXTENDED_STARTUPINFO_PRESENT)
+        if (startInfo.lpAttributeList) {
+            DeleteProcThreadAttributeList(startInfo.lpAttributeList);
+        }
+#endif
         if (err == ERROR_DIRECTORY) {
             mprLog("error mpr cmd", 0, "Cannot create process: %s, directory %s is invalid", cmd->program, cmd->dir);
         } else {
@@ -6856,6 +6987,11 @@ static int startProcess(MprCmd *cmd)
         }
         return MPR_ERR_CANT_CREATE;
     }
+#if defined(PROC_THREAD_ATTRIBUTE_HANDLE_LIST) && defined(EXTENDED_STARTUPINFO_PRESENT)
+    if (startInfo.lpAttributeList) {
+        DeleteProcThreadAttributeList(startInfo.lpAttributeList);
+    }
+#endif
     cmd->thread = procInfo.hThread;
     cmd->process = procInfo.hProcess;
     cmd->pid = procInfo.dwProcessId;
@@ -7022,8 +7158,7 @@ static int startProcess(MprCmd *cmd)
         }
         if (cmd->dir) {
             if (chdir(cmd->dir) < 0) {
-                mprLog("error mpr cmd", 0, "Cannot change directory to %s", cmd->dir);
-                return MPR_ERR_CANT_INITIALIZE;
+                _exit(-(MPR_ERR_CANT_INITIALIZE));
             }
         }
         if (cmd->flags & MPR_CMD_IN) {
@@ -7084,23 +7219,13 @@ PUBLIC int startProcess(MprCmd *cmd)
 {
     MprCmdTaskFn entryFn;
     MprModule    *mp;
-    char         *entryPoint, *program, *pair;
-    int          pri, next;
+    char         *entryPoint, *program;
+    int          pri;
 
     mprLog("info mpr cmd", 6, "Program %s", cmd->program);
-    entryPoint = 0;
-    if (cmd->env) {
-        for (ITERATE_ITEMS(cmd->env, pair, next)) {
-            if (sncmp(pair, "entryPoint=", 11) == 0) {
-                entryPoint = sclone(&pair[11]);
-            }
-        }
-    }
     program = mprGetPathBase(cmd->program);
-    if (entryPoint == 0) {
-        program = mprTrimPathExt(program);
-        entryPoint = program;
-    }
+    program = mprTrimPathExt(program);
+    entryPoint = program;
 #if ME_CPU_ARCH == MPR_CPU_IX86 || ME_CPU_ARCH == MPR_CPU_IX64 || ME_CPU_ARCH == MPR_CPU_SH
     /*
         A leading underscore is required on some architectures
@@ -7236,7 +7361,7 @@ static void closeFiles(MprCmd *cmd)
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
-
+#include    "mpr.h"
 
 /***************************** Forward Declarations ***************************/
 
@@ -7553,11 +7678,19 @@ PUBLIC void mprSignalMultiCond(MprCond *cp)
 
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 /*********************************** Locals ***********************************/
 
+/*
+    Stored password formats. BF1 keys the Blowfish schedule with "salt:input" directly. The schedule
+    consumes only the first (BF_ROUNDS + 2) * 4 = 72 bytes, so a long composite input (Appweb keys
+    with "username:realm:password") can push the password outside that window. BF2 keys with
+    "salt:SHA(input)", a fixed 57 byte key that cannot reach the window, and the caller's composition
+    is preserved inside the digest. BF1 verification is retained so deployed hashes keep working.
+ */
 #define CRYPT_BLOWFISH       "BF1"
+#define CRYPT_BLOWFISH2      "BF2"
 #define BLOWFISH_SALT_LENGTH 16
 #define BLOWFISH_ROUNDS      128
 
@@ -7718,28 +7851,22 @@ PUBLIC int mprRandom()
 
 PUBLIC char *mprGetRandomString(ssize size)
 {
-    MprTicks now;
-    char     *hex = "0123456789abcdef";
-    char     *bytes, *ascii, *ap, *cp, *bp;
-    ssize    len;
-    int      i;
+    char  *hex = "0123456789abcdef";
+    char  *bytes, *ascii, *ap;
+    ssize len;
+    int   i;
 
     len = size / 2;
     bytes = mprAlloc(len);
     ascii = mprAlloc(size + 1);
 
+    /*
+        Fail rather than substitute weak bytes. Callers key the Digest nonce, the session id and the
+        CSRF token, so they must be able to refuse rather than issue a guessable value.
+     */
     if (mprGetRandomBytes(bytes, len, 0) < 0) {
-        mprLog("critical mpr", 0, "Failed to get random bytes");
-        now = mprGetTime();
-        cp = (char*) &now;
-        bp = bytes;
-        for (i = 0; i < sizeof(now) && bp < &bytes[len]; i++) {
-            *bp++ = *cp++;
-        }
-        cp = (char*) &now;
-        for (i = 0; i < sizeof(char*) && bp < &bytes[len]; i++) {
-            *bp++ = *cp++;
-        }
+        mprLog("critical mpr", 0, "Cannot get random bytes from the system random source");
+        return 0;
     }
     ap = ascii;
     for (i = 0; i < len; i++) {
@@ -8275,7 +8402,22 @@ static void shaPad(MprSha *sha)
 
 /************************************ Blowfish *******************************/
 
-#define BF_ROUNDS 16
+#define BF_ROUNDS        16
+
+/*
+    The key schedule consumes exactly this many key bytes and ignores everything after them. This is a
+    property of Blowfish, not of this implementation. Real bcrypt has the same window.
+ */
+#define BF_KEY_WINDOW    ((BF_ROUNDS + 2) * 4)
+
+/*
+    Spare key bytes a BF1 key must leave inside the window before its verification can be trusted.
+    binit cycles a key shorter than the window, so a candidate stopping N bytes short has its first N
+    bytes replayed into the tail and can alias a truncated stored key with probability around
+    (1/62)^N. Applied by the caller, which knows the username/realm/password split. mprCheckPassword
+    receives one composite string and cannot make the distinction. See httpFinalizeRoute.
+ */
+#define BF_V1_KEY_MARGIN 8
 
 typedef struct {
     uint P[16 + 2];
@@ -8647,19 +8789,20 @@ static uint cipherText[6] = {
 };
 
 
-PUBLIC char *mprCryptPassword(cchar *password, cchar *salt, int rounds)
+/*
+    Run the Blowfish schedule over "salt:key" and return the encoded cipher text. The caller
+    decides what "key" is: BF1 passes the password through unchanged, BF2 passes its SHA digest.
+ */
+static char *cryptBlock(cchar *key, cchar *salt, int rounds)
 {
     MprBlowfish bf;
-    char        *result, *key;
+    char        *result, *composite;
     uint        *text;
     ssize       len, limit;
     int         i, j;
 
-    if (slen(password) > ME_MPR_MAX_PASSWORD) {
-        return 0;
-    }
-    key = sfmt("%s:%s", salt, password);
-    binit(&bf, (uchar*) key, slen(key));
+    composite = sfmt("%s:%s", salt, key);
+    binit(&bf, (uchar*) composite, slen(composite));
     len = sizeof(cipherText);
     text = mprMemdup(cipherText, len);
 
@@ -8673,6 +8816,32 @@ PUBLIC char *mprCryptPassword(cchar *password, cchar *salt, int rounds)
     memset(&bf, 0, sizeof(bf));
     memset(text, 0, len);
     return result;
+}
+
+
+/*
+    BF1. Retained with its original semantics so hashes already in the field keep verifying. New
+    hashes are not written in this format. See mprMakePassword.
+ */
+PUBLIC char *mprCryptPassword(cchar *password, cchar *salt, int rounds)
+{
+    if (slen(password) > ME_MPR_MAX_PASSWORD) {
+        return 0;
+    }
+    return cryptBlock(password, salt, rounds);
+}
+
+
+/*
+    BF2. The SHA digest is a fixed 40 characters, so the key is 57 bytes and the 72-byte schedule
+    window cannot be reached however long the caller's input is.
+ */
+static char *cryptPassword2(cchar *password, cchar *salt, int rounds)
+{
+    if (slen(password) > ME_MPR_MAX_PASSWORD) {
+        return 0;
+    }
+    return cryptBlock(mprGetSHA(password), salt, rounds);
 }
 
 
@@ -8715,8 +8884,14 @@ PUBLIC char *mprMakePassword(cchar *password, int saltLength, int rounds)
     if (rounds <= 0) {
         rounds = BLOWFISH_ROUNDS;
     }
-    salt = mprMakeSalt(saltLength);
-    return sfmt("%s:%05d:%s:%s", CRYPT_BLOWFISH, rounds, salt, mprCryptPassword(password, salt, rounds));
+    /*
+        A null salt would be formatted into the hash as the literal "null", giving every password on
+        the device the same salt. Fail rather than issue one.
+     */
+    if ((salt = mprMakeSalt(saltLength)) == 0) {
+        return 0;
+    }
+    return sfmt("%s:%05d:%s:%s", CRYPT_BLOWFISH2, rounds, salt, cryptPassword2(password, salt, rounds));
 }
 
 
@@ -8733,7 +8908,7 @@ PUBLIC bool mprCheckPassword(cchar *plainTextPassword, cchar *passwordHash)
         return 0;
     }
     algorithm = stok(sclone(passwordHash), ":", &tok);
-    if (!smatch(algorithm, CRYPT_BLOWFISH)) {
+    if (!smatch(algorithm, CRYPT_BLOWFISH) && !smatch(algorithm, CRYPT_BLOWFISH2)) {
         return 0;
     }
     rounds = stok(NULL, ":", &tok);
@@ -8742,7 +8917,32 @@ PUBLIC bool mprCheckPassword(cchar *plainTextPassword, cchar *passwordHash)
     if (!rounds || !salt || !hash) {
         return 0;
     }
-    given = mprCryptPassword(plainTextPassword, salt, atoi(rounds));
+    /*
+        Verify in the format the stored hash was written in. A BF1 hash cannot be upgraded in place,
+        because the stored value never depended on the password it is supposed to check.
+     */
+    if (smatch(algorithm, CRYPT_BLOWFISH2)) {
+        given = cryptPassword2(plainTextPassword, salt, atoi(rounds));
+
+    } else {
+        /*
+            BF1, fail closed past the window. A key that reaches the window was truncated when the
+            hash was stored, so the comparison no longer depends on the password and every candidate
+            matches. The test is >= because a key filling the window exactly consumes it with no
+            cycling and so matches any longer truncated key. No working login is refused: a correct
+            candidate has the length of the key the hash was made from.
+
+            The residual band just below the window is reported by the caller instead, which knows
+            the username/realm/password split. See BF_V1_KEY_MARGIN.
+         */
+        if ((slen(salt) + 1 + slen(plainTextPassword)) >= BF_KEY_WINDOW) {
+            return 0;
+        }
+        given = mprCryptPassword(plainTextPassword, salt, atoi(rounds));
+    }
+    if (given == 0) {
+        return 0;
+    }
 
     match = slen(given) ^ slen(hash);
     for (s1 = given, s2 = hash; *s1 && *s2; s1++, s2++) {
@@ -8842,7 +9042,7 @@ PUBLIC char *mprGetPassword(cchar *prompt)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /*********************************** Defines **********************************/
 
@@ -8964,6 +9164,9 @@ static MprFile *disk_openFile(MprFileSystem *fs, cchar *path, int omode, int per
     if ((file = mprAllocObj(MprFile, manageDiskFile)) == 0) {
         return NULL;
     }
+#if WINDOWS
+    omode |= _O_NOINHERIT;
+#endif
     file->path = sclone(path);
     file->fd = open(path, omode, MASK_PERMS(perms));
     if (file->fd < 0) {
@@ -9465,6 +9668,9 @@ static int cygOpen(MprFileSystem *fs, cchar *path, int omode, int perms)
 {
     int fd;
 
+#if WINDOWS
+    omode |= _O_NOINHERIT;
+#endif
     fd = open(path, omode, MASK_PERMS(perms));
 #if WINDOWS
     if (fd < 0) {
@@ -9497,7 +9703,7 @@ static int cygOpen(MprFileSystem *fs, cchar *path, int omode, int perms)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /*********************************** Locals *************************************/
 
@@ -10424,7 +10630,7 @@ PUBLIC bool mprDispatcherHasEvents(MprDispatcher *dispatcher)
 
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 /************************************ Locals **********************************/
 /*
@@ -10586,6 +10792,22 @@ PUBLIC char *mprUriDecodeInSitu(char *inbuf)
 
 
 /*
+    Test if a character must be escaped for a shell. charMatch above is generated for one platform and
+    ships with the POSIX set, so the two characters cmd.exe also needs are overlaid here: '%' triggers
+    variable expansion and '\r' terminates a cmd.exe line.
+ */
+static bool shellEscape(uchar c)
+{
+#if ME_WIN_LIKE
+    if (c == '%' || c == '\r') {
+        return 1;
+    }
+#endif
+    return (charMatch[c] & MPR_ENCODE_SHELL) ? 1 : 0;
+}
+
+
+/*
     Escape a shell command. Not really Http, but useful anyway for CGI
  */
 PUBLIC char *mprEscapeCmd(cchar *cmd, int esc)
@@ -10601,7 +10823,7 @@ PUBLIC char *mprEscapeCmd(cchar *cmd, int esc)
         return MPR->emptyString;
     }
     for (len = 1, ip = cmd; *ip; ip++, len++) {
-        if (charMatch[(uchar) * ip] & MPR_ENCODE_SHELL) {
+        if (shellEscape((uchar) * ip)) {
             len++;
         }
     }
@@ -10620,7 +10842,7 @@ PUBLIC char *mprEscapeCmd(cchar *cmd, int esc)
             continue;
         }
 #endif
-        if (charMatch[c] & MPR_ENCODE_SHELL) {
+        if (shellEscape(c)) {
             *op++ = esc;
         }
         *op++ = c;
@@ -10799,7 +11021,7 @@ PUBLIC void mprEncodeGenerate(void)
 
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 #if ME_EVENT_NOTIFIER == MPR_EVENT_EPOLL
 /********************************** Forwards **********************************/
@@ -11105,7 +11327,7 @@ void epollDummy(void)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /***************************** Forward Declarations ***************************/
 
@@ -11483,7 +11705,7 @@ PUBLIC void mprUnlinkEvent(MprEvent *event)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /****************************** Forward Declarations **************************/
 
@@ -12108,7 +12330,7 @@ PUBLIC int mprGetFileFd(MprFile *file)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /************************************ Code ************************************/
 
@@ -12269,7 +12491,7 @@ PUBLIC void mprSetPathNewline(cchar *path, cchar *newline)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /********************************** Defines ***********************************/
 
@@ -12750,7 +12972,7 @@ PUBLIC char *mprHashKeysToString(MprHash *hash, cchar *join)
  */
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /*********************************** Locals ***********************************/
 /*
@@ -12778,6 +13000,7 @@ PUBLIC char *mprHashKeysToString(MprHash *hash, cchar *join)
     Remove matching properties
  */
 #define JSON_REMOVE     0x1
+#define JSON_INDEX      32
 
 /****************************** Forward Declarations **************************/
 
@@ -12786,8 +13009,10 @@ static void appendItem(MprJson *obj, MprJson *child);
 static void appendProperty(MprJson *obj, MprJson *child);
 static int checkBlockCallback(MprJsonParser *parser, cchar *name, bool leave);
 static int gettok(MprJsonParser *parser);
+static MprJson *jsonDescend(MprJsonParser *parser, MprJson *obj);
 static MprJson *jsonParse(MprJsonParser *parser, MprJson *obj);
 static void jsonErrorCallback(MprJsonParser *parser, cchar *msg);
+static void indexProperty(MprJson *obj, MprJson *child);
 static int peektok(MprJsonParser *parser);
 static void puttok(MprJsonParser *parser);
 static MprJson *queryCore(MprJson *obj, cchar *key, MprJson *value, int flags);
@@ -12801,12 +13026,25 @@ static void spaces(MprBuf *buf, int count);
 
 static void manageJson(MprJson *obj, int flags)
 {
+    MprJson *child;
+
     if (flags & MPR_MANAGE_MARK) {
         mprMark(obj->name);
         mprMark(obj->value);
-        mprMark(obj->prev);
-        mprMark(obj->next);
-        mprMark(obj->children);
+        mprMark(obj->index);
+        /*
+            Mark the children iteratively rather than letting each child mark its siblings. mprMark
+            invokes the manager directly, so a chain marked sibling to sibling costs one stack frame
+            per element and a long chain overflows the marking thread's stack. This loop reaches every
+            node in the ring, so prev and next need no marking. Stop on null in case a chain was ever
+            built without closing the ring.
+         */
+        if ((child = obj->children) != 0) {
+            do {
+                mprMark(child);
+                child = child->next;
+            } while (child && child != obj->children);
+        }
     }
 }
 
@@ -12921,7 +13159,26 @@ PUBLIC MprJson *mprParseJson(cchar *str)
 
 
 /*
-    Inner parse routine. This is called recursively.
+    Descend one nesting level into an object or array. Recursion is bounded by ME_MAX_JSON_DEPTH so that
+    untrusted input cannot exhaust the stack. Returns null on error, having set the parse error.
+ */
+static MprJson *jsonDescend(MprJsonParser *parser, MprJson *obj)
+{
+    MprJson *result;
+
+    if (++parser->depth > ME_MAX_JSON_DEPTH) {
+        parser->depth--;
+        mprSetJsonError(parser, "JSON is nested too deeply. Limit %d levels", ME_MAX_JSON_DEPTH);
+        return 0;
+    }
+    result = jsonParse(parser, obj);
+    parser->depth--;
+    return result;
+}
+
+
+/*
+    Inner parse routine. This is called recursively via jsonDescend.
  */
 static MprJson *jsonParse(MprJsonParser *parser, MprJson *obj)
 {
@@ -12963,7 +13220,9 @@ static MprJson *jsonParse(MprJsonParser *parser, MprJson *obj)
                 }
                 child = parser->callback.createObj(parser, MPR_JSON_OBJ);
                 if (peektok(parser) != JTOK_RBRACE) {
-                    child = jsonParse(parser, child);
+                    if ((child = jsonDescend(parser, child)) == 0) {
+                        return 0;
+                    }
                 }
                 if (gettok(parser) != JTOK_RBRACE) {
                     mprSetJsonError(parser, "Missing closing brace");
@@ -12977,7 +13236,9 @@ static MprJson *jsonParse(MprJsonParser *parser, MprJson *obj)
                 if (parser->callback.checkBlock(parser, name, 0) < 0) {
                     return 0;
                 }
-                child = jsonParse(parser, parser->callback.createObj(parser, MPR_JSON_ARRAY));
+                if ((child = jsonDescend(parser, parser->callback.createObj(parser, MPR_JSON_ARRAY))) == 0) {
+                    return 0;
+                }
                 if (gettok(parser) != JTOK_RBRACKET) {
                     mprSetJsonError(parser, "Missing closing bracket");
                     return 0;
@@ -13024,6 +13285,16 @@ static MprJson *jsonParse(MprJsonParser *parser, MprJson *obj)
                 child = mprCreateJsonValue(parser->token, type);
             }
             if (child == 0) {
+                return 0;
+            }
+            /*
+                Bound width as well as depth. A flat array is one level deep, but its elements form a
+                single sibling chain that the collector marks by recursing once per link, so a long
+                chain exhausts the marking thread's stack. Refuse while parsing, so an oversized
+                document is never built.
+             */
+            if (++parser->nodes > ME_MAX_JSON_NODES) {
+                mprSetJsonError(parser, "JSON has too many elements. Limit %d", ME_MAX_JSON_NODES);
                 return 0;
             }
             if (obj) {
@@ -13326,13 +13597,19 @@ static int gettok(MprJsonParser *parser)
 
 
 /*
-    Supports hashes where properties are strings or hashes of strings. N-level nest is supported.
+    Supports hashes where properties are strings or hashes of strings. Nesting is supported to
+    ME_MAX_JSON_DEPTH levels. The indent argument is the current depth. Returns null if the tree is
+    deeper than that, since serializing an unbounded tree would exhaust the stack just as parsing one
+    would.
  */
 static char *objToString(MprBuf *buf, MprJson *obj, int indent, int flags)
 {
     MprJson *child;
     int     pretty, index;
 
+    if (indent >= ME_MAX_JSON_DEPTH) {
+        return 0;
+    }
     pretty = flags & MPR_JSON_PRETTY;
 
     if (obj->type & MPR_JSON_ARRAY) {
@@ -13342,7 +13619,9 @@ static char *objToString(MprBuf *buf, MprJson *obj, int indent, int flags)
 
         for (ITERATE_JSON(obj, child, index)) {
             if (pretty) spaces(buf, indent);
-            objToString(buf, child, indent, flags);
+            if (objToString(buf, child, indent, flags) == 0) {
+                return 0;
+            }
             if (child->next != obj->children) {
                 mprPutCharToBuf(buf, ',');
             }
@@ -13363,7 +13642,9 @@ static char *objToString(MprBuf *buf, MprJson *obj, int indent, int flags)
             } else {
                 mprPutCharToBuf(buf, ':');
             }
-            objToString(buf, child, indent, flags);
+            if (objToString(buf, child, indent, flags) == 0) {
+                return 0;
+            }
             if (child->next != obj->children) {
                 mprPutCharToBuf(buf, ',');
             }
@@ -13701,6 +13982,9 @@ PUBLIC MprJson *mprReadJsonObj(MprJson *obj, cchar *name)
         return 0;
     }
     if (obj->type & MPR_JSON_OBJ) {
+        if (obj->index) {
+            return mprLookupKey(obj->index, name);
+        }
         for (ITERATE_JSON(obj, child, i)) {
             if (smatch(child->name, name)) {
                 return child;
@@ -14390,6 +14674,7 @@ static MprJson *setProperty(MprJson *obj, cchar *name, MprJson *child)
     if ((existing = mprReadJsonObj(obj, name)) != 0) {
         existing->value = child->value;
         existing->children = child->children;
+        existing->index = child->index;
         existing->type = child->type;
         existing->length = child->length;
         return existing;
@@ -14406,7 +14691,27 @@ static MprJson *setProperty(MprJson *obj, cchar *name, MprJson *child)
     }
     child->name = name;
     obj->length++;
+    indexProperty(obj, child);
     return child;
+}
+
+
+static void indexProperty(MprJson *obj, MprJson *child)
+{
+    MprJson *item;
+    int     index;
+
+    if (!(obj->type & MPR_JSON_OBJ) || !child->name) {
+        return;
+    }
+    if (!obj->index && obj->length >= JSON_INDEX) {
+        obj->index = mprCreateHash(JSON_INDEX, MPR_HASH_STABLE);
+        for (ITERATE_JSON(obj, item, index)) {
+            mprAddKey(obj->index, item->name, item);
+        }
+    } else if (obj->index) {
+        mprAddKey(obj->index, child->name, child);
+    }
 }
 
 
@@ -14414,6 +14719,7 @@ static void adoptChildren(MprJson *obj, MprJson *other)
 {
     if (obj && other) {
         obj->children = other->children;
+        obj->index = other->index;
         obj->length = other->length;
     }
 }
@@ -14452,6 +14758,9 @@ PUBLIC MprJson *mprRemoveJsonChild(MprJson *obj, MprJson *child)
             }
             dep->prev->next = dep->next;
             dep->next->prev = dep->prev;
+            if (obj->index && dep->name) {
+                mprRemoveKey(obj->index, dep->name);
+            }
             child->next = child->prev = 0;
             return child;
         }
@@ -14594,7 +14903,7 @@ PUBLIC int mprWriteJsonObj(MprJson *obj, cchar *key, MprJson *value)
 
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 #if ME_EVENT_NOTIFIER == MPR_EVENT_KQUEUE
 
@@ -14895,7 +15204,7 @@ void kqueueDummy()
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /********************************** Defines ***********************************/
 
@@ -15727,7 +16036,7 @@ PUBLIC char *mprListToString(MprList *list, cchar *join)
 
 /*********************************** Includes *********************************/
 
-
+#include    "mpr.h"
 
 /***************************** Forward Declarations ***************************/
 
@@ -16048,7 +16357,7 @@ PUBLIC void mprSpinUnlock(MprSpin *lock)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /********************************** Defines ***********************************/
 
@@ -16153,7 +16462,6 @@ PUBLIC void mprLogConfig()
     mprLog(name, 2, "CPU:                %s", ME_CPU);
     mprLog(name, 2, "OS:                 %s", ME_OS);
     mprLog(name, 2, "Host:               %s", mprGetHostName());
-    mprLog(name, 2, "Configure:          %s", ME_CONFIG_CMD);
     mprLog(name, 2, "PID:                %d", getpid());
     mprLog(name, 2, "----------------------------------");
 }
@@ -16618,7 +16926,7 @@ PUBLIC int _cmp(char *s1, char *s2)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 #if ME_COM_MBEDTLS
 /*
@@ -16632,11 +16940,17 @@ PUBLIC int _cmp(char *s1, char *s2)
     #include "mbedtls/net_sockets.h"
     #include "mbedtls/oid.h"
     #include "psa/crypto.h"
+    #include "mbedtls/dhm.h"
     #include "mbedtls/debug.h"
     #include "mbedtls/error.h"
     #include "mbedtls/check_config.h"
 
 /************************************* Defines ********************************/
+
+#ifndef MBEDTLS_PRIVATE
+    #define MBEDTLS_PRIVATE(member) member
+#endif
+
 /*
     Per-route SSL configuration
  */
@@ -16887,8 +17201,12 @@ static int configMbed(MprSsl *ssl, int flags, char **errorMsg)
     /*
         Configure larger DH parameters
      */
-    if ((rc = mbedtls_ssl_conf_dh_param_bin(mconf, dhm_p, sizeof(dhm_g), dhm_g, sizeof(dhm_g))) < 0) {
+    if ((rc = mbedtls_ssl_conf_dh_param_bin(mconf, dhm_p, sizeof(dhm_p), dhm_g, sizeof(dhm_g))) < 0) {
         merror(rc, "Cannot set DH params");
+        return MPR_ERR_CANT_INITIALIZE;
+    }
+    if (mbedtls_mpi_bitlen(&mconf->MBEDTLS_PRIVATE(dhm_P)) < 2048) {
+        merror(MBEDTLS_ERR_DHM_BAD_INPUT_DATA, "Configured DH prime is too small");
         return MPR_ERR_CANT_INITIALIZE;
     }
 
@@ -17647,7 +17965,7 @@ static char *replaceHyphen(char *cipher, char from, char to)
 
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 /*********************************** Code *************************************/
 /*
@@ -17815,32 +18133,33 @@ PUBLIC int mprSetMimeProgram(MprHash *table, cchar *mimeType, cchar *program)
     MprMime *mt;
 
     kp = 0;
-    mt = 0;
     while ((kp = mprGetNextKey(table, kp)) != 0) {
         mt = (MprMime*) kp->data;
         if (mt->type[0] == mimeType[0] && strcmp(mt->type, mimeType) == 0) {
-            break;
+            mt->program = sclone(program);
+            return 0;
         }
     }
-    if (mt == 0) {
-        return MPR_ERR_CANT_FIND;
-    }
-    mt->program = sclone(program);
-    return 0;
+    return MPR_ERR_CANT_FIND;
 }
 
 
 PUBLIC cchar *mprGetMimeProgram(MprHash *table, cchar *mimeType)
 {
+    MprKey  *kp;
     MprMime *mt;
 
     if (mimeType == 0 || *mimeType == '\0') {
         return 0;
     }
-    if ((mt = mprLookupKey(table, mimeType)) == 0) {
-        return 0;
+    kp = 0;
+    while ((kp = mprGetNextKey(table, kp)) != 0) {
+        mt = (MprMime*) kp->data;
+        if (mt->type[0] == mimeType[0] && strcmp(mt->type, mimeType) == 0) {
+            return mt->program;
+        }
     }
-    return mt->program;
+    return 0;
 }
 
 
@@ -17882,7 +18201,7 @@ PUBLIC cchar *mprLookupMime(MprHash *table, cchar *ext)
 
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 /********************************** Forwards **********************************/
 
@@ -18229,7 +18548,7 @@ PUBLIC char *mprSearchForModule(cchar *filename)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 #if ME_COM_OPENSSL
 
@@ -18248,6 +18567,14 @@ PUBLIC char *mprSearchForModule(cchar *filename)
 #endif
 #ifndef  ME_MPR_SSL_RENEGOTIATE
     #define ME_MPR_SSL_RENEGOTIATE 1
+#endif
+
+/*
+    Session lifetime in seconds when a certificate revocation list is configured. A resumed session is not
+    re-verified, so this bounds how long a revoked certificate can remain in use.
+ */
+#ifndef  ME_MPR_SSL_REVOKE_TIMEOUT
+    #define ME_MPR_SSL_REVOKE_TIMEOUT 300
 #endif
 
 /*
@@ -18409,7 +18736,7 @@ static CipherMap cipherMap[] = {
     { 0xC030, "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "ECDHE-RSA-AES256-GCM-SHA384" },
     { 0xC031, "TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256", "ECDH-RSA-AES128-GCM-SHA256" },
     { 0xC032, "TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384", "ECDH-RSA-AES256-GCM-SHA384" },
-    { 0x0000, 0 },
+    { 0x0000, 0, 0 },
 };
 
 /*
@@ -18702,6 +19029,7 @@ static int configOss(MprSsl *ssl, int flags, char **errorMsg)
     SSL_CTX    *ctx;
     cchar      *key;
     uchar      resume[16];
+    ulong      crlFlags;
     int        rc, verifyMode;
 
     assert(ssl);
@@ -18814,10 +19142,26 @@ static int configOss(MprSsl *ssl, int flags, char **errorMsg)
         }
 
         store = SSL_CTX_get_cert_store(ctx);
-        if (ssl->revoke && !X509_STORE_load_locations(store, ssl->revoke, 0)) {
-            mprLog("error openssl", 0, "Cannot load certificate revoke list: %s", ssl->revoke);
-            SSL_CTX_free(ctx);
-            return MPR_ERR_CANT_INITIALIZE;
+        if (ssl->revoke) {
+            if (!X509_STORE_load_locations(store, ssl->revoke, 0)) {
+                mprLog("error openssl", 0, "Cannot load certificate revoke list: %s", ssl->revoke);
+                SSL_CTX_free(ctx);
+                return MPR_ERR_CANT_INITIALIZE;
+            }
+            /*
+                OpenSSL ignores a loaded revocation list unless checking is explicitly enabled. CRL_CHECK
+                covers only the peer certificate. CRL_CHECK_ALL extends it to the whole chain, which needs a
+                revocation list per authority, so revokeChain opts out for peer-only deployments.
+             */
+            crlFlags = X509_V_FLAG_CRL_CHECK;
+            if (ssl->revokeChain) {
+                crlFlags |= X509_V_FLAG_CRL_CHECK_ALL;
+            }
+            if (!X509_STORE_set_flags(store, crlFlags)) {
+                mprLog("error openssl", 0, "Cannot enable certificate revocation checking");
+                SSL_CTX_free(ctx);
+                return MPR_ERR_CANT_INITIALIZE;
+            }
         }
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
         X509_STORE_set_ex_data(store, 0, (void*) ssl);
@@ -18887,18 +19231,20 @@ static int configOss(MprSsl *ssl, int flags, char **errorMsg)
 #endif
 #if defined(SSL_OP_NO_TICKET)
     /*
-        Ticket based session reuse is enabled by default
+        Ticket based session reuse is enabled by default.
+        A resumed session is not re-verified, so a peer certificate revoked after the session was established
+        would remain usable for the life of the ticket. When a revocation list is defined, disable tickets and
+        bound the session lifetime so a revocation takes effect within a known window.
      */
-    #if defined(ME_MPR_SSL_TICKET)
-    if (ME_MPR_SSL_TICKET) {
+    if (ssl->ticket && !ssl->revoke) {
         cfg->clearFlags |= SSL_OP_NO_TICKET;
     } else {
         cfg->setFlags |= SSL_OP_NO_TICKET;
     }
-    #else
-    cfg->clearFlags |= SSL_OP_NO_TICKET;
-    #endif
 #endif
+    if (ssl->revoke) {
+        SSL_CTX_set_timeout(ctx, ME_MPR_SSL_REVOKE_TIMEOUT);
+    }
 
 #if defined(SSL_OP_NO_COMPRESSION)
     /*
@@ -18945,9 +19291,14 @@ static int configOss(MprSsl *ssl, int flags, char **errorMsg)
 #endif
 
     /*
-        Define a session reuse context
+        Define a session reuse context. A failed RNG would yield a predictable context, so fail the
+        configuration rather than continue with one.
      */
-    RAND_bytes(resume, sizeof(resume));
+    if (RAND_bytes(resume, sizeof(resume)) != 1) {
+        mprLog("error openssl", 0, "Cannot generate a random session id context");
+        SSL_CTX_free(ctx);
+        return MPR_ERR_CANT_INITIALIZE;
+    }
     SSL_CTX_set_session_id_context(ctx, resume, sizeof(resume));
 
     /*
@@ -19893,10 +20244,17 @@ static int verifyPeerCertificate(int ok, X509_STORE_CTX *xctx)
     }
     sp->peerName = sclone(peerName);
 
-    if (ok && ssl->verifyDepth < depth) {
-        if (error == 0) {
-            error = X509_V_ERR_CERT_CHAIN_TOO_LONG;
-        }
+    /*
+        Enforce the configured chain depth limit unconditionally. The underlying verifier may surface an
+        over-depth chain under a variety of error codes (for example, some LibreSSL releases report the
+        chain as X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY instead of X509_V_ERR_CERT_CHAIN_TOO_LONG).
+        Rejecting here based on X509_STORE_CTX_get_error_depth avoids relying on backend-specific error
+        mapping.
+     */
+    if (ssl->verifyDepth < depth) {
+        sp->errorMsg = sfmt("Certificate chain too long (depth %d exceeds limit %d)", depth, ssl->verifyDepth);
+        sp->flags |= MPR_SOCKET_CERT_ERROR;
+        return 0;
     }
     switch (error) {
     case X509_V_OK:
@@ -19930,6 +20288,37 @@ static int verifyPeerCertificate(int ok, X509_STORE_CTX *xctx)
 
     case X509_V_ERR_CERT_HAS_EXPIRED:
         sp->errorMsg = sfmt("Certificate has expired");
+        ok = 0;
+        break;
+
+    case X509_V_ERR_CERT_REVOKED:
+        sp->errorMsg = sclone("Certificate revoked");
+        ok = 0;
+        break;
+
+    /*
+        The revocation list cannot be applied. Reject rather than admit a certificate whose revocation
+        status is unknown.
+     */
+    case X509_V_ERR_UNABLE_TO_GET_CRL:
+        sp->errorMsg = sfmt("No certificate revocation list for issuer %s", issuer);
+        ok = 0;
+        break;
+
+    case X509_V_ERR_CRL_HAS_EXPIRED:
+        sp->errorMsg = sclone("Certificate revocation list has expired");
+        ok = 0;
+        break;
+
+    case X509_V_ERR_CRL_NOT_YET_VALID:
+        sp->errorMsg = sclone("Certificate revocation list is not yet valid");
+        ok = 0;
+        break;
+
+    case X509_V_ERR_UNABLE_TO_DECRYPT_CRL_SIGNATURE:
+    case X509_V_ERR_UNABLE_TO_GET_CRL_ISSUER:
+    case X509_V_ERR_CRL_SIGNATURE_FAILURE:
+        sp->errorMsg = sclone("Cannot verify the certificate revocation list");
         ok = 0;
         break;
 
@@ -20142,7 +20531,7 @@ static DH *dhcallback(SSL *handle, int isExport, int keyLength)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /********************************** Defines ***********************************/
 /*
@@ -21214,6 +21603,75 @@ PUBLIC char *mprGetPortablePath(cchar *path)
 
 
 /*
+    Get the fully resolved, canonical path with every symbolic link resolved. Unlike mprGetAbsPath, which is
+    purely lexical, this consults the file system. Returns NULL if the path cannot be resolved.
+ */
+PUBLIC char *mprGetRealPath(cchar *path)
+{
+#if ME_UNIX_LIKE
+    char *result, *resolved;
+
+    if (path == 0 || *path == '\0') {
+        path = ".";
+    }
+    if ((resolved = realpath(path, NULL)) == 0) {
+        return 0;
+    }
+    result = sclone(resolved);
+    free(resolved);
+    return result;
+
+#elif ME_WIN_LIKE
+    HANDLE h;
+    wchar  wbuf[ME_MAX_PATH];
+    char   *result;
+    DWORD  len;
+
+    if (path == 0 || *path == '\0') {
+        path = ".";
+    }
+    h = CreateFile(wide(path), 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+                   FILE_FLAG_BACKUP_SEMANTICS, NULL);
+    if (h == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+    len = GetFinalPathNameByHandle(h, wbuf, (sizeof(wbuf) / sizeof(wchar)) - 1, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+    CloseHandle(h);
+    if (len == 0 || len >= (sizeof(wbuf) / sizeof(wchar))) {
+        return 0;
+    }
+    wbuf[len] = '\0';
+    result = multi(wbuf);
+    /*
+        GetFinalPathNameByHandle returns the extended-length spelling: \\?\C:\dir for a local volume and
+     \\?\UNC\host\share\dir for a network one, whose ordinary form is \\host\share. Parse the prefix
+        rather than drop a fixed four characters, and normalize before restoring the leading \\ because
+        mprNormalizePath collapses repeated separators.
+     */
+    if (sncmp(result, "\\\\?\\UNC\\", 8) == 0) {
+        result = sjoin("\\\\", mprNormalizePath(&result[8]), NULL);
+    } else {
+        if (sncmp(result, "\\\\?\\", 4) == 0) {
+            result = sclone(&result[4]);
+        }
+        result = mprNormalizePath(result);
+    }
+    mprMapSeparators(result, '\\');
+    return result;
+
+#else
+    /*
+        File systems without symbolic links. The lexical absolute path is already canonical.
+     */
+    if (!mprPathExists(path, F_OK)) {
+        return 0;
+    }
+    return mprGetAbsPath(path);
+#endif
+}
+
+
+/*
     Get a relative path from an origin path to a destination. If a relative path cannot be obtained,
     an absolute path to the destination will be returned. This happens if the paths cross drives.
     Returns the supplied destArg modified to be relative to originArg.
@@ -21400,22 +21858,81 @@ PUBLIC char *mprGetWinPath(cchar *path)
 }
 
 
-PUBLIC bool mprIsPathContained(cchar *path, cchar *dir)
+/*
+    Test if a single path component is a symbolic link. Does not follow the link.
+ */
+static bool isPathLink(cchar *path)
 {
-    ssize len;
-    char  *base;
+#if ME_UNIX_LIKE
+    struct stat s;
 
-    dir = mprGetAbsPath(dir);
-    path = mprGetAbsPath(path);
-    len = slen(dir);
-    if (len <= slen(path)) {
-        base = sclone(path);
-        base[len] = '\0';
-        if (mprSamePath(dir, base)) {
-            return 1;
+    return lstat((char*) path, &s) == 0 && S_ISLNK(s.st_mode);
+#elif ME_WIN_LIKE
+    DWORD att;
+
+    att = GetFileAttributes(wide(path));
+    return att != INVALID_FILE_ATTRIBUTES && (att & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+#else
+    return 0;
+#endif
+}
+
+
+/*
+    Test if any component of path below base is a symbolic link. The base prefix itself is not examined, as a
+    directory published via a link is still that directory. This is the containment test a lexical prefix
+    comparison cannot make: a link inside base passes mprIsAbsPathContained and is then followed by open().
+    Returns true if the path is not contained by base, so that a failure is never read as permission.
+ */
+PUBLIC bool mprHasPathLink(cchar *path, cchar *base)
+{
+    MprFileSystem *fs;
+    char          *probe;
+    ssize         baseLen, i, len;
+    bool          linked;
+
+    if (path == 0 || base == 0) {
+        return 1;
+    }
+    if (!mprIsAbsPathContained(path, base)) {
+        return 1;
+    }
+    fs = mprLookupFileSystem(path);
+    baseLen = slen(base);
+    probe = sclone(path);
+    len = slen(probe);
+    linked = 0;
+
+    /*
+        Test each component prefix in turn, from the one just below base down to the full path
+     */
+    for (i = baseLen + 1; i <= len && !linked; i++) {
+        if (i < len && !isSep(fs, probe[i])) {
+            continue;
+        }
+        if (isSep(fs, probe[i - 1])) {
+            /* Empty component from a duplicate or trailing separator */
+            continue;
+        }
+        if (i < len) {
+            probe[i] = '\0';
+        }
+        linked = isPathLink(probe);
+        if (i < len) {
+            probe[i] = path[i];
         }
     }
-    return 0;
+    return linked;
+}
+
+
+PUBLIC bool mprIsPathContained(cchar *path, cchar *dir)
+{
+    /*
+        Make both absolute, the precondition mprIsAbsPathContained asserts, and defer to it so the separator
+        boundary test is not duplicated.
+     */
+    return mprIsAbsPathContained(mprGetAbsPath(path), mprGetAbsPath(dir));
 }
 
 
@@ -22211,7 +22728,7 @@ PUBLIC ssize mprWritePathContents(cchar *path, cchar *buf, ssize len, int mode)
 
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 #if ME_UNIX_LIKE
 /*********************************** Code *************************************/
@@ -22438,7 +22955,7 @@ PUBLIC void mprSetFilesLimit(int limit)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /*********************************** Defines **********************************/
 /*
@@ -23288,7 +23805,7 @@ PUBLIC ssize print(cchar *fmt, ...)
 
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 #if ME_ROM
 /********************************** Defines ***********************************/
@@ -23620,7 +24137,7 @@ void romDummy(void)
  */
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 #if ME_EVENT_NOTIFIER == MPR_EVENT_SELECT || ME_EVENT_NOTIFIER == MPR_EVENT_SELECT_PIPE
 
@@ -24010,7 +24527,7 @@ void selectDummy(void)
 
 /*********************************** Includes *********************************/
 
-
+#include    "mpr.h"
 
 /*********************************** Forwards *********************************/
 #if ME_UNIX_LIKE
@@ -24412,7 +24929,7 @@ void mprServiceSignals()
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 #if !VXWORKS
 #define ME_COMPILER_HAS_GETADDRINFO 1
@@ -24713,6 +25230,10 @@ PUBLIC Socket mprListenOnSocket(MprSocket *sp, cchar *ip, int port, int flags)
     if (!(flags & MPR_SOCKET_INHERIT)) {
         fcntl(sp->fd, F_SETFD, FD_CLOEXEC);
     }
+#elif ME_WIN_LIKE
+    if (!(flags & MPR_SOCKET_INHERIT)) {
+        SetHandleInformation((HANDLE) (intptr_t) sp->fd, HANDLE_FLAG_INHERIT, 0);
+    }
 #endif
 
     if (!(sp->flags & MPR_SOCKET_NOREUSE)) {
@@ -24951,6 +25472,10 @@ static int connectSocket(MprSocket *sp, cchar *ip, int port, int initialFlags)
     if (!(initialFlags & MPR_SOCKET_INHERIT)) {
         fcntl(sp->fd, F_SETFD, FD_CLOEXEC);
     }
+#elif ME_WIN_LIKE
+    if (!(initialFlags & MPR_SOCKET_INHERIT)) {
+        SetHandleInformation((HANDLE) (intptr_t) sp->fd, HANDLE_FLAG_INHERIT, 0);
+    }
 #endif
     if (broadcast) {
         int flag = 1;
@@ -25175,6 +25700,8 @@ PUBLIC MprSocket *mprAcceptSocket(MprSocket *listen)
 #if !ME_WIN_LIKE && !VXWORKS
     // Prevent children inheriting this socket
     fcntl(fd, F_SETFD, FD_CLOEXEC);
+#elif ME_WIN_LIKE
+    SetHandleInformation((HANDLE) (intptr_t) fd, HANDLE_FLAG_INHERIT, 0);
 #endif
 
     mprSetSocketBlockingMode(nsp, (nsp->flags & MPR_SOCKET_BLOCK) ? 1: 0);
@@ -26239,6 +26766,11 @@ PUBLIC MprSsl *mprCreateSsl(int server)
     ssl->logLevel = ME_MPR_SSL_LOG_LEVEL;
     ssl->renegotiate = ME_MPR_SSL_RENEGOTIATE;
 
+    /*
+        Apply any revocation list to the entire chain by default. See mprSetSslRevokeChain.
+     */
+    ssl->revokeChain = 1;
+
     ssl->mutex = mprCreateLock();
     return ssl;
 }
@@ -26459,6 +26991,14 @@ PUBLIC void mprSetSslRevoke(MprSsl *ssl, cchar *revoke)
 }
 
 
+PUBLIC void mprSetSslRevokeChain(MprSsl *ssl, bool on)
+{
+    assert(ssl);
+    ssl->revokeChain = on;
+    ssl->changed = 1;
+}
+
+
 PUBLIC void mprSetSslTicket(MprSsl *ssl, bool enable)
 {
     assert(ssl);
@@ -26519,7 +27059,7 @@ PUBLIC void mprVerifySslDepth(MprSsl *ssl, int depth)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /*********************************** Locals ***********************************/
 
@@ -27130,14 +27670,21 @@ PUBLIC bool shnumber(cchar *s)
 
 /*
     Floating point
-    Float:      [DIGITS].[DIGITS][(e|E)[+|-]DIGITS]
+    Float:      [+|-][DIGITS][.][DIGITS][(e|E)[+|-]DIGITS]
  */
 PUBLIC bool sfnumber(cchar *s)
 {
-    cchar *cp;
+    cchar *cp, *digits;
     int   dots, valid;
 
-    valid = s && *s && strspn(s, "1234567890.+-eE") == strlen(s) && strspn(s, "1234567890") > 0;
+    if (!s) {
+        return 0;
+    }
+    /*
+        Skip any leading sign so the digit test below is not defeated by it
+     */
+    digits = (*s == '-' || *s == '+') ? &s[1] : s;
+    valid = *digits && strspn(s, "1234567890.+-eE") == strlen(s) && strspn(digits, "1234567890") > 0;
     if (valid) {
         /*
             Some extra checks
@@ -27251,7 +27798,7 @@ PUBLIC char *sreplace(cchar *str, cchar *pattern, cchar *replacement)
     cchar  *s;
     ssize  plen;
 
-    if (!pattern || pattern[0] == '\0') {
+    if (!str || !pattern || pattern[0] == '\0') {
         return sclone(str);
     }
     buf = mprCreateBuf(-1, -1);
@@ -27737,7 +28284,7 @@ PUBLIC char *awtom(wchar *src, ssize *len)
 
 /********************************* Includes **********************************/
 
-
+#include    "mpr.h"
 
 /*************************** Forward Declarations ****************************/
 
@@ -28037,6 +28584,8 @@ PUBLIC MprOsThread mprGetCurrentOsThread()
     return (MprOsThread) GetCurrentThreadId();
 #elif VXWORKS
     return (MprOsThread) taskIdSelf();
+#else
+    #error "No MPR OS thread identity implementation for this target"
 #endif
 }
 
@@ -28784,7 +29333,7 @@ PUBLIC bool mprSetThreadYield(MprThread *tp, bool on)
 
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 /********************************** Defines ***********************************/
 
@@ -30656,9 +31205,27 @@ PUBLIC int gettimeofday(struct timeval *tv, struct timezone *tz)
 
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 #if VXWORKS
+/*********************************** Locals ***********************************/
+/*
+    VxWorks 7 supplies a seeded CSPRNG in the randomNumGen library. Earlier releases have no system
+    entropy source at all. An integrator with a board-specific source may override the detection by
+    defining ME_MPR_HAS_RANDOM_NUM_GEN and supplying randBytes() and randABytes() equivalents.
+ */
+#ifndef ME_MPR_HAS_RANDOM_NUM_GEN
+    #if _WRS_VXWORKS_MAJOR >= 7
+        #define ME_MPR_HAS_RANDOM_NUM_GEN 1
+    #else
+        #define ME_MPR_HAS_RANDOM_NUM_GEN 0
+    #endif
+#endif
+
+#if ME_MPR_HAS_RANDOM_NUM_GEN
+    #include    <randomNumGen.h>
+#endif
+
 /*********************************** Code *************************************/
 
 PUBLIC int mprCreateOsService()
@@ -30689,14 +31256,39 @@ PUBLIC int access(const char *path, int mode)
 #endif
 
 
-PUBLIC int mprGetRandomBytes(char *buf, int length, bool block)
+/*
+    Get cryptographically strong random bytes, or fail. Callers key the Digest nonce, the session id and
+    the CSRF token, so there is no safe substitute: a target without an entropy source must fail here
+    rather than return bytes a caller cannot tell apart from random.
+ */
+PUBLIC int mprGetRandomBytes(char *buf, ssize length, bool block)
 {
-    int i;
+#if ME_MPR_HAS_RANDOM_NUM_GEN
+    ssize  sofar, chunk;
+    STATUS rc;
 
-    for (i = 0; i < length; i++) {
-        buf[i] = (char) (rand() & 0xff);
+    /*
+        randBytes fails if the RNG is not yet sufficiently seeded, randABytes waits for it. The same
+        distinction the Unix implementation draws between /dev/urandom and /dev/random.
+     */
+    for (sofar = 0; sofar < length; sofar += chunk) {
+        chunk = min(length - sofar, MAXINT);
+        if (block) {
+            rc = randABytes((uchar*) &buf[sofar], (int) chunk);
+        } else {
+            rc = randBytes((uchar*) &buf[sofar], (int) chunk);
+        }
+        if (rc != OK) {
+            return MPR_ERR_CANT_READ;
+        }
     }
     return 0;
+#else
+    mprLog("critical mpr", 0,
+           "This VxWorks target has no system random source. Build against VxWorks 7 randomNumGen, or "
+           "define ME_MPR_HAS_RANDOM_NUM_GEN and supply randBytes and randABytes for the board.");
+    return MPR_ERR_NOT_INITIALIZED;
+#endif
 }
 
 
@@ -30914,7 +31506,7 @@ void vxworksDummy(void)
 
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 /***************************** Forward Declarations ***************************/
 
@@ -31231,7 +31823,7 @@ PUBLIC int mprDoWaitRecall(MprWaitService *ws)
 
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 #if ME_CHAR_LEN > 1
 #if KEEP
@@ -32342,7 +32934,7 @@ PUBLIC char *awtom(wchar *src, ssize *len)
 
 /********************************* Includes ***********************************/
 
-
+#include    "mpr.h"
 
 #if CYGWIN
  #include "w32api/windows.h"
@@ -32762,7 +33354,7 @@ void winDummy(void)
 
 /********************************** Includes **********************************/
 
-
+#include    "mpr.h"
 
 /********************************** Forwards **********************************/
 
@@ -33413,3 +34005,6 @@ PUBLIC int mprXmlGetLineNumber(MprXml *xp)
     distributed with this software for full details and copyrights.
  */
 
+#else
+void dummyMpr(){}
+#endif /* ME_COM_MPR */

@@ -35,9 +35,131 @@
 #ifndef _h_MPR
 #define _h_MPR 1
 
+/********************************* Configuration ******************************/
+
+/*
+    ME_COM defaults -- must be before includes so dependent headers see them.
+ */
+#ifndef ME_NAME
+    #define ME_NAME        "mpr"
+#endif
+#ifndef ME_TITLE
+    #define ME_TITLE       "Embedthis MPR"
+#endif
+#ifndef ME_COMPANY
+    #define ME_COMPANY     "Embedthis"
+#endif
+#ifndef ME_COM_MPR
+    #define ME_COM_MPR     1
+#endif
+#ifndef ME_COM_OSDEP
+    #define ME_COM_OSDEP   1
+#endif
+#ifndef ME_COM_SSL
+    #define ME_COM_SSL     1
+#endif
+#ifndef ME_COM_OPENSSL
+    #define ME_COM_OPENSSL 1
+#endif
+#ifndef ME_COM_MBEDTLS
+    #define ME_COM_MBEDTLS 0
+#endif
+
+/*
+    Build settings -- ME_DEBUG and ME_VERSION are defined by the build system.
+ */
+#ifndef ME_DEBUG
+    #define ME_DEBUG               0
+#endif
+#ifndef ME_PROFILE
+    #define ME_PROFILE             "default"
+#endif
+#ifndef ME_STATIC
+    #define ME_STATIC              0
+#endif
+#ifndef ME_DEPRECATED_WARNINGS
+    #define ME_DEPRECATED_WARNINGS 1
+#endif
+
+/*
+    Product settings
+ */
+#ifndef ME_MPR_LOGGING
+    #define ME_MPR_LOGGING               1
+#endif
+#ifndef ME_MPR_OSLOG
+    #define ME_MPR_OSLOG                 0
+#endif
+#ifndef ME_MPR_SSL_CACHE
+    #define ME_MPR_SSL_CACHE             512
+#endif
+#ifndef ME_MPR_SSL_CACHE_SIZE
+    #define ME_MPR_SSL_CACHE_SIZE        512
+#endif
+#ifndef ME_MPR_SSL_HANDSHAKES
+    #define ME_MPR_SSL_HANDSHAKES        3
+#endif
+#ifndef ME_MPR_SSL_LOG_LEVEL
+    #define ME_MPR_SSL_LOG_LEVEL         3
+#endif
+#ifndef ME_MPR_SSL_TICKET
+    #define ME_MPR_SSL_TICKET            1
+#endif
+#ifndef ME_MPR_SSL_TIMEOUT
+    #define ME_MPR_SSL_TIMEOUT           86400
+#endif
+#ifndef ME_MPR_THREAD_LIMIT_BY_CORES
+    #define ME_MPR_THREAD_LIMIT_BY_CORES 1
+#endif
+#ifndef ME_MPR_THREAD_STACK
+    #define ME_MPR_THREAD_STACK          0
+#endif
+
+/*
+    Tuning defaults
+ */
+#ifndef ME_TUNE_SIZE
+    #define ME_TUNE_SIZE       0
+#endif
+#ifndef ME_TUNE_SPEED
+    #define ME_TUNE_SPEED      0
+#endif
+#ifndef ME_MPR_ALLOC_BIG
+    #define ME_MPR_ALLOC_BIG   0
+#endif
+#ifndef ME_MPR_ALLOC_CHECK
+    #define ME_MPR_ALLOC_CHECK 0
+#endif
+#ifndef ME_UNICODE
+    #define ME_UNICODE         0
+#endif
+#ifndef ME_DEBUG_WATSON
+    #define ME_DEBUG_WATSON    0
+#endif
+
+/*
+    Platform defaults (used conditionally in source)
+ */
+#ifndef ME_WIN
+    #if WINDOWS
+        #define ME_WIN 1
+    #else
+        #define ME_WIN 0
+    #endif
+#endif
 /********************************** Includes **********************************/
 
-#include "me.h"
+/*
+    MPR has no OS adaptation layer for FreeRTOS/ESP32. The rejection belongs here rather than in
+    osdep.h, which is shared with products that do support the target, and it must precede osdep.h
+    because that header includes FreeRTOS.h. osdep.h's detection is therefore repeated: ME_OS_FREERTOS
+    is not defined yet, so its value 19 is written out and the macros osdep.h keys on are tested here.
+ */
+#if defined(ESP_PLATFORM) || defined(INC_FREERTOS_H) || defined(FREERTOS_CONFIG_H) || defined(FREERTOS) || \
+    (defined(ME_OS_TYPE) && ME_OS_TYPE == 19)
+    #error "FreeRTOS/ESP32 is not supported: no MPR OS adaptation layer is provided for this target"
+#endif
+
 #include "osdep.h"
 
 /*********************************** Defines **********************************/
@@ -498,9 +620,11 @@ typedef struct MprMutex {
     #else
         #warning "Unsupported OS in MprMutex definition in mpr.h"
     #endif
-#if ME_DEBUG
-    MprOsThread owner;
-#endif
+    /*
+        Always present so the structure size does not depend on ME_DEBUG, which can differ between libmpr
+        and its callers. Only maintained under ME_DEBUG.
+     */
+    MprOsThread owner;                  /**< Last thread to lock the mutex (debug builds only) */
 } MprMutex;
 
 
@@ -527,9 +651,10 @@ typedef struct MprSpin {
     #else
         #warning "Unsupported OS in MprSpin definition in mpr.h"
     #endif
-#if ME_DEBUG
-    MprOsThread owner;
-#endif
+    /*
+        Always present. See the note in MprMutex above.
+     */
+    MprOsThread owner;                  /**< Thread holding the spin lock (debug builds only) */
 } MprSpin;
 
 
@@ -926,7 +1051,8 @@ typedef uint MprMemSize;
     @stability Internal
     @see MprFreeMem MprHeap MprManager MprMemNotifier MprRegion mprAddRoot mprAlloc mprAllocMem mprAllocObj
         mprAllocZeroed mprCreateMemService mprDestroyMemService mprEnableGC mprGetBlockSize mprGetMem
-        mprGetMemStats mprGetMpr mprGetPageSize mprHasMemError mprHold mprIsPathContained mprIsValid mprMark
+        mprGetMemStats mprGetMpr mprGetPageSize mprHasMemError mprHold mprIsMemoryOverLimit mprIsPathContained
+        mprIsValid mprMark
         mprMemcmp mprMemcpy mprMemdup mprPrintMem mprRealloc mprRelease mprRemoveRoot mprGC mprResetMemError
         mprRevive mprSetAllocLimits mprSetManager mprSetMemError mprSetMemLimits mprSetMemNotifier mprSetMemPolicy
         mprSetName mprVerifyMem mprVirtAlloc mprVirtFree
@@ -1311,8 +1437,8 @@ PUBLIC MprMemStats *mprGetMemStats(void);
 
 /**
     Return the amount of memory currently used by the application. On Unix, this returns the total application memory
-    size including code, stack, data and heap. On Windows, VxWorks and other operatings systems, it returns the
-    amount of allocated heap memory.
+    size including code, stack, data and heap. On Windows, it returns the process working set, which is the same
+    quantity. On VxWorks and other operating systems, it returns the amount of allocated heap memory.
     @return the amount of memory used by the application in bytes.
     @ingroup MprMem
     @stability Stable.
@@ -1456,18 +1582,33 @@ PUBLIC void mprSetMemNotifier(MprMemNotifier cback);
 PUBLIC void mprSetMemError(void);
 
 /**
+    Test if memory use has reached the configured memory limit.
+    @description Returns true when memory use is at or above the maximum set by #mprSetMemLimits. With no limit
+        configured, which is the default, this is always false. Servers test this via #mprShouldDenyNewRequests
+        to refuse new work rather than grow past the limit.
+    @return True if memory use is at or above the configured maximum.
+    @ingroup MprMem
+    @stability Prototype.
+ */
+PUBLIC bool mprIsMemoryOverLimit(void);
+
+/**
     Configure the application memory limits
-    @description Configure memory limits to constrain memory usage by the application. The memory allocation subsystem
-        will check these limits before granting memory allocation requrests. The warnHeap is a soft limit that if
-           exceeded
-        will invoke the memory allocation callback, but will still honor the request. The maximum limit is a hard limit.
-        The MPR will prevent allocations which exceed this maximum. The memory callback handler is defined via
+    @description Configure memory limits to constrain memory usage by the application. The memory allocation
+        subsystem checks these limits as the heap grows and invokes the memory callback handler defined via
         the #mprCreate call.
-    @param warnHeap Soft memory limit. If exceeded, the request will be granted, but the memory handler will be invoked.
-        to issue a warning and potentially take remedial acation.  If -1, then do not update the warnHeap.
-    @param maximum Hard memory limit. If exceeded, the request will not be granted, and the memory handler will be
-       invoked.
-        If -1, then do not update the maximum.
+        \n\n
+        Both limits are enforced by acting on the application, not by failing the allocation. An allocation
+        that would cross a limit still succeeds: callers do not test for a null return, so refusing it would
+        fault the process rather than fail the work that caused it. Crossing the maximum instead prunes the
+        cache, invokes the handler, applies the policy set by #mprSetMemPolicy, and makes
+ #mprShouldDenyNewRequests return true, so a server sheds new connections and requests until memory
+        falls back under the limit. Use #mprIsMemoryOverLimit to test the condition directly.
+    @param warnHeap Soft memory limit. If exceeded, the request will be granted, but the memory handler will be invoked
+        to issue a warning and potentially take remedial action. If -1, then do not update the warnHeap.
+    @param maximum Hard memory limit. If exceeded, the request is still granted, but the memory handler is invoked,
+        the cache is pruned, the allocation policy is applied and new requests are denied until memory drops
+        back below the limit. If -1, then do not update the maximum.
     @param cache Heap cache. Try to keep at least this amount of memory in the heap free queues
         If -1, then do not update the cache.
     @ingroup MprMem
@@ -3244,7 +3385,7 @@ PUBLIC ssize mprPutFmtToWideBuf(MprBuf *buf, cchar *fmt, ...) PRINTF_ATTRIBUTE(2
  */
 #define mprGetBufLength(bp) ((bp) ? ((ssize) ((bp)->end - (bp)->start)) : 0)
 #define mprGetBufSize(bp)   ((bp)->buflen)
-#define mprGetBufSpace(bp)  ((bp)->endbuf - (bp)->end)
+#define mprGetBufSpace(bp)  ((bp) ? ((bp)->endbuf - (bp)->end) : 0)
 #define mprGetBuf(bp)       ((bp)->data)
 #define mprGetBufStart(bp)  ((bp)->start)
 #define mprGetBufEnd(bp)    ((bp)->end)
@@ -5057,7 +5198,8 @@ PUBLIC ssize mprWriteFileString(MprFile *file, cchar *str);
     @see MprDirEntry MprFile MprPath mprCopyPath mprDeletePath mprGetAbsPath mprGetCurrentPath
         mprGetFirstPathSeparator mprGetLastPathSeparator mprGetNativePath mprGetPathBase
         mprGetPathDir mprGetPathExt mprGetPathFiles mprGetPathLink mprGetPathNewline mprGetPathParent
-        mprGetPathSeparators mprGetPortablePath mprGetRelPath mprGetTempPath mprGetWinPath mprIsPathAbs
+        mprGetPathSeparators mprGetPortablePath mprGetRealPath mprGetRelPath mprGetTempPath mprGetWinPath
+        mprHasPathLink mprIsPathAbs
         mprIsRelPath mprJoinPath mprJoinPaths mprJoinPathExt mprMakeDir mprMakeLink mprMapSeparators mprNormalizePath
         mprPathExists mprReadPathContents mprReplacePathExt mprResolvePath mprSamePath mprSamePathCount mprSearchPath
         mprTransformPath mprTrimPathExt mprTruncatePath
@@ -5359,6 +5501,19 @@ PUBLIC char *mprGetPortablePath(cchar *path);
 PUBLIC char *mprGetRelPath(cchar *dest, cchar *origin);
 
 /**
+    Get the fully resolved, canonical path
+    @description Get an absolute path with every symbolic link resolved. Unlike #mprGetAbsPath, which is purely
+        lexical, this consults the file system. On file systems without symbolic links, this returns the absolute
+        path.
+    @param path Path name to examine
+    @return An allocated string containing the resolved path. Returns NULL if the path cannot be resolved, which
+        is typically because it, or a directory in it, does not exist or is not searchable.
+    @ingroup MprPath
+    @stability Prototype
+ */
+PUBLIC char *mprGetRealPath(cchar *path);
+
+/**
     Make a temporary file.
     @description Thread-safe way to make a unique temporary file.
     @param tmpDir Base directory in which the temp file will be allocated.
@@ -5379,6 +5534,21 @@ PUBLIC char *mprGetTempPath(cchar *tmpDir);
     @stability Stable
  */
 PUBLIC char *mprGetWinPath(cchar *path);
+
+/**
+    Determine if a path traverses a symbolic link below a base directory
+    @description Test whether any path component below base is a symbolic link. The base prefix itself is not
+        examined, as a directory published via a link is still that directory. This is the containment test a
+        lexical prefix comparison cannot make: a link inside base passes #mprIsAbsPathContained and is then
+        followed by open.
+    @param path Absolute path name to examine
+    @param base Absolute base directory below which to examine the path components
+    @return True if any component below base is a symbolic link, or if the path is not contained by base, so
+        that a failure is never read as permission.
+    @ingroup MprPath
+    @stability Prototype
+ */
+PUBLIC bool mprHasPathLink(cchar *path, cchar *base);
 
 /**
     Determine if a directory is the same as or a parent of a path.
@@ -6553,6 +6723,27 @@ PUBLIC void mprXmlSetParseArg(MprXml *xp, void *parseArg);
 PUBLIC void mprXmlSetParserHandler(MprXml *xp, MprXmlHandler h);
 
 /******************************** JSON ****************************************/
+/**
+    Maximum JSON nesting depth accepted when parsing and serializing
+    @description The parser is recursive descent and recurses on each opening brace or bracket before any
+        matching close is required, so a run of open brackets alone can drive it arbitrarily deep. This bounds
+        the recursion in both directions and is deeper than any legitimate configuration file or request.
+ */
+#ifndef ME_MAX_JSON_DEPTH
+    #define ME_MAX_JSON_DEPTH 64
+#endif
+
+/**
+    Maximum number of elements accepted in a single JSON document
+    @description A flat array is one level deep and its elements form a single sibling chain, which garbage
+        collection marks by recursing once per element, so a long chain exhausts the marking thread's stack.
+        This bounds the document while it is being parsed, so an oversized one is refused rather than built
+        and then fatal to collect. Generous for a configuration file or an API body.
+ */
+#ifndef ME_MAX_JSON_NODES
+    #define ME_MAX_JSON_NODES 4096
+#endif
+
 /*
     Flags for mprJsonToString
  */
@@ -6598,9 +6789,10 @@ typedef struct MprJson {
     cchar *value;                       /**< Property value - always strings */
     int type;                           /**< Property type. Object, Array or value */
     int length;                         /**< Number of child properties */
-    struct MprJson *next;               /**< Next sibling */
-    struct MprJson *prev;               /**< Previous sibling */
-    struct MprJson *children;           /**< Children properties */
+    MprHash *index;                     /**< Optional property lookup index */
+    struct MprJson *next;               /**< Next sibling. Marked by the parent, never from a sibling */
+    struct MprJson *prev;               /**< Previous sibling. Marked by the parent, never from a sibling */
+    struct MprJson *children;           /**< Children properties, a circular list */
 } MprJson;
 
 /**
@@ -6657,6 +6849,8 @@ typedef struct MprJsonParser {
     int putid;                          /* Putback token id */
     int lineNumber;                     /* Current line number in path */
     int state;                          /* Parse state */
+    int depth;                          /* Current nesting depth. Bounded by ME_MAX_JSON_DEPTH */
+    int nodes;                          /* Elements created so far. Bounded by ME_MAX_JSON_NODES */
     int tolerant;                       /* Tolerant parsing: unquoted names, comma before last property of object */
 } MprJsonParser;
 
@@ -6849,7 +7043,8 @@ PUBLIC MprHash *mprJsonToHash(MprJson *json);
     @param flags Serialization flags. Supported flags include MPR_JSON_PRETTY for a human-readable multiline format.
     MPR_JSON_QUOTES to wrap property names in quotes. Use MPR_JSON_STRINGS to emit all property values as quoted
        strings.
-    @return Returns a serialized JSON character string.
+    @return Returns a serialized JSON character string. Returns null if obj is null or is nested deeper than
+        ME_MAX_JSON_DEPTH levels.
     @ingroup MprJson
     @stability Stable
  */
@@ -8372,6 +8567,7 @@ typedef struct MprSsl {
     bool configured;                    /**< Set if this SSL configuration has been processed */
     bool ticket;                        /**< Enable session tickets */
     bool renegotiate;                   /**< Renegotiate sessions */
+    bool revokeChain;                   /**< Apply the revocation list to the whole chain, not just the peer */
     bool verifyIssuer;                  /**< Set if the certificate issuer should be also verified */
     bool verified;                      /**< Peer has been verified */
     int logLevel;                       /**< Level at which to start tracing SSL events */
@@ -8563,6 +8759,20 @@ PUBLIC void mprSetSslRenegotiate(MprSsl *ssl, bool enable);
     @stability Stable
  */
 PUBLIC void mprSetSslRevoke(struct MprSsl *ssl, cchar *revoke);
+
+/**
+    Control how far down the certificate chain the revocation list is applied
+    @description When enabled (the default), every certificate in the peer's chain is checked against the
+        revocation list, so a certificate issued by a revoked intermediate is rejected. This requires a
+        revocation list to be available for each certificate authority in the chain. When disabled, only the
+        peer (leaf) certificate is checked. Has no effect unless a revocation list is defined via
+ #mprSetSslRevoke. OpenSSL only. MbedTLS always checks the full chain.
+    @param ssl SSL instance returned from #mprCreateSsl
+    @param on Set to true to check the full chain, false to check only the peer certificate
+    @ingroup MprSsl
+    @stability Evolving
+ */
+PUBLIC void mprSetSslRevokeChain(struct MprSsl *ssl, bool on);
 
 /**
     Enable SSL session tickets
@@ -9164,6 +9374,7 @@ typedef void (*MprCmdProc)(struct MprCmd *cmd, int channel, void *data);
 #define MPR_CMD_SHOW        0x2         /**< mprRunCmd flag to show the window of the created process on windows */
 #define MPR_CMD_DETACH      0x4         /**< mprRunCmd flag to detach the child process and don't wait */
 #define MPR_CMD_EXACT_ENV   0x8         /**< mprRunCmd flag to use the exact environment (no inherit from parent) */
+#define MPR_CMD_ALLOW_SHELL 0x10        /**< mprRunCmd flag to allow cmd.exe shell script fallback on windows */
 #define MPR_CMD_IN          0x1000      /**< mprRunCmd flag to connect to stdin */
 #define MPR_CMD_OUT         0x2000      /**< mprRunCmd flag to capture stdout */
 #define MPR_CMD_ERR         0x4000      /**< mprRunCmd flag to capture stdout */
@@ -9442,6 +9653,7 @@ PUBLIC int mprRun(MprDispatcher *dispatcher, cchar *command, cchar *input, char 
         MPR_CMD_OUT             Capture stdout
         MPR_CMD_ERR             Capture stderr
         MPR_CMD_EXACT_ENV       Use the exact environment supplied. Don't inherit and blend with existing environment.
+        MPR_CMD_ALLOW_SHELL     Allow extensionless .cmd/.bat fallback through cmd.exe on Windows.
     @return Command exit status, or negative MPR error code.
     @ingroup MprCmd
     @stability Stable
@@ -9772,6 +9984,16 @@ PUBLIC void mprSetCacheNotify(MprCache *cache, MprCacheProc notify);
     @stability Stable
  */
 PUBLIC void mprSetCacheLimits(MprCache *cache, int64 keys, MprTicks lifespan, int64 memory, int resolution);
+
+/**
+    Get a linked managed memory reference for a cached item.
+    @param cache The cache instance object returned from #mprCreateCache.
+    @param key Cache item key to read
+    @return The linked managed reference, or NULL if the key is not present.
+    @ingroup MprCache
+    @stability Stable
+ */
+PUBLIC void *mprGetCacheLink(MprCache *cache, cchar *key);
 
 /**
     Set a linked managed memory reference for a cached item.
@@ -10284,10 +10506,17 @@ PUBLIC int mprGetLogLevel(void);
 
 /**
     Get some random data
+    @description Fills the buffer from the system cryptographic random source. This has a single contract:
+        it returns cryptographically strong bytes or it fails. It never substitutes a weaker source, because
+        a caller cannot tell a substituted value from a random one. A platform with no strong source fails
+        every call, so a server that derives a secret or token from it refuses to start rather than issue a
+        guessable value.
     @param buf Reference to a buffer to hold the random data
     @param size Size of the buffer
     @param block Set to true if it is acceptable to block while accumulating entropy sufficient to provide good
-        random data. Setting to false will cause this API to not block and may return random data of a lower quality.
+        random data. Setting to false will not block, and may fail if the source is not yet seeded.
+    @return Zero if the buffer was filled from the random source, otherwise a negative MPR error code. The
+        buffer contents are undefined on error and MUST NOT be used. Callers MUST check the return.
     @ingroup Mpr
     @stability Stable.
  */
@@ -10295,7 +10524,12 @@ PUBLIC int mprGetRandomBytes(char *buf, ssize size, bool block);
 
 /**
     Get some random data in ascii
+    @description Returns a hex string of the requested size drawn from the system random source.
     @param size Size of the random data string
+    @return An allocated hex string, or NULL if the system random source is unavailable. Callers that
+        use the result as a secret or a token MUST check for NULL and fail rather than substitute a
+        value: this call does not fall back to a lower-entropy source, because a caller cannot tell a
+        substituted value from a random one.
     @ingroup Mpr
     @stability Stable.
  */
@@ -10620,10 +10854,10 @@ PUBLIC bool mprShouldAbortRequests(void);
 
 /**
     Test if new requests should be denied.
-    @description This routine indicates if an application shutdown has been initiated and services should not
-    accept new requests or connections.
-    This will be true then the MPR->state >= MPR_EXIT_STOPPING.
-    See also #mprShouldAbortRequests.
+    @description This routine indicates that services should not accept new requests or connections. This is
+    true when an application shutdown has been initiated, i.e. MPR->state >= MPR_EXIT_STOPPING, and when memory
+    use has reached the limit set by #mprSetMemLimits. Denying work is how that limit is enforced, so a service
+    that accepts connections must test this. See also #mprShouldAbortRequests and #mprIsMemoryOverLimit.
     @return True if new requests should be denied.
     @ingroup Mpr
     @stability Stable.
