@@ -7,7 +7,6 @@
 /********************************* Includes ***********************************/
 
 #include    "appweb.h"
-#include    "pcre.h"
 
 /********************************** Locals *************************************/
 
@@ -53,6 +52,9 @@ PUBLIC int maLoadModules(void)
 #endif
 #if ME_COM_TEST
     rc += httpTestInit(HTTP, mprCreateModule("test", NULL, NULL, HTTP));
+#endif
+#if ME_COM_TEST || ME_BENCHMARK
+    rc += httpTestBenchInit(HTTP, mprCreateModule("testBench", NULL, NULL, HTTP));
 #endif
 #if ME_COM_TEST_WEBSOCKETS
     rc += httpTestWebSocketsInit(HTTP, mprCreateModule("testWebSockets", NULL, NULL, HTTP));
@@ -149,12 +151,13 @@ PUBLIC int maParseConfig(cchar *path)
 {
     HttpRoute *route;
     MaState   *state;
-    bool      yielding;
+    bool      json, yielding;
     int       rc;
 
     route = httpGetDefaultRoute(0);
+    json = smatch(mprGetPathExt(path), "json");
 
-    if (smatch(mprGetPathExt(path), "json")) {
+    if (json) {
         rc = httpLoadConfig(route, path);
     } else {
         state = createState();
@@ -167,6 +170,9 @@ PUBLIC int maParseConfig(cchar *path)
     }
     httpFinalizeRoute(route);
 
+    if (!json && (rc = httpCheckAuthorization(route)) < 0) {
+        return rc;
+    }
     if (mprHasMemError()) {
         mprLog("error appweb memory", 0, "Memory allocation error when initializing");
         return MPR_ERR_MEMORY;
@@ -219,7 +225,15 @@ static int parseFileInner(MaState *state, cchar *path)
             continue;
         }
         if (!state->enabled) {
-            if (sncaselesscmp(key, "</if", 4) != 0) {
+            /*
+                Skip the directives in a disabled block, but never the <if> and </if> that delimit a
+                nested one. </if> always pops a state, so skipping the open without skipping the close
+                pops the enclosing block instead. The parser then continues with the wrong state: the
+                directives after the block attach to a route that has already been finalized, and the
+                rest of the file is silently discarded, including any authorization it defines. A
+                nested <if> still evaluates to disabled here, because maPushState inherits enabled.
+             */
+            if (sncaselesscmp(key, "<if", 3) != 0 && sncaselesscmp(key, "</if", 4) != 0) {
                 continue;
             }
         }
@@ -249,11 +263,23 @@ static int parseFileInner(MaState *state, cchar *path)
 }
 
 
+/*
+    Action mimeType program
+
+    The program is tokenized with %T so ${HOME} and friends expand. %S leaves the text verbatim, so
+    "${HOME}/utils/php.cgi" would resolve to a literal directory named "${HOME}". %P is not used: it
+    would also make the program absolute against Home, and a bare program name is legitimately
+    resolved from PATH by mprSearchPath.
+
+    NOTE: the mime table is shared by reference with the parent route (route->mimeTypes), so an
+    Action inside a <Route> block writes into the same table every other route reads. Action is
+    effectively server-wide wherever it appears, and the last one parsed for a given MIME type wins.
+ */
 static int actionDirective(MaState *state, cchar *key, cchar *value)
 {
     char *mimeType, *program;
 
-    if (!maTokenize(state, value, "%S %S", &mimeType, &program)) {
+    if (!maTokenize(state, value, "%S %T", &mimeType, &program)) {
         return MPR_ERR_BAD_SYNTAX;
     }
     mprSetMimeProgram(state->route->mimeTypes, mimeType, program);
@@ -413,13 +439,13 @@ static int aliasDirective(MaState *state, cchar *key, cchar *value)
     }
     mprGetPathInfo(path, &info);
     if (info.isDir) {
+        /*
+            Match the URI prefix and capture the remainder, which "run $1" maps to a filename.
+            A prefix without a trailing "/" absorbs the separator so the capture does not carry
+            a leading slash.
+         */
         alias = httpCreateAliasRoute(state->route, prefix, path, 0);
-        if (sends(prefix, "/")) {
-            httpSetRoutePattern(alias, sfmt("^%s(.*)$", prefix), 0);
-        } else {
-            /* Add a non-capturing optional trailing "/" */
-            httpSetRoutePattern(alias, sfmt("^%s(?:/)*(.*)$", prefix), 0);
-        }
+        httpSetRouteAliasPattern(alias, prefix);
         httpSetRouteTarget(alias, "run", "$1");
     } else {
         alias = httpCreateAliasRoute(state->route, sjoin("^", prefix, NULL), 0, 0);
@@ -744,14 +770,23 @@ static int crossOriginDirective(MaState *state, cchar *key, cchar *value)
 {
     HttpRoute *route;
     char      *option, *ovalue, *tok;
+    bool      sawOrigin;
 
     route = state->route;
     tok = sclone(value);
+    sawOrigin = 0;
     while ((option = maGetNextArg(tok, &tok)) != 0) {
         option = ssplit(option, " =\t,", &ovalue);
         ovalue = strim(ovalue, "\"'", MPR_TRIM_BOTH);
         if (scaselessmatch(option, "origin")) {
-            route->corsOrigin = sclone(ovalue);
+            sawOrigin = 1;
+            if (scaselessmatch(ovalue, "client")) {
+                route->corsOrigin = MPR->emptyString;
+            } else if (scaselessmatch(ovalue, "all")) {
+                route->corsOrigin = sclone("*");
+            } else {
+                route->corsOrigin = sclone(ovalue);
+            }
 
         } else if (scaselessmatch(option, "credentials")) {
             route->corsCredentials = httpGetBoolToken(ovalue);
@@ -767,12 +802,14 @@ static int crossOriginDirective(MaState *state, cchar *key, cchar *value)
             return MPR_ERR_BAD_SYNTAX;
         }
     }
-#if KEEP
-    if (smatch(route->corsOrigin, "*") && route->corsCredentials) {
-        mprLog("error appweb config", 0, "CrossOrigin: Cannot use wildcard Origin if allowing credentials");
+    if (!sawOrigin) {
+        mprLog("error appweb config", 0, "CrossOrigin: origin= argument is required");
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    if (route->corsCredentials && (!route->corsOrigin || !*route->corsOrigin || smatch(route->corsOrigin, "*"))) {
+        mprLog("error appweb config", 0, "CrossOrigin: credentials requires an explicit non-wildcard origin");
         return MPR_ERR_BAD_STATE;
     }
-#endif
     /*
         Need the options method for pre-flight requests
      */
@@ -1007,14 +1044,34 @@ static int fixDotNetDigestAuth(MaState *state, cchar *key, cchar *value)
 
 
 /*
+    FollowSymlinks on|off
+ */
+static int followSymlinksDirective(MaState *state, cchar *key, cchar *value)
+{
+    bool on;
+
+    if (!maTokenize(state, value, "%B", &on)) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    httpSetRouteFollowSymlinks(state->route, on);
+    return 0;
+}
+
+
+/*
     GroupAccount groupName
  */
 static int groupAccountDirective(MaState *state, cchar *key, cchar *value)
 {
-    if (!smatch(value, "_unchanged_") && !mprGetDebugMode()) {
-        httpSetGroupAccount(value);
+    if (smatch(value, "_unchanged_")) {
+        return 0;
     }
-    return 0;
+    if (mprGetDebugMode()) {
+        mprLog("warn appweb config", 0, "GroupAccount %s ignored: --debugger suppresses the privilege drop. "
+               "The server will continue to run as the invoking user.", value);
+        return 0;
+    }
+    return httpSetGroupAccount(value);
 }
 
 
@@ -1387,6 +1444,17 @@ static int limitRequestFormDirective(MaState *state, cchar *key, cchar *value)
 
 
 /*
+    LimitRequestFormCount count
+ */
+static int limitRequestFormCountDirective(MaState *state, cchar *key, cchar *value)
+{
+    httpGraduateLimits(state->route, 0);
+    state->route->limits->rxFormCount = httpGetInt(value);
+    return 0;
+}
+
+
+/*
     LimitRequestHeaderLines count
  */
 static int limitRequestHeaderLinesDirective(MaState *state, cchar *key, cchar *value)
@@ -1639,7 +1707,7 @@ static int logRoutesDirective(MaState *state, cchar *key, cchar *value)
  */
 static int loadModulePathDirective(MaState *state, cchar *key, cchar *value)
 {
-    char *sep, *path;
+    char *path;
 
     if (!maTokenize(state, value, "%T", &value)) {
         return MPR_ERR_BAD_SYNTAX;
@@ -1647,10 +1715,12 @@ static int loadModulePathDirective(MaState *state, cchar *key, cchar *value)
     /*
          Search path is: USER_SEARCH : exeDir : /usr/lib/appweb/bin
      */
-    sep = MPR_SEARCH_SEP;
     path = stemplate(value, state->route->vars);
 #ifdef ME_VAPP_PREFIX
-    path = sjoin(path, sep, mprGetAppDir(), sep, ME_VAPP_PREFIX "/bin", NULL);
+    {
+        char *sep = MPR_SEARCH_SEP;
+        path = sjoin(path, sep, mprGetAppDir(), sep, ME_VAPP_PREFIX "/bin", NULL);
+    }
 #endif
     mprSetModuleSearchPath(path);
     return 0;
@@ -2213,7 +2283,7 @@ static int scriptAliasDirective(MaState *state, cchar *key, cchar *value)
     }
     route = httpCreateAliasRoute(state->route, prefix, path, 0);
     httpSetRouteHandler(route, handler);
-    httpSetRoutePattern(route, sfmt("^%s(.*)$", prefix), 0);
+    httpSetRouteAliasPattern(route, prefix);
     httpSetRouteTarget(route, "run", "$1");
     httpFinalizeRoute(route);
     return 0;
@@ -2282,6 +2352,21 @@ static int sessionTimeoutDirective(MaState *state, cchar *key, cchar *value)
 {
     httpGraduateLimits(state->route, 0);
     state->route->limits->sessionTimeout = httpGetTicks(value);
+    return 0;
+}
+
+
+/*
+    XSRF on|off
+ */
+static int xsrfDirective(MaState *state, cchar *key, cchar *value)
+{
+    bool on;
+
+    if (!maTokenize(state, value, "%B", &on)) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    httpSetRouteXsrf(state->route, on);
     return 0;
 }
 
@@ -2362,18 +2447,27 @@ static int sourceDirective(MaState *state, cchar *key, cchar *value)
 static void checkSsl(MaState *state)
 {
     HttpRoute *route, *parent;
+    int       server;
 
     route = state->route;
     parent = route->parent;
 
+    /*
+        Inside <ProxyConfig> the object being built is the client side of the connection to the
+        backend, so it takes the client defaults: verify the peer, verify the issuer, and load the
+        system root bundle. A proxy client SSL object does not inherit the enclosing route's listener
+        identity.
+     */
+    server = (state->flags & MA_PARSE_PROXY_CLIENT) ? 0 : 1;
+
     if (route->ssl == 0) {
-        if (parent && parent->ssl) {
+        if (server && parent && parent->ssl) {
             route->ssl = mprCloneSsl(parent->ssl);
         } else {
-            route->ssl = mprCreateSsl(1);
+            route->ssl = mprCreateSsl(server);
         }
     } else {
-        if (parent && route->ssl == parent->ssl) {
+        if (server && parent && route->ssl == parent->ssl) {
             route->ssl = mprCloneSsl(parent->ssl);
         }
     }
@@ -2412,6 +2506,49 @@ static int sslCaCertificateFileDirective(MaState *state, cchar *key, cchar *valu
         return MPR_ERR_CANT_FIND;
     }
     mprSetSslCaFile(state->route->ssl, path);
+    return 0;
+}
+
+
+/*
+    SSLCARevocationFile path
+ */
+static int sslCaRevocationFileDirective(MaState *state, cchar *key, cchar *value)
+{
+    char *path;
+
+    if (!maTokenize(state, value, "%P", &path)) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    checkSsl(state);
+    path = mprJoinPath(state->configDir, httpExpandRouteVars(state->route, path));
+    if (!mprPathExists(path, R_OK)) {
+        mprLog("error ssl", 0, "Cannot locate %s", path);
+        return MPR_ERR_CANT_FIND;
+    }
+    mprSetSslRevoke(state->route->ssl, path);
+    return 0;
+}
+
+
+/*
+    SSLCARevocationCheck [chain|leaf]
+
+    Chain applies the revocation list to every certificate in the peer's chain and requires a revocation list
+    for each authority in that chain. Leaf checks only the peer certificate, so a certificate issued under a
+    revoked authority is still accepted.
+ */
+static int sslCaRevocationCheckDirective(MaState *state, cchar *key, cchar *value)
+{
+    checkSsl(state);
+    if (smatch(value, "chain")) {
+        mprSetSslRevokeChain(state->route->ssl, 1);
+    } else if (smatch(value, "leaf")) {
+        mprSetSslRevokeChain(state->route->ssl, 0);
+    } else {
+        mprLog("error ssl", 0, "Unknown SSLCARevocationCheck value \"%s\". Use chain or leaf.", value);
+        return MPR_ERR_BAD_SYNTAX;
+    }
     return 0;
 }
 
@@ -2859,10 +2996,15 @@ static int userDirective(MaState *state, cchar *key, cchar *value)
  */
 static int userAccountDirective(MaState *state, cchar *key, cchar *value)
 {
-    if (!smatch(value, "_unchanged_") && !mprGetDebugMode()) {
-        httpSetUserAccount(value);
+    if (smatch(value, "_unchanged_")) {
+        return 0;
     }
-    return 0;
+    if (mprGetDebugMode()) {
+        mprLog("warn appweb config", 0, "UserAccount %s ignored: --debugger suppresses the privilege drop. "
+               "The server will continue to run as the invoking user.", value);
+        return 0;
+    }
+    return httpSetUserAccount(value);
 }
 
 
@@ -2946,7 +3088,7 @@ static int preserveFramesDirective(MaState *state, cchar *key, cchar *value)
 }
 
 
-#if ME_HTTP_HTTP2
+#if ME_HTTP_WEB_SOCKETS
 static int limitWebSocketsDirective(MaState *state, cchar *key, cchar *value)
 {
     httpGraduateLimits(state->route, 0);
@@ -2977,8 +3119,10 @@ static int limitWebSocketsPacketDirective(MaState *state, cchar *key, cchar *val
     state->route->limits->webSocketsPacketSize = httpGetInt(value);
     return 0;
 }
+#endif
 
 
+#if ME_HTTP_UPLOAD
 /*
     UploadDir path
  */
@@ -3002,8 +3146,10 @@ static int uploadAutoDeleteDirective(MaState *state, cchar *key, cchar *value)
     httpSetRouteAutoDelete(state->route, on);
     return 0;
 }
+#endif
 
 
+#if ME_HTTP_WEB_SOCKETS
 static int webSocketsProtocolDirective(MaState *state, cchar *key, cchar *value)
 {
     state->route->webSocketsProtocol = sclone(value);
@@ -3074,7 +3220,22 @@ static bool conditionalDefinition(MaState *state, cchar *key)
             result = ME_COM_ESP;
 
         } else if (scaselessmatch(key, "FAST_MODULE")) {
+#if ME_UNIX_LIKE
             result = ME_COM_FAST;
+#else
+            /*
+                The FastCGI and proxy handlers are on Unix only.
+             */
+            result = 0;
+#endif
+
+        } else if (scaselessmatch(key, "PCRE2")) {
+            /*
+                Regular expressions require a deployer-supplied PCRE2 library. Literal, Alias
+                prefix, {token} segment and literal alternation patterns are matched natively and
+                need no engine, so most configurations never need this.
+             */
+            result = ME_COM_PCRE2;
 
         } else if (scaselessmatch(key, "PHP_MODULE")) {
             result = ME_COM_PHP;
@@ -3090,6 +3251,9 @@ static bool conditionalDefinition(MaState *state, cchar *key)
 
         } else if (scaselessmatch(key, "TEST_MODULE")) {
             result = ME_COM_TEST;
+
+        } else if (scaselessmatch(key, "TEST_WEBSOCKETS_MODULE")) {
+            result = ME_COM_TEST_WEBSOCKETS;
 
         } else if (scaselessmatch(key, "BASIC")) {
             result = ME_HTTP_BASIC;
@@ -3423,6 +3587,7 @@ static int parseInit(void)
     maAddDirective("ErrorDocument", errorDocumentDirective);
     maAddDirective("ErrorLog", errorLogDirective);
     maAddDirective("ExitTimeout", exitTimeoutDirective);
+    maAddDirective("FollowSymlinks", followSymlinksDirective);
     maAddDirective("GroupAccount", groupAccountDirective);
     maAddDirective("Header", headerDirective);
     maAddDirective("Home", homeDirective);
@@ -3447,6 +3612,7 @@ static int parseInit(void)
     maAddDirective("LimitRequestsPerClient", limitRequestsPerClientDirective);
     maAddDirective("LimitRequestBody", limitRequestBodyDirective);
     maAddDirective("LimitRequestForm", limitRequestFormDirective);
+    maAddDirective("LimitRequestFormCount", limitRequestFormCountDirective);
     maAddDirective("LimitRequestHeaderLines", limitRequestHeaderLinesDirective);
     maAddDirective("LimitRequestHeader", limitRequestHeaderDirective);
     maAddDirective("LimitResponseBody", limitResponseBodyDirective);
@@ -3498,6 +3664,8 @@ static int parseInit(void)
 #if ME_COM_SSL
     maAddDirective("SSLCACertificateFile", sslCaCertificateFileDirective);
     maAddDirective("SSLCACertificatePath", sslCaCertificatePathDirective);
+    maAddDirective("SSLCARevocationCheck", sslCaRevocationCheckDirective);
+    maAddDirective("SSLCARevocationFile", sslCaRevocationFileDirective);
     maAddDirective("SSLCertificateFile", sslCertificateFileDirective);
     maAddDirective("SSLCertificateKeyFile", sslCertificateKeyFileDirective);
     maAddDirective("SSLCipherSuite", sslCipherSuiteDirective);
@@ -3519,12 +3687,15 @@ static int parseInit(void)
     maAddDirective("TypesConfig", typesConfigDirective);
     maAddDirective("Update", updateDirective);
     maAddDirective("UnloadModule", unloadModuleDirective);
+#if ME_HTTP_UPLOAD
     maAddDirective("UploadAutoDelete", uploadAutoDeleteDirective);
     maAddDirective("UploadDir", uploadDirDirective);
+#endif
     maAddDirective("User", userDirective);
     maAddDirective("UserAccount", userAccountDirective);
     maAddDirective("<VirtualHost", virtualHostDirective);
     maAddDirective("</VirtualHost", closeVirtualHostDirective);
+    maAddDirective("XSRF", xsrfDirective);
 
 #if ME_HTTP_WEB_SOCKETS
     maAddDirective("LimitWebSockets", limitWebSocketsDirective);

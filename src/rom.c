@@ -14,5 +14,5 @@ PUBLIC MprRomInode *mprGetRomFiles()
     return romFiles;
 }
 #else
-PUBLIC int romDummy;
+PUBLIC int appwebRomDummy;
 #endif /* ME_ROM */

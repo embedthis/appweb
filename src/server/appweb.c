@@ -95,9 +95,6 @@ static void usageError(void);
 #ifndef ME_SERVER_ROOT
     #define ME_SERVER_ROOT mprGetCurrentPath()
 #endif
-#ifndef ME_CONFIG_FILE
-    #define ME_CONFIG_FILE NULL
-#endif
 
 /*********************************** Code *************************************/
 
@@ -299,10 +296,16 @@ MAIN(appweb, int argc, char **argv, char **envp)
 
 #if ME_UNIX_LIKE
     /*
-        Kill all children
+        Sweep up any child left behind, but only when this process leads its own process group.
+        kill(0, sig) signals every process in the group, which normally includes the shell, make or
+        CI runner that started us. When we lead the group, daemonised or started under setsid, it
+        holds only us and our descendants. Otherwise skip it: the CGI, FastCGI and proxy handlers
+        each reap the applications they launched when the runtime stops.
      */
-    signal(SIGQUIT, SIG_IGN);
-    kill(0, SIGQUIT);
+    if (getpgrp() == getpid()) {
+        signal(SIGQUIT, SIG_IGN);
+        kill(0, SIGQUIT);
+    }
 #endif
     return mprGetExitStatus();
 }
@@ -464,7 +467,7 @@ static void usageError()
         "  Options:\n"
         "    --config configFile     # Use named config file instead appweb.conf\n"
         "    --chroot directory      # Change root directory to run more securely (Unix)\n"
-        "    --debugger              # Disable timeouts to make debugging easier\n"
+        "    --debugger              # Disable timeouts and privilege drop for debugging\n"
         "    --exe path              # Set path to Appweb executable on Vxworks\n"
         "    --home directory        # Change to directory to run\n"
         "    --log logFile:level     # Log to file at verbosity level (0-5)\n"

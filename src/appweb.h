@@ -10,6 +10,30 @@
 #ifndef _h_APPWEB
 #define _h_APPWEB 1
 
+/********************************* Configuration ******************************/
+
+/*
+    ME_COM defaults. Must be before includes so dependent headers see them.
+ */
+#ifndef ME_NAME
+    #define ME_NAME                "appweb"
+#endif
+#ifndef ME_TITLE
+    #define ME_TITLE               "Embedthis Appweb"
+#endif
+#ifndef ME_APPWEB_PRODUCT
+    #define ME_APPWEB_PRODUCT      1
+#endif
+#ifndef ME_DEPRECATED_WARNINGS
+    #define ME_DEPRECATED_WARNINGS 0
+#endif
+#ifndef ME_TUNE_SIZE
+    #define ME_TUNE_SIZE           1
+#endif
+#ifndef ME_APP_PREFIX
+    #define ME_APP_PREFIX          "/usr/local/lib/appweb"
+#endif
+
 /********************************* Includes ***********************************/
 
 #include    "osdep.h"
@@ -51,12 +75,14 @@ extern "C" {
 #endif
 
 /*
-    ME_COM_ESP: Enable ESP (Embedded Server Pages) web framework.
-    When enabled, includes the ESP web framework for creating dynamic web applications.
+    ME_COM_ESP: Enable the ESP (Embedded Server Pages) web framework.
+    ESP is a separate add-on product and is not bundled with Appweb. Appweb retains the hooks that
+    bind ESP in as a plugin: espHandler.c, the httpEspInit() entry point below and the ESP_MODULE
+    configuration conditional. Install the ESP add-on under src/esp and set ME_COM_ESP to enable them.
     ESP provides MVC architecture, templating, and database integration.
  */
 #ifndef ME_COM_ESP
-    #define ME_COM_ESP 0                /**< Enable ESP web framework */
+    #define ME_COM_ESP 0                /**< Enable ESP web framework (separate add-on product) */
 #endif
 
 /*
@@ -72,6 +98,7 @@ extern "C" {
     ME_COM_MDB: Enable Memory Database (MDB) support.
     When enabled, includes the in-memory database functionality.
     MDB provides fast, lightweight database operations for embedded applications.
+    MDB is a database backend for the ESP add-on and requires ME_COM_ESP.
  */
 #ifndef ME_COM_MDB
     #define ME_COM_MDB 0                /**< Enable Memory Database support */
@@ -99,6 +126,8 @@ extern "C" {
     ME_COM_SDB: Enable SQLite Database (SDB) support.
     When enabled, includes SQLite database functionality for persistent storage.
     SDB provides SQL database operations with SQLite as the backend engine.
+    SDB is a database backend for the ESP add-on and requires ME_COM_ESP. SQLite ships with the
+    add-on, not with Appweb.
  */
 #ifndef ME_COM_SDB
     #define ME_COM_SDB 0                /**< Enable SQLite Database support */
@@ -143,7 +172,16 @@ extern "C" {
     Indicates that the configuration file is being parsed by a utility program
     rather than the main server. This affects how certain directives are processed.
  */
-#define MA_PARSE_NON_SERVER 0x1         /**< Command file being parsed by a utility program */
+#define MA_PARSE_NON_SERVER   0x1       /**< Command file being parsed by a utility program */
+
+/*
+    MA_PARSE_PROXY_CLIENT: the directives in this scope configure an outbound TLS client, not a
+    listener. Set inside a <ProxyConfig> block, where the SSL object being built becomes the client
+    side of the reverse-proxy connection to the backend. Verification defaults are chosen by role: a
+    listener does not demand a certificate from arbitrary browsers, but a client must authenticate
+    the server it dials, so the parser has to know which one it is building.
+ */
+#define MA_PARSE_PROXY_CLIENT 0x2       /**< Directives in scope configure an outbound TLS client */
 
 /**
     Current configuration parse state
@@ -404,6 +442,18 @@ PUBLIC int httpProxyInit(Http *http, MprModule *mp);
     @stability Internal
  */
 PUBLIC int httpTestInit(Http *http, MprModule *mp);
+#endif
+#if ME_COM_TEST || ME_BENCHMARK
+/**
+    Initialize the test benchmark handler module
+    @description Initialize the test benchmark handler for performance benchmarking and for the
+        session test fixtures. Available when ME_COM_TEST or ME_BENCHMARK is set.
+    @param http HTTP service object
+    @param mp Module object for the test benchmark handler
+    @return Zero if successful, otherwise a negative MPR error code
+    @stability Internal
+ */
+PUBLIC int httpTestBenchInit(Http *http, MprModule *mp);
 #endif
 #if ME_COM_TEST_WEBSOCKETS
 /**
