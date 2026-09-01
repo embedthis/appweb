@@ -1,8 +1,16 @@
 /*
- * Embedthis Http Library Source 9.0.4
+    httpLib.c -- HTTP Library Source
+
+    This file is a catenation of all the source code. Amalgamating into a
+    single file makes embedding simpler and the resulting application faster,
+    by using compiler optimization within the HTTP library.
+
+    Prepared by: buildLib.sh
  */
 
 #include "http.h"
+
+#if ME_COM_HTTP
 
 
 /********* Start of file src/service.c ************/
@@ -14,7 +22,7 @@
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************** Locals ************************************/
 /*
@@ -83,7 +91,7 @@ PUBLIC HttpStatusCode HttpStatusCodes[] = {
      */
     { 550, "550", "Comms Error" },
     { 551, "551", "General Client Error" },
-    { 0,   0 }
+    { 0,   0,     0 }
 };
 
 /****************************** Forward Declarations **************************/
@@ -91,6 +99,9 @@ PUBLIC HttpStatusCode HttpStatusCodes[] = {
 static void httpTimer(Http *http, MprEvent *event);
 static bool isHttpServiceIdle(bool traceRequests);
 static void manageHttp(Http *http, int flags);
+#if ME_UNIX_LIKE
+static bool privilegesRecoverable(uid_t uid, gid_t gid);
+#endif
 static void terminateHttp(int state, int how, int status);
 static void updateCurrentDate(void);
 
@@ -122,7 +133,16 @@ PUBLIC Http *httpCreate(int flags)
     http->booted = mprGetTime();
     http->flags = flags;
     http->monitorPeriod = ME_HTTP_MONITOR_PERIOD;
-    http->secret = mprGetRandomString(HTTP_MAX_SECRET);
+    /*
+        The secret keys the Digest nonce, so a server that cannot obtain randomness must not start.
+        Continuing would issue nonces an attacker could forge.
+     */
+    if ((http->secret = mprGetRandomString(HTTP_MAX_SECRET)) == 0) {
+        mprLog("critical http", 0, "Cannot create the server secret: no system random source");
+        MPR->httpService = HTTP = 0;
+        mprGlobalUnlock();
+        return 0;
+    }
     http->trace = httpCreateTrace(0);
     http->startLevel = 2;
     http->localPlatform = slower(sfmt("%s-%s-%s", ME_OS, ME_CPU, ME_PROFILE));
@@ -214,6 +234,7 @@ static void manageHttp(Http *http, int flags)
         mprMark(http->dateCache);
         mprMark(http->defaultClientHost);
         mprMark(http->defenses);
+        mprMark(http->digestCache);
         mprMark(http->endpoints);
         mprMark(http->forkData);
         mprMark(http->group);
@@ -515,11 +536,13 @@ PUBLIC void httpInitLimits(HttpLimits *limits, bool serverSide)
 #endif
 
     if (serverSide) {
+        limits->rxFormCount = ME_MAX_RX_FORM_COUNT;
         limits->rxFormSize = ME_MAX_RX_FORM;
         limits->rxBodySize = ME_MAX_RX_BODY;
         limits->txBodySize = ME_MAX_TX_BODY;
         limits->uploadSize = ME_MAX_UPLOAD;
     } else {
+        limits->rxFormCount = MAXINT;
         limits->rxFormSize = HTTP_UNLIMITED;
         limits->rxBodySize = HTTP_UNLIMITED;
         limits->txBodySize = HTTP_UNLIMITED;
@@ -547,6 +570,7 @@ PUBLIC HttpLimits *httpCloneLimits(HttpLimits *limits)
 
 PUBLIC void httpEaseLimits(HttpLimits *limits)
 {
+    limits->rxFormCount = MAXINT;
     limits->rxFormSize = HTTP_UNLIMITED;
     limits->rxBodySize = HTTP_UNLIMITED;
     limits->txBodySize = HTTP_UNLIMITED;
@@ -941,6 +965,56 @@ PUBLIC bool httpConfigure(HttpConfigureProc proc, void *data, MprTicks timeout)
 }
 
 
+#if ME_UNIX_LIKE
+/*
+    Test whether the process can climb back to root after the privilege drop.
+
+    A drop that can be undone is not a drop: if setuid() left the saved-set-uid at 0, any later code
+    execution in the server regains full privilege. The test must not itself do the climbing, because
+    calling setuid(0) here would leave the process root for the rest of its life.
+
+    Where the platform can answer without acting, ask it: getresuid/getresgid read the saved-set ids
+    directly. Elsewhere (macOS has no equivalent), do the climbing in a forked child that reports its
+    verdict through its exit status and dies. The child touches nothing but setuid/setgid/_exit, all
+    async-signal-safe, and any privilege it regains dies with it.
+ */
+static bool privilegesRecoverable(uid_t uid, gid_t gid)
+{
+#if LINUX || FREEBSD
+    uid_t ruid, euid, suid;
+    gid_t rgid, egid, sgid;
+
+    if (getresuid(&ruid, &euid, &suid) == 0 && getresgid(&rgid, &egid, &sgid) == 0) {
+        return suid != uid || sgid != gid;
+    }
+#endif
+    {
+        pid_t pid;
+        int   status;
+
+        if ((pid = fork()) < 0) {
+            /*
+                Cannot determine it. Report recoverable: refusing to start beats asserting a drop
+                that was never verified.
+             */
+            mprLog("critical http", 0, "Cannot fork to verify the privilege drop, errno: %d", errno);
+            return 1;
+        }
+        if (pid == 0) {
+            _exit((setuid(0) == 0 || setgid(0) == 0) ? 1 : 0);
+        }
+        while (waitpid(pid, &status, 0) < 0) {
+            if (errno != EINTR) {
+                mprLog("critical http", 0, "Cannot reap the privilege verification child, errno: %d", errno);
+                return 1;
+            }
+        }
+        return !WIFEXITED(status) || WEXITSTATUS(status) != 0;
+    }
+}
+#endif /* ME_UNIX_LIKE */
+
+
 PUBLIC int httpApplyUserGroup()
 {
 #if ME_UNIX_LIKE
@@ -980,6 +1054,22 @@ PUBLIC int httpApplyUserGroup()
         cchar        *groups;
         int          i, ngroup;
 
+        if (http->userChanged) {
+            if (getuid() != http->uid || geteuid() != http->uid) {
+                mprLog("critical http", 0, "Privilege drop incomplete: uid %d/%d expected %d",
+                       getuid(), geteuid(), http->uid);
+                return MPR_ERR_BAD_STATE;
+            }
+        }
+        if (getgid() != http->gid || getegid() != http->gid) {
+            mprLog("critical http", 0, "Privilege drop incomplete: gid %d/%d expected %d",
+                   getgid(), getegid(), http->gid);
+            return MPR_ERR_BAD_STATE;
+        }
+        if (http->userChanged && http->uid != 0 && privilegesRecoverable(http->uid, http->gid)) {
+            mprLog("critical http", 0, "Privileges are recoverable after drop");
+            return MPR_ERR_BAD_STATE;
+        }
         gid = getgid();
         ngroup = getgroups(sizeof(glist) / sizeof(gid_t), glist);
         if (ngroup > 1) {
@@ -994,7 +1084,7 @@ PUBLIC int httpApplyUserGroup()
             }
         }
         groups = mprGetBufStart(gbuf);
-        mprLog("info http", 2, "Running as user \"%s\" (%d), group \"%s\" (%d)%s", http->user, http->uid,
+        mprLog("info http", 1, "Running as user \"%s\" (%d), group \"%s\" (%d)%s", http->user, http->uid,
                http->group, http->gid, groups);
     }
 #endif
@@ -1053,6 +1143,7 @@ PUBLIC int httpSetUserAccount(cchar *newUser)
 #if ME_UNIX_LIKE
     {
         struct passwd *pp;
+        struct group  *gp;
         if (snumber(newUser)) {
             http->uid = atoi(newUser);
             if ((pp = getpwuid(http->uid)) == 0) {
@@ -1067,6 +1158,14 @@ PUBLIC int httpSetUserAccount(cchar *newUser)
                 return MPR_ERR_CANT_ACCESS;
             }
             http->uid = pp->pw_uid;
+        }
+        if (!http->groupChanged) {
+            http->gid = pp->pw_gid;
+            if ((gp = getgrgid(http->gid)) != 0) {
+                http->group = sclone(gp->gr_name);
+            } else {
+                http->group = sfmt("%d", http->gid);
+            }
         }
         http->userChanged = 1;
     }
@@ -1141,11 +1240,13 @@ PUBLIC int httpApplyChangedUser()
     if (http->userChanged && http->uid >= 0) {
         if (http->gid >= 0 && http->groupChanged) {
             if (setgroups(0, NULL) == -1) {
-                mprLog("critical http", 0, "Cannot clear supplemental groups");
+                mprLog("critical http", 0, "Cannot clear supplemental groups, errno: %d", errno);
+                return MPR_ERR_BAD_STATE;
             }
             if (setgid(http->gid) == -1) {
-                mprLog("critical http", 0, "Cannot change group to %s: %d"
-                       "WARNING: This is a major security exposure", http->group, http->gid);
+                mprLog("critical http", 0, "Cannot change group to %s (%d), errno: %d. "
+                       "WARNING: This is a major security exposure", http->group, http->gid, errno);
+                return MPR_ERR_BAD_STATE;
             }
         } else {
             struct passwd *pp;
@@ -1156,11 +1257,17 @@ PUBLIC int httpApplyChangedUser()
             mprLog("http", 4, "Initgroups for %s GID %d", http->user, pp->pw_gid);
             if (initgroups(http->user, pp->pw_gid) == -1) {
                 mprLog("critical http", 0, "Cannot initgroups for %s, errno: %d", http->user, errno);
+                return MPR_ERR_BAD_STATE;
+            }
+            if (setgid(pp->pw_gid) == -1) {
+                mprLog("critical http", 0, "Cannot change group to %d, errno: %d. "
+                       "WARNING: This is a major security exposure", pp->pw_gid, errno);
+                return MPR_ERR_BAD_STATE;
             }
         }
         if ((setuid(http->uid)) != 0) {
-            mprLog("critical http", 0, "Cannot change user to: %s: %d"
-                   "WARNING: This is a major security exposure", http->user, http->uid);
+            mprLog("critical http", 0, "Cannot change user to %s (%d), errno: %d. "
+                   "WARNING: This is a major security exposure", http->user, http->uid, errno);
             return MPR_ERR_BAD_STATE;
 #if LINUX && PR_SET_DUMPABLE
         } else {
@@ -1180,9 +1287,13 @@ PUBLIC int httpApplyChangedGroup()
 
     http = HTTP;
     if (http->groupChanged && http->gid >= 0) {
+        if (!http->userChanged && setgroups(0, NULL) == -1) {
+            mprLog("critical http", 0, "Cannot clear supplemental groups, errno: %d", errno);
+            return MPR_ERR_BAD_STATE;
+        }
         if (setgid(http->gid) != 0) {
-            mprLog("critical http", 0, "Cannot change group to %s: %d\n"
-                   "WARNING: This is a major security exposure", http->group, http->gid);
+            mprLog("critical http", 0, "Cannot change group to %s (%d), errno: %d. "
+                   "WARNING: This is a major security exposure", http->group, http->gid, errno);
             if (getuid() != 0) {
                 mprLog("critical http", 0, "Log in as administrator/root and retry");
             }
@@ -1317,7 +1428,7 @@ PUBLIC void httpSetRedirectCallback(HttpRedirectCallback redirectCallback)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /*********************************** Code *************************************/
 
@@ -1328,9 +1439,16 @@ static void startAction(HttpQueue *q)
     cchar      *name;
 
     stream = q->stream;
-    assert(!stream->error);
-    assert(!stream->tx->finalized);
 
+    /*
+        Do not dispatch into application code for a failed request. The pipeline swaps in the
+        passHandler only when the pipeline is created, so an error raised while parsing a streamed or
+        uploaded body arrives after the handler has been chosen. An action that ran anyway could set a
+        success status over the refusal.
+     */
+    if (stream->error) {
+        return;
+    }
     name = stream->rx->pathInfo;
     if ((action = mprLookupKey(stream->tx->handler->stageData, name)) == 0) {
         httpError(stream, HTTP_CODE_NOT_FOUND, "Cannot find action: %s", name);
@@ -1386,19 +1504,19 @@ PUBLIC int httpOpenActionHandler()
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************* Forwards ***********************************/
 
 #undef  GRADUATE_HASH
 #define GRADUATE_HASH(auth, field) \
-        if (!auth->field) { \
-            if (auth->parent && auth->field && auth->field == auth->parent->field) { \
-                auth->field = mprCloneHash(auth->parent->field); \
-            } else { \
-                auth->field = mprCreateHash(0, MPR_HASH_STABLE); \
+        do { \
+            if ((auth)->parent && (auth)->field && (auth)->field == (auth)->parent->field) { \
+                (auth)->field = mprCloneHash((auth)->parent->field); \
+            } else if (!(auth)->field) { \
+                (auth)->field = mprCreateHash(0, MPR_HASH_STABLE); \
             } \
-        }
+        } while (0)
 
 static void manageAuth(HttpAuth *auth, int flags);
 static void formLogin(HttpStream *stream);
@@ -1523,7 +1641,7 @@ PUBLIC bool httpAuthenticate(HttpStream *stream)
 {
     HttpRx   *rx;
     HttpAuth *auth;
-    cchar    *ip, *username;
+    cchar    *ip, *username, *authType, *required;
 
     rx = stream->rx;
     auth = rx->route->auth;
@@ -1533,7 +1651,19 @@ PUBLIC bool httpAuthenticate(HttpStream *stream)
 
         ip = httpGetSessionVar(stream, HTTP_SESSION_IP, 0);
         username = httpGetSessionVar(stream, HTTP_SESSION_USERNAME, 0);
+        authType = httpGetSessionVar(stream, HTTP_SESSION_AUTHTYPE, 0);
+        required = auth->type ? auth->type->name : "";
 
+        /*
+            A session records the protocol that established it. Without this test, a session created by
+            one protocol would satisfy a route requiring another.
+         */
+        if (username && !smatch(authType, required)) {
+            httpLog(stream->trace, "auth.login.error", "error",
+                    "msg:Session authentication type does not match the route, session:%s, required:%s",
+                    authType ? authType : "none", required);
+            return 0;
+        }
         if (!smatch(ip, stream->ip) || !username) {
             if (auth->username && *auth->username) {
                 /* Auto-login */
@@ -1734,6 +1864,11 @@ PUBLIC bool httpLogin(HttpStream *stream, cchar *username, cchar *password)
         }
         httpSetSessionVar(stream, HTTP_SESSION_USERNAME, username);
         httpSetSessionVar(stream, HTTP_SESSION_IP, stream->ip);
+        /*
+            Record which protocol established the session, so a cached authentication cannot be
+            replayed against a route that requires a different one.
+         */
+        httpSetSessionVar(stream, HTTP_SESSION_AUTHTYPE, auth->type ? auth->type->name : "");
     }
     rx->authenticated = 1;
     rx->authenticateProbed = 1;
@@ -1775,6 +1910,7 @@ PUBLIC void httpSetAuthAllow(HttpAuth *auth, cchar *allow)
 PUBLIC void httpSetAuthAnyValidUser(HttpAuth *auth)
 {
     auth->permittedUsers = 0;
+    auth->flags |= HTTP_AUTH_REQUIRED;
 }
 
 
@@ -1900,9 +2036,10 @@ PUBLIC void httpSetAuthRequiredAbilities(HttpAuth *auth, cchar *abilities)
     char *ability, *tok;
 
     GRADUATE_HASH(auth, abilities);
-    for (ability = stok(sclone(abilities), " \t,", &tok); abilities; abilities = stok(NULL, " \t,", &tok)) {
+    for (ability = stok(sclone(abilities), " \t,", &tok); ability; ability = stok(NULL, " \t,", &tok)) {
         httpComputeRoleAbilities(auth, auth->abilities, ability);
     }
+    auth->flags |= HTTP_AUTH_REQUIRED;
 }
 
 
@@ -1913,9 +2050,13 @@ PUBLIC void httpSetAuthDeny(HttpAuth *auth, cchar *client)
 }
 
 
+/*
+    Clear the two order bits and set the one requested. Must not clear the other flags: that would
+    silently discard HTTP_AUTH_NO_SESSION and HTTP_AUTH_REQUIRED.
+ */
 PUBLIC void httpSetAuthOrder(HttpAuth *auth, int order)
 {
-    auth->flags &= (HTTP_ALLOW_DENY | HTTP_DENY_ALLOW);
+    auth->flags &= ~(HTTP_ALLOW_DENY | HTTP_DENY_ALLOW);
     auth->flags |= (order & (HTTP_ALLOW_DENY | HTTP_DENY_ALLOW));
 }
 
@@ -1929,7 +2070,7 @@ PUBLIC void httpSetAuthPermittedUsers(HttpAuth *auth, cchar *users)
     char *user, *tok;
 
     GRADUATE_HASH(auth, permittedUsers);
-    for (user = stok(sclone(users), " \t,", &tok); users; users = stok(NULL, " \t,", &tok)) {
+    for (user = stok(sclone(users), " \t,", &tok); user; user = stok(NULL, " \t,", &tok)) {
         if (smatch(user, "*")) {
             auth->permittedUsers = 0;
             break;
@@ -1937,6 +2078,58 @@ PUBLIC void httpSetAuthPermittedUsers(HttpAuth *auth, cchar *users)
             mprAddKey(auth->permittedUsers, user, user);
         }
     }
+    auth->flags |= HTTP_AUTH_REQUIRED;
+}
+
+
+/*
+    Report a route that requires authorization it cannot enforce, and return 1 if it did. The "auth"
+    condition reads the required abilities, roles and users at request time and only the authentication type
+    installs one. Conditions are copied when a route inherits, so testing for the condition sees an
+    authentication type defined anywhere in the route's ancestry. A negated condition enforces nothing.
+ */
+static int checkRouteAuthorization(HttpRoute *route)
+{
+    HttpRouteOp *op;
+    int         next;
+
+    if (!route->auth || !(route->auth->flags & HTTP_AUTH_REQUIRED)) {
+        return 0;
+    }
+    for (ITERATE_ITEMS(route->conditions, op, next)) {
+        if (scaselessmatch(op->name, "auth") && !(op->flags & HTTP_ROUTE_NOT)) {
+            return 0;
+        }
+    }
+    mprLog("error http config", 0,
+           "Route \"%s\" requires authorization but no authentication type is defined for it. Nothing would "
+           "enforce the requirement and the route would serve every client. Define AuthType (directive "
+           "configuration) or auth.type (JSON configuration) on this route or an enclosing one, or remove the "
+           "requirement.", route->pattern && *route->pattern ? route->pattern : "/");
+    return 1;
+}
+
+
+PUBLIC int httpCheckAuthorization(HttpRoute *route)
+{
+    HttpHost  *host;
+    HttpRoute *rp;
+    int       nextHost, nextRoute, bad;
+
+    bad = 0;
+    for (ITERATE_ITEMS(HTTP->hosts, host, nextHost)) {
+        for (ITERATE_ITEMS(host->routes, rp, nextRoute)) {
+            bad += checkRouteAuthorization(rp);
+        }
+    }
+    /*
+        The caller's route may not have been added to its host yet. The directive parser finalizes the
+        top level route after parsing, not during.
+     */
+    if (route && (!route->host || mprLookupItem(route->host->routes, route) < 0)) {
+        bad += checkRouteAuthorization(route);
+    }
+    return bad ? MPR_ERR_BAD_STATE : 0;
 }
 
 
@@ -2133,7 +2326,7 @@ PUBLIC int formParse(HttpStream *stream, cchar **username, cchar **password)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 #if ME_HTTP_BASIC
 /*********************************** Code *************************************/
@@ -2230,13 +2423,14 @@ PUBLIC bool httpBasicSetHeaders(HttpStream *stream, cchar *username, cchar *pass
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 #if ME_HTTP_CACHE
 /********************************** Forwards **********************************/
 
 static void cacheAtClient(HttpStream *stream);
 static bool fetchCachedResponse(HttpStream *stream);
+static bool isCachedHeader(HttpStream *stream, cchar *key);
 static char *makeCacheKey(HttpStream *stream);
 static void manageHttpCache(HttpCache *cache, int flags);
 static int matchCacheFilter(HttpStream *stream, HttpRoute *route, int dir);
@@ -2372,6 +2566,26 @@ static int matchCacheFilter(HttpStream *stream, HttpRoute *route, int dir)
 
 
 /*
+    Headers that must never be captured into the shared response cache and replayed to a different
+    client. Hop-by-hop fields describe the connection that carried the response rather than the response
+    itself. Set-Cookie and Location carry per-requester state that the cache key cannot separate.
+ */
+static bool isCachedHeader(HttpStream *stream, cchar *key)
+{
+    if (scaselessmatch(key, "Connection") || scaselessmatch(key, "Keep-Alive") ||
+        scaselessmatch(key, "Location") ||
+        scaselessmatch(key, "Proxy-Authenticate") || scaselessmatch(key, "Proxy-Authorization") ||
+        scaselessmatch(key, "Set-Cookie") || scaselessmatch(key, "TE") ||
+        scaselessmatch(key, "Trailer") || scaselessmatch(key, "Transfer-Encoding") ||
+        scaselessmatch(key, "Upgrade")) {
+        httpLog(stream->trace, "cache.header.skip", "context", "msg:Skip cached response header, header:%s", key);
+        return 0;
+    }
+    return 1;
+}
+
+
+/*
     This will be enabled when caching is enabled for the route and there is no acceptable cache data to use.
     OR - manual caching has been enabled.
  */
@@ -2425,7 +2639,9 @@ static void outgoingCacheFilterService(HttpQueue *q)
                      */
                     mprPutToBuf(tx->cacheBuffer, "X-Status: %d\n", tx->status);
                     for (kp = 0; (kp = mprGetNextKey(tx->headers, kp)) != 0; ) {
-                        mprPutToBuf(tx->cacheBuffer, "%s: %s\n", kp->key, (char*) kp->data);
+                        if (isCachedHeader(stream, kp->key)) {
+                            mprPutToBuf(tx->cacheBuffer, "%s: %s\n", kp->key, (char*) kp->data);
+                        }
                     }
                     mprPutCharToBuf(tx->cacheBuffer, '\n');
                 }
@@ -2469,18 +2685,28 @@ static void cacheAtClient(HttpStream *stream)
 {
     HttpTx    *tx;
     HttpCache *cache;
-    cchar     *value;
+    cchar     *value, *scope;
 
     tx = stream->tx;
     cache = stream->tx->cache;
 
+    /*
+        A response generated for an authenticated request is not shareable. Marking it "public" lets a
+        proxy or CDN store one user's response and serve it to another. Use "private" so the caller may
+        still cache it for itself, and vary on Authorization so a cache keyed on it cannot merge entries.
+     */
+    scope = (stream->rx->authenticated || stream->rx->authDetails) ? "private" : "public";
+
     if (tx->status == HTTP_CODE_OK && !mprLookupKey(tx->headers, "Cache-Control")) {
         if ((value = mprLookupKey(stream->tx->headers, "Cache-Control")) != 0) {
             if (strstr(value, "max-age") == 0) {
-                httpAppendHeader(stream, "Cache-Control", "public, max-age=%lld", cache->clientLifespan / TPS);
+                httpAppendHeader(stream, "Cache-Control", "%s, max-age=%lld", scope, cache->clientLifespan / TPS);
             }
         } else {
-            httpAddHeader(stream, "Cache-Control", "public, max-age=%lld", cache->clientLifespan / TPS);
+            httpAddHeader(stream, "Cache-Control", "%s, max-age=%lld", scope, cache->clientLifespan / TPS);
+            if (smatch(scope, "private")) {
+                httpAppendHeaderString(stream, "Vary", "Authorization");
+            }
             /*
                 Old HTTP/1.0 clients don't understand Cache-Control
              */
@@ -2723,12 +2949,22 @@ static void manageHttpCache(HttpCache *cache, int flags)
 static char *makeCacheKey(HttpStream *stream)
 {
     HttpRx *rx;
+    cchar  *user;
 
     rx = stream->rx;
+
+    /*
+        Key on the authenticated user as well as the path, otherwise two users with different privileges
+        requesting the same URL share one entry. An unauthenticated request keys on the path alone, so
+        anonymous content is still shared between callers.
+     */
+    user = stream->username ? stream->username : "";
+
     if (stream->tx->cache->flags & HTTP_CACHE_UNIQUE) {
-        return sfmt("http::response::%s%s?%s", rx->route->prefix, rx->pathInfo, httpGetParamsString(stream));
+        return sfmt("http::response::%s::%s%s?%s", user, rx->route->prefix, rx->pathInfo,
+                    httpGetParamsString(stream));
     } else {
-        return sfmt("http::response::%s%s", rx->route->prefix, rx->pathInfo);
+        return sfmt("http::response::%s::%s%s", user, rx->route->prefix, rx->pathInfo);
     }
 }
 
@@ -2751,7 +2987,7 @@ static cchar *setHeadersFromCache(HttpStream *stream, cchar *content)
             key = ssplit(header, ": ", &value);
             if (smatch(key, "X-Status")) {
                 stream->tx->status = (int) stoi(value);
-            } else {
+            } else if (isCachedHeader(stream, key)) {
                 httpAddHeaderString(stream, key, value);
             }
         }
@@ -2778,7 +3014,7 @@ static cchar *setHeadersFromCache(HttpStream *stream, cchar *content)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************** Forwards **********************************/
 
@@ -2845,8 +3081,8 @@ static void incomingChunk(HttpQueue *q, HttpPacket *packet)
     HttpRx     *rx;
     MprBuf     *buf;
     ssize      chunkSize, len, nbytes;
-    char       *start, *cp;
-    int        bad;
+    char       *start, *cp, *dp;
+    int        bad, digits, value;
 
     stream = q->stream;
     rx = stream->rx;
@@ -2855,8 +3091,10 @@ static void incomingChunk(HttpQueue *q, HttpPacket *packet)
     if (rx->chunkState == HTTP_CHUNK_UNCHUNKED) {
         if (rx->remainingContent > 0) {
             nbytes = min(rx->remainingContent, httpGetPacketLength(packet));
-            rx->bytesRead += nbytes;
             rx->remainingContent -= nbytes;
+            if (!httpCheckBodySize(stream, nbytes)) {
+                return;
+            }
         }
         httpPutPacketToNext(q, packet);
         if (rx->remainingContent <= 0 && !(packet->flags & HTTP_PACKET_END)) {
@@ -2880,7 +3118,9 @@ static void incomingChunk(HttpQueue *q, HttpPacket *packet)
                 len = httpGetPacketLength(packet);
                 nbytes = min(rx->remainingContent, len);
                 rx->remainingContent -= nbytes;
-                rx->bytesRead += nbytes;
+                if (!httpCheckBodySize(stream, nbytes)) {
+                    return;
+                }
                 if (nbytes < len) {
                     tail = httpSplitPacket(packet, nbytes);
                     httpPutPacketToNext(q, packet);
@@ -2930,9 +3170,36 @@ static void incomingChunk(HttpQueue *q, HttpPacket *packet)
                     httpError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST, "Bad chunk specification");
                     return;
                 }
-                chunkSize = (int) stoiradix(&start[2], 16, NULL);
-                if (!isxdigit((uchar) start[2]) || chunkSize < 0) {
+                /*
+                    RFC 9112 7.1: chunk-size is 1*HEXDIG followed by an optional ";" chunk-ext, then CRLF.
+                    Parse against the grammar here rather than via stoiradix which accepts a "0x" prefix,
+                    stops silently at the first non-hex byte and cannot report overflow.
+                 */
+                chunkSize = 0;
+                digits = 0;
+                for (dp = &start[2]; isxdigit((uchar) * dp); dp++, digits++) {
+                    value = tolower((uchar) * dp);
+                    value = (value <= '9') ? value - '0' : value - 'a' + 10;
+                    if (chunkSize > (ssize) ((MAXSSIZE - value) / 16)) {
+                        httpLimitError(stream, HTTP_CLOSE | HTTP_CODE_REQUEST_TOO_LARGE, "Chunk size is too large");
+                        return;
+                    }
+                    chunkSize = (chunkSize * 16) + value;
+                }
+                if (digits == 0 || (*dp != ';' && *dp != '\r')) {
                     httpError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST, "Bad chunk specification");
+                    return;
+                }
+                /*
+                    Reject from the declared size before reading the chunk. This bounds the cumulative body, not
+                    just this chunk: a per-chunk test carries no memory of the chunks already consumed and so
+                    cannot enforce rxBodySize for a body sent as many small chunks.
+                 */
+                if (stream->limits->rxBodySize != HTTP_UNLIMITED &&
+                    (rx->bytesRead + chunkSize) >= stream->limits->rxBodySize) {
+                    httpLimitError(stream, HTTP_CLOSE | HTTP_CODE_REQUEST_TOO_LARGE,
+                                   "Request body of %lld bytes is too big. Limit %lld",
+                                   (int64) (rx->bytesRead + chunkSize), stream->limits->rxBodySize);
                     return;
                 }
                 if (chunkSize == 0) {
@@ -3112,7 +3379,7 @@ static void setChunkPrefix(HttpQueue *q, HttpPacket *packet)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************* Forwards ***********************************/
 
@@ -3521,6 +3788,7 @@ static int clientRequest(HttpStream *stream, cchar *method, cchar *uri, cchar *d
     }
     if (data) {
         len = slen(data);
+        httpSetContentLength(stream, len);
         if (httpWriteBlock(stream->writeq, data, len, HTTP_BLOCK) != len) {
             *err = sclone("Cannot write request body data");
             return MPR_ERR_CANT_WRITE;
@@ -3669,15 +3937,15 @@ PUBLIC int httpWait(HttpStream *stream, int state, MprTicks timeout)
         }
         dispatcherMark = mprGetEventMark(stream->dispatcher);
     }
-    if (stream->error) {
-        return MPR_ERR_NOT_READY;
-    }
     if (stream->state < state) {
         if (mprGetRemainingTicks(start, timeout) <= 0) {
             return MPR_ERR_TIMEOUT;
         }
         if (!justOne) {
             return MPR_ERR_CANT_READ;
+        }
+        if (stream->error) {
+            return MPR_ERR_NOT_READY;
         }
     }
     stream->lastActivity = stream->http->now;
@@ -3702,7 +3970,7 @@ PUBLIC int httpWait(HttpStream *stream, int state, MprTicks timeout)
 
 /*********************************** Includes *********************************/
 
-
+#include    "http.h"
 
 /************************************ Defines *********************************/
 
@@ -3893,6 +4161,15 @@ PUBLIC int httpLoadConfig(HttpRoute *route, cchar *path)
         route->config = 0;
         return MPR_ERR_BAD_STATE;
     }
+    /*
+        auth.require records the requirement and auth.type installs the condition that reads it, so a route
+        with a requirement and no type in scope would parse cleanly and then serve everyone. Checked here
+        rather than in parseAuthRequire* because auth.type may follow auth.require and may be inherited.
+     */
+    if (httpCheckAuthorization(route) < 0) {
+        route->config = 0;
+        return MPR_ERR_BAD_STATE;
+    }
     return 0;
 }
 
@@ -4070,13 +4347,21 @@ static void parseAuthRealm(HttpRoute *route, cchar *key, MprJson *prop)
 }
 
 
+/*
+    The scalar form is handled explicitly, as parseAuthRequireUsers does. Iterating a string yields no
+    children, so "roles: 'admin'" would otherwise be discarded at parse.
+ */
 static void parseAuthRequireRoles(HttpRoute *route, cchar *key, MprJson *prop)
 {
     MprJson *child;
     int     ji;
 
-    for (ITERATE_CONFIG(route, prop, child, ji)) {
-        httpSetAuthRequiredAbilities(route->auth, child->value);
+    if (prop->type & MPR_JSON_STRING) {
+        httpSetAuthRequiredAbilities(route->auth, prop->value);
+    } else {
+        for (ITERATE_CONFIG(route, prop, child, ji)) {
+            httpSetAuthRequiredAbilities(route->auth, child->value);
+        }
     }
 }
 
@@ -4355,6 +4640,12 @@ static void parseFormatsResponse(HttpRoute *route, cchar *key, MprJson *prop)
 }
 
 
+static void parseFollowSymlinks(HttpRoute *route, cchar *key, MprJson *prop)
+{
+    httpSetRouteFollowSymlinks(route, (prop->type & MPR_JSON_TRUE) ? 1 : 0);
+}
+
+
 /*
     Alias for pipeline: { handler ... }
  */
@@ -4613,6 +4904,12 @@ static void parseLimitsRxBody(HttpRoute *route, cchar *key, MprJson *prop)
 static void parseLimitsRxForm(HttpRoute *route, cchar *key, MprJson *prop)
 {
     route->limits->rxFormSize = httpGetNumber(prop->value);
+}
+
+
+static void parseLimitsRxFormCount(HttpRoute *route, cchar *key, MprJson *prop)
+{
+    route->limits->rxFormCount = httpGetInt(prop->value);
 }
 
 
@@ -5690,6 +5987,7 @@ PUBLIC int httpInitParser()
     httpAddConfig("http.errors", parseErrors);
     httpAddConfig("http.formats", httpParseAll);
     httpAddConfig("http.formats.response", parseFormatsResponse);
+    httpAddConfig("http.followSymlinks", parseFollowSymlinks);
     httpAddConfig("http.handler", parseHandler);
     httpAddConfig("http.headers", httpParseAll);
     httpAddConfig("http.headers.add", parseHeadersAdd);
@@ -5713,6 +6011,7 @@ PUBLIC int httpInitParser()
     httpAddConfig("http.limits.memory", parseLimitsMemory);
     httpAddConfig("http.limits.rxBody", parseLimitsRxBody);
     httpAddConfig("http.limits.rxForm", parseLimitsRxForm);
+    httpAddConfig("http.limits.rxFormCount", parseLimitsRxFormCount);
     httpAddConfig("http.limits.rxHeader", parseLimitsRxHeader);
     httpAddConfig("http.limits.packet", parseLimitsPacket);
     httpAddConfig("http.limits.processes", parseLimitsProcesses);
@@ -5807,7 +6106,7 @@ PUBLIC int httpInitParser()
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 #if ME_HTTP_DIGEST
 /********************************** Locals ************************************/
@@ -5828,17 +6127,75 @@ typedef struct HttpDigest {
     char *realm;
     char *stale;
     char *uri;
+    int count;                      /**< Client-side nonce count for the next request */
 } HttpDigest;
 
 
 /********************************** Forwards **********************************/
 
 static char *calcDigest(HttpStream *stream, HttpDigest *dp, cchar *username);
+static int checkNonceCount(HttpStream *stream, HttpDigest *dp);
 static char *createDigestNonce(HttpStream *stream, cchar *secret, cchar *realm);
+static cchar *digestUriPath(cchar *uri);
 static void manageDigestData(HttpDigest *dp, int flags);
-static int parseDigestNonce(char *nonce, cchar **secret, cchar **realm, MprTime *when);
+static bool matchDigestUri(HttpStream *stream, cchar *uri);
+static int parseDigestNonce(char *nonce, cchar **hash, cchar **realm, MprTime *when, cchar **counter);
 
 /*********************************** Code *************************************/
+/*
+    Extract the next Digest parameter value from *tokp and unescape it in place. Advances *tokp past
+    the value and its delimiter. Sets *seenComma when the value was unquoted, i.e. comma-delimited.
+
+    Two properties here are security relevant and are covered by test/api/digest.tst.c:
+
+    1. A quoted-pair escapes the next character, INCLUDING a quote (RFC 9110 5.6.4). A scanner that
+       stops at an escaped quote terminates the value early and the remainder is re-parsed as further
+       key=value pairs, letting an attacker inject Digest parameters from inside one value.
+
+    2. The unescape reads exactly one byte per iteration and never consumes a backslash unless a
+       character follows it. Advancing the read pointer twice per iteration would walk past the
+       terminator on an odd-length value.
+ */
+PUBLIC char *httpParseAuthValue(char **tokp, int *seenComma)
+{
+    char *value, *tok, *cp, *sp;
+
+    tok = *tokp;
+    *seenComma = 0;
+
+    if (*tok == '\"') {
+        value = ++tok;
+        while (*tok && *tok != '\"') {
+            if (*tok == '\\' && tok[1]) {
+                tok++;
+            }
+            tok++;
+        }
+    } else {
+        value = tok;
+        while (*tok && *tok != ',') {
+            tok++;
+        }
+        (*seenComma)++;
+    }
+    if (*tok) {
+        *tok++ = '\0';
+    }
+    *tokp = tok;
+
+    if (strchr(value, '\\')) {
+        for (cp = sp = value; *sp; sp++) {
+            if (*sp == '\\' && sp[1]) {
+                sp++;
+            }
+            *cp++ = *sp;
+        }
+        *cp = '\0';
+    }
+    return value;
+}
+
+
 /*
     Parse the 'Authorization' header and the server 'Www-Authenticate' header
  */
@@ -5847,8 +6204,8 @@ PUBLIC int httpDigestParse(HttpStream *stream, cchar **username, cchar **passwor
     HttpRx     *rx;
     HttpDigest *dp;
     MprTime    when;
-    char       *value, *tok, *key, *cp, *sp;
-    cchar      *secret, *realm;
+    char       *value, *tok, *key;
+    cchar      *hash, *expected, *realm, *counter;
     int        seenComma;
 
     rx = stream->rx;
@@ -5878,84 +6235,82 @@ PUBLIC int httpDigestParse(HttpStream *stream, cchar **username, cchar **passwor
         while (isspace((uchar) * tok)) {
             tok++;
         }
-        seenComma = 0;
-        if (*tok == '\"') {
-            value = ++tok;
-            while (*tok && *tok != '\"') {
-                tok++;
-            }
-        } else {
-            value = tok;
-            while (*tok && *tok != ',') {
-                tok++;
-            }
-            seenComma++;
-        }
-        if (*tok) {
-            *tok++ = '\0';
-        }
+        value = httpParseAuthValue(&tok, &seenComma);
 
         /*
-            Handle back-quoting
-         */
-        if (strchr(value, '\\')) {
-            for (cp = sp = value; *sp; sp++) {
-                if (*sp == '\\') {
-                    sp++;
-                }
-                *cp++ = *sp++;
-            }
-            *cp = '\0';
-        }
+            username, response, opaque, uri, realm, nonce, nc, cnonce, qop
 
-        /*
-            user, response, oqaque, uri, realm, nonce, nc, cnonce, qop
+            A parameter that appears twice is rejected rather than letting the last occurrence win. A
+            last-wins parser lets one header carry two readings of the same field - username="alice",
+            username="bob" - so an inspecting front-end and this server disagree about who is asking.
+            For the same reason "user" is not accepted as an alias for "username": it is not an RFC 7616
+            parameter and existed only as an alias that a front-end would not recognise.
          */
         switch (tolower((uchar) * key)) {
         case 'a':
             if (scaselesscmp(key, "algorithm") == 0) {
+                if (dp->algorithm) {
+                    return MPR_ERR_BAD_FORMAT;
+                }
                 dp->algorithm = sclone(value);
-                break;
-            } else if (scaselesscmp(key, "auth-param") == 0) {
-                break;
             }
             break;
 
         case 'c':
             if (scaselesscmp(key, "cnonce") == 0) {
+                if (dp->cnonce) {
+                    return MPR_ERR_BAD_FORMAT;
+                }
                 dp->cnonce = sclone(value);
             }
             break;
 
         case 'd':
             if (scaselesscmp(key, "domain") == 0) {
+                if (dp->domain) {
+                    return MPR_ERR_BAD_FORMAT;
+                }
                 dp->domain = sclone(value);
-                break;
             }
             break;
 
         case 'n':
             if (scaselesscmp(key, "nc") == 0) {
+                if (dp->nc) {
+                    return MPR_ERR_BAD_FORMAT;
+                }
                 dp->nc = sclone(value);
             } else if (scaselesscmp(key, "nonce") == 0) {
+                if (dp->nonce) {
+                    return MPR_ERR_BAD_FORMAT;
+                }
                 dp->nonce = sclone(value);
             }
             break;
 
         case 'o':
             if (scaselesscmp(key, "opaque") == 0) {
+                if (dp->opaque) {
+                    return MPR_ERR_BAD_FORMAT;
+                }
                 dp->opaque = sclone(value);
             }
             break;
 
         case 'q':
             if (scaselesscmp(key, "qop") == 0) {
+                if (dp->qop) {
+                    return MPR_ERR_BAD_FORMAT;
+                }
                 dp->qop = sclone(value);
             }
             break;
 
         case 'r':
             if (scaselesscmp(key, "realm") == 0) {
+                if (dp->realm) {
+                    return MPR_ERR_BAD_FORMAT;
+                }
                 dp->realm = sclone(value);
             } else if (scaselesscmp(key, "response") == 0) {
                 /*
@@ -5963,6 +6318,9 @@ PUBLIC int httpDigestParse(HttpStream *stream, cchar **username, cchar **passwor
                     HA1 is MD5(user:realm:password) and HA2 is MD5(method:digestUri)
                  */
                 if (password) {
+                    if (*password) {
+                        return MPR_ERR_BAD_FORMAT;
+                    }
                     *password = sclone(value);
                 }
                 stream->encoded = 1;
@@ -5971,14 +6329,24 @@ PUBLIC int httpDigestParse(HttpStream *stream, cchar **username, cchar **passwor
 
         case 's':
             if (scaselesscmp(key, "stale") == 0) {
-                break;
+                if (dp->stale) {
+                    return MPR_ERR_BAD_FORMAT;
+                }
+                dp->stale = sclone(value);
             }
+            break;
 
         case 'u':
             if (scaselesscmp(key, "uri") == 0) {
+                if (dp->uri) {
+                    return MPR_ERR_BAD_FORMAT;
+                }
                 dp->uri = sclone(value);
-            } else if (scaselesscmp(key, "username") == 0 || scaselesscmp(key, "user") == 0) {
+            } else if (scaselesscmp(key, "username") == 0) {
                 if (username) {
+                    if (*username) {
+                        return MPR_ERR_BAD_FORMAT;
+                    }
                     *username = sclone(value);
                 }
             }
@@ -6011,10 +6379,19 @@ PUBLIC int httpDigestParse(HttpStream *stream, cchar **username, cchar **passwor
         return MPR_ERR_BAD_FORMAT;
     }
     if (httpServerStream(stream)) {
-        realm = secret = 0;
+        realm = hash = counter = 0;
         when = 0;
-        parseDigestNonce(dp->nonce, &secret, &realm, &when);
-        if (!smatch(stream->http->secret, secret)) {
+        if (parseDigestNonce(dp->nonce, &hash, &realm, &when, &counter) < 0) {
+            httpLog(stream->trace, "auth.digest.error", "error", "msg:Access denied. Bad nonce");
+            return MPR_ERR_BAD_STATE;
+        }
+        /*
+            Recompute the expected nonce hash from the server secret and the nonce's own cleartext
+            fields, then compare. The secret is never transmitted, so a forged nonce cannot be
+            constructed without it. SECURITY Acceptable: MD5 for legacy digest authentication.
+         */
+        expected = mprGetMD5(sfmt("%s:%s:%llx:%s", stream->http->secret, realm, when, counter));
+        if (!smatchsec(expected, hash)) {
             httpLog(stream->trace, "auth.digest.error", "error", "msg:Access denied. Nonce mismatch");
             return MPR_ERR_BAD_STATE;
 
@@ -6022,12 +6399,42 @@ PUBLIC int httpDigestParse(HttpStream *stream, cchar **username, cchar **passwor
             httpLog(stream->trace, "auth.digest.error", "error", "msg:Access denied. Realm mismatch");
             return MPR_ERR_BAD_STATE;
 
+        } else if (!smatch(dp->realm, rx->route->auth->realm)) {
+            /*
+                The realm above is the one bound into the server-issued nonce. This is the realm the
+                client says it authenticated against. HA1 is read from the user store rather than
+                recomputed from the client's realm, so without this test any realm= value is accepted.
+             */
+            httpLog(stream->trace, "auth.digest.error", "error", "msg:Access denied. Client realm mismatch");
+            return MPR_ERR_BAD_STATE;
+
         } else if (dp->qop && !smatch(dp->qop, "auth")) {
             httpLog(stream->trace, "auth.digest.error", "error", "msg:Access denied. Bad qop");
             return MPR_ERR_BAD_STATE;
 
-        } else if ((when + ME_DIGEST_NONCE_DURATION) < time(0)) {
+        } else if (!dp->qop && !smatch(rx->route->auth->qop, "none")) {
+            /*
+                The challenge advertised qop, so a request that omits it is a downgrade to RFC 2069,
+                where there is no nonce count to enforce and the credential replays for the life of the
+                nonce. Only a route explicitly configured with qop "none" may authenticate that way.
+             */
+            httpLog(stream->trace, "auth.digest.error", "error", "msg:Access denied. Missing qop");
+            return MPR_ERR_BAD_STATE;
+
+        } else if ((when + (ME_DIGEST_NONCE_DURATION * TPS)) < mprGetTime()) {
+            /*
+                Both sides must be MprTime milliseconds. Do not convert to seconds: a time_t in this
+                expression is 32-bit on some targets and overflows in 2038.
+             */
             httpLog(stream->trace, "auth.digest.error", "error", "msg:Access denied. Nonce is stale");
+            return MPR_ERR_BAD_STATE;
+
+        } else if (!matchDigestUri(stream, dp->uri)) {
+            httpLog(stream->trace, "auth.digest.error", "error",
+                    "msg:Access denied. Digest uri does not match the request, uri:%s", dp->uri);
+            return MPR_ERR_BAD_STATE;
+
+        } else if (checkNonceCount(stream, dp) < 0) {
             return MPR_ERR_BAD_STATE;
         }
         rx->passwordDigest = calcDigest(stream, dp, *username);
@@ -6036,6 +6443,123 @@ PUBLIC int httpDigestParse(HttpStream *stream, cchar **username, cchar **passwor
             return MPR_ERR_BAD_FORMAT;
         }
     }
+    return 0;
+}
+
+
+/*
+    Reduce a Digest uri parameter to its path and query. RFC 7616 3.4 names the effective request URI
+    here, so a client may legitimately send the absolute form - "http://host:port/path?query" - where
+    the request line carried only the origin form. Comparing the two demands the same shape on both
+    sides, and the path and query are what they have in common.
+
+    An authority is only present when nothing that can begin a path, query or fragment precedes the
+    "://". A path may otherwise contain that sequence, as in /redirect?url=http://elsewhere.
+ */
+static cchar *digestUriPath(cchar *uri)
+{
+    cchar *cp, *host;
+
+    for (cp = uri; *cp && *cp != '/' && *cp != '?' && *cp != '#'; cp++) {
+        if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
+            host = cp + 3;
+            return (cp = strchr(host, '/')) ? cp : "/";
+        }
+    }
+    return uri;
+}
+
+
+/*
+    Test that the client's uri parameter names the resource being requested (RFC 7616 3.4.6).
+
+    HA2 is computed from this field on both sides, so without this test a captured Authorization header
+    verifies against any request line. The authorization decision for the new path is then made on the
+    new path's route, so the credential yields whatever that route grants the user.
+
+    rx->originalUri is the request-target as it arrived and is never rewritten by routing, which makes it
+    the stable anchor. rx->uri is that target with the query removed - the form some clients put in uri=.
+ */
+static bool matchDigestUri(HttpStream *stream, cchar *uri)
+{
+    HttpRx *rx;
+
+    rx = stream->rx;
+    uri = digestUriPath(uri);
+    if (smatch(uri, rx->originalUri) || smatch(uri, rx->uri)) {
+        return 1;
+    }
+    if (rx->route->flags & HTTP_ROUTE_DOTNET_DIGEST_FIX) {
+        /*
+            .NET clients compute HA2 over the query-stripped uri and calcDigest strips it to match, so
+            compare the same stripped forms here. Otherwise the route's compatibility escape hatch would
+            authenticate the digest and then be refused by this test.
+         */
+        return smatch(ssplit(sclone(uri), "?", NULL), ssplit(sclone(rx->originalUri), "?", NULL));
+    }
+    return 0;
+}
+
+
+/*
+    Enforce the nonce count (RFC 7616 3.4.3). A client must increase nc on every request that reuses a
+    nonce, so remembering the highest value seen makes each credential single-use: a verbatim replay
+    carries an nc that is no longer greater than the one already recorded.
+
+    The record is keyed on the nonce and expires with it, so nothing accumulates beyond the nonce
+    lifetime. ME_MAX_DIGEST_NONCES caps the store and the entries closest to expiry are pruned first.
+    The cap is a memory bound, not a guarantee: an attacker able to solicit a full cap's worth of fresh
+    challenges within one nonce lifetime can age out a captured nonce's record.
+ */
+static int checkNonceCount(HttpStream *stream, HttpDigest *dp)
+{
+    Http  *http;
+    cchar *cp, *record;
+    int64 count;
+
+    if (!dp->qop) {
+        /* RFC 2069 mode. There is no nonce count to track and the nonce lifetime is the only bound */
+        return 0;
+    }
+    /*
+        nc is LHEX. Validate it here rather than relying on stoiradix, which stops at the first
+        non-digit and would read "1zz" as 1. Eight digits is the RFC width and cannot overflow.
+     */
+    for (cp = dp->nc; *cp; cp++) {
+        if (!isxdigit((uchar) * cp)) {
+            break;
+        }
+    }
+    if (*cp || slen(dp->nc) == 0 || slen(dp->nc) > 8) {
+        httpLog(stream->trace, "auth.digest.error", "error", "msg:Access denied. Bad nonce count");
+        return MPR_ERR_BAD_STATE;
+    }
+    if ((count = stoiradix(dp->nc, 16, NULL)) <= 0) {
+        httpLog(stream->trace, "auth.digest.error", "error", "msg:Access denied. Bad nonce count");
+        return MPR_ERR_BAD_STATE;
+    }
+    http = stream->http;
+
+    /*
+        Read and update under the Http lock so that two requests carrying the same count cannot both
+        pass. mprLookupCache is used rather than mprReadCache because a read must not renew the entry:
+        it has to expire with the nonce it tracks.
+     */
+    lock(http);
+    if (!http->digestCache) {
+        http->digestCache = mprCreateCache(0);
+        mprSetCacheLimits(http->digestCache, ME_MAX_DIGEST_NONCES,
+                          ME_DIGEST_NONCE_DURATION * TPS, 0, 0);
+    }
+    record = mprLookupCache(http->digestCache, dp->nonce, NULL, NULL);
+    if (record && count <= stoi(record)) {
+        unlock(http);
+        httpLog(stream->trace, "auth.digest.error", "error", "msg:Access denied. Nonce count replayed, nc:%s", dp->nc);
+        return MPR_ERR_BAD_STATE;
+    }
+    mprWriteCache(http->digestCache, dp->nonce, itos(count), 0, ME_DIGEST_NONCE_DURATION * TPS, 0,
+                  MPR_CACHE_SET);
+    unlock(http);
     return 0;
 }
 
@@ -6098,7 +6622,9 @@ PUBLIC bool httpDigestSetHeaders(HttpStream *stream, cchar *username, cchar *pas
     Http       *http;
     HttpTx     *tx;
     HttpDigest *dp;
+    HttpUri    *uri;
     char       *ha1, *ha2, *digest, *cnonce;
+    cchar      *target;
 
     http = stream->http;
     tx = stream->tx;
@@ -6106,46 +6632,82 @@ PUBLIC bool httpDigestSetHeaders(HttpStream *stream, cchar *username, cchar *pas
         /* Need to await a failing auth response */
         return 0;
     }
+    /*
+        The uri parameter must name the request-target exactly, query included, because the server
+        compares it with the request line. HA2 is computed over the same string.
+     */
+    uri = tx->parsedUri;
+    target = (uri->query && *uri->query) ? sfmt("%s?%s", uri->path, uri->query) : uri->path;
+
     cnonce = sfmt("%s:%s:%x", http->secret, dp->realm, (int) http->now);
     ha1 = mprGetMD5(sfmt("%s:%s:%s", username, dp->realm, password));
-    ha2 = mprGetMD5(sfmt("%s:%s", tx->method, tx->parsedUri->path));
+    ha2 = mprGetMD5(sfmt("%s:%s", tx->method, target));
     if (smatch(dp->qop, "auth")) {
+        /*
+            The count must increase on every request that reuses a nonce (RFC 7616 3.4.3) - the server
+            rejects a repeat. The challenge carries no nc, so it is kept here rather than echoed back.
+         */
+        dp->nc = sfmt("%08x", ++dp->count);
         digest = mprGetMD5(sfmt("%s:%s:%s:%s:%s:%s", ha1, dp->nonce, dp->nc, cnonce, dp->qop, ha2));
         httpAddHeader(stream, "Authorization", "Digest username=\"%s\", realm=\"%s\", domain=\"%s\", "
                       "algorithm=\"MD5\", qop=\"%s\", cnonce=\"%s\", nc=\"%s\", nonce=\"%s\", opaque=\"%s\", "
                       "stale=\"FALSE\", uri=\"%s\", response=\"%s\"", username, dp->realm, dp->domain, dp->qop,
-                      cnonce, dp->nc, dp->nonce, dp->opaque, tx->parsedUri->path, digest);
+                      cnonce, dp->nc, dp->nonce, dp->opaque, target, digest);
     } else {
         digest = mprGetMD5(sfmt("%s:%s:%s", ha1, dp->nonce, ha2));
         httpAddHeader(stream, "Authorization", "Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", "
-                      "uri=\"%s\", response=\"%s\"", username, dp->realm, dp->nonce, tx->parsedUri->path, digest);
+                      "uri=\"%s\", response=\"%s\"", username, dp->realm, dp->nonce, target, digest);
     }
     return 1;
 }
 
 
 /*
-    Create a nonce value for digest authentication (RFC 2617)
+    Create a nonce value for digest authentication (RFC 2617).
+
+    The nonce is base64(MD5(secret:realm:hexTime:hexCounter):realm:hexTime:hexCounter). The server
+    secret is bound into the nonce through a one-way hash and is never transmitted in a recoverable
+    form. Base64 is a transport encoding, not a confidentiality protection. The realm, timestamp and
+    counter stay in cleartext because the verifier needs them to recompute the hash and none is secret.
+
+    SECURITY Acceptable: MD5 is used here for legacy digest authentication nonce construction.
  */
 static char *createDigestNonce(HttpStream *stream, cchar *secret, cchar *realm)
 {
     static int64 next = 0;
+    cchar        *hash;
+    int64        counter;
+    MprTime      when;
 
     assert(realm && *realm);
-    return mprEncode64(sfmt("%s:%s:%llx:%llx", secret, realm, mprGetTime(), next++));
+    when = mprGetTime();
+    counter = next++;
+    hash = mprGetMD5(sfmt("%s:%s:%llx:%llx", secret, realm, when, counter));
+    return mprEncode64(sfmt("%s:%s:%llx:%llx", hash, realm, when, counter));
 }
 
 
-static int parseDigestNonce(char *nonce, cchar **secret, cchar **realm, MprTime *when)
+/*
+    Parse a nonce of the form base64(hash:realm:hexTime:hexCounter). The hash is returned rather than
+    the secret: the caller recomputes the expected hash and compares, so the secret never leaves the
+    server. The counter is returned because it is one of the hash inputs.
+ */
+static int parseDigestNonce(char *nonce, cchar **hash, cchar **realm, MprTime *when, cchar **counter)
 {
     char *tok, *decoded, *whenStr;
 
+    *hash = *realm = *counter = 0;
+    *when = 0;
     if ((decoded = mprDecode64(nonce)) == 0) {
         return MPR_ERR_CANT_READ;
     }
-    *secret = stok(decoded, ":", &tok);
+    *hash = stok(decoded, ":", &tok);
     *realm = stok(NULL, ":", &tok);
     whenStr = stok(NULL, ":", &tok);
+    *counter = stok(NULL, ":", &tok);
+    if (*hash == 0 || *realm == 0 || whenStr == 0 || *counter == 0) {
+        return MPR_ERR_BAD_FORMAT;
+    }
     *when = (MprTime) stoiradix(whenStr, 16, NULL);
     return 0;
 }
@@ -6217,7 +6779,7 @@ static char *calcDigest(HttpStream *stream, HttpDigest *dp, cchar *username)
 
 /********************************** Includes **********************************/
 
-
+#include    "http.h"
 
 #if ME_HTTP_DIR
 /********************************** Defines ***********************************/
@@ -6850,8 +7412,7 @@ PUBLIC HttpDir *httpGetDirObj(HttpRoute *route)
 
 /********************************* Includes ***********************************/
 
-
-#include    "pcre.h"
+#include    "http.h"
 
 /********************************** Forwards **********************************/
 
@@ -7253,8 +7814,7 @@ PUBLIC HttpHost *httpLookupHostOnEndpoint(HttpEndpoint *endpoint, cchar *name)
                 return host;
             }
         } else if (host->flags & HTTP_HOST_WILD_REGEXP) {
-            if (pcre_exec(host->nameCompiled, NULL, name, (int) slen(name), 0, 0, matches,
-                          sizeof(matches) / sizeof(int)) >= 1) {
+            if (httpMatchPattern(host->nameCompiled, name, matches, sizeof(matches) / sizeof(int)) >= 1) {
                 return host;
             }
         }
@@ -7284,7 +7844,7 @@ PUBLIC void httpSetInfoLevel(int level)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************** Forwards **********************************/
 
@@ -7550,7 +8110,7 @@ PUBLIC void httpMemoryError(HttpStream *stream)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /***************************** Forward Declarations ***************************/
 
@@ -7665,7 +8225,11 @@ static int openFileHandler(HttpQueue *q)
             httpOmitBody(stream);
             httpFinalizeOutput(stream);
         }
-        if (!tx->fileInfo.isReg && !tx->fileInfo.isLink) {
+        /*
+            isReg describes the target: mprGetPathInfo stats through a symbolic link. Accepting isLink would
+            admit a link to a FIFO or device node, whose open blocks this event thread.
+         */
+        if (!tx->fileInfo.isReg) {
             httpLog(stream->trace, "fileHandler", "error", "msg:Document is not a regular file, filename:%s",
                     tx->filename);
             httpError(stream, HTTP_CODE_NOT_FOUND, "Cannot serve document");
@@ -7714,12 +8278,30 @@ static int openFileHandler(HttpQueue *q)
  */
 static void closeFileHandler(HttpQueue *q)
 {
-    HttpTx *tx;
+    HttpStream *stream;
+    HttpRx     *rx;
+    HttpTx     *tx;
+    MprFile    *file;
 
+    stream = q->stream;
+    rx = stream->rx;
     tx = q->stream->tx;
+
     if (tx->file) {
+        if (stream->net->ioFile == tx->file) {
+            stream->net->ioFile = 0;
+        }
         mprCloseFile(tx->file);
         tx->file = 0;
+    }
+    file = (MprFile*) q->queueData;
+    if (file) {
+        mprCloseFile(file);
+        q->queueData = 0;
+        if (rx->remainingContent > 0) {
+            mprDeletePath(tx->filename);
+            httpError(stream, HTTP_CODE_BAD_REQUEST, "Insufficient content for PUT request");
+        }
     }
 }
 
@@ -7826,6 +8408,11 @@ static void incomingFile(HttpQueue *q, HttpPacket *packet)
         if (file) {
             mprCloseFile(file);
             q->queueData = 0;
+            if (rx->remainingContent > 0) {
+                mprDeletePath(tx->filename);
+                httpError(stream, HTTP_CODE_BAD_REQUEST, "Insufficient content for PUT request");
+                return;
+            }
         }
         if (!tx->etag) {
             /* Set the etag for caching in the client */
@@ -8083,8 +8670,9 @@ PUBLIC int httpHandleDirectory(HttpStream *stream)
                 mprLog("error http", 0, "Cannot handle directory \"%s\"", pathInfo);
                 return HTTP_ROUTE_REJECT;
             }
-            tx->filename = httpMapContent(stream, path);
-            mprGetPathInfo(tx->filename, &tx->fileInfo);
+            if (!httpSetFilename(stream, httpMapContent(stream, path), 0)) {
+                return HTTP_ROUTE_OK;
+            }
             return HTTP_ROUTE_REROUTE;
         }
     }
@@ -8123,8 +8711,7 @@ PUBLIC int httpHandleDirectory(HttpStream *stream)
 
 /********************************* Includes ***********************************/
 
-
-#include    "pcre.h"
+#include    "http.h"
 
 /*********************************** Locals ***********************************/
 
@@ -8143,7 +8730,7 @@ PUBLIC HttpHost *httpCreateHost()
     if ((host = mprAllocObj(HttpHost, manageHost)) == 0) {
         return 0;
     }
-    if ((host->responseCache = mprCreateCache(MPR_CACHE_SHARED)) == 0) {
+    if ((host->responseCache = mprCreateCache(0)) == 0) {
         return 0;
     }
     mprSetCacheLimits(host->responseCache, 0, ME_MAX_CACHE_DURATION, 0, 0);
@@ -8184,6 +8771,7 @@ static void manageHost(HttpHost *host, int flags)
     if (flags & MPR_MANAGE_MARK) {
         mprMark(host->hostname);
         mprMark(host->name);
+        mprMark(host->nameCompiled);
         mprMark(host->parent);
         mprMark(host->responseCache);
         mprMark(host->routes);
@@ -8191,12 +8779,11 @@ static void manageHost(HttpHost *host, int flags)
         mprMark(host->defaultEndpoint);
         mprMark(host->secureEndpoint);
         mprMark(host->streaming);
-
-    } else if (flags & MPR_MANAGE_FREE) {
-        if (host->nameCompiled) {
-            free(host->nameCompiled);
-        }
     }
+    /*
+        The compiled pattern is a managed HttpPattern which releases any engine allocated code in
+        its own manager, so there is nothing to free here.
+     */
 }
 
 
@@ -8382,12 +8969,12 @@ PUBLIC int httpSetHostName(HttpHost *host, cchar *name)
         host->flags |= HTTP_HOST_WILD_CONTAINS;
 
     } else if (*name == '/') {
+        /*
+            The previous pattern, if any, is garbage collected
+         */
         host->flags |= HTTP_HOST_WILD_REGEXP;
-        if (host->nameCompiled) {
-            free(host->nameCompiled);
-        }
-        if ((host->nameCompiled = pcre_compile2(host->hostname, 0, 0, &errMsg, &column, NULL)) == 0) {
-            mprLog("error http route", 0, "Cannot compile condition match pattern. Error %s at column %d", errMsg,
+        if ((host->nameCompiled = httpCompilePattern(host->hostname, 0, &errMsg, &column)) == 0) {
+            mprLog("error http route", 0, "Cannot compile server name pattern. Error %s at column %d", errMsg,
                    column);
             return MPR_ERR_BAD_SYNTAX;
         }
@@ -8573,7 +9160,7 @@ PUBLIC void httpSetStreaming(HttpHost *host, cchar *mime, cchar *uri, bool enabl
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 #if ME_HTTP_HTTP2
 /*********************************** Code *************************************/
@@ -8828,7 +9415,7 @@ PUBLIC MprKeyValue *httpGetPackedHeader(HttpHeaderTable *headers, int index)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /*********************************** Locals ***********************************/
 
@@ -8855,7 +9442,28 @@ static void parseFields(HttpQueue *q, HttpPacket *packet);
 static bool parseHeaders1(HttpQueue *q, HttpPacket *packet);
 static void parseRequestLine(HttpQueue *q, HttpPacket *packet);
 static void parseResponseLine(HttpQueue *q, HttpPacket *packet);
+static bool parseTransferEncoding(HttpQueue *q, HttpPacket *packet);
 static char *validateToken(char *token, char *endToken, int validation);
+
+/*
+    Header fields that RFC 9110 defines as accepting exactly one field line. The header hash is caseless and
+    replacing, so a repeat is collapsed last-wins and is no longer visible by the time processHeaders runs. A
+    repeat must be rejected at the point of insertion, which is the only place both copies can be seen.
+    Otherwise a front-end that frames or authorizes on the first copy disagrees with Appweb (CWE-444).
+    At most 32 entries. parseFields tracks those already seen in a 32 bit mask.
+ */
+static cchar *singularFields[] = {
+    "authorization",
+    "content-length",
+    "content-type",
+    "host",
+    "if-modified-since",
+    "proxy-authorization",
+    "referer",
+    "transfer-encoding",
+    "user-agent",
+    0
+};
 
 /*********************************** Code *************************************/
 /*
@@ -8935,7 +9543,7 @@ static void outgoingHttp1(HttpQueue *q, HttpPacket *packet)
     /*
         Optimize and skip service if downstream can already accept
      */
-    if (httpWillQueueAcceptPacket(q, q->net->socketq, packet)) {
+    if (q->count == 0 && httpWillQueueAcceptPacket(q, q->net->socketq, packet)) {
         httpPutPacket(q->net->socketq, packet);
     } else {
         httpPutForService(q, packet, HTTP_SCHEDULE_QUEUE);
@@ -9116,12 +9724,15 @@ static void parseResponseLine(HttpQueue *q, HttpPacket *packet)
         return;
     }
     rx->protocol = supper(protocol);
+    /*
+        RFC 9110 15: a status code is three digits. Range check here so an out-of-range upstream status can
+        never be relayed to a client by the proxy handler, and so atoi cannot overflow on a long digit run.
+     */
     status = getToken(packet, NULL, TOKEN_NUMBER);
-    if (status == NULL || *status == '\0') {
+    if (status == NULL || (rx->status = httpParseStatus(status)) < 0) {
         httpBadRequestError(stream, HTTP_CLOSE | HTTP_CODE_NOT_ACCEPTABLE, "Bad response status code");
         return;
     }
-    rx->status = atoi(status);
 
     message = getToken(packet, "\r\n", TOKEN_LINE);
     if (message == NULL || *message == '\0') {
@@ -9149,12 +9760,13 @@ static void parseFields(HttpQueue *q, HttpPacket *packet)
     HttpRx     *rx;
     HttpLimits *limits;
     char       *key, *value;
-    int        count;
+    int        count, index, seen;
 
     stream = q->stream;
     rx = stream->rx;
 
     limits = stream->limits;
+    seen = 0;
 
     for (count = 0; mprGetBufLength(packet->content) > 0 && packet->content->start[0] != '\r' && !stream->error;
          count++) {
@@ -9175,6 +9787,13 @@ static void parseFields(HttpQueue *q, HttpPacket *packet)
         if (scaselessmatch(key, "set-cookie") || scaselessmatch(key, "cookie")) {
             mprAddDuplicateKey(rx->headers, key, sclone(value));
         } else {
+            if ((index = httpSingularField(key)) >= 0) {
+                if (seen & (1 << index)) {
+                    httpBadRequestError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST, "Duplicate %s header", key);
+                    return;
+                }
+                seen |= 1 << index;
+            }
             mprAddKey(rx->headers, key, sclone(value));
         }
     }
@@ -9185,18 +9804,75 @@ static void parseFields(HttpQueue *q, HttpPacket *packet)
         httpBadRequestError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST, "Bad header format");
         return;
     }
-    /*
-        Split the headers and retain the data for later. Step over "\r\n" after headers except if chunked
-        so chunking can parse a single chunk delimiter of "\r\nSIZE ...\r\n"
-     */
-    if (smatch(httpGetHeader(stream, "transfer-encoding"), "chunked")) {
-        httpInitChunking(stream);
-    } else {
-        mprAdjustBufStart(packet->content, 2);
+    if (!parseTransferEncoding(q, packet)) {
+        return;
     }
     if (rx->status != HTTP_CODE_CONTINUE) {
         httpSetState(stream, HTTP_STATE_PARSED);
     }
+}
+
+
+/*
+    Determine the message framing from the Transfer-Encoding header and enable chunk decoding if required.
+    This is the sole owner of the transfer coding decision for HTTP/1.
+
+    RFC 9112 6.1 requires that a message carrying both Transfer-Encoding and Content-Length be rejected, that
+    transfer codings not be used with HTTP/1.0 and (RFC 9110 5.6.2) that coding names match case insensitively.
+    Anything that is not the single coding "chunked" fails closed, so the framing can never silently revert to
+    Content-Length after a transfer coding was declared. Return true if the message may proceed.
+ */
+static bool parseTransferEncoding(HttpQueue *q, HttpPacket *packet)
+{
+    HttpStream *stream;
+    cchar      *te;
+
+    stream = q->stream;
+
+    if ((te = httpGetHeader(stream, "transfer-encoding")) == 0) {
+        /*
+            Step over the "\r\n" after the headers. When chunked, it is retained so chunking can parse a
+            single chunk delimiter of "\r\nSIZE ...\r\n".
+         */
+        mprAdjustBufStart(packet->content, 2);
+        return 1;
+    }
+    if (stream->net->protocol < 1) {
+        httpBadRequestError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST,
+                            "Transfer-Encoding is not supported with HTTP/1.0");
+        return 0;
+    }
+    if (httpGetHeader(stream, "content-length")) {
+        httpBadRequestError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST, "Content-Length with Transfer-Encoding");
+        return 0;
+    }
+    if (!scaselessmatch(te, "chunked")) {
+        /*
+            Any other coding, or a list of codings, is unsupported. Header values are already trimmed of
+            surrounding white space by validateToken.
+         */
+        httpBadRequestError(stream, HTTP_CLOSE | HTTP_CODE_NOT_IMPLEMENTED, "Unsupported transfer encoding");
+        return 0;
+    }
+    httpInitChunking(stream);
+    return 1;
+}
+
+
+/*
+    Return the index of a single valued header field in singularFields, or negative if the field may repeat.
+    The index is a bit position, so singularFields must hold at most 32 entries.
+ */
+PUBLIC int httpSingularField(cchar *key)
+{
+    int index;
+
+    for (index = 0; singularFields[index]; index++) {
+        if (scaselessmatch(key, singularFields[index])) {
+            return index;
+        }
+    }
+    return -1;
 }
 
 
@@ -9369,7 +10045,8 @@ PUBLIC void httpCreateHeaders1(HttpQueue *q, HttpPacket *packet)
                 httpLog(stream->trace, "tx.http.status", "request", "@%s %s?%s %s", tx->method, tx->parsedUri->path,
                         tx->parsedUri->query, httpGetProtocol(stream->net));
             } else {
-                httpLog(stream->trace, "tx.http.status", "request", "@%s %s %s", tx->method, tx->parsedUri->path, httpGetProtocol(
+                httpLog(stream->trace, "tx.http.status", "request", "@%s %s %s", tx->method, tx->parsedUri->path,
+                        httpGetProtocol(
                             stream->net));
             }
         }
@@ -9456,13 +10133,16 @@ static cchar *eatBlankLines(HttpPacket *packet)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 #if ME_HTTP_HTTP2
 /********************************** Locals ************************************/
 
 #define httpGetPrefixMask(bits) ((1 << (bits)) - 1)
 #define httpSetPrefix(bits)     (1 << (bits))
+#define HTTP2_RESET_WINDOW (10 * TPS)
+#define HTTP2_RESET_MIN    64
+#define HTTP2_RESET_RATIO  2
 
 typedef void (*FrameHandler)(HttpQueue *q, HttpPacket *packet);
 
@@ -9471,6 +10151,7 @@ typedef void (*FrameHandler)(HttpQueue *q, HttpPacket *packet);
 static bool addHeaderToSet(HttpStream *stream, cchar *key, cchar *value);
 static int setState(HttpStream *stream, int event);
 static void closeNetworkWhenDone(HttpQueue *q);
+static bool excessiveResetRate(HttpQueue *q);
 static HttpFrame *createFrame(HttpQueue *q, HttpPacket *packet, int type, int flags, int streamID);
 static int decodeInt(HttpPacket *packet, uint prefix);
 static HttpPacket *defineFrame(HttpQueue *q, HttpPacket *packet, int type, uchar flags, int stream);
@@ -9512,6 +10193,7 @@ static void sendSettings(HttpQueue *q);
 static void sendSettingsFrame(HttpQueue *q);
 static void sendWindowFrame(HttpQueue *q, int streamID, ssize size);
 static void setLastPacket(HttpQueue *q, HttpPacket *packet);
+static void updateResetWindow(HttpNet *net);
 static bool validateHeader(cchar *key, cchar *value);
 
 /*
@@ -10332,6 +11014,14 @@ static void parseHeaders2(HttpQueue *q, HttpStream *stream)
 
     while (httpGetPacketLength(packet) > 0 && !net->sentGoaway) {
         if (!parseHeader(q, stream, packet)) {
+            /*
+                Mark the stream in error here rather than relying on sendReset. A rejection inside
+                addHeaderToSet has usually driven the stream terminal already, so sendReset takes its
+                invalidState exit without reaching httpError. httpRouteRequest substitutes the pass
+                handler only when stream->error is set, so without this a refused request still routes
+                and runs its real handler.
+             */
+            stream->error = 1;
             sendReset(q, stream, HTTP2_STREAM_CLOSED, "Cannot parse headers");
             break;
         }
@@ -10489,6 +11179,7 @@ static bool addHeaderToSet(HttpStream *stream, cchar *key, cchar *value)
     HttpNet    *net;
     HttpRx     *rx;
     HttpLimits *limits;
+    int64      length;
     ssize      len;
 
     net = stream->net;
@@ -10503,6 +11194,15 @@ static bool addHeaderToSet(HttpStream *stream, cchar *key, cchar *value)
         sendGoAway(net->socketq, HTTP2_PROTOCOL_ERROR, "Invalid header name/value");
         return 0;
     }
+    if (rx->headerCount++ >= limits->headerMax) {
+        sendGoAway(net->socketq, HTTP2_PROTOCOL_ERROR, "Too many headers");
+        return 0;
+    }
+    rx->headerListSize += slen(key) + slen(value) + HTTP2_HEADER_OVERHEAD;
+    if (rx->headerListSize > limits->headerSize) {
+        sendGoAway(net->socketq, HTTP2_PROTOCOL_ERROR, "Header list too large");
+        return 0;
+    }
 
     if (key[0] == ':') {
         if (rx->seenRegularHeader) {
@@ -10511,7 +11211,16 @@ static bool addHeaderToSet(HttpStream *stream, cchar *key, cchar *value)
         }
         if (httpIsServer(net)) {
             if (key[1] == 'a' && smatch(key, ":authority")) {
-                mprAddKey(stream->rx->headers, "host", value);
+                if (rx->authority) {
+                    sendGoAway(net->socketq, HTTP2_PROTOCOL_ERROR, "Duplicate :authority in headers");
+                    return 0;
+                }
+                if (rx->seenHostHeader && !smatch(value, mprLookupKey(rx->headers, "host"))) {
+                    sendGoAway(net->socketq, HTTP2_PROTOCOL_ERROR, "Conflicting :authority and host headers");
+                    return 0;
+                }
+                rx->authority = sclone(value);
+                mprAddKey(rx->headers, "host", value);
 
             } else if (key[1] == 'm' && smatch(key, ":method")) {
                 if (rx->method || *value == '\0') {
@@ -10545,6 +11254,7 @@ static bool addHeaderToSet(HttpStream *stream, cchar *key, cchar *value)
             } else if (smatch(key, ":scheme")) {
                 if (rx->scheme) {
                     sendGoAway(net->socketq, HTTP2_PROTOCOL_ERROR, "Invalid duplicate pseudo header");
+                    return 0;
                 } else {
                     rx->scheme = sclone(value);
                 }
@@ -10565,13 +11275,43 @@ static bool addHeaderToSet(HttpStream *stream, cchar *key, cchar *value)
         rx->seenRegularHeader = 1;
         if (scaselessmatch(key, "connection")) {
             sendGoAway(net->socketq, HTTP2_PROTOCOL_ERROR, "Invalid connection header");
+            return 0;
         } else if (scaselessmatch(key, "te") && !smatch(value, "trailers")) {
             sendGoAway(net->socketq, HTTP2_PROTOCOL_ERROR, "Invalid connection header");
+            return 0;
         } else if (scaselessmatch(key, "set-cookie") || scaselessmatch(key, "cookie")) {
             mprAddDuplicateKey(rx->headers, key, value);
+        } else if (scaselessmatch(key, "host")) {
+            if (rx->seenHostHeader) {
+                sendGoAway(net->socketq, HTTP2_PROTOCOL_ERROR, "Duplicate host in headers");
+                return 0;
+            }
+            if (rx->authority && !smatch(value, rx->authority)) {
+                sendGoAway(net->socketq, HTTP2_PROTOCOL_ERROR, "Conflicting :authority and host headers");
+                return 0;
+            }
+            rx->seenHostHeader = 1;
+            mprAddKey(rx->headers, key, value);
         } else if (scaselessmatch(key, "content-length")) {
-            rx->http2ContentLength = stoi(value);
+            /*
+                RFC 9113 8.1.1: a message with more than one content-length field, or with a value that is not
+                1*DIGIT, is malformed. Parse against the grammar for the same reason HTTP/1 does: the declared
+                text and the length checked against the DATA frames must agree.
+             */
+            if (rx->http2ContentLength >= 0) {
+                sendGoAway(net->socketq, HTTP2_PROTOCOL_ERROR, "Duplicate content-length in headers");
+                return 0;
+            }
+            if (httpParseDigits(value, &length) < 0) {
+                sendGoAway(net->socketq, HTTP2_PROTOCOL_ERROR, "Bad content-length in headers");
+                return 0;
+            }
+            rx->http2ContentLength = length;
         } else {
+            if (httpSingularField(key) >= 0 && mprLookupKey(rx->headers, key)) {
+                sendGoAway(net->socketq, HTTP2_PROTOCOL_ERROR, "Duplicate %s header", key);
+                return 0;
+            }
             mprAddKey(rx->headers, key, value);
         }
     }
@@ -10610,6 +11350,45 @@ static bool validateHeader(cchar *key, cchar *value)
         }
     }
     return 1;
+}
+
+
+/*
+    Maintain a short per-connection window for HTTP/2 Rapid Reset mitigation.
+ */
+static void updateResetWindow(HttpNet *net)
+{
+    MprTicks now;
+
+    now = net->http->now ? net->http->now : mprGetTicks();
+    if (net->h2ResetWindowStart == 0 || now - net->h2ResetWindowStart > HTTP2_RESET_WINDOW) {
+        net->h2ResetWindowStart = now;
+        net->h2PeerStreams = 0;
+        net->h2ResetFrames = 0;
+    }
+}
+
+
+/*
+    Detect excessive peer resets that churn server stream setup faster than LimitStreams can bound.
+ */
+static bool excessiveResetRate(HttpQueue *q)
+{
+    HttpNet *net;
+
+    net = q->net;
+    updateResetWindow(net);
+    net->h2ResetFrames++;
+
+    if (net->h2ResetFrames >= HTTP2_RESET_MIN &&
+        net->h2ResetFrames * HTTP2_RESET_RATIO > max(net->h2PeerStreams, 1)) {
+        sendGoAway(q, HTTP2_ENHANCE_YOUR_CALM,
+                   "Excessive HTTP/2 reset rate: %d resets for %d streams",
+                   net->h2ResetFrames, net->h2PeerStreams);
+        net->error = 1;
+        return 1;
+    }
+    return 0;
 }
 
 
@@ -10674,6 +11453,14 @@ static void parsePingFrame(HttpQueue *q, HttpPacket *packet)
         sendGoAway(q, HTTP2_PROTOCOL_ERROR, "Bad stream in ping frame");
         return;
     }
+    /*
+        6.7: a ping payload is always 8 octets. Any other length is a connection error, and echoing it
+        back would emit a malformed ping ack of that same wrong length.
+     */
+    if (httpGetPacketLength(packet) != HTTP2_PING_SIZE) {
+        sendGoAway(q, HTTP2_FRAME_SIZE_ERROR, "Bad ping frame size");
+        return;
+    }
     if (!(frame->flags & HTTP2_ACK_FLAG)) {
         /* Resend the ping payload with the acknowledgement */
         sendFrame(q, defineFrame(q, packet, HTTP2_PING_FRAME, HTTP2_ACK_FLAG, 0));
@@ -10710,6 +11497,9 @@ static void parseResetFrame(HttpQueue *q, HttpPacket *packet)
         }
         return;
     }
+    if (excessiveResetRate(q)) {
+        return;
+    }
     /*
         Received reset packets can race with the stream being closed
      */
@@ -10734,6 +11524,15 @@ static void parseGoAwayFrame(HttpQueue *q, HttpPacket *packet)
 
     net = q->net;
     buf = packet->content;
+
+    /*
+        6.8: the last stream id and error code are mandatory, so anything shorter is not a goaway.
+        Without this a truncated frame reads as a goaway naming stream 0, which resets every stream.
+     */
+    if (httpGetPacketLength(packet) < HTTP2_GOAWAY_SIZE) {
+        sendGoAway(q, HTTP2_FRAME_SIZE_ERROR, "Bad goaway frame size");
+        return;
+    }
     lastStreamID = mprGetUint32FromBuf(buf) & HTTP_STREAM_MASK;
     error = mprGetUint32FromBuf(buf);
     len = mprGetBufLength(buf);
@@ -10765,6 +11564,14 @@ static void parseWindowFrame(HttpQueue *q, HttpPacket *packet)
 
     net = q->net;
     frame = packet->data;
+    /*
+        6.9: the window increment is a fixed 4 octets. A short payload would otherwise read as an
+        increment of zero and be reported as the wrong kind of error.
+     */
+    if (httpGetPacketLength(packet) != HTTP2_WINDOW_SIZE) {
+        sendGoAway(q, HTTP2_FRAME_SIZE_ERROR, "Bad window frame size");
+        return;
+    }
     increment = mprGetUint32FromBuf(packet->content);
     if (increment == 0) {
         sendGoAway(q, HTTP2_PROTOCOL_ERROR, "Bad window frame size of zero");
@@ -10892,6 +11699,13 @@ static void processDataFrame(HttpQueue *q, HttpPacket *packet)
     if ((rx->http2ContentLength >= 0) &&
         ((rx->dataFrameLength > rx->http2ContentLength) || (rx->eof && rx->dataFrameLength < rx->http2ContentLength))) {
         sendGoAway(q->net->socketq, HTTP2_PROTOCOL_ERROR, "Data content vs content-length mismatch");
+        return;
+    }
+    /*
+        HTTP/2 does not populate rx->length, so the declared-length test in processParsed() cannot apply here.
+        This is where the cumulative body limits are enforced for HTTP/2.
+     */
+    if (!httpCheckBodySize(stream, len)) {
         return;
     }
     if (httpGetPacketLength(packet) > 0) {
@@ -11432,6 +12246,8 @@ static HttpStream *getStream(HttpQueue *q, HttpPacket *packet)
         stream->rx->remainingContent = HTTP_UNLIMITED;
         stream->streamID = frame->streamID;
         frame->stream = stream;
+        updateResetWindow(net);
+        net->h2PeerStreams++;
 
         /*
             Servers create a new connection stream
@@ -11612,7 +12428,7 @@ static int setState(HttpStream *stream, int event)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 #if ME_HTTP_HTTP2
 /********************************** Forwards **********************************/
@@ -13207,7 +14023,7 @@ PUBLIC ssize httpHuffEncode(cchar *src, ssize size, char *dst, uint lower)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 #if ME_HTTP_DEFENSE
 /********************************** Forwards **********************************/
@@ -13965,7 +14781,7 @@ PUBLIC int64 httpMonitorEvent(HttpStream *stream, int counterIndex, int64 adj)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /***************************** Forward Declarations ***************************/
 
@@ -14019,7 +14835,7 @@ PUBLIC HttpNet *httpCreateNet(MprDispatcher *dispatcher, HttpEndpoint *endpoint,
     }
 
     level = PTOI(mprLookupKey(net->trace->events, "packet"));
-    net->tracing = (net->trace->level >= level) ? 1 : 0;
+    net->tracing = (level > 0 && net->trace->level >= level) ? 1 : 0;
 
     net->port = -1;
     net->async = (flags & HTTP_NET_ASYNC) ? 1 : 0;
@@ -14088,19 +14904,17 @@ PUBLIC void httpDestroyNet(HttpNet *net)
         net->callback(net, HTTP_NET_DESTROY);
     }
     if (!net->destroyed) {
-        if (httpIsServer(net)) {
-            for (ITERATE_ITEMS(net->streams, stream, next)) {
-                mprRemoveItem(net->streams, stream);
-                if (HTTP_STATE_BEGIN < stream->state && stream->state < HTTP_STATE_COMPLETE && !stream->destroyed) {
-                    httpSetState(stream, HTTP_STATE_COMPLETE);
-                }
-                httpDestroyStream(stream);
-                next--;
+        for (ITERATE_ITEMS(net->streams, stream, next)) {
+            mprRemoveItem(net->streams, stream);
+            if (HTTP_STATE_BEGIN < stream->state && stream->state < HTTP_STATE_COMPLETE && !stream->destroyed) {
+                httpSetState(stream, HTTP_STATE_COMPLETE);
             }
-            if (net->servicing) {
-                httpMonitorNetEvent(net, HTTP_COUNTER_ACTIVE_CONNECTIONS, -1);
-                net->servicing = 0;
-            }
+            httpDestroyStream(stream);
+            next--;
+        }
+        if (httpIsServer(net) && net->servicing) {
+            httpMonitorNetEvent(net, HTTP_COUNTER_ACTIVE_CONNECTIONS, -1);
+            net->servicing = 0;
         }
         httpRemoveNet(net);
         if (net->sock) {
@@ -14134,6 +14948,7 @@ static void manageNet(HttpNet *net, int flags)
         mprMark(net->holdq);
         mprMark(net->http);
         mprMark(net->inputq);
+        mprMark(net->ioFile);
         mprMark(net->ip);
         mprMark(net->limits);
         mprMark(net->newDispatcher);
@@ -14429,6 +15244,9 @@ PUBLIC void httpSetNetEof(HttpNet *net)
     if (net->callback) {
         (net->callback)(net, HTTP_NET_EOF);
     }
+    if (net->protocol == 0 && net->stream) {
+        httpAddInputEndPacket(net->stream, net->stream->inputq);
+    }
 }
 
 
@@ -14462,7 +15280,7 @@ PUBLIC void httpSetNetError(HttpNet *net)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /**************************** Forward Declarations ****************************/
 
@@ -14517,11 +15335,16 @@ PUBLIC HttpNet *httpAccept(HttpEndpoint *endpoint, MprEvent *event)
     assert(event->dispatcher);
     assert(endpoint);
 
-    if (mprShouldDenyNewRequests()) {
-        return 0;
-    }
     sock = event->sock;
 
+    /*
+        Re-test here as well as in acceptNet: the state can change between the accept and this event.
+        Close the socket rather than drop it, otherwise the descriptor leaks.
+     */
+    if (mprShouldDenyNewRequests()) {
+        mprCloseSocket(sock, 0);
+        return 0;
+    }
     if ((net = httpCreateNet(event->dispatcher, endpoint, -1, HTTP_NET_ASYNC)) == 0) {
         mprCloseSocket(sock, 0);
         return 0;
@@ -15265,7 +16088,7 @@ static void closeStreams(HttpNet *net)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************** Forwards **********************************/
 
@@ -15421,12 +16244,15 @@ PUBLIC HttpPacket *httpGetPacket(HttpQueue *q)
     //  Must do this regardless of whether there is a packet or not
     if (q->count < q->low) {
         prev = httpFindPreviousQueue(q);
-        if (prev && prev->flags & HTTP_QUEUE_SUSPENDED) {
-            /*
-                This queue was full and now is below the low water mark. Back-enable the previous queue.
-                Must only resume the queue if a packet was actually dequed.
-             */
-            httpResumeQueue(prev, 0);
+        if (prev) {
+            if (prev->flags & HTTP_QUEUE_SUSPENDED) {
+                /*
+                    This queue was full and now is below the low water mark. Back-enable the previous queue.
+                 */
+                httpResumeQueue(prev, 0);
+            } else if (prev->count > 0) {
+                httpResumeQueue(prev, 1);
+            }
         }
     }
     return packet;
@@ -15799,7 +16625,7 @@ PUBLIC HttpPacket *httpSplitPacket(HttpPacket *orig, ssize offset)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 #if ME_COMPILER_HAS_PAM && ME_HTTP_PAM
  #include    <security/pam_appl.h>
@@ -15948,7 +16774,7 @@ static int pamChat(int msgCount, const struct pam_message **msg, struct pam_resp
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************** Forwards **********************************/
 
@@ -16054,7 +16880,7 @@ static void handleTraceMethod(HttpStream *stream)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************** Forward ***********************************/
 
@@ -16523,7 +17349,7 @@ PUBLIC void httpRemoveChunkFilter(HttpQueue *head)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************** Forwards **********************************/
 
@@ -16658,14 +17484,25 @@ static int processFirst(HttpStream *stream)
         stream->startMark = mprGetHiResTicks();
         stream->started = stream->http->now;
         stream->http->totalRequests++;
-        if ((value = httpMonitorEvent(stream, HTTP_COUNTER_ACTIVE_REQUESTS, 1)) > net->limits->requestsPerClientMax) {
+        value = httpMonitorEvent(stream, HTTP_COUNTER_ACTIVE_REQUESTS, 1);
+        stream->counted = 1;
+        if (value > net->limits->requestsPerClientMax) {
             httpError(stream, HTTP_CLOSE | HTTP_CODE_SERVICE_UNAVAILABLE,
                       "Request denied for IP %s. Too many concurrent requests for client, active: %d max: %d",
                       stream->ip, (int) value, net->limits->requestsPerClientMax);
             return 0;
         }
+        if (mprIsMemoryOverLimit()) {
+            /*
+                The memory limit is enforced by refusing work. Denying at accept alone would leave an
+                established connection free to keep driving requests past the limit, so refuse here too.
+             */
+            httpError(stream, HTTP_CLOSE | HTTP_CODE_SERVICE_UNAVAILABLE,
+                      "Request denied for IP %s. Memory use %'zd exceeds the configured limit",
+                      stream->ip, mprGetMem());
+            return 0;
+        }
         httpMonitorEvent(stream, HTTP_COUNTER_REQUESTS, 1);
-        stream->counted = 1;
     }
     return stream->state;
 }
@@ -16679,7 +17516,8 @@ static void processHeaders(HttpStream *stream)
     MprKey  *kp;
     cchar   *hostname, *msg;
     char    *cp, *key, *value, *tok;
-    int     keepAliveHeader;
+    int64   number;
+    int     keepAliveHeader, rc;
 
     net = stream->net;
     rx = stream->rx;
@@ -16735,15 +17573,20 @@ static void processHeaders(HttpStream *stream)
                 }
 
             } else if (strcasecmp(key, "content-length") == 0) {
-                if (rx->length >= 0) {
-                    httpBadRequestError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST, "Mulitple content length headers");
-                    break;
-                }
-                rx->length = stoi(value);
-                if (rx->length < 0) {
-                    httpBadRequestError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST, "Bad content length");
+                /*
+                    RFC 9112 6.3.5: Content-Length = 1*DIGIT. Parse against the grammar so that the declared text
+                    and the framed length agree. A duplicate Content-Length is rejected earlier, by parseFields,
+                    which is the only place both copies are still visible.
+                 */
+                if ((rc = httpParseDigits(value, &number)) < 0) {
+                    if (rc == MPR_ERR_WONT_FIT) {
+                        httpLimitError(stream, HTTP_CLOSE | HTTP_CODE_REQUEST_TOO_LARGE, "Content length too large");
+                    } else {
+                        httpBadRequestError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST, "Bad content length");
+                    }
                     return;
                 }
+                rx->length = number;
                 rx->contentLength = sclone(value);
                 assert(rx->length >= 0);
                 if (httpServerStream(stream) || !scaselessmatch(tx->method, "HEAD")) {
@@ -16754,34 +17597,25 @@ static void processHeaders(HttpStream *stream)
             } else if (strcasecmp(key, "content-range") == 0) {
                 /*
                     The Content-Range header is used in the response. The Range header is used in the request.
-                    This headers specifies the range of any posted body data
-                    Format is:  Content-Range: bytes n1-n2/length
-                    Where n1 is first byte pos and n2 is last byte pos
+                    This header specifies the range of any posted body data.
+                    RFC 9110 14.4:  Content-Range: bytes first-last/complete-length
+                    Where first is the first byte pos, last is the last byte pos and complete-length is the size
+                    of the whole representation, not the length transmitted. Each component is parsed against
+                    the grammar so that a malformed range cannot be silently read as a partial one.
                  */
-                char   *sp;
-                MprOff start, end, size;
+                char  *range, *first, *last, *complete;
+                int64 start, end, size;
 
-                start = end = size = -1;
-                sp = value;
-                while (*sp && !isdigit((uchar) * sp)) {
-                    sp++;
-                }
-                if (*sp) {
-                    start = stoi(sp);
-                    if ((sp = strchr(sp, '-')) != 0) {
-                        end = stoi(++sp);
-                        if ((sp = strchr(sp, '/')) != 0) {
-                            /*
-                                Note this is not the content length transmitted, but the original size of the input of
-                                   which
-                                the client is transmitting only a portion.
-                             */
-                            size = stoi(++sp);
-                        }
-                    }
-                }
-                if (start < 0 || end < 0 || size < 0 || end < start) {
-                    httpBadRequestError(stream, HTTP_CLOSE | HTTP_CODE_RANGE_NOT_SATISFIABLE, "Bad content range");
+                first = last = complete = 0;
+                range = sclone(value);
+                //  Step over the "bytes" range unit
+                stok(range, " \t", &range);
+                first = stok(range, "-", &last);
+                last = stok(last, "/", &complete);
+
+                if (httpParseDigits(first, &start) < 0 || httpParseDigits(last, &end) < 0 ||
+                    httpParseDigits(complete, &size) < 0 || end < start || end >= size) {
+                    httpBadRequestError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST, "Bad content range");
                     break;
                 }
                 rx->inputRange = httpCreateRange(stream, start, end);
@@ -16887,13 +17721,12 @@ static void processHeaders(HttpStream *stream)
             /* Keep-Alive: timeout=N, max=1 */
             if (strcasecmp(key, "keep-alive") == 0) {
                 if ((tok = scontains(value, "max=")) != 0) {
-                    stream->keepAliveCount = atoi(&tok[4]);
-                    if (stream->keepAliveCount < 0) {
-                        stream->keepAliveCount = 0;
-                    }
-                    if (stream->keepAliveCount > ME_MAX_KEEP_ALIVE) {
-                        stream->keepAliveCount = ME_MAX_KEEP_ALIVE;
-                    }
+                    /*
+                        An advisory hint in a comma separated parameter list, so read it leniently but clamp the
+                        result into range. atoi() would truncate a large count through an int.
+                     */
+                    number = stoi(&tok[4]);
+                    stream->keepAliveCount = (int) (number < 0 ? 0 : min(number, ME_MAX_KEEP_ALIVE));
                     /*
                         IMPORTANT: Deliberately close client connections one request early. This encourages a client-led
                         termination and may help relieve excessive server-side TIME_WAIT conditions.
@@ -16937,22 +17770,10 @@ static void processHeaders(HttpStream *stream)
             }
             break;
 
-        case 't':
-#if DONE_IN_HTTP1
-            if (strcasecmp(key, "transfer-encoding") == 0 && stream->net->protocol == 1) {
-                if (scaselesscmp(value, "chunked") == 0) {
-                    /*
-                        remainingContent will be revised by the chunk filter as chunks are processed and will
-                        be set to zero when the last chunk has been received.
-                     */
-                    rx->flags |= HTTP_CHUNKED;
-                    rx->chunkState = HTTP_CHUNK_START;
-                    rx->remainingContent = HTTP_UNLIMITED;
-                    rx->needInputPipeline = 1;
-                }
-            }
-#endif
-            break;
+        /*
+            Transfer-Encoding is owned by parseTransferEncoding() in http1Filter.c which must validate the
+            coding and set the framing before the body is read. HTTP/2 does not permit transfer codings.
+         */
 
         case 'x':
             if (strcasecmp(key, "x-http-method-override") == 0) {
@@ -16966,12 +17787,9 @@ static void processHeaders(HttpStream *stream)
                 rx->ownParams = 1;
 #if ME_DEBUG
             } else if (strcasecmp(key, "x-chunk-size") == 0 && net->protocol < 2) {
-                tx->chunkSize = atoi(value);
-                if (tx->chunkSize <= 0) {
-                    tx->chunkSize = 0;
-                } else if (tx->chunkSize > stream->limits->chunkSize) {
-                    tx->chunkSize = stream->limits->chunkSize;
-                }
+                //  A debug-only test hook. Read leniently but clamp into range rather than truncating via atoi()
+                number = stoi(value);
+                tx->chunkSize = (int) (number <= 0 ? 0 : min(number, stream->limits->chunkSize));
 #endif
             }
             break;
@@ -17037,7 +17855,10 @@ static int processParsed(HttpStream *stream)
     }
     if (httpServerStream(stream)) {
         parseUri(stream);
-        httpAddQueryParams(stream);
+        if (httpAddQueryParams(stream) < 0) {
+            httpError(stream, HTTP_CODE_BAD_REQUEST, "Bad request parameters");
+            /* Continue. Routing still has to happen for the error response to be delivered */
+        }
         if (rx->streaming) {
             routeRequest(stream);
             httpStartHandler(stream);
@@ -17046,21 +17867,20 @@ static int processParsed(HttpStream *stream)
         } else {
             stream->readq->max = stream->limits->rxFormSize;
         }
-        if (!rx->upload) {
-            /*
-                Delay testing rxBodySize till after routing for streaming requests. This way, rxBodySize can be defined
-                   per route.
-             */
-            if (rx->length >= stream->limits->rxBodySize && stream->limits->rxBodySize != HTTP_UNLIMITED) {
-                httpLimitError(stream, HTTP_CLOSE | HTTP_CODE_REQUEST_TOO_LARGE,
-                               "Request content length %lld bytes is too big. Limit %lld", rx->length,
-                               stream->limits->rxBodySize);
-            }
-            if (rx->form && rx->length >= stream->limits->rxFormSize && stream->limits->rxFormSize != HTTP_UNLIMITED) {
-                httpLimitError(stream, HTTP_CLOSE | HTTP_CODE_REQUEST_TOO_LARGE,
-                               "Request form of %lld bytes is too big. Limit %lld", rx->length,
-                               stream->limits->rxFormSize);
-            }
+        /*
+            Reject an oversized body from the declared content length before any of it is read. Routing has run by
+            here, so rxBodySize can be defined per route. This applies to uploads too: the per-file uploadSize test
+            in the upload filter does not bound a request carrying many files.
+         */
+        if (rx->length >= stream->limits->rxBodySize && stream->limits->rxBodySize != HTTP_UNLIMITED) {
+            httpLimitError(stream, HTTP_CLOSE | HTTP_CODE_REQUEST_TOO_LARGE,
+                           "Request content length %lld bytes is too big. Limit %lld", rx->length,
+                           stream->limits->rxBodySize);
+        }
+        if (rx->form && rx->length >= stream->limits->rxFormSize && stream->limits->rxFormSize != HTTP_UNLIMITED) {
+            httpLimitError(stream, HTTP_CLOSE | HTTP_CODE_REQUEST_TOO_LARGE,
+                           "Request form of %lld bytes is too big. Limit %lld", rx->length,
+                           stream->limits->rxFormSize);
         }
     } else {
         /*
@@ -17092,6 +17912,7 @@ static int processContent(HttpStream *stream)
     /*
         For HTTP/1 if the request has no body, need to create the end packet here.
         Can't rely on the chunkFilter as there will be no packet flowing through it.
+        There may be upload data in the headers packet. Let incomingHttp1 handle it.
      */
     if (stream->rx->remainingContent == 0) {
         httpAddInputEndPacket(stream, stream->inputq);
@@ -17115,10 +17936,10 @@ static int processReady(HttpStream *stream)
         if (httpServerStream(stream)) {
             if (httpAddBodyParams(stream) < 0) {
                 httpError(stream, HTTP_CODE_BAD_REQUEST, "Bad request parameters");
-            } else {
-                routeRequest(stream);
-                httpStartHandler(stream);
+                /* Continue. The request must still be routed so the error response has a pipeline */
             }
+            routeRequest(stream);
+            httpStartHandler(stream);
         }
     }
     //  Ensure incomingService can receive data before ready event if not streaming
@@ -17195,7 +18016,12 @@ static void processComplete(HttpStream *stream, MprEvent *event)
     }
     HTTP_NOTIFY(stream, HTTP_EVENT_DONE, 0);
 
-    if (net->protocol == 0) {
+    /*
+        Close if keep-alive is exhausted or was cancelled by HTTP_CLOSE or HTTP_ABORT. This matches the
+        Connection: close already announced in the response headers. HTTP/2 manages its own teardown.
+        RFC 9112 6.1 requires the connection be closed after a request is rejected over ambiguous framing.
+     */
+    if (net->protocol == 0 || (net->protocol < 2 && stream->keepAliveCount <= 0)) {
         net->eof = 1;
     }
 }
@@ -17270,6 +18096,13 @@ static int prepErrorDoc(HttpStream *stream)
     stream->rx->originalUri = rx->uri;
     stream->rx->uri = (char*) tx->errorDocument;
     stream->tx->status = tx->status;
+
+    /*
+        httpResetServerStream creates a new rx. Re-parse the method so rx->flags carries the
+        method bits, otherwise handlers see a request with no method and reject it.
+     */
+    httpParseMethod(stream);
+
     stream->state = HTTP_STATE_PARSED;
     return processParsed(stream);
 }
@@ -17337,6 +18170,7 @@ static bool parseRange(HttpStream *stream, char *value)
     HttpTx    *tx;
     HttpRange *range, *last, *next;
     char      *tok, *ep;
+    int64     number;
 
     tx = stream->tx;
     value = sclone(value);
@@ -17351,28 +18185,40 @@ static bool parseRange(HttpStream *stream, char *value)
             return 0;
         }
         /*
-            A range "-7" will set the start to -1 and end to 8
+            RFC 9110 14.1.1: an int-range is first-last, a suffix-range is -length. Each position is 1*DIGIT, so
+            parse against the grammar rather than converting leniently so "abc-def" does not read as the range
+            0-0. A range "-7" sets the start to -1 and the end to 8.
          */
         if ((tok = stok(value, ",", &value)) == 0) {
             return 0;
         }
-        if (*tok != '-') {
-            range->start = (ssize) stoi(tok);
+        if ((ep = strchr(tok, '-')) == 0) {
+            return 0;
+        }
+        *ep++ = '\0';
+
+        if (*tok) {
+            if (httpParseDigits(tok, &number) < 0) {
+                return 0;
+            }
+            range->start = number;
         } else {
             range->start = -1;
         }
         range->end = -1;
 
-        if ((ep = strchr(tok, '-')) != 0) {
-            if (*++ep != '\0') {
-                /*
-                    End is one beyond the range. Makes the math easier.
-                 */
-                range->end = (ssize) stoi(ep) + 1;
+        if (*ep) {
+            /*
+                End is one beyond the range. Makes the math easier. Stop short of the last representable
+                position so that the +1 cannot overflow.
+             */
+            if (httpParseDigits(ep, &number) < 0 || number == MAXINT64) {
+                return 0;
             }
+            range->end = number + 1;
         }
         if (range->start >= 0 && range->end >= 0) {
-            range->len = (int) (range->end - range->start);
+            range->len = range->end - range->start;
         }
         if (last == 0) {
             tx->outputRanges = range;
@@ -17503,7 +18349,7 @@ PUBLIC cchar *httpTraceHeaders(MprHash *headers)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************** Forwards **********************************/
 
@@ -17821,9 +18667,14 @@ PUBLIC bool httpResumeQueue(HttpQueue *q, bool schedule)
             httpScheduleQueue(q);
         }
         prevQ = httpFindPreviousQueue(q);
-        if (q->count == 0 && prevQ && prevQ->flags & HTTP_QUEUE_SUSPENDED) {
-            httpResumeQueue(prevQ, schedule);
-            return 1;
+        if (prevQ && q->count == 0) {
+            if (prevQ->flags & HTTP_QUEUE_SUSPENDED) {
+                httpResumeQueue(prevQ, schedule);
+                return 1;
+            } else if (prevQ->count > 0) {
+                httpResumeQueue(prevQ, 1);
+                return 1;
+            }
         }
     }
     return 0;
@@ -18202,7 +19053,7 @@ PUBLIC bool httpVerifyQueue(HttpQueue *q)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************** Defines ***********************************/
 
@@ -18543,6 +19394,853 @@ static int fixRangeLength(HttpStream *stream, HttpQueue *q)
  */
 
 
+/********* Start of file src/pattern.c ************/
+
+/*
+    pattern.c -- Route pattern matching without a regular expression engine
+
+    Patterns are matched in five places: route URI patterns, the "Condition match"
+    directive, "Param", "RequestHeader" and regexp virtual host names. Almost no
+    configuration needs a real regular expression, so a pattern is classified once, at
+    config parse time, into one of five kinds. The first four (literals, literal prefixes
+    with a trailing capture, whole-segment {token} patterns and literal alternations) are
+    matched by straight-line code here. The fifth requires a regular expression engine,
+    which is optional and supplied by the deployer.
+
+    httpMatchPattern() fills the same matches[] offset vector that pcre_exec() produces
+    (whole match in [0..1], then one pair per capture, unset groups as -1), so $1..$N, $&,
+    $` and $' expansion and the binding of {tokens} to request parameters are unchanged.
+
+    None of the native matchers backtrack. They are a single pass over the subject and
+    allocate nothing, so a crafted request cannot drive them into exponential behavior.
+
+    Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+/********************************* Includes ***********************************/
+
+#include    "http.h"
+
+/*********************************** Locals ***********************************/
+/*
+    Characters that carry a special meaning in a regular expression. This is the same set
+    finalizePattern() uses to compute Route.startWith, and it deliberately includes '.',
+    which matches any character.
+ */
+#define PAT_META       "^$*+?.(|{[\\"
+
+/*
+    The metacharacter set excluding '.'. A pattern whose only metacharacter is '.' is a
+    literal with single character wildcards and is matched natively, see literalAt().
+    Route patterns naming a file extension ("^/auth/form/login.html$") are common.
+ */
+#define PAT_META_NODOT "^$*+?(|{[\\"
+
+/*
+    The rewritten forms finalizePattern() produces for the {token} syntax
+ */
+#define PAT_TOKEN      "([^/]*)"
+#define PAT_TOKEN_LEN  7
+#define PAT_OPTIONAL   "(?:/([^/]*))?"
+#define PAT_OPT_LEN    13
+
+/********************************** Forwards **********************************/
+
+static int classify(HttpPattern *pat);
+static cchar *findLiteral(HttpPattern *pat, cchar *literal, ssize len, cchar *subject);
+static bool literalAt(HttpPattern *pat, cchar *literal, ssize len, cchar *subject);
+static void managePart(HttpPatternPart *part, int flags);
+static void managePattern(HttpPattern *pat, int flags);
+static int matchAlt(HttpPattern *pat, cchar *subject, int *matches, int matchSize);
+static int matchLiteral(HttpPattern *pat, cchar *subject, int *matches, int matchSize);
+static int matchPrefix(HttpPattern *pat, cchar *subject, int *matches, int matchSize);
+static int matchSegments(HttpPattern *pat, cchar *subject, int *matches, int matchSize);
+static bool parseAlt(HttpPattern *pat, cchar *pattern);
+static bool parsePatternPrefix(HttpPattern *pat, cchar *pattern);
+static bool parseSegments(HttpPattern *pat, cchar *pattern);
+static HttpPatternPart *addLiteralPart(HttpPattern *pat, cchar *start, ssize len);
+static HttpPatternPart *addTokenPart(HttpPattern *pat, int optional);
+
+/************************************ Code ************************************/
+/*
+    Compile a pattern for later matching. Called at config parse time only.
+
+    Set HTTP_PAT_ANCHORED for route patterns, which must match at offset 0. Leave it clear
+    for Condition match, Param, RequestHeader and ServerName, which are unanchored: "Param
+    name peter" means the parameter CONTAINS "peter". These directives gate authorization
+    decisions, so that substring semantic must be preserved exactly.
+
+    Returns 0 on error with *errMsg set. A pattern needing a regular expression engine in a
+    build without one is an error here, at config parse, never at request time.
+ */
+PUBLIC HttpPattern *httpCompilePattern(cchar *pattern, int flags, cchar **errMsg, int *column)
+{
+    HttpPattern *pat;
+
+    assert(pattern);
+
+    if (errMsg) {
+        *errMsg = 0;
+    }
+    if (column) {
+        *column = 0;
+    }
+    if (!pattern || (pat = mprAllocObj(HttpPattern, managePattern)) == 0) {
+        return 0;
+    }
+    pat->source = sclone(pattern);
+    pat->flags = flags;
+    pat->caseInsensitive = ME_HTTP_CASE_INSENSITIVE_FS;
+
+    if (classify(pat) < 0) {
+        return 0;
+    }
+    if (pat->kind == HTTP_PAT_REGEX) {
+        if (httpCompileRegex(pat, errMsg, column) < 0) {
+            return 0;
+        }
+    }
+    return pat;
+}
+
+
+/*
+    Create a prefix pattern directly, without composing regular expression text and parsing it
+    back. This is what Alias and ScriptAlias need: match a URI prefix and capture the remainder
+    so the target can map it to a filename.
+ */
+PUBLIC HttpPattern *httpCreatePrefixPattern(cchar *prefix, int flags)
+{
+    HttpPattern *pat;
+
+    assert(prefix);
+
+    if (!prefix || (pat = mprAllocObj(HttpPattern, managePattern)) == 0) {
+        return 0;
+    }
+    /*
+        Keep the equivalent regular expression as the source text. It is never compiled; it is
+        what route tables and error messages display.
+     */
+    pat->source = sfmt("^%s%s(.*)$", prefix, (flags & HTTP_PAT_SLASH_SKIP) ? "(?:/)*" : "");
+    pat->kind = HTTP_PAT_PREFIX;
+    pat->flags = HTTP_PAT_ANCHORED | HTTP_PAT_END | (flags & HTTP_PAT_SLASH_SKIP);
+    pat->caseInsensitive = ME_HTTP_CASE_INSENSITIVE_FS;
+    pat->literal = sclone(prefix);
+    pat->literalLen = slen(prefix);
+    pat->captures = 1;
+
+    if (schr(pat->literal, '.')) {
+        pat->flags |= HTTP_PAT_WILD;
+    }
+    return pat;
+}
+
+
+/*
+    Classify the pattern into a kind. Order matters: a pattern takes the first kind it fits.
+    Anything unrecognized is a regular expression.
+ */
+static int classify(HttpPattern *pat)
+{
+    cchar *body, *cp;
+    ssize len;
+
+    /*
+        Strip the leading "^" and trailing "$" for classification. The regexp backend still
+        compiles the original source pattern, anchors and all.
+     */
+    cp = pat->source;
+    if (*cp == '^') {
+        cp++;
+    }
+    len = slen(cp);
+    if (len > 0 && cp[len - 1] == '$') {
+        pat->flags |= HTTP_PAT_END;
+        len--;
+    }
+    body = snclone(cp, len);
+
+    /*
+        Literal, with or without '.' wildcards
+     */
+    if (strpbrk(body, PAT_META) == 0 || strpbrk(body, PAT_META_NODOT) == 0) {
+        pat->kind = HTTP_PAT_LITERAL;
+        pat->literal = body;
+        pat->literalLen = len;
+        if (schr(pat->literal, '.')) {
+            pat->flags |= HTTP_PAT_WILD;
+        }
+        return 0;
+    }
+    if (parsePatternPrefix(pat, body)) {
+        pat->kind = HTTP_PAT_PREFIX;
+        return 0;
+    }
+    if (parseSegments(pat, body)) {
+        pat->kind = HTTP_PAT_SEGMENTS;
+        return 0;
+    }
+    if (!(pat->flags & HTTP_PAT_ANCHORED) && parseAlt(pat, body)) {
+        pat->kind = HTTP_PAT_ALT;
+        return 0;
+    }
+    pat->kind = HTTP_PAT_REGEX;
+    pat->literal = 0;
+    pat->literalLen = 0;
+    pat->suffix = 0;
+    pat->suffixLen = 0;
+    pat->captures = 0;
+    pat->parts = 0;
+    pat->alts = 0;
+    pat->flags &= ~(HTTP_PAT_WILD | HTTP_PAT_SLASH_SKIP);
+    return 0;
+}
+
+
+/*
+    Recognize a literal prefix with a trailing capture:
+
+        ^/images/(.*)$              Alias with a trailing "/", and hand written routes
+        ^/images(?:/)*(.*)$         Alias without a trailing "/" - absorbs the separator
+        ^/lang/(.*)(\.html)$        Prefix, greedy capture, literal suffix
+
+    The suffix form is unambiguous because the pattern is anchored at the end: the capture
+    is everything between the prefix and the suffix. The suffix arrives escaped ("\.html")
+    so its dot is a literal dot, not a wildcard, and it is compared exactly.
+ */
+static bool parsePatternPrefix(HttpPattern *pat, cchar *pattern)
+{
+    cchar *content, *cp, *end, *tail;
+    ssize len;
+
+    if ((cp = scontains(pattern, "(.*)")) == 0) {
+        return 0;
+    }
+    len = cp - pattern;
+
+    /*
+        Everything before the capture must be literal, optionally ending with "(?:/)*"
+     */
+    if (len >= 6 && sncmp(&pattern[len - 6], "(?:/)*", 6) == 0) {
+        len -= 6;
+        pat->flags |= HTTP_PAT_SLASH_SKIP;
+    }
+    pat->literal = snclone(pattern, len);
+    pat->literalLen = len;
+
+    if (strpbrk(pat->literal, PAT_META_NODOT) != 0) {
+        return 0;
+    }
+    if (schr(pat->literal, '.')) {
+        pat->flags |= HTTP_PAT_WILD;
+    }
+    pat->captures = 1;
+    tail = &cp[4];
+
+    if (*tail == '\0') {
+        return 1;
+    }
+    /*
+        Optional literal suffix group: "(\.html)". The dot arrives escaped, so it is a
+        literal dot and not a wildcard - the suffix is compared exactly. The group contents
+        must be plain text; anything else is a real regular expression.
+     */
+    if (*tail == '(' && tail[1] == '\\' && tail[2] == '.') {
+        if ((end = schr(tail, ')')) != 0 && end[1] == '\0') {
+            content = snclone(&tail[3], end - &tail[3]);
+            if (strpbrk(content, PAT_META) != 0) {
+                return 0;
+            }
+            pat->suffix = sjoin(".", content, NULL);
+            pat->suffixLen = slen(pat->suffix);
+            pat->captures = 2;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+/*
+    Recognize literal text with whole-segment {token} captures. finalizePattern() has
+    already rewritten the pattern before we see it:
+
+        {token}         ->  ([^/]*)
+        (~/{token}~)    ->  (?:/([^/]*))?       optional trailing segment
+
+    A token must span a complete path segment: preceded by '/' or the start of the pattern,
+    and followed by '/', the end, or an optional segment group. That restriction is what
+    makes matching deterministic - a token always stops at the next '/', so there is never
+    a choice to make and never anything to backtrack over. A token that does not span a
+    whole segment ("{a}-{b}") or one with a regexp field ("{a=[0-9]+}") is not a segment
+    pattern and falls through to HTTP_PAT_REGEX.
+ */
+static bool parseSegments(HttpPattern *pat, cchar *pattern)
+{
+    cchar *cp, *start;
+
+    if (!scontains(pattern, PAT_TOKEN)) {
+        return 0;
+    }
+    pat->parts = mprCreateList(-1, 0);
+
+    for (cp = start = pattern; *cp; ) {
+        if (sncmp(cp, PAT_OPTIONAL, PAT_OPT_LEN) == 0) {
+            /* Optional trailing segment. Only legal at the end of the pattern */
+            if (cp[PAT_OPT_LEN] != '\0') {
+                return 0;
+            }
+            if (cp > start && !addLiteralPart(pat, start, cp - start)) {
+                return 0;
+            }
+            if (!addTokenPart(pat, 1)) {
+                return 0;
+            }
+            cp += PAT_OPT_LEN;
+            start = cp;
+
+        } else if (sncmp(cp, PAT_TOKEN, PAT_TOKEN_LEN) == 0) {
+            if (cp > pattern && cp[-1] != '/') {
+                return 0;
+            }
+            if (cp[PAT_TOKEN_LEN] != '\0' && cp[PAT_TOKEN_LEN] != '/' &&
+                sncmp(&cp[PAT_TOKEN_LEN], PAT_OPTIONAL, PAT_OPT_LEN) != 0) {
+                return 0;
+            }
+            if (cp > start && !addLiteralPart(pat, start, cp - start)) {
+                return 0;
+            }
+            if (!addTokenPart(pat, 0)) {
+                return 0;
+            }
+            cp += PAT_TOKEN_LEN;
+            start = cp;
+
+        } else {
+            if (strchr(PAT_META_NODOT, *cp) != 0) {
+                /* A metacharacter outside a token: not a segment pattern */
+                return 0;
+            }
+            if (*cp == '.') {
+                pat->flags |= HTTP_PAT_WILD;
+            }
+            cp++;
+        }
+    }
+    if (cp > start && !addLiteralPart(pat, start, cp - start)) {
+        return 0;
+    }
+    return 1;
+}
+
+
+static HttpPatternPart *addLiteralPart(HttpPattern *pat, cchar *start, ssize len)
+{
+    HttpPatternPart *part;
+
+    if ((part = mprAllocObj(HttpPatternPart, managePart)) == 0) {
+        return 0;
+    }
+    part->literal = snclone(start, len);
+    part->literalLen = len;
+    mprAddItem(pat->parts, part);
+    return part;
+}
+
+
+static HttpPatternPart *addTokenPart(HttpPattern *pat, int optional)
+{
+    HttpPatternPart *part;
+
+    if ((part = mprAllocObj(HttpPatternPart, managePart)) == 0) {
+        return 0;
+    }
+    part->token = 1;
+    part->optional = optional;
+    mprAddItem(pat->parts, part);
+    pat->captures++;
+    return part;
+}
+
+
+static void managePart(HttpPatternPart *part, int flags)
+{
+    if (flags & MPR_MANAGE_MARK) {
+        mprMark(part->literal);
+    }
+}
+
+
+/*
+    Recognize an alternation of literals, optionally wrapped in a single group:
+
+        localhost|example.com
+        (https|custom)
+
+    Alternatives may contain '.' wildcards - "example.com" must keep matching any character
+    where the dot is, exactly as the regular expression did. Only offered to the unanchored
+    consumers; an alternation in a route pattern falls through to HTTP_PAT_REGEX.
+ */
+static bool parseAlt(HttpPattern *pat, cchar *pattern)
+{
+    cchar *body, *cp, *start;
+    ssize len;
+
+    body = pattern;
+    len = slen(body);
+
+    /*
+        A wrapping "( ... )" is a CAPTURING group to the regexp engine, so "(https|custom)"
+        yields one capture spanning the whole match. Without the parens there is no capture.
+        Reproduce both.
+     */
+    if (*body == '(' && len > 2 && body[len - 1] == ')') {
+        body = snclone(&body[1], len - 2);
+        pat->captures = 1;
+    }
+    if (!schr(body, '|')) {
+        return 0;
+    }
+    pat->alts = mprCreateList(-1, 0);
+
+    for (cp = start = body; ; cp++) {
+        if (*cp == '|' || *cp == '\0') {
+            if (cp == start) {
+                /* Empty alternative */
+                return 0;
+            }
+            mprAddItem(pat->alts, snclone(start, cp - start));
+            if (*cp == '\0') {
+                break;
+            }
+            start = cp + 1;
+
+        } else if (strchr(PAT_META_NODOT, *cp) != 0) {
+            return 0;
+
+        } else if (*cp == '.') {
+            pat->flags |= HTTP_PAT_WILD;
+        }
+    }
+    return 1;
+}
+
+
+/*
+    Match a subject. Fills matches[] with pcre_exec compatible byte offsets and returns the
+    match count (1 + captures), or <= 0 if the subject does not match.
+ */
+PUBLIC int httpMatchPattern(HttpPattern *pat, cchar *subject, int *matches, int matchSize)
+{
+    if (!pat || !subject || !matches || matchSize < 2) {
+        return 0;
+    }
+    switch (pat->kind) {
+    case HTTP_PAT_LITERAL:
+        return matchLiteral(pat, subject, matches, matchSize);
+
+    case HTTP_PAT_PREFIX:
+        return matchPrefix(pat, subject, matches, matchSize);
+
+    case HTTP_PAT_SEGMENTS:
+        return matchSegments(pat, subject, matches, matchSize);
+
+    case HTTP_PAT_ALT:
+        return matchAlt(pat, subject, matches, matchSize);
+
+    default:
+        return httpMatchRegex(pat, subject, matches, matchSize);
+    }
+}
+
+
+static bool patternMatchPath(HttpPattern *pat, cchar *subject, cchar *literal, ssize len)
+{
+    return pat->caseInsensitive ? sncaselesscmp(subject, literal, len) == 0 : sncmp(subject, literal, len) == 0;
+}
+
+
+static bool patternMatchPathChar(HttpPattern *pat, char a, char b)
+{
+    return pat->caseInsensitive ? tolower((uchar) a) == tolower((uchar) b) : a == b;
+}
+
+
+/*
+    Compare a literal against the subject at a fixed offset. When HTTP_PAT_WILD is set, a
+    '.' in the literal matches any single character - the regular expression meaning. There
+    is no quantifier, so this remains a single pass with nothing to backtrack.
+ */
+static bool literalAt(HttpPattern *pat, cchar *literal, ssize len, cchar *subject)
+{
+    ssize i;
+
+    if (!(pat->flags & HTTP_PAT_WILD)) {
+        return patternMatchPath(pat, subject, literal, len);
+    }
+    for (i = 0; i < len; i++) {
+        if (subject[i] == '\0') {
+            return 0;
+        }
+        if (literal[i] != '.' && !patternMatchPathChar(pat, literal[i], subject[i])) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
+/*
+    Unanchored search for a literal (honoring '.' wildcards). Returns the first match.
+ */
+static cchar *findLiteral(HttpPattern *pat, cchar *literal, ssize len, cchar *subject)
+{
+    ssize slen_, i;
+
+    slen_ = slen(subject);
+    for (i = 0; (i + len) <= slen_; i++) {
+        if (literalAt(pat, literal, len, &subject[i])) {
+            return &subject[i];
+        }
+    }
+    return 0;
+}
+
+
+static int matchLiteral(HttpPattern *pat, cchar *subject, int *matches, int matchSize)
+{
+    cchar *found;
+    ssize slen_;
+
+    slen_ = slen(subject);
+
+    if (pat->flags & HTTP_PAT_ANCHORED) {
+        if (!literalAt(pat, pat->literal, pat->literalLen, subject)) {
+            return 0;
+        }
+        if ((pat->flags & HTTP_PAT_END) && slen_ != pat->literalLen) {
+            return 0;
+        }
+        matches[0] = 0;
+        matches[1] = (int) pat->literalLen;
+        return 1;
+    }
+    /*
+        Unanchored: a substring search. This preserves the semantics of pcre_exec() without
+        PCRE_ANCHORED, which Condition match, Param, RequestHeader and ServerName rely on.
+     */
+    if ((found = findLiteral(pat, pat->literal, pat->literalLen, subject)) == 0) {
+        return 0;
+    }
+    if ((pat->flags & HTTP_PAT_END) && (found - subject + pat->literalLen) != slen_) {
+        /* Must match at the end. Retry anchored at the tail */
+        if (slen_ < pat->literalLen) {
+            return 0;
+        }
+        found = &subject[slen_ - pat->literalLen];
+        if (!literalAt(pat, pat->literal, pat->literalLen, found)) {
+            return 0;
+        }
+    }
+    matches[0] = (int) (found - subject);
+    matches[1] = (int) (found - subject + pat->literalLen);
+    return 1;
+}
+
+
+static int matchPrefix(HttpPattern *pat, cchar *subject, int *matches, int matchSize)
+{
+    cchar *tail;
+    ssize slen_, tailStart, tailEnd;
+
+    if (matchSize < ((pat->captures + 1) * 2)) {
+        return 0;
+    }
+    slen_ = slen(subject);
+
+    if (!literalAt(pat, pat->literal, pat->literalLen, subject)) {
+        return 0;
+    }
+    tail = &subject[pat->literalLen];
+
+    if (pat->flags & HTTP_PAT_SLASH_SKIP) {
+        while (*tail == '/') {
+            tail++;
+        }
+    }
+    tailStart = tail - subject;
+    tailEnd = slen_;
+
+    if (pat->suffix) {
+        if (slen_ < (tailStart + pat->suffixLen)) {
+            return 0;
+        }
+        tailEnd = slen_ - pat->suffixLen;
+        if (!patternMatchPath(pat, &subject[tailEnd], pat->suffix, pat->suffixLen)) {
+            return 0;
+        }
+    }
+    matches[0] = 0;
+    matches[1] = (int) slen_;
+    matches[2] = (int) tailStart;
+    matches[3] = (int) tailEnd;
+
+    if (pat->suffix) {
+        matches[4] = (int) tailEnd;
+        matches[5] = (int) slen_;
+    }
+    return pat->captures + 1;
+}
+
+
+static int matchSegments(HttpPattern *pat, cchar *subject, int *matches, int matchSize)
+{
+    HttpPatternPart *part;
+    cchar           *cp;
+    int             capture, last, next;
+
+    if (matchSize < ((pat->captures + 1) * 2)) {
+        return 0;
+    }
+    cp = subject;
+    capture = 1;
+    last = 0;
+
+    for (next = 0; (part = mprGetNextItem(pat->parts, &next)) != 0; ) {
+        if (!part->token) {
+            if (!literalAt(pat, part->literal, part->literalLen, cp)) {
+                return 0;
+            }
+            cp += part->literalLen;
+
+        } else if (part->optional) {
+            /*
+                Optional trailing segment. If it is absent, pcre_exec() leaves its offsets
+                untouched and reports a count of one more than the highest group that DID
+                participate - it does not report the group as -1. Reproduce that exactly:
+                the {token} binding reads rx->matches[] unconditionally, and rx->matches is
+                zeroed, so an absent trailing token binds to an empty string today. Writing
+                -1 here would instead leave the token unbound, which is a visible change.
+             */
+            if (*cp == '/') {
+                cp++;
+                matches[capture * 2] = (int) (cp - subject);
+                while (*cp && *cp != '/') {
+                    cp++;
+                }
+                matches[(capture * 2) + 1] = (int) (cp - subject);
+                last = capture;
+            }
+            capture++;
+
+        } else {
+            /* Required token: capture to the next '/' or the end of the subject */
+            matches[capture * 2] = (int) (cp - subject);
+            while (*cp && *cp != '/') {
+                cp++;
+            }
+            matches[(capture * 2) + 1] = (int) (cp - subject);
+            last = capture;
+            capture++;
+        }
+    }
+    if ((pat->flags & HTTP_PAT_END) && *cp != '\0') {
+        return 0;
+    }
+    matches[0] = 0;
+    matches[1] = (int) (cp - subject);
+    return last + 1;
+}
+
+
+static int matchAlt(HttpPattern *pat, cchar *subject, int *matches, int matchSize)
+{
+    cchar *alt, *found;
+    int   next;
+
+    if (matchSize < ((pat->captures + 1) * 2)) {
+        return 0;
+    }
+    for (next = 0; (alt = mprGetNextItem(pat->alts, &next)) != 0; ) {
+        if ((found = findLiteral(pat, alt, slen(alt), subject)) != 0) {
+            matches[0] = (int) (found - subject);
+            matches[1] = (int) (found - subject + slen(alt));
+            if (pat->captures) {
+                /* The wrapping group captures the whole match */
+                matches[2] = matches[0];
+                matches[3] = matches[1];
+            }
+            return pat->captures + 1;
+        }
+    }
+    return 0;
+}
+
+
+/************************* Regular Expression Backend *************************/
+/*
+    The engine is optional and supplied by the deployer. We ship none.
+
+    Set ME_COM_PCRE2=1 and link a PCRE2 library to enable the patterns that genuinely need an
+    engine: lookahead, alternation in a route, character classes, and {token=regexp} fields.
+    Everything else - literals, Alias prefixes, {token} segments and literal alternations - is
+    matched natively above and needs no engine at all.
+ */
+#if ME_COM_PCRE2
+    #define PCRE2_CODE_UNIT_WIDTH 8
+    #include <pcre2.h>
+
+/*
+    Bound backtracking explicitly. The subject is attacker supplied - a request path, a Host
+    header, a form field - and PCRE's compiled-in default match limit is 10,000,000, which is
+    not a bound anyone would choose deliberately. A pattern that exceeds these limits rejects
+    the request rather than occupying a worker.
+ */
+#ifndef ME_HTTP_PATTERN_MATCH_LIMIT
+    #define ME_HTTP_PATTERN_MATCH_LIMIT 1000
+#endif
+#ifndef ME_HTTP_PATTERN_DEPTH_LIMIT
+    #define ME_HTTP_PATTERN_DEPTH_LIMIT 1000
+#endif
+
+PUBLIC int httpCompileRegex(HttpPattern *pat, cchar **errMsg, int *column)
+{
+    PCRE2_UCHAR buf[256];
+    PCRE2_SIZE  offset;
+    pcre2_code  *code;
+    int         errNumber;
+
+    errNumber = 0;
+    offset = 0;
+
+    if ((code = pcre2_compile((PCRE2_SPTR) pat->source, PCRE2_ZERO_TERMINATED, 0,
+                              &errNumber, &offset, NULL)) == 0) {
+        pcre2_get_error_message(errNumber, buf, sizeof(buf));
+        if (errMsg) {
+            *errMsg = sclone((char*) buf);
+        }
+        if (column) {
+            *column = (int) offset;
+        }
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    pat->code = code;
+    return 0;
+}
+
+
+PUBLIC int httpMatchRegex(HttpPattern *pat, cchar *subject, int *matches, int matchSize)
+{
+    pcre2_match_data    *data;
+    pcre2_match_context *ctx;
+    PCRE2_SIZE          *ovector;
+    uint32              count, i;
+    int                 rc;
+
+    if (!pat->code) {
+        return 0;
+    }
+    if ((ctx = pcre2_match_context_create(NULL)) == 0) {
+        return 0;
+    }
+    pcre2_set_match_limit(ctx, ME_HTTP_PATTERN_MATCH_LIMIT);
+    pcre2_set_depth_limit(ctx, ME_HTTP_PATTERN_DEPTH_LIMIT);
+
+    if ((data = pcre2_match_data_create(matchSize / 2, NULL)) == 0) {
+        pcre2_match_context_free(ctx);
+        return 0;
+    }
+    rc = pcre2_match(pat->code, (PCRE2_SPTR) subject, (PCRE2_SIZE) slen(subject), 0, 0, data, ctx);
+
+    if (rc > 0) {
+        /*
+            The PCRE2 ovector is PCRE2_SIZE (size_t). Copy it down into the int vector the rest of
+            the server expects, preserving the -1 unset-group convention.
+         */
+        ovector = pcre2_get_ovector_pointer(data);
+        count = (uint32) rc * 2;
+        if (count > (uint32) matchSize) {
+            count = (uint32) matchSize;
+        }
+        for (i = 0; i < count; i++) {
+            matches[i] = (ovector[i] == PCRE2_UNSET) ? -1 : (int) ovector[i];
+        }
+    } else if (rc == PCRE2_ERROR_MATCHLIMIT || rc == PCRE2_ERROR_DEPTHLIMIT) {
+        mprLog("error http route", 0,
+               "Pattern \"%s\" exceeded the match limit. Rejecting the request.", pat->source);
+        rc = 0;
+    }
+    pcre2_match_data_free(data);
+    pcre2_match_context_free(ctx);
+    return rc;
+}
+
+
+PUBLIC void httpFreeRegex(HttpPattern *pat)
+{
+    if (pat->code) {
+        pcre2_code_free((pcre2_code*) pat->code);
+        pat->code = 0;
+    }
+}
+
+#else /* No engine */
+
+PUBLIC int httpCompileRegex(HttpPattern *pat, cchar **errMsg, int *column)
+{
+    if (errMsg) {
+        *errMsg = sfmt("Pattern \"%s\" requires regular expression support, which is not included "
+                       "in this build. Rebuild with ME_COM_PCRE2=1 and link a PCRE2 library, or "
+                       "rewrite the pattern using literal, prefix, {token} or alternation forms",
+                       pat->source);
+    }
+    if (column) {
+        *column = 0;
+    }
+    return MPR_ERR_BAD_SYNTAX;
+}
+
+
+PUBLIC int httpMatchRegex(HttpPattern *pat, cchar *subject, int *matches, int matchSize)
+{
+    return 0;
+}
+
+
+PUBLIC void httpFreeRegex(HttpPattern *pat)
+{
+}
+#endif
+
+
+static void managePattern(HttpPattern *pat, int flags)
+{
+    if (flags & MPR_MANAGE_MARK) {
+        mprMark(pat->source);
+        mprMark(pat->literal);
+        mprMark(pat->suffix);
+        mprMark(pat->parts);
+        mprMark(pat->alts);
+
+    } else if (flags & MPR_MANAGE_FREE) {
+        /*
+            The regular expression engine allocates its compiled code with malloc(), so it
+            is released here rather than by the collector. This is the only unmanaged memory
+            a pattern owns, and it now has exactly one owner and one release path.
+         */
+        httpFreeRegex(pat);
+    }
+}
+
+
+/*
+    Copyright (c) Embedthis Software. All Rights Reserved.
+    This software is distributed under a commercial license. Consult the LICENSE.md
+    distributed with this software for full details and copyrights.
+ */
+
+
 /********* Start of file src/route.c ************/
 
 /*
@@ -18553,8 +20251,7 @@ static int fixRangeLength(HttpStream *stream, HttpQueue *q)
 
 /********************************* Includes ***********************************/
 
-
-#include    "pcre.h"
+#include    "http.h"
 
 /********************************** Forwards **********************************/
 
@@ -18586,12 +20283,18 @@ static char *expandRequestTokens(HttpStream *stream, char *targetKey);
 static void finalizePattern(HttpRoute *route);
 static char *finalizeReplacement(HttpRoute *route, cchar *str);
 static char *finalizeTemplate(HttpRoute *route);
+static bool isXsrfProtectedMethod(HttpRx *rx);
+static bool matchInBounds(ssize len, ssize start, ssize end);
 static bool opPresent(MprList *list, HttpRouteOp *op);
+static char *applyLangSuffix(HttpStream *stream, cchar *path);
 static void manageRoute(HttpRoute *route, int flags);
 static void manageLang(HttpLang *lang, int flags);
 static void manageRouteOp(HttpRouteOp *op, int flags);
+static bool detectCaseInsensitiveDocuments(cchar *documents);
 static int matchRequestUri(HttpStream *stream, HttpRoute *route);
 static int matchRoute(HttpStream *stream, HttpRoute *route);
+static bool routeMatchPath(HttpRoute *route, cchar *path, cchar *pattern, ssize len);
+static bool routeStartsPath(HttpRoute *route, cchar *path, cchar *prefix);
 static int selectHandler(HttpStream *stream, HttpRoute *route);
 static int testCondition(HttpStream *stream, HttpRoute *route, HttpRouteOp *condition);
 static char *trimQuotes(char *str);
@@ -18623,7 +20326,9 @@ PUBLIC HttpRoute *httpCreateRoute(HttpHost *host)
     route->targetRule = sclone("run");
     route->autoDelete = 1;
     route->autoFinalize = 1;
+    route->caseInsensitive = detectCaseInsensitiveDocuments(route->documents);
     route->prefix = MPR->emptyString;
+    route->corsOrigin = MPR->emptyString;
     route->trace = http->trace;
 
 #if DEPRECATED
@@ -18685,6 +20390,7 @@ PUBLIC HttpRoute *httpCreateInheritedRoute(HttpRoute *parent)
     route->conditions = parent->conditions;
     route->config = parent->config;
     route->connector = parent->connector;
+    route->caseInsensitive = parent->caseInsensitive;
     route->cookie = parent->cookie;
     route->corsAge = parent->corsAge;
     route->corsCredentials = parent->corsCredentials;
@@ -18700,7 +20406,7 @@ PUBLIC HttpRoute *httpCreateInheritedRoute(HttpRoute *parent)
     route->errorDocuments = parent->errorDocuments;
     route->extended = parent->extended;
     route->extensions = parent->extensions;
-    route->flags = parent->flags & ~(HTTP_ROUTE_FREE_PATTERN);
+    route->flags = parent->flags & ~HTTP_ROUTE_ALIAS;
     route->handler = parent->handler;
     route->handlers = parent->handlers;
     route->headers = parent->headers;
@@ -18791,6 +20497,7 @@ static void manageRoute(HttpRoute *route, int flags)
         mprMark(route->params);
         mprMark(route->parent);
         mprMark(route->pattern);
+        mprMark(route->patternCompiled);
         mprMark(route->prefix);
         mprMark(route->requestHeaders);
         mprMark(route->responseFormat);
@@ -18811,11 +20518,11 @@ static void manageRoute(HttpRoute *route, int flags)
         mprMark(route->script);
         mprMark(route->scriptPath);
 #endif
-    } else if (flags & MPR_MANAGE_FREE) {
-        if (route->patternCompiled && (route->flags & HTTP_ROUTE_FREE_PATTERN)) {
-            free(route->patternCompiled);
-        }
     }
+    /*
+        The compiled pattern is a managed HttpPattern. It releases any engine allocated code in
+        its own manager, so there is nothing to free here.
+     */
 }
 
 
@@ -18941,13 +20648,30 @@ PUBLIC void httpRouteRequest(HttpStream *stream)
                 break;
             }
             route = stream->host->routes->items[next++];
-            if (route->startSegment && strncmp(rx->pathInfo, route->startSegment, route->startSegmentLen) != 0) {
+            /*
+                The startSegment and startWith literals are a fast reject: if the path does not begin
+                with the pattern's leading literal, the pattern cannot match. That reasoning inverts for
+                a negated route, where a path which does NOT match the pattern is the one the route
+                should accept, so the fast reject is skipped for those routes.
+             */
+            if (route->flags & HTTP_ROUTE_NOT) {
+                if ((match = matchRoute(stream, route)) == HTTP_ROUTE_REROUTE) {
+                    next = 0;
+                    route = 0;
+                    rewrites++;
+                } else if (match == HTTP_ROUTE_OK) {
+                    break;
+                }
+
+            } else if (route->startSegment &&
+                       !routeMatchPath(route, rx->pathInfo, route->startSegment, route->startSegmentLen)) {
                 /* Failed to match the first URI segment, skip to the next group */
                 if (next < route->nextGroup) {
                     next = route->nextGroup;
                 }
 
-            } else if (route->startWith && strncmp(rx->pathInfo, route->startWith, route->startWithLen) != 0) {
+            } else if (route->startWith && !routeMatchPath(route, rx->pathInfo, route->startWith,
+                                                           route->startWithLen)) {
                 /* Failed to match starting literal segment of the route pattern, advance to test the next route */
                 continue;
 
@@ -18997,7 +20721,7 @@ static int matchRoute(HttpStream *stream, HttpRoute *route)
 
     assert(route->prefix);
     if (route->prefix && *route->prefix) {
-        if (!sstarts(rx->pathInfo, route->prefix)) {
+        if (!routeStartsPath(route, rx->pathInfo, route->prefix)) {
             return HTTP_ROUTE_REJECT;
         }
         savePathInfo = rx->pathInfo;
@@ -19029,8 +20753,8 @@ static int matchRequestUri(HttpStream *stream, HttpRoute *route)
     rx = stream->rx;
 
     if (route->patternCompiled) {
-        rx->matchCount = pcre_exec(route->patternCompiled, NULL, rx->pathInfo, (int) slen(rx->pathInfo), 0, 0,
-                                   rx->matches, sizeof(rx->matches) / sizeof(int));
+        rx->matchCount = httpMatchPattern(route->patternCompiled, rx->pathInfo, rx->matches,
+                                          sizeof(rx->matches) / sizeof(int));
         if (route->flags & HTTP_ROUTE_NOT) {
             if (rx->matchCount > 0) {
                 return HTTP_ROUTE_REJECT;
@@ -19058,6 +20782,12 @@ static int matchRequestUri(HttpStream *stream, HttpRoute *route)
 }
 
 
+static bool isXsrfProtectedMethod(HttpRx *rx)
+{
+    return (rx->flags & (HTTP_DELETE | HTTP_POST | HTTP_PUT)) || scaselessmatch(rx->method, "PATCH");
+}
+
+
 static int checkRoute(HttpStream *stream, HttpRoute *route)
 {
     HttpRouteOp   *op, *condition, *update;
@@ -19065,6 +20795,7 @@ static int checkRoute(HttpStream *stream, HttpRoute *route)
     HttpRx        *rx;
     HttpTx        *tx;
     cchar         *token, *value, *header, *field;
+    ssize         pathLen;
     int           next, rc, matched[ME_MAX_ROUTE_MATCHES * 2], count, result;
 
     assert(stream);
@@ -19078,9 +20809,7 @@ static int checkRoute(HttpStream *stream, HttpRoute *route)
     if (route->requestHeaders) {
         for (next = 0; (op = mprGetNextItem(route->requestHeaders, &next)) != 0; ) {
             if ((header = httpGetHeader(stream, op->name)) != 0) {
-                count =
-                    pcre_exec(op->mdata, NULL, header, (int) slen(header), 0, 0, matched,
-                              sizeof(matched) / sizeof(int));
+                count = httpMatchPattern(op->mdata, header, matched, sizeof(matched) / sizeof(int));
                 result = count > 0;
                 if (op->flags & HTTP_ROUTE_NOT) {
                     result = !result;
@@ -19094,8 +20823,7 @@ static int checkRoute(HttpStream *stream, HttpRoute *route)
     if (route->params) {
         for (next = 0; (op = mprGetNextItem(route->params, &next)) != 0; ) {
             if ((field = httpGetParam(stream, op->name, "")) != 0) {
-                count = pcre_exec(op->mdata, NULL, field, (int) slen(
-                                      field), 0, 0, matched, sizeof(matched) / sizeof(int));
+                count = httpMatchPattern(op->mdata, field, matched, sizeof(matched) / sizeof(int));
                 result = count > 0;
                 if (op->flags & HTTP_ROUTE_NOT) {
                     result = !result;
@@ -19120,11 +20848,29 @@ static int checkRoute(HttpStream *stream, HttpRoute *route)
             }
         }
     }
+    if (stream->error) {
+        /*
+            Auth and condition checks may accept the route after generating an error response.
+            Do not run route updates against a denied request.
+         */
+        return HTTP_ROUTE_OK;
+    }
     if (route->updates) {
         for (next = 0; (update = mprGetNextItem(route->updates, &next)) != 0; ) {
             if ((rc = updateRequest(stream, route, update)) == HTTP_ROUTE_REROUTE) {
                 return rc;
             }
+        }
+    }
+    if ((route->flags & HTTP_ROUTE_XSRF) && !(tx->finalized || tx->pendingFinalize)) {
+        if (isXsrfProtectedMethod(rx)) {
+            if (!httpCheckSecurityToken(stream)) {
+                httpError(stream, HTTP_CODE_FORBIDDEN, "Missing or invalid security token");
+                return HTTP_ROUTE_OK;
+            }
+        } else if (httpAddSecurityToken(stream, 0) < 0) {
+            httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot create security token");
+            return HTTP_ROUTE_OK;
         }
     }
     if (route->prefix[0]) {
@@ -19134,10 +20880,12 @@ static int checkRoute(HttpStream *stream, HttpRoute *route)
         return rc;
     }
     if (route->tokens) {
+        pathLen = slen(rx->pathInfo);
         for (next = 0; (token = mprGetNextItem(route->tokens, &next)) != 0; ) {
-            int index = rx->matches[next * 2];
-            if (index >= 0) {
-                value = snclone(&rx->pathInfo[index], rx->matches[(next * 2) + 1] - index);
+            int start = rx->matches[next * 2];
+            int end = rx->matches[(next * 2) + 1];
+            if (rx->matchCount > 0 && matchInBounds(pathLen, start, end)) {
+                value = snclone(&rx->pathInfo[start], end - start);
                 httpSetParam(stream, token, value);
             }
         }
@@ -19326,13 +21074,12 @@ PUBLIC int httpAddRouteCondition(HttpRoute *route, cchar *name, cchar *details, 
         if (!httpTokenize(route, details, "%S %S", &value, &pattern)) {
             return MPR_ERR_BAD_SYNTAX;
         }
-        if ((op->mdata = pcre_compile2(pattern, 0, 0, &errMsg, &column, NULL)) == 0) {
+        if ((op->mdata = httpCompilePattern(pattern, 0, &errMsg, &column)) == 0) {
             mprLog("error http route", 0, "Cannot compile condition match pattern. Error %s at column %d", errMsg,
                    column);
             return MPR_ERR_BAD_SYNTAX;
         }
         op->details = finalizeReplacement(route, value);
-        op->flags |= HTTP_ROUTE_FREE;
 
     } else if (scaselessmatch(name, "secure")) {
         if (!details || *details == '\0') {
@@ -19508,13 +21255,12 @@ PUBLIC void httpAddRouteParam(HttpRoute *route, cchar *field, cchar *value, int 
     assert(value && *value);
 
     GRADUATE_LIST(route, params);
-    if ((op = createRouteOp(field, flags | HTTP_ROUTE_FREE)) == 0) {
+    if ((op = createRouteOp(field, flags)) == 0) {
         return;
     }
-    if ((op->mdata = pcre_compile2(value, 0, 0, &errMsg, &column, NULL)) == 0) {
+    if ((op->mdata = httpCompilePattern(value, 0, &errMsg, &column)) == 0) {
         mprLog("error http route", 0, "Cannot compile field pattern. Error %s at column %d", errMsg, column);
     } else {
-        op->flags |= HTTP_ROUTE_FREE;
         mprAddItem(route->params, op);
     }
 }
@@ -19534,13 +21280,12 @@ PUBLIC void httpAddRouteRequestHeaderCheck(HttpRoute *route, cchar *header, ccha
     assert(pattern && *pattern);
 
     GRADUATE_LIST(route, requestHeaders);
-    if ((op = createRouteOp(header, flags | HTTP_ROUTE_FREE)) == 0) {
+    if ((op = createRouteOp(header, flags)) == 0) {
         return;
     }
-    if ((op->mdata = pcre_compile2(pattern, 0, 0, &errMsg, &column, NULL)) == 0) {
+    if ((op->mdata = httpCompilePattern(pattern, 0, &errMsg, &column)) == 0) {
         mprLog("error http route", 0, "Cannot compile header pattern. Error %s at column %d", errMsg, column);
     } else {
-        op->flags |= HTTP_ROUTE_FREE;
         mprAddItem(route->requestHeaders, op);
     }
 }
@@ -19833,6 +21578,15 @@ PUBLIC void httpSetRouteEnvEscape(HttpRoute *route, bool on)
 PUBLIC void httpSetRouteEnvPrefix(HttpRoute *route, cchar *prefix)
 {
     route->envPrefix = sclone(prefix);
+}
+
+
+PUBLIC void httpSetRouteFollowSymlinks(HttpRoute *route, bool on)
+{
+    route->flags &= ~HTTP_ROUTE_FOLLOW_SYMLINKS;
+    if (on) {
+        route->flags |= HTTP_ROUTE_FOLLOW_SYMLINKS;
+    }
 }
 
 
@@ -20279,13 +22033,44 @@ static void finalizePattern(HttpRoute *route)
     if (mprGetListLength(route->tokens) == 0) {
         route->tokens = 0;
     }
-    if (route->patternCompiled && (route->flags & HTTP_ROUTE_FREE_PATTERN)) {
-        free(route->patternCompiled);
-    }
-    if ((route->patternCompiled = pcre_compile2(route->optimizedPattern, 0, 0, &errMsg, &column, NULL)) == 0) {
+    /*
+        The previous pattern, if any, is garbage collected. A route is finalized more than once
+        when it carries a Prefix directive (which recompiles with the prefix stripped) and when
+        Alias sets a pattern twice.
+     */
+    if (route->flags & HTTP_ROUTE_ALIAS) {
+        /*
+            An Alias route matches a URI prefix and captures the remainder. Build that directly.
+            optimizedPattern is "^" followed by the prefix, with any route prefix already removed.
+            A prefix that does not end with "/" must absorb the separator, or the captured
+            remainder would carry a leading slash into the mapped filename.
+         */
+        cp = (char*) &route->optimizedPattern[1];
+        route->patternCompiled = httpCreatePrefixPattern(cp, sends(cp, "/") ? 0 : HTTP_PAT_SLASH_SKIP);
+        if (route->patternCompiled) {
+            route->patternCompiled->caseInsensitive = route->caseInsensitive;
+        }
+
+    } else if ((route->patternCompiled = httpCompilePattern(route->optimizedPattern, HTTP_PAT_ANCHORED,
+                                                            &errMsg, &column)) == 0) {
         mprLog("error http route", 0, "Cannot compile route. Error %s at column %d", errMsg, column);
+    } else {
+        route->patternCompiled->caseInsensitive = route->caseInsensitive;
     }
-    route->flags |= HTTP_ROUTE_FREE_PATTERN;
+}
+
+
+/*
+    Set an Alias or ScriptAlias route pattern from a URI prefix. The pattern is built directly from
+    the prefix rather than by synthesizing regular expression text for the pattern compiler.
+ */
+PUBLIC void httpSetRouteAliasPattern(HttpRoute *route, cchar *prefix)
+{
+    assert(route);
+    assert(prefix && *prefix);
+
+    route->flags |= HTTP_ROUTE_ALIAS;
+    httpSetRoutePattern(route, prefix, 0);
 }
 
 
@@ -20460,6 +22245,71 @@ static char *finalizeTemplate(HttpRoute *route)
 }
 
 
+/*
+    Warn about BF1 accounts whose password is truncated or ignored.
+
+    BF1 keys the Blowfish schedule with "salt:username:realm:password" and the schedule consumes a
+    fixed 72 bytes. Salt and separators take 19, so an account whose username and realm together reach
+    53 leaves the password contributing nothing and any password authenticates. Below that the
+    truncation is graded, so the margin is reported rather than just the breach. A BF1 hash cannot be
+    repaired in place because it never depended on the password: it must be regenerated with authpass.
+
+    Called from httpFinalizeRoute because that is the first point at which both the realm and the
+    accounts are known. The User directive is commonly written before AuthType in a route block, so
+    auth->realm is still empty when httpAddUser runs.
+ */
+static void warnTruncatedPasswords(HttpRoute *route)
+{
+    static MprHash *warned = 0;
+    HttpAuth       *auth;
+    HttpUser       *user;
+    MprKey         *kp;
+    char           *seen;
+    ssize          fixed, effective;
+
+    auth = route->auth;
+    if (!auth || !auth->userCache || !auth->realm || *auth->realm == '\0') {
+        return;
+    }
+    /*
+        One line per account per realm. Routes inherit their auth, so the same account is finalized once
+        for every route sharing it. Deduped on "user:realm" rather than on the user alone, because the
+        same account is exposed separately in each realm it appears under.
+     */
+    if (!warned) {
+        warned = mprCreateHash(0, 0);
+        mprAddRoot(warned);
+    }
+    /*  16-char salt plus the three separators in "salt:username:realm:password" */
+    for (ITERATE_KEY_DATA(auth->userCache, kp, user)) {
+        if (!user->password || sncmp(user->password, "BF1:", 4) != 0) {
+            continue;
+        }
+        seen = sfmt("%s:%s", user->name, auth->realm);
+        if (mprLookupKey(warned, seen)) {
+            continue;
+        }
+        mprAddKey(warned, seen, MPR->oneString);
+
+        fixed = 19 + slen(user->name) + slen(auth->realm);
+        effective = 72 - fixed;
+
+        if (effective <= 0) {
+            mprLog("error http auth", 0,
+                   "User \"%s\" in realm \"%s\" has a BF1 password that ignores the password entirely: "
+                   "any password authenticates. Regenerate it with authpass to upgrade to BF2.",
+                   user->name, auth->realm);
+
+        } else if (effective < 16) {
+            mprLog("warn http auth", 0,
+                   "User \"%s\" in realm \"%s\" has a BF1 password truncated to %d characters. "
+                   "Regenerate it with authpass to upgrade to BF2.",
+                   user->name, auth->realm, (int) effective);
+        }
+    }
+}
+
+
 PUBLIC void httpFinalizeRoute(HttpRoute *route)
 {
     /*
@@ -20471,6 +22321,11 @@ PUBLIC void httpFinalizeRoute(HttpRoute *route)
     if (mprGetListLength(route->indexes) == 0) {
         mprAddItem(route->indexes,  sclone("index.html"));
     }
+    route->caseInsensitive = detectCaseInsensitiveDocuments(route->documents);
+    if (route->patternCompiled) {
+        route->patternCompiled->caseInsensitive = route->caseInsensitive;
+    }
+    warnTruncatedPasswords(route);
     httpAddRoute(route->host, route);
 }
 
@@ -20482,7 +22337,7 @@ PUBLIC cchar *httpGetRouteTop(HttpStream *stream)
     int    count;
 
     rx = stream->rx;
-    if (sstarts(rx->pathInfo, rx->route->prefix)) {
+    if (routeStartsPath(rx->route, rx->pathInfo, rx->route->prefix)) {
         pp = &rx->pathInfo[rx->route->prefixLen];
     } else {
         pp = rx->pathInfo;
@@ -20867,7 +22722,7 @@ static int matchCondition(HttpStream *stream, HttpRoute *route, HttpRouteOp *op)
     assert(op);
 
     str = expandTokens(stream, op->details);
-    count = pcre_exec(op->mdata, NULL, str, (int) slen(str), 0, 0, matched, sizeof(matched) / sizeof(int));
+    count = httpMatchPattern(op->mdata, str, matched, sizeof(matched) / sizeof(int));
     if (count > 0) {
         return HTTP_ROUTE_OK;
     }
@@ -20962,37 +22817,21 @@ static int paramUpdate(HttpStream *stream, HttpRoute *route, HttpRouteOp *op)
 
 static int langUpdate(HttpStream *stream, HttpRoute *route, HttpRouteOp *op)
 {
-    HttpUri  *prior;
     HttpRx   *rx;
     HttpLang *lang;
-    char     *ext, *pathInfo, *uri;
+    char     *target;
 
     assert(stream);
     assert(route);
 
     rx = stream->rx;
-    prior = rx->parsedUri;
     assert(route->languages);
 
     if ((lang = httpGetLanguage(stream, route->languages, 0)) != 0) {
         rx->lang = lang;
-        if (lang->suffix) {
-            pathInfo = 0;
-            if (lang->flags & HTTP_LANG_AFTER) {
-                pathInfo = sjoin(rx->pathInfo, ".", lang->suffix, NULL);
-            } else if (lang->flags & HTTP_LANG_BEFORE) {
-                ext = httpGetExt(stream);
-                if (ext && *ext) {
-                    pathInfo = sjoin(mprJoinPathExt(mprTrimPathExt(rx->pathInfo), lang->suffix), ".", ext, NULL);
-                } else {
-                    pathInfo = mprJoinPathExt(mprTrimPathExt(rx->pathInfo), lang->suffix);
-                }
-            }
-            if (pathInfo) {
-                uri =
-                    httpFormatUri(prior->scheme, prior->host, prior->port, pathInfo, prior->reference, prior->query, 0);
-                httpSetUri(stream, uri);
-            }
+        if (!route->target && (target = applyLangSuffix(stream, rx->target)) != 0) {
+            rx->target = target;
+            stream->tx->ext = httpGetPathExt(target);
         }
     }
     return HTTP_ROUTE_OK;
@@ -21027,8 +22866,37 @@ static int redirectTarget(HttpStream *stream, HttpRoute *route, HttpRouteOp *op)
 
 static int runTarget(HttpStream *stream, HttpRoute *route, HttpRouteOp *op)
 {
-    stream->rx->target = route->target ? expandTokens(stream, route->target) : sclone(&stream->rx->pathInfo[1]);
+    HttpRx *rx;
+    char   *target;
+
+    rx = stream->rx;
+    rx->target = route->target ? expandTokens(stream, route->target) : sclone(&rx->pathInfo[1]);
+    if (route->target == 0 && (target = applyLangSuffix(stream, rx->target)) != 0) {
+        rx->target = target;
+    }
     return HTTP_ROUTE_OK;
+}
+
+
+static char *applyLangSuffix(HttpStream *stream, cchar *path)
+{
+    HttpLang *lang;
+    char     *ext;
+
+    if ((lang = stream->rx->lang) == 0 || !lang->suffix) {
+        return 0;
+    }
+    if (lang->flags & HTTP_LANG_AFTER) {
+        return sjoin(path, ".", lang->suffix, NULL);
+    }
+    if (lang->flags & HTTP_LANG_BEFORE) {
+        ext = httpGetPathExt(path);
+        if (ext && *ext) {
+            return sjoin(mprJoinPathExt(mprTrimPathExt(path), lang->suffix), ".", ext, NULL);
+        }
+        return mprJoinPathExt(mprTrimPathExt(path), lang->suffix);
+    }
+    return 0;
 }
 
 
@@ -21243,11 +23111,7 @@ static void manageRouteOp(HttpRouteOp *op, int flags)
         mprMark(op->details);
         mprMark(op->var);
         mprMark(op->value);
-
-    } else if (flags & MPR_MANAGE_FREE) {
-        if (op->flags & HTTP_ROUTE_FREE) {
-            free(op->mdata);
-        }
+        mprMark(op->mdata);
     }
 }
 
@@ -21359,7 +23223,7 @@ static char *expandRequestTokens(HttpStream *stream, char *str)
     HttpUri   *uri;
     MprBuf    *buf;
     HttpLang  *lang;
-    char      *tok, *cp, *key, *value, *field, *header, *defaultValue, *state, *v, *p;
+    char      *tok, *cp, *key, *value, *field, *header, *defaultValue, *state, *v, *p, *end;
 
     assert(stream);
 
@@ -21380,12 +23244,19 @@ static char *expandRequestTokens(HttpStream *stream, char *str)
         if (tok > cp) {
             mprPutBlockToBuf(buf, cp, tok - cp);
         }
-        if ((key = stok(&tok[2], ".:}", &value)) == 0) {
+        if ((end = strchr(&tok[2], '}')) == 0) {
+            mprPutStringToBuf(buf, tok);
+            break;
+        }
+        cp = end + 1;
+        if (end == &tok[2]) {
+            mprPutBlockToBuf(buf, tok, cp - tok);
             continue;
         }
-        if ((stok(value, "}", &p)) != 0) {
-            cp = p;
-        } else {
+        *end = '\0';
+        if ((key = stok(&tok[2], ".:", &value)) == 0 || value == 0) {
+            *end = '}';
+            mprPutBlockToBuf(buf, tok, cp - tok);
             continue;
         }
         if (smatch(key, "header")) {
@@ -21531,6 +23402,7 @@ static char *expandPatternTokens(cchar *str, cchar *replacement, int *matches, i
 {
     MprBuf *result;
     cchar  *end, *cp, *lastReplace;
+    ssize  len;
     int    submatch;
 
     assert(str);
@@ -21539,6 +23411,7 @@ static char *expandPatternTokens(cchar *str, cchar *replacement, int *matches, i
 
     result = mprCreateBuf(-1, -1);
     lastReplace = replacement;
+    len = slen(str);
     end = &replacement[slen(replacement)];
 
     for (cp = replacement; cp < end; ) {
@@ -21552,20 +23425,20 @@ static char *expandPatternTokens(cchar *str, cchar *replacement, int *matches, i
                 break;
             case '&':
                 /* Replace the matched string */
-                if (matchCount > 0) {
+                if (matchCount > 0 && matchInBounds(len, matches[0], matches[1])) {
                     mprPutSubStringToBuf(result, &str[matches[0]], matches[1] - matches[0]);
                 }
                 break;
             case '`':
                 /* Insert the portion that preceeds the matched string */
-                if (matchCount > 0) {
+                if (matchCount > 0 && matchInBounds(len, 0, matches[0])) {
                     mprPutSubStringToBuf(result, str, matches[0]);
                 }
                 break;
             case '\'':
                 /* Insert the portion that follows the matched string */
-                if (matchCount > 0) {
-                    mprPutSubStringToBuf(result, &str[matches[1]], slen(str) - matches[1]);
+                if (matchCount > 0 && matchInBounds(len, matches[1], len)) {
+                    mprPutSubStringToBuf(result, &str[matches[1]], len - matches[1]);
                 }
                 break;
             default:
@@ -21577,8 +23450,10 @@ static char *expandPatternTokens(cchar *str, cchar *replacement, int *matches, i
                     cp--;
                     if (submatch < matchCount) {
                         submatch *= 2;
-                        mprPutSubStringToBuf(result, &str[matches[submatch]],
-                                             matches[submatch + 1] - matches[submatch]);
+                        if (matchInBounds(len, matches[submatch], matches[submatch + 1])) {
+                            mprPutSubStringToBuf(result, &str[matches[submatch]],
+                                                 matches[submatch + 1] - matches[submatch]);
+                        }
                     }
                 } else {
                     mprDebug("http route", 5, "Bad replacement $ specification in page");
@@ -21594,6 +23469,12 @@ static char *expandPatternTokens(cchar *str, cchar *replacement, int *matches, i
     }
     mprAddNullToBuf(result);
     return sclone(mprGetBufStart(result));
+}
+
+
+static bool matchInBounds(ssize len, ssize start, ssize end)
+{
+    return 0 <= start && start <= end && end <= len;
 }
 
 
@@ -21827,7 +23708,7 @@ PUBLIC cchar *httpGetDir(HttpRoute *route, cchar *name)
 
 PUBLIC void httpSetDir(HttpRoute *route, cchar *name, cchar *value)
 {
-    cchar *path, *rpath;
+    cchar *path, *real, *rpath;
 
     if (value == 0) {
         value = slower(name);
@@ -21849,9 +23730,96 @@ PUBLIC void httpSetDir(HttpRoute *route, cchar *name, cchar *value)
         httpSetRouteVar(route, name, rpath);
         route->home = path;
     } else if (smatch(name, "DOCUMENTS")) {
+        /*
+            Resolve the documents directory so document containment is tested against the real location.
+            If it cannot be resolved, it may not exist yet, so keep the lexical path. Only the resolved
+            containment test used when following symlinks depends on this.
+         */
+        if ((real = mprGetRealPath(path)) != 0) {
+            path = real;
+        }
         httpSetRouteVar(route, name, rpath);
         route->documents = path;
+        route->caseInsensitive = detectCaseInsensitiveDocuments(path);
+        if (route->patternCompiled) {
+            route->patternCompiled->caseInsensitive = route->caseInsensitive;
+        }
     }
+}
+
+
+/*
+    Flip the case of the first alphabetic character. Returns 0 if there is none to flip.
+ */
+static char *flipCase(cchar *name)
+{
+    char  *alt;
+    ssize i;
+
+    alt = sclone(name);
+    for (i = 0; alt[i]; i++) {
+        if (isalpha((uchar) alt[i])) {
+            alt[i] = islower((uchar) alt[i]) ? toupper((uchar) alt[i]) : tolower((uchar) alt[i]);
+            return alt;
+        }
+    }
+    return 0;
+}
+
+
+/*
+    Does the file system holding the document root fold case?
+
+    This gates route authentication: the authorization decision and the open() must agree about path
+    identity, or an upper-case spelling of a protected URI misses the route that guards it. It is
+    determined by probing rather than by platform: a vfat or SMB document root on Linux folds case and
+    an ext4 one does not.
+
+    The probe re-spells one path component with its case flipped and asks whether that resolves to the
+    same inode. It walks up from the document root so a component with no letters to flip, such as
+    Documents /srv/8080, does not defeat it.
+
+    When nothing can be determined, fold. Folding only widens the set of URIs a protective route
+    claims, never narrows it, so it is the fail-safe direction.
+ */
+static bool detectCaseInsensitiveDocuments(cchar *documents)
+{
+    MprPath info, altInfo;
+    char    *altBase, *altPath, *dir, *path;
+
+    if (!documents || *documents == '\0') {
+        return 1;
+    }
+    for (path = sclone(documents); path && *path && !smatch(path, "/"); path = dir) {
+        dir = mprGetPathDir(path);
+        if (smatch(dir, path)) {
+            break;
+        }
+        if (mprGetPathInfo(path, &info) < 0) {
+            continue;
+        }
+        if ((altBase = flipCase(mprGetPathBase(path))) == 0) {
+            continue;
+        }
+        altPath = mprJoinPath(dir, altBase);
+        if (mprGetPathInfo(altPath, &altInfo) < 0) {
+            return 0;
+        }
+        return info.inode == altInfo.inode;
+    }
+    return 1;
+}
+
+
+static bool routeMatchPath(HttpRoute *route, cchar *path, cchar *pattern, ssize len)
+{
+    return route->caseInsensitive ? sncaselesscmp(path, pattern, len) == 0 : sncmp(path, pattern, len) == 0;
+}
+
+
+static bool routeStartsPath(HttpRoute *route, cchar *path, cchar *prefix)
+{
+    return route->caseInsensitive ? sncaselesscmp(path, prefix, slen(prefix)) == 0 : sstarts(path, prefix);
 }
 
 
@@ -22036,7 +24004,7 @@ PUBLIC void httpSetRouteCharSet(HttpRoute *route, cchar *charSet)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /***************************** Forward Declarations ***************************/
 
@@ -22080,6 +24048,7 @@ static void manageRx(HttpRx *rx, int flags)
         mprMark(rx->acceptLanguage);
         mprMark(rx->authDetails);
         mprMark(rx->authType);
+        mprMark(rx->authority);
         mprMark(rx->stream);
         mprMark(rx->connection);
         mprMark(rx->contentLength);
@@ -22154,6 +24123,37 @@ PUBLIC void httpCloseRx(HttpStream *stream)
     if (httpClientStream(stream)) {
         httpEnableNetEvents(stream->net);
     }
+}
+
+
+/*
+    Account for received body content and enforce the cumulative request body limits.
+    Called from the protocol filters as body data is decoded, so the limits apply regardless of how, or whether, a
+    downstream stage buffers the data. A queue depth cannot serve as this measure: handlers that forward body data
+    straight to a backend (CGI, FastCGI, proxy) and the upload filter, which writes it to disk, never let it
+    accumulate on a queue.
+    Returns true if the body is within the limits, false if a limit error has been raised.
+ */
+PUBLIC bool httpCheckBodySize(HttpStream *stream, ssize len)
+{
+    HttpLimits *limits;
+    HttpRx     *rx;
+
+    rx = stream->rx;
+    limits = stream->limits;
+    rx->bytesRead += len;
+
+    if (rx->form && rx->bytesRead >= limits->rxFormSize && limits->rxFormSize != HTTP_UNLIMITED) {
+        httpLimitError(stream, HTTP_CLOSE | HTTP_CODE_REQUEST_TOO_LARGE,
+                       "Request form of %lld bytes is too big. Limit %lld", rx->bytesRead, limits->rxFormSize);
+        return 0;
+    }
+    if (rx->bytesRead >= limits->rxBodySize && limits->rxBodySize != HTTP_UNLIMITED) {
+        httpLimitError(stream, HTTP_CLOSE | HTTP_CODE_REQUEST_TOO_LARGE,
+                       "Request body of %lld bytes is too big. Limit %lld", rx->bytesRead, limits->rxBodySize);
+        return 0;
+    }
+    return 1;
 }
 
 
@@ -22248,6 +24248,40 @@ PUBLIC cchar *httpGetHeader(HttpStream *stream, cchar *key)
 }
 
 
+/*
+    Parse a header field value that must match the RFC 9110 1*DIGIT grammar exactly.
+    Unlike stoi(), this rejects an empty value, a sign, leading or trailing space and any trailing text, and it
+    detects overflow. Header fields that frame the message, Content-Length above all, must be parsed this way,
+    otherwise Appweb and a strict front-end can read different lengths from the same bytes (CWE-444).
+    Returns zero and sets *valuep on success, MPR_ERR_BAD_ARGS if the text is not 1*DIGIT, or MPR_ERR_WONT_FIT
+    if the value does not fit in an int64.
+ */
+PUBLIC int httpParseDigits(cchar *str, int64 *valuep)
+{
+    int64 value;
+    cchar *cp;
+    int   digit;
+
+    assert(valuep);
+    *valuep = 0;
+    if (str == 0 || *str == '\0') {
+        return MPR_ERR_BAD_ARGS;
+    }
+    for (value = 0, cp = str; *cp; cp++) {
+        if (!isdigit((uchar) * cp)) {
+            return MPR_ERR_BAD_ARGS;
+        }
+        digit = *cp - '0';
+        if (value > (MAXINT64 - digit) / 10) {
+            return MPR_ERR_WONT_FIT;
+        }
+        value = (value * 10) + digit;
+    }
+    *valuep = value;
+    return 0;
+}
+
+
 PUBLIC char *httpGetHeadersFromHash(MprHash *hash)
 {
     MprKey *kp;
@@ -22329,6 +24363,7 @@ PUBLIC int httpSetUri(HttpStream *stream, cchar *uri)
     }
     rx->pathInfo = pathInfo;
     rx->uri = parsedUri->path;
+    rx->matchCount = 0;
     stream->tx->ext = httpGetExt(stream);
 
     /*
@@ -22532,6 +24567,7 @@ PUBLIC void httpTrimExtraPath(HttpStream *stream)
             if (0 < len && len < slen(rx->pathInfo)) {
                 rx->extraPath = sclone(&rx->pathInfo[len]);
                 rx->pathInfo = snclone(rx->pathInfo, len);
+                rx->matchCount = 0;
             }
         }
         if ((cp = schr(rx->target, '.')) != 0 && (extra = schr(cp, '/')) != 0) {
@@ -22617,12 +24653,13 @@ PUBLIC void httpParseMethod(HttpStream *stream)
 
 /********************************** Includes **********************************/
 
-
+#include    "http.h"
 
 /********************************** Forwards  *********************************/
 
 static cchar *createSecurityToken(HttpStream *stream);
 static void manageSession(HttpSession *sp, int flags);
+static bool validSessionID(cchar *id);
 
 /************************************* Code ***********************************/
 /*
@@ -22657,6 +24694,31 @@ static HttpSession *allocSessionObj(HttpStream *stream, cchar *id, cchar *data)
 PUBLIC bool httpLookupSessionID(cchar *id)
 {
     return mprLookupCache(HTTP->sessionCache, id, 0, 0) != 0;
+}
+
+
+/*
+    Create a session identifier. The identifier is a bearer token, so its strength rests entirely on
+    HTTP_SESSION_ID_BYTES drawn from the cryptographic random source. Returns NULL if the random
+    source is unavailable so the caller can fail the request rather than issue a guessable id.
+    The "seqno::http.session::" shape is retained because the cookie is parsed on the way back in.
+ */
+PUBLIC char *httpMakeSessionID(int seqno)
+{
+    uchar bytes[HTTP_SESSION_ID_BYTES];
+    char  hex[(HTTP_SESSION_ID_BYTES * 2) + 1];
+    cchar *digits = "0123456789abcdef";
+    int   i;
+
+    if (mprGetRandomBytes((char*) bytes, sizeof(bytes), 0) < 0) {
+        return 0;
+    }
+    for (i = 0; i < (int) sizeof(bytes); i++) {
+        hex[i * 2] = digits[bytes[i] >> 4];
+        hex[(i * 2) + 1] = digits[bytes[i] & 0xf];
+    }
+    hex[sizeof(hex) - 1] = '\0';
+    return sfmt("%d::http.session::%s", seqno, hex);
 }
 
 
@@ -22742,9 +24804,17 @@ PUBLIC HttpSession *httpGetSession(HttpStream *stream, int create)
         if (!rx->session && create) {
             lock(http);
             thisSeqno = ++seqno;
-            id = sfmt("%08x%08x%d", PTOI(stream->seqno) + PTOI(stream), (int) mprGetTicks(), thisSeqno);
-            id = mprGetMD5WithPrefix(id, slen(id), "-http.session-");
-            id = sfmt("%d%s", thisSeqno, mprGetMD5WithPrefix(id, slen(id), "::http.session::"));
+            /*
+                SECURITY: the session id is a bearer token and must be unguessable. Take it from the
+                CSPRNG and fail the request if that is unavailable - never fall back to a derived or
+                predictable value. Do not reintroduce a hash of the clock, a pointer or a counter.
+             */
+            if ((id = httpMakeSessionID(thisSeqno)) == 0) {
+                unlock(http);
+                mprLog("critical http session", 0, "Cannot get random bytes for a session identifier");
+                httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot create session");
+                return 0;
+            }
 
             mprGetCacheStats(http->sessionCache, &activeSessions, NULL);
             if (activeSessions >= stream->limits->sessionMax) {
@@ -22920,7 +24990,7 @@ PUBLIC int httpWriteSession(HttpStream *stream)
 PUBLIC cchar *httpGetSessionID(HttpStream *stream)
 {
     HttpRx *rx;
-    cchar  *cookie;
+    cchar  *cookie, *id;
 
     assert(stream);
     rx = stream->rx;
@@ -22936,7 +25006,41 @@ PUBLIC cchar *httpGetSessionID(HttpStream *stream)
     }
     rx->sessionProbed = 1;
     cookie = rx->route->cookie ? rx->route->cookie : HTTP_SESSION_COOKIE;
-    return httpGetCookie(stream, cookie);
+    id = httpGetCookie(stream, cookie);
+    return validSessionID(id) ? id : 0;
+}
+
+
+/*
+    Only accept ids generated by httpMakeSessionID: <digits>::http.session::<32 lowercase hex>.
+ */
+static bool validSessionID(cchar *id)
+{
+    cchar *cp, *prefix;
+    ssize len;
+    int   n;
+
+    if (!id || !isdigit((uchar) id[0])) {
+        return 0;
+    }
+    for (cp = id; isdigit((uchar) * cp); cp++) {
+        ;
+    }
+    prefix = "::http.session::";
+    if (!sstarts(cp, prefix)) {
+        return 0;
+    }
+    cp += slen(prefix);
+    len = slen(cp);
+    if (len != HTTP_SESSION_ID_BYTES * 2) {
+        return 0;
+    }
+    for (n = 0; n < len; n++) {
+        if (!isdigit((uchar) cp[n]) && (cp[n] < 'a' || cp[n] > 'f')) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 
@@ -22975,7 +25079,13 @@ PUBLIC cchar *httpGetSecurityToken(HttpStream *stream, bool recreate)
         rx->securityToken = (char*) httpGetSessionVar(stream, ME_XSRF_COOKIE, 0);
     }
     if (rx->securityToken == 0) {
-        createSecurityToken(stream);
+        /*
+            May be null when the system random source is unavailable. Do not store or return a
+            substitute. A predictable CSRF token is worse than none.
+         */
+        if (createSecurityToken(stream) == 0) {
+            return 0;
+        }
         httpSetSessionVar(stream, ME_XSRF_COOKIE, rx->securityToken);
     }
     return rx->securityToken;
@@ -22993,7 +25103,9 @@ PUBLIC int httpAddSecurityToken(HttpStream *stream, bool recreate)
     int       flags;
 
     route = stream->rx->route;
-    securityToken = httpGetSecurityToken(stream, recreate);
+    if ((securityToken = httpGetSecurityToken(stream, recreate)) == 0) {
+        return MPR_ERR_CANT_CREATE;
+    }
     url = (route->prefix && *route->prefix) ? route->prefix : "/";
     flags = (route->flags & HTTP_ROUTE_VISIBLE_SESSION) ? 0 : HTTP_COOKIE_HTTP;
     if (stream->secure) {
@@ -23013,24 +25125,27 @@ PUBLIC bool httpCheckSecurityToken(HttpStream *stream)
 {
     cchar *requestToken, *sessionToken;
 
-    if ((sessionToken = httpGetSessionVar(stream, ME_XSRF_COOKIE, 0)) != 0) {
-        requestToken = httpGetHeader(stream, ME_XSRF_HEADER);
-        if (!requestToken) {
-            requestToken = httpGetParam(stream, ME_XSRF_PARAM, 0);
-            if (!requestToken) {
-                httpLog(stream->trace, "session.xsrf.error", "error", "msg:Missing security token in request");
-            }
-        }
-        if (!smatch(sessionToken, requestToken)) {
-            /*
-                Potential CSRF attack. Deny request. Re-create a new security token so legitimate clients can retry.
-             */
-            httpLog(stream->trace, "session.xsrf.error", "error",
-                    "msg:Security token in request does not match session token, xsrf:%s, sessionXsrf:%s",
-                    requestToken, sessionToken);
-            httpAddSecurityToken(stream, 1);
-            return 0;
-        }
+    if ((sessionToken = httpGetSessionVar(stream, ME_XSRF_COOKIE, 0)) == 0 || *sessionToken == '\0') {
+        httpLog(stream->trace, "session.xsrf.error", "error", "msg:Missing security token in session");
+        return 0;
+    }
+    requestToken = httpGetHeader(stream, ME_XSRF_HEADER);
+    if (!requestToken || *requestToken == '\0') {
+        requestToken = httpGetParam(stream, ME_XSRF_PARAM, 0);
+    }
+    if (!requestToken || *requestToken == '\0') {
+        httpLog(stream->trace, "session.xsrf.error", "error", "msg:Missing security token in request");
+        httpAddSecurityToken(stream, 1);
+        return 0;
+    }
+    if (!smatchsec(sessionToken, requestToken)) {
+        /*
+            Potential CSRF attack. Deny request. Re-create a new security token so legitimate clients can retry.
+         */
+        httpLog(stream->trace, "session.xsrf.error", "error",
+                "msg:Security token in request does not match session token");
+        httpAddSecurityToken(stream, 1);
+        return 0;
     }
     return 1;
 }
@@ -23056,7 +25171,7 @@ PUBLIC bool httpCheckSecurityToken(HttpStream *stream)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************* Forwards ***********************************/
 
@@ -23248,7 +25363,7 @@ PUBLIC HttpStage *httpCreateConnector(cchar *name, MprModule *module)
  */
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************** Locals ************************************/
 /*
@@ -23440,6 +25555,14 @@ PUBLIC void httpResetServerStream(HttpStream *stream)
     stream->user = 0;
     stream->authData = 0;
     stream->encoded = 0;
+
+    /*
+        Restore the endpoint's default notifier, exactly as httpCreateStream sets it. A handler may
+        install a notifier of its own for one request and such a notifier reads the handler queue's
+        queueData as its own private type. The next request on this keep-alive connection may route to
+        a different handler, so a notifier left installed would read another handler's data.
+     */
+    stream->notifier = stream->net->endpoint ? stream->net->endpoint->notifier : 0;
 
     prepareStream(stream, NULL);
 }
@@ -24002,7 +26125,7 @@ PUBLIC void httpAddInputEndPacket(HttpStream *stream, HttpQueue *q)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************** Forwards **********************************/
 
@@ -24043,17 +26166,14 @@ static void incomingTail(HttpQueue *q, HttpPacket *packet)
     count = stream->readq->count + httpGetPacketLength(packet);
     stream->lastActivity = stream->http->now;
 
+    /*
+        The rxBodySize and rxFormSize limits are enforced by httpCheckBodySize as the protocol filters decode body
+        data. They cannot be enforced from a queue depth: for a streaming consumer, the depth here never rises above
+        the packet in flight.
+     */
     if (rx->upload && count >= stream->limits->uploadSize && stream->limits->uploadSize != HTTP_UNLIMITED) {
         httpLimitError(stream, HTTP_CLOSE | HTTP_CODE_REQUEST_TOO_LARGE,
                        "Request upload of %d bytes is too big. Limit %lld", (int) count, stream->limits->uploadSize);
-
-    } else if (rx->form && count >= stream->limits->rxFormSize && stream->limits->rxFormSize != HTTP_UNLIMITED) {
-        httpLimitError(stream, HTTP_CLOSE | HTTP_CODE_REQUEST_TOO_LARGE,
-                       "Request form of %d bytes is too big. Limit %lld", (int) count, stream->limits->rxFormSize);
-
-    } else if (count >= stream->limits->rxBodySize && stream->limits->rxBodySize != HTTP_UNLIMITED) {
-        httpLimitError(stream, HTTP_CLOSE | HTTP_CODE_REQUEST_TOO_LARGE,
-                       "Request body of %d bytes is too big. Limit %lld", (int) count, stream->limits->rxFormSize);
 
     } else {
         httpDefaultIncoming(q, packet);
@@ -24257,7 +26377,7 @@ static HttpPacket *createAltBodyPacket(HttpQueue *q)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************* Forwards ***********************************/
 
@@ -24265,6 +26385,7 @@ static void emitTraceValues(MprBuf *buf, char *str);
 static void flushTrace(HttpTrace *trace);
 static void formatTrace(HttpTrace *trace, cchar *event, cchar *type, int flags, cchar *buf, ssize len, cchar *fmt, ...);
 static cchar *getTraceTag(cchar *event, cchar *type);
+static void putEscaped(MprBuf *buf, cchar *str);
 
 static void traceData(HttpTrace *trace, cchar *data, ssize len, int flags);
 static void traceQueues(HttpStream *stream, MprBuf *buf);
@@ -24364,10 +26485,6 @@ PUBLIC void httpSetTraceFormatterName(HttpTrace *trace, cchar *name)
     HttpTraceFormatter formatter;
 
     if (name && smatch(name, "common")) {
-        if ((trace->events = mprCreateHash(0, MPR_HASH_STATIC_VALUES)) == 0) {
-            return;
-        }
-        mprAddKey(trace->events, "result", ITOP(0));
         formatter = httpCommonFormatter;
 
     } else if (smatch(name, "pretty")) {
@@ -24539,9 +26656,9 @@ PUBLIC void httpDetailFormatter(HttpTrace *trace, cchar *event, cchar *type, int
     if (fmt) {
         msg = sfmtv(fmt, args);
         if (*msg == '@') {
-            mprPutStringToBuf(buf, &msg[1]);
+            putEscaped(buf, &msg[1]);
         } else {
-            mprPutStringToBuf(buf, msg);
+            putEscaped(buf, msg);
         }
         mprPutStringToBuf(buf, "\n");
     }
@@ -24582,9 +26699,9 @@ PUBLIC void httpPrettyFormatter(HttpTrace *trace, cchar *event, cchar *type, int
             mprPutCharToBuf(buf, '\n');
             msg = sfmtv(fmt, args);
             if (flags & HTTP_TRACE_RAW) {
-                mprPutStringToBuf(buf, msg);
+                putEscaped(buf, msg);
             } else if (*msg == '@') {
-                mprPutStringToBuf(buf, &msg[1]);
+                putEscaped(buf, &msg[1]);
             } else {
                 emitTraceValues(buf, msg);
             }
@@ -24657,7 +26774,7 @@ static void traceData(HttpTrace *trace, cchar *data, ssize len, int flags)
         mprAdjustBufEnd(buf, ep - end);
 
     } else {
-        mprPutBlockToBuf(buf, data, len);
+        putEscaped(buf, snclone(data, len));
     }
 }
 
@@ -24666,7 +26783,9 @@ static void flushTrace(HttpTrace *trace)
 {
     MprBuf *buf;
 
-    buf = trace->buf;
+    if ((buf = trace->buf) == 0) {
+        return;
+    }
     mprPutStringToBuf(buf, "\n");
     httpWriteTrace(trace, mprGetBufStart(buf), mprGetBufLength(buf));
     mprFlushBuf(buf);
@@ -24692,10 +26811,20 @@ static void emitTraceValues(MprBuf *buf, char *str)
             value = "";
         }
         if (smatch(key, "msg")) {
-            mprPutToBuf(buf, "    %14s:  %s\n", "message", value);
+            mprPutToBuf(buf, "    %14s:  ", "message");
         } else {
-            mprPutToBuf(buf, "    %14s:  %s\n", key, value);
+            /*
+                The key needs escaping as much as the value does. It is not a fixed label supplied by the
+                call site: this function splits the formatted message on "," and then on ":", so whatever
+                an attacker puts after a comma becomes a key. Pre-format the width first so the alignment
+                is unchanged for ordinary keys, then escape through the same choke point as the value.
+             */
+            mprPutStringToBuf(buf, "    ");
+            putEscaped(buf, sfmt("%14s", key));
+            mprPutStringToBuf(buf, ":  ");
         }
+        putEscaped(buf, value);
+        mprPutCharToBuf(buf, '\n');
     }
 }
 
@@ -24709,6 +26838,39 @@ static cchar *getTraceTag(cchar *event, cchar *type)
     }
     return type;
 }
+
+
+/*
+    The single choke point through which attacker-influenced text reaches a trace line.
+
+    Escapes every byte that carries structure in a log line rather than data. CR and LF forge whole
+    entries (CWE-117). The double quote is escaped because the common (NCSA) format delimits the
+    request line and header values with quotes, so an unescaped quote inside one closes its field
+    early and the rest is read as further fields. A header value may legally contain a quote.
+ */
+static void putEscaped(MprBuf *buf, cchar *str)
+{
+    cchar *cp;
+
+    for (cp = str; cp && *cp; cp++) {
+        if (*cp == '\r') {
+            mprPutStringToBuf(buf, "\\r");
+        } else if (*cp == '\n') {
+            mprPutStringToBuf(buf, "\\n");
+        } else if (*cp == '\t') {
+            mprPutStringToBuf(buf, "\\t");
+        } else if (*cp == '"') {
+            mprPutStringToBuf(buf, "\\\"");
+        } else if (*cp == '\\') {
+            mprPutStringToBuf(buf, "\\\\");
+        } else if ((uchar) * cp < 0x20 || (uchar) * cp == 0x7f) {
+            mprPutToBuf(buf, "\\x%02x", (uchar) * cp);
+        } else {
+            mprPutCharToBuf(buf, *cp);
+        }
+    }
+}
+
 
 /*
     Common Log Formatter (NCSA)
@@ -24732,7 +26894,7 @@ PUBLIC void httpCommonFormatter(HttpTrace *trace, cchar *event, cchar *type, int
     if (!stream) {
         return;
     }
-    if (!smatch(event, "rx.complete")) {
+    if (!smatch(event, "tx.complete")) {
         return;
     }
     rx = stream->rx;
@@ -24745,6 +26907,7 @@ PUBLIC void httpCommonFormatter(HttpTrace *trace, cchar *event, cchar *type, int
         trace->buf = mprCreateBuf(ME_PACKET_SIZE, 0);
     }
     buf = trace->buf;
+    lock(trace);
 
     while ((c = *fmt++) != '\0') {
         if (c != '%' || (c = *fmt++) == '%') {
@@ -24753,11 +26916,11 @@ PUBLIC void httpCommonFormatter(HttpTrace *trace, cchar *event, cchar *type, int
         }
         switch (c) {
         case 'a':                           /* Remote IP */
-            mprPutStringToBuf(buf, stream->ip);
+            putEscaped(buf, stream->ip);
             break;
 
         case 'A':                           /* Local IP */
-            mprPutStringToBuf(buf, stream->sock->listenSock->ip);
+            putEscaped(buf, stream->sock->listenSock->ip);
             break;
 
         case 'b':
@@ -24773,7 +26936,7 @@ PUBLIC void httpCommonFormatter(HttpTrace *trace, cchar *event, cchar *type, int
             break;
 
         case 'h':                           /* Remote host */
-            mprPutStringToBuf(buf, stream->ip);
+            putEscaped(buf, stream->ip);
             break;
 
         case 'l':                           /* user identity - unknown */
@@ -24781,7 +26944,7 @@ PUBLIC void httpCommonFormatter(HttpTrace *trace, cchar *event, cchar *type, int
             break;
 
         case 'n':                           /* Local host */
-            mprPutStringToBuf(buf, rx->parsedUri->host);
+            putEscaped(buf, rx->parsedUri->host);
             break;
 
         case 'O':                           /* Bytes written (including headers) */
@@ -24789,7 +26952,7 @@ PUBLIC void httpCommonFormatter(HttpTrace *trace, cchar *event, cchar *type, int
             break;
 
         case 'r':                           /* First line of request */
-            mprPutToBuf(buf, "%s %s %s", rx->method, rx->uri, httpGetProtocol(stream->net));
+            putEscaped(buf, sfmt("%s %s %s", rx->method, rx->uri, httpGetProtocol(stream->net)));
             break;
 
         case 's':                           /* Response code */
@@ -24804,7 +26967,7 @@ PUBLIC void httpCommonFormatter(HttpTrace *trace, cchar *event, cchar *type, int
             break;
 
         case 'u':                           /* Remote username */
-            mprPutStringToBuf(buf, stream->username ? stream->username : "-");
+            putEscaped(buf, stream->username ? stream->username : "-");
             break;
 
         case '{':                           /* Header line "{header}i" */
@@ -24815,7 +26978,7 @@ PUBLIC void httpCommonFormatter(HttpTrace *trace, cchar *event, cchar *type, int
                 case 'i':
                     sncopy(keyBuf, sizeof(keyBuf), qualifier, cp - qualifier);
                     value = (char*) mprLookupKey(rx->headers, keyBuf);
-                    mprPutStringToBuf(buf, value ? value : "-");
+                    putEscaped(buf, value ? value : "-");
                     break;
                 default:
                     mprPutSubStringToBuf(buf, qualifier, qualifier - cp);
@@ -24840,6 +27003,7 @@ PUBLIC void httpCommonFormatter(HttpTrace *trace, cchar *event, cchar *type, int
     }
     mprPutCharToBuf(buf, '\n');
     flushTrace(trace);
+    unlock(trace);
 }
 
 /************************************** TraceLogFile **************************/
@@ -24977,7 +27141,7 @@ PUBLIC bool httpShouldTrace(HttpTrace *trace, cchar *type)
 
     assert(type && *type);
     level = PTOI(mprLookupKey(trace->events, type));
-    if (level >= 0 && level <= trace->level) {
+    if (level > 0 && level <= trace->level) {
         return 1;
     }
     return 0;
@@ -25086,7 +27250,8 @@ PUBLIC char *httpStatsReport(int flags)
             mprPutToBuf(buf,
                         "State %d (%d), error %d, eof %d, finalized input %d, output %d, connector %d, seqno %lld, net mask %x, net error %d, net eof %d, destroyed %d, uri %s\n",
                         stream->state, stream->h2State, stream->error, rx->eof, tx->finalizedInput, tx->finalizedOutput,
-                        tx->finalizedConnector, stream->seqno, net->eventMask, net->error, (int) net->eof, net->destroyed,
+                        tx->finalizedConnector, stream->seqno, net->eventMask, net->error, (int) net->eof,
+                        net->destroyed,
                         rx->uri);
             traceQueues(stream, buf);
         }
@@ -25147,13 +27312,14 @@ static void traceQueues(HttpStream *stream, MprBuf *buf)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /***************************** Forward Declarations ***************************/
 
 static void checkFinalized(HttpStream *stream);
 static bool flushPipe(HttpQueue *q, int flags);
 static void manageTx(HttpTx *tx, int flags);
+static bool validHeader(HttpStream *stream, cchar *key, cchar *value);
 
 /*********************************** Code *************************************/
 
@@ -25231,6 +27397,25 @@ static void manageTx(HttpTx *tx, int flags)
 
 
 /*
+    Validate a header name and value before it is stored in the transmission headers.
+    A CR or LF in either terminates the header line early, so a downstream client, cache or proxy reads the
+    remainder as a header of its own or as a separate response. Handlers that accept headers from an
+    untrusted upstream (CGI, FastCGI, proxy) reject such a response outright. This is the last-resort backstop
+    for every other caller, including embedding applications.
+ */
+static bool validHeader(HttpStream *stream, cchar *key, cchar *value)
+{
+    if (schr(key, '\r') || schr(key, '\n') || schr(value, '\r') || schr(value, '\n')) {
+        httpLog(stream->trace, "tx.header.error", "error",
+                "msg:Discarded header with a control character in the name or value, key:%s",
+                ssplit(sclone(key), "\r\n", NULL));
+        return 0;
+    }
+    return 1;
+}
+
+
+/*
     Add key/value to the header hash. If already present, update the value
  */
 static void updateHdr(HttpStream *stream, cchar *key, cchar *value)
@@ -25240,6 +27425,9 @@ static void updateHdr(HttpStream *stream, cchar *key, cchar *value)
 
     if (schr(value, '$')) {
         value = httpExpandVars(stream, value);
+    }
+    if (!validHeader(stream, key, value)) {
+        return;
     }
     //  Proxy may send "cookie"
     if (scaselessmatch(key, "set-cookie") || scaselessmatch(key, "cookie")) {
@@ -25336,7 +27524,7 @@ PUBLIC void httpAppendHeader(HttpStream *stream, cchar *key, cchar *fmt, ...)
                 }
                 kp = kp->next;
             }
-            if (!kp) {
+            if (!kp && validHeader(stream, key, value)) {
                 mprAddDuplicateKey(stream->tx->headers, key, value);
             }
         } else {
@@ -25365,7 +27553,9 @@ PUBLIC void httpAppendHeaderString(HttpStream *stream, cchar *key, cchar *value)
     oldValue = mprLookupKey(stream->tx->headers, key);
     if (oldValue) {
         if (scaselessmatch(key, "Set-Cookie")) {
-            mprAddDuplicateKey(stream->tx->headers, key, sclone(value));
+            if (validHeader(stream, key, value)) {
+                mprAddDuplicateKey(stream->tx->headers, key, sclone(value));
+            }
         } else {
             updateHdr(stream, key, sfmt("%s, %s", oldValue, value));
         }
@@ -25766,23 +27956,58 @@ PUBLIC void httpRemoveCookie(HttpStream *stream, cchar *name)
 }
 
 
+static bool corsOriginAllowed(HttpRoute *route, cchar *origin)
+{
+    char *allowed, *tok, *item;
+
+    if (!origin || !route->corsOrigin || !*route->corsOrigin) {
+        return 0;
+    }
+    if (smatch(route->corsOrigin, "*")) {
+        return !route->corsCredentials;
+    }
+    tok = allowed = sclone(route->corsOrigin);
+    while ((item = stok(tok, ", \t", &tok)) != 0) {
+        item = strim(item, " \t", MPR_TRIM_BOTH);
+        if (smatch(item, origin)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
 static void setCorsHeaders(HttpStream *stream)
 {
     HttpRoute *route;
     cchar     *origin;
 
     route = stream->rx->route;
+    origin = httpGetHeader(stream, "Origin");
 
     /*
         Cannot use wildcard origin response if allowing credentials
      */
-    if (*route->corsOrigin && !route->corsCredentials) {
-        httpSetHeaderString(stream, "Access-Control-Allow-Origin", route->corsOrigin);
+    if (route->corsOrigin && *route->corsOrigin) {
+        if (smatch(route->corsOrigin, "*")) {
+            if (!route->corsCredentials) {
+                httpSetHeaderString(stream, "Access-Control-Allow-Origin", "*");
+            }
+        } else if (origin) {
+            if (corsOriginAllowed(route, origin)) {
+                httpSetHeaderString(stream, "Access-Control-Allow-Origin", origin);
+                httpAppendHeaderString(stream, "Vary", "Origin");
+            }
+        } else if (!schr(route->corsOrigin, ',')) {
+            httpSetHeaderString(stream, "Access-Control-Allow-Origin", route->corsOrigin);
+        }
     } else {
-        origin = httpGetHeader(stream, "Origin");
         httpSetHeaderString(stream, "Access-Control-Allow-Origin", origin ? origin : "*");
+        if (origin) {
+            httpAppendHeaderString(stream, "Vary", "Origin");
+        }
     }
-    if (route->corsCredentials) {
+    if (route->corsCredentials && mprLookupKey(stream->tx->headers, "Access-Control-Allow-Origin")) {
         httpSetHeaderString(stream, "Access-Control-Allow-Credentials", "true");
     }
     if (route->corsHeaders) {
@@ -25972,6 +28197,66 @@ PUBLIC void httpPrepareHeaders(HttpStream *stream)
 
 
 /*
+    Verify the filename resolves to a document inside the route documents directory. A lexical prefix test is
+    not sufficient on its own: a symbolic link inside the documents directory passes it and is then followed
+    by open(), serving the link target from outside the published tree.
+
+    Symbolic links are not followed unless the route enables FollowSymlinks. When they are not followed, no
+    component below the documents directory may be a link, and the lexical test then guarantees containment
+    without resolving the path. When they are followed, containment is tested on the resolved target.
+ */
+static bool refuseLink(HttpStream *stream, cchar *filename)
+{
+    httpLog(stream->trace, "tx.http.document", "error",
+            "msg:Document is a symbolic link or resolves outside the published documents, filename:%s", filename);
+    /*
+        Not found, rather than forbidden. The document exists but is not published, and saying so would
+        disclose what lies outside the documents directory.
+     */
+    httpError(stream, HTTP_CODE_NOT_FOUND, "Cannot serve document");
+    return 0;
+}
+
+
+static bool checkDocuments(HttpStream *stream, cchar *filename)
+{
+    HttpRoute *route;
+    cchar     *dir, *resolved;
+
+    route = stream->rx->route;
+
+    if (!mprIsAbsPathContained(filename, route->documents)) {
+        httpError(stream, HTTP_CODE_BAD_REQUEST, "Filename outside published documents");
+        return 0;
+    }
+    if (!(route->flags & HTTP_ROUTE_FOLLOW_SYMLINKS)) {
+        if (mprHasPathLink(filename, route->documents)) {
+            return refuseLink(stream, filename);
+        }
+        return 1;
+    }
+    if ((resolved = mprGetRealPath(filename)) == 0) {
+        /*
+            The document does not exist. Test the containing directory instead so a linked directory cannot
+            host a create. If that cannot be resolved either, there is nothing to escape through and the
+            open will fail.
+         */
+        if ((dir = mprGetRealPath(mprGetPathDir(filename))) == 0) {
+            return 1;
+        }
+        if (!mprIsAbsPathContained(dir, route->documents)) {
+            return refuseLink(stream, filename);
+        }
+        return 1;
+    }
+    if (!mprIsAbsPathContained(resolved, route->documents)) {
+        return refuseLink(stream, filename);
+    }
+    return 1;
+}
+
+
+/*
     Low level routine to set the filename to serve. The filename may be outside the route documents, so caller
     must take care if the HTTP_TX_NO_CHECK flag is used.  This will update HttpTx.ext and HttpTx.fileInfo.
     This does not implement per-language directories. For that, see httpMapFile.
@@ -25995,10 +28280,9 @@ PUBLIC bool httpSetFilename(HttpStream *stream, cchar *filename, int flags)
         return 0;
     }
     if (!(tx->flags & HTTP_TX_NO_CHECK)) {
-        if (!mprIsAbsPathContained(filename, stream->rx->route->documents)) {
+        if (!checkDocuments(stream, filename)) {
             info->checked = 1;
             info->valid = 0;
-            httpError(stream, HTTP_CODE_BAD_REQUEST, "Filename outside published documents");
             return 0;
         }
     }
@@ -26029,6 +28313,41 @@ PUBLIC void httpSetStatus(HttpStream *stream, int status)
 {
     stream->tx->status = status;
     stream->tx->responded = 1;
+}
+
+
+/*
+    Parse a CGI "Status:" header value. RFC 3875 section 6.3.3 defines the value as a three digit status code
+    optionally followed by a reason phrase. atoi() cannot be used here: it accepts trailing garbage, has no
+    overflow behaviour and yields zero for text.
+ */
+PUBLIC int httpParseStatus(cchar *value)
+{
+    cchar *cp;
+    int   status;
+
+    if (!value) {
+        return MPR_ERR_BAD_ARGS;
+    }
+    for (cp = value; isspace((uchar) * cp); cp++) {
+    }
+
+    if (!isdigit((uchar) cp[0]) || !isdigit((uchar) cp[1]) || !isdigit((uchar) cp[2])) {
+        return MPR_ERR_BAD_ARGS;
+    }
+    status = (cp[0] - '0') * 100 + (cp[1] - '0') * 10 + (cp[2] - '0');
+    cp += 3;
+
+    /*
+        Only a reason phrase may follow the code. Anything else ("2000", "200x") is not a status.
+     */
+    if (*cp && !isspace((uchar) * cp)) {
+        return MPR_ERR_BAD_ARGS;
+    }
+    if (status < 100 || status > 599) {
+        return MPR_ERR_BAD_ARGS;
+    }
+    return status;
 }
 
 
@@ -26189,6 +28508,7 @@ PUBLIC ssize httpWrite(HttpQueue *q, cchar *fmt, ...)
 
 /********************************** Includes **********************************/
 
+#include    "http.h"
 
 
 #if ME_HTTP_UPLOAD
@@ -26213,6 +28533,7 @@ typedef struct Upload {
     char *boundary;                     /* Boundary signature */
     ssize boundaryLen;                  /* Length of boundary */
     int contentState;                   /* Input states */
+    bool formStarted;                   /* Started serializing urlencoded form data */
     int inBody;                         /* Started parsing body */
     char *clientFilename;               /* Current file filename (optional) */
     char *contentType;                  /* Content type for next item */
@@ -26280,7 +28601,7 @@ static Upload *allocUpload(HttpQueue *q)
     up->contentState = HTTP_UPLOAD_BOUNDARY;
 
     uploadDir = getUploadDir(stream);
-    httpSetParam(stream, "UPLOAD_DIR", uploadDir);
+    mprSetJson(httpGetParams(stream), "UPLOAD_DIR", uploadDir, 0);
 
     if ((boundary = strstr(rx->mimeType, "boundary=")) != 0) {
         boundary += 9;
@@ -26295,7 +28616,7 @@ static Upload *allocUpload(HttpQueue *q)
         up->boundaryLen = strlen(up->boundary);
     }
     if (up->boundaryLen == 0 || *up->boundary == '\0' || slen(up->boundary) > MAX_BOUNDARY) {
-        httpError(stream, HTTP_CODE_BAD_REQUEST, "Bad boundary");
+        httpError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST, "Bad boundary");
         return 0;
     }
     return up;
@@ -26362,7 +28683,13 @@ static void incomingUpload(HttpQueue *q, HttpPacket *packet)
         return;
     }
     if (stream->error) {
-        //  Discard packet
+        /*
+            Discard packet. The request has been refused and its remaining body is of no interest.
+
+            This discard is why every httpError() in this file must carry HTTP_CLOSE. Without that flag,
+            errorv() defers the response until the input has been consumed, and the input is never
+            consumed because everything arriving after the error lands here, including the end packet.
+         */
         return;
     }
     httpJoinPacketForService(q, packet, HTTP_SCHEDULE_QUEUE);
@@ -26453,11 +28780,18 @@ static void incomingUploadService(HttpQueue *q)
         }
     }
 
+    /*
+        The upstream end packet is the only signal that the request body has ended. The closing multipart
+        boundary is not: with a chunked body it is routinely parsed while the terminating chunk is still
+        in flight, so completing the upload on the boundary alone hands the handler an end packet while
+        rx->eof is clear and remainingContent is still positive, which reads as a truncated body.
+     */
     if (packet && packet->flags & HTTP_PACKET_END) {
+        httpGetPacket(q);
         if (up->contentState != HTTP_UPLOAD_CONTENT_END) {
-            httpError(stream, HTTP_CODE_BAD_REQUEST, "Client supplied insufficient upload data");
+            httpError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST, "Client supplied insufficient upload data");
         } else {
-            renameUploadedFiles(q->stream);
+            renameUploadedFiles(stream);
             httpPutPacketToNext(q, packet);
         }
     }
@@ -26500,7 +28834,7 @@ static int processUploadBoundary(HttpQueue *q, char *line)
      */
     if (strncmp(up->boundary, line, up->boundaryLen) != 0) {
         if (up->inBody) {
-            httpError(stream, HTTP_CODE_BAD_REQUEST, "Bad upload state. Incomplete boundary");
+            httpError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST, "Bad upload state. Incomplete boundary");
             return MPR_ERR_BAD_STATE;
         }
         //  Just eat the line as it may be preamble. If preamble was \r\n, it will be empty string by here.
@@ -26571,7 +28905,7 @@ static int processUploadHeader(HttpQueue *q, char *line)
 
             } else if (scaselesscmp(key, "filename") == 0) {
                 if (up->name == 0) {
-                    httpError(stream, HTTP_CODE_BAD_REQUEST, "Bad upload state. Missing name field");
+                    httpError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST, "Bad upload state. Missing name field");
                     return MPR_ERR_BAD_STATE;
                 }
                 /*
@@ -26581,7 +28915,7 @@ static int processUploadHeader(HttpQueue *q, char *line)
                     They MUST still sanitize for their environment, but some extra caution is worthwhile.
                  */
                 if (*value == '.' || !validUploadChars(value)) {
-                    httpError(stream, HTTP_CODE_BAD_REQUEST, "Bad upload client filename.");
+                    httpError(stream, HTTP_CLOSE | HTTP_CODE_BAD_REQUEST, "Bad upload client filename.");
                     return MPR_ERR_BAD_STATE;
                 }
                 up->clientFilename = mprNormalizePath(value);
@@ -26610,7 +28944,7 @@ static int createUploadFile(HttpStream *stream, Upload *up)
         if (!mprPathExists(uploadDir, X_OK)) {
             mprLog("http error", 0, "Cannot access upload directory %s", uploadDir);
         }
-        httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR,
+        httpError(stream, HTTP_CLOSE | HTTP_CODE_INTERNAL_SERVER_ERROR,
                   "Cannot create upload temp file %s. Check upload temp dir %s", up->tmpPath, uploadDir);
         return MPR_ERR_CANT_OPEN;
     }
@@ -26619,7 +28953,7 @@ static int createUploadFile(HttpStream *stream, Upload *up)
 
     up->file = mprOpenFile(up->tmpPath, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0600);
     if (up->file == 0) {
-        httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot open upload temp file %s", up->tmpPath);
+        httpError(stream, HTTP_CLOSE | HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot open upload temp file %s", up->tmpPath);
         return MPR_ERR_BAD_STATE;
     }
     /*
@@ -26650,6 +28984,7 @@ static void defineFileFields(HttpQueue *q, Upload *up)
 {
     HttpStream     *stream;
     HttpUploadFile *file;
+    MprJson        *params;
     char           *key;
 
     stream = q->stream;
@@ -26659,20 +28994,36 @@ static void defineFileFields(HttpQueue *q, Upload *up)
     }
 #endif
     up = q->queueData;
+    if (!up->name || !*up->name) {
+        return;
+    }
     file = up->currentFile;
+    params = httpGetParams(stream);
     key = sjoin("FILE_CLIENT_FILENAME_", up->name, NULL);
 
     if (file->clientFilename) {
-        httpSetParam(stream, key, file->clientFilename);
+        if (httpFormParamLimitExceeded(stream, params, key)) {
+            return;
+        }
+        mprWriteJson(params, key, file->clientFilename, MPR_JSON_STRING);
     }
     key = sjoin("FILE_CONTENT_TYPE_", up->name, NULL);
-    httpSetParam(stream, key, file->contentType);
+    if (httpFormParamLimitExceeded(stream, params, key)) {
+        return;
+    }
+    mprWriteJson(params, key, file->contentType, MPR_JSON_STRING);
 
     key = sjoin("FILE_FILENAME_", up->name, NULL);
-    httpSetParam(stream, key, file->filename);
+    if (httpFormParamLimitExceeded(stream, params, key)) {
+        return;
+    }
+    mprWriteJson(params, key, file->filename, MPR_JSON_STRING);
 
     key = sjoin("FILE_SIZE_", up->name, NULL);
-    httpSetIntParam(stream, key, (int) file->size);
+    if (httpFormParamLimitExceeded(stream, params, key)) {
+        return;
+    }
+    mprWriteJson(params, key, sfmt("%d", (int) file->size), MPR_JSON_NUMBER);
 }
 
 
@@ -26703,7 +29054,7 @@ static int writeToFile(HttpQueue *q, char *data, ssize len)
          */
         rc = mprWriteFile(up->file, data, len);
         if (rc != len) {
-            httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR,
+            httpError(stream, HTTP_CLOSE | HTTP_CODE_INTERNAL_SERVER_ERROR,
                       "Cannot write to upload temp file %s, rc %zd, errno %d", up->tmpPath, rc, mprGetOsError());
             return MPR_ERR_CANT_WRITE;
         }
@@ -26725,10 +29076,11 @@ static int processUploadData(HttpQueue *q)
     HttpStream *stream;
     HttpPacket *packet;
     MprBuf     *content;
+    MprJson    *params;
     Upload     *up;
     ssize      size, dataLen;
     bool       pureData;
-    char       *data, *bp;
+    char       *data, *bp, *encodedName, *encodedData;
 
     stream = q->stream;
     up = q->queueData;
@@ -26796,21 +29148,32 @@ static int processUploadData(HttpQueue *q)
             defineFileFields(q, up);
 
         } else {
-            if (packet == 0) {
-                packet = httpCreatePacket(ME_BUFSIZE);
-            }
             /*
                 Normal string form data variables. Copy data to post content and then decode and set as parameter.
              */
             data[dataLen] = '\0';
-            httpSetParam(stream, up->name, data);
+            if (up->name && *up->name) {
+                params = httpGetParams(stream);
+                if (httpFormParamLimitExceeded(stream, params, up->name)) {
+                    return MPR_ERR_WONT_FIT;
+                }
+                if (packet == 0) {
+                    packet = httpCreatePacket(ME_BUFSIZE);
+                }
+                mprWriteJson(params, up->name, data, MPR_JSON_STRING);
 
-            /*
-                Need to add back www-form-urlencoding separators so CGI/PHP can see normal POST body
-             */
-            mprPutCharToBuf(packet->content, '&');
-            stream->rx->mimeType = sclone("application/x-www-form-urlencoded");
-            mprPutToBuf(packet->content, "%s=%s", up->name, data);
+                /*
+                    Need to add back www-form-urlencoding separators so CGI/PHP can see normal POST body
+                 */
+                if (up->formStarted) {
+                    mprPutCharToBuf(packet->content, '&');
+                }
+                up->formStarted = 1;
+                encodedName = mprUriEncode(up->name, MPR_ENCODE_URI_COMPONENT);
+                encodedData = mprUriEncode(data, MPR_ENCODE_URI_COMPONENT);
+                stream->rx->mimeType = sclone("application/x-www-form-urlencoded");
+                mprPutToBuf(packet->content, "%s=%s", encodedName, encodedData);
+            }
         }
     }
     if (up->tmpPath) {
@@ -26974,7 +29337,7 @@ static bool validUploadChars(cchar *uri)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************** Forwards **********************************/
 
@@ -27835,6 +30198,10 @@ PUBLIC char *httpUriToString(HttpUri *uri, int flags)
     The URI must contain only valid characters and must being with "/" both before and after decoding.
     A decoded, normalized URI path is returned.
  */
+#if ME_WIN_LIKE
+static bool validWinUriPath(cchar *path);
+#endif
+
 PUBLIC char *httpValidateUriPath(cchar *uri)
 {
     char *up;
@@ -27852,8 +30219,62 @@ PUBLIC char *httpValidateUriPath(cchar *uri)
     if (*up != '/' || strchr(up, '\\')) {
         return 0;
     }
+#if ME_WIN_LIKE
+    if (!validWinUriPath(up)) {
+        return 0;
+    }
+#endif
     return up;
 }
+
+
+#if ME_WIN_LIKE
+static bool validWinUriPath(cchar *path)
+{
+    static cchar *reserved[] = {
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+        NULL
+    };
+    cchar        *cp, *end, *baseEnd, **rp;
+    ssize        len, baseLen;
+
+    for (cp = path; *cp; cp = end) {
+        while (*cp == '/') {
+            cp++;
+        }
+        if (*cp == '\0') {
+            break;
+        }
+        end = strchr(cp, '/');
+        if (end == 0) {
+            end = &cp[slen(cp)];
+        }
+        len = end - cp;
+        if (len <= 0) {
+            continue;
+        }
+        if (cp[len - 1] == '.' || cp[len - 1] == ' ') {
+            return 0;
+        }
+        if (memchr(cp, ':', len) != 0) {
+            return 0;
+        }
+        baseEnd = memchr(cp, '.', len);
+        if (baseEnd == 0) {
+            baseEnd = end;
+        }
+        baseLen = baseEnd - cp;
+        for (rp = reserved; *rp; rp++) {
+            if (slen(*rp) == baseLen && sncaselesscmp(cp, *rp, baseLen) == 0) {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+#endif
 
 
 /*
@@ -27969,19 +30390,19 @@ static char *actionRoute(HttpRoute *route, cchar *controller, cchar *action)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************* Forwards ***********************************/
 
 #undef  GRADUATE_HASH
 #define GRADUATE_HASH(auth, field) \
-        if (!auth->field) { \
-            if (auth->parent && auth->field && auth->field == auth->parent->field) { \
-                auth->field = mprCloneHash(auth->parent->field); \
-            } else { \
-                auth->field = mprCreateHash(0, MPR_HASH_STABLE); \
+        do { \
+            if ((auth)->parent && (auth)->field && (auth)->field == (auth)->parent->field) { \
+                (auth)->field = mprCloneHash((auth)->parent->field); \
+            } else if (!(auth)->field) { \
+                (auth)->field = mprCreateHash(0, MPR_HASH_STABLE); \
             } \
-        }
+        } while (0)
 
 static void manageRole(HttpRole *role, int flags);
 static void manageUser(HttpUser *user, int flags);
@@ -28002,11 +30423,18 @@ static void manageRole(HttpRole *role, int flags)
  */
 PUBLIC HttpRole *httpAddRole(HttpAuth *auth, cchar *name, cchar *abilities)
 {
-    HttpRole *role;
+    HttpRole *role, *inherited;
     char     *ability, *tok;
 
     GRADUATE_HASH(auth, roles);
-    if ((role = mprLookupKey(auth->roles, name)) == 0) {
+    /*
+        GRADUATE_HASH clones the table, not the objects in it, so an inherited name still resolves to the
+        ancestor's role. Updating that in place would rewrite the role for the ancestor route and every
+        sibling that inherited it, so take a route-local copy. A name this route has already defined for
+        itself is not the ancestor's object, so a repeated definition within one route updates in place.
+     */
+    inherited = auth->parent ? mprLookupKey(auth->parent->roles, name) : 0;
+    if ((role = mprLookupKey(auth->roles, name)) == 0 || role == inherited) {
         if ((role = mprAllocObj(HttpRole, manageRole)) == 0) {
             return 0;
         }
@@ -28134,17 +30562,26 @@ static void manageUser(HttpUser *user, int flags)
 
 PUBLIC HttpUser *httpAddUser(HttpAuth *auth, cchar *name, cchar *password, cchar *roles)
 {
-    HttpUser *user;
+    HttpUser *user, *inherited;
     char     *role, *tok;
 
-    if (!auth->userCache) {
-        auth->userCache = mprCreateHash(0, 0);
-    }
-    if ((user = mprLookupKey(auth->userCache, name)) == 0) {
+    GRADUATE_HASH(auth, userCache);
+    /*
+        As for httpAddRole: an inherited name still resolves to the ancestor's user object and updating it
+        in place would change that user's password and role assignment for every route that inherited it.
+        Copy first. Seed the copy from the inherited user so an update that omits roles keeps the
+        assignment it inherited.
+     */
+    inherited = auth->parent ? mprLookupKey(auth->parent->userCache, name) : 0;
+    if ((user = mprLookupKey(auth->userCache, name)) == 0 || user == inherited) {
         if ((user = mprAllocObj(HttpUser, manageUser)) == 0) {
             return 0;
         }
         user->name = sclone(name);
+        if (inherited) {
+            user->roles = inherited->roles;
+            user->abilities = inherited->abilities;
+        }
     }
     user->password = sclone(password);
     if (roles) {
@@ -28200,13 +30637,119 @@ PUBLIC void httpSetConnUser(HttpStream *stream, HttpUser *user)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 /********************************** Defines ***********************************/
 
 #define HTTP_VAR_HASH_SIZE 61            /* Hash size for vars and params */
 
+/*
+    Environment variables that must never reach a CGI, FastCGI or proxied child process.
+
+    A request header is turned into an environment variable by prefixing it with HTTP_, so a client
+    that sends "Proxy: http://attacker" would otherwise set HTTP_PROXY in the child, which many HTTP
+    client libraries read as their outbound proxy (CVE-2016-5385, the httpoxy family). The remainder
+    of the list is the loader, interpreter and shell variables that can turn an influenced child into
+    an arbitrary code execution one.
+
+    A deny list is never complete. The primary protection is the route's envPrefix (the EnvPrefix
+    directive), which namespaces client-supplied variables away from anything an interpreter consults.
+ */
+static cchar *envBlackList[] = {
+    "AUTHSTATE",
+    "BASHOPTS",
+    "BASH_ENV",
+    "CDPATH",
+    "CLASSPATH",
+    "ENTRYPOINT",
+    "ENV",
+    "FPATH",
+    "GLOBIGNORE",
+    "GOPATH",
+    "HOSTALIASES",
+    "HTTP_AUTHORIZATION",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "NO_PROXY",
+    "IFS",
+    "JAVA_HOME",
+    "JAVA_TOOL_OPTIONS",
+    "LIBPATH",
+    "LOCALDOMAIN",
+    "NODE_OPTIONS",
+    "NLSPATH",
+    "NULLCMD",
+    "PATH",
+    "PATH_LOCALE",
+    "PERL5DB",
+    "PERL5LIB",
+    "PERL5OPT",
+    "PERLIO_DEBUG",
+    "PERLLIB",
+    "PS4",
+    "PYTHONHOME",
+    "PYTHONINSPECT",
+    "PYTHONPATH",
+    "PYTHONUSERBASE",
+    "READNULLCMD",
+    "REMOTE_HOST",
+    "RES_OPTIONS",
+    "RUBYLIB",
+    "RUBYOPT",
+    "SHELLOPTS",
+    "SHLIB_PATH",
+    "TERMCAP",
+    "TERMINFO",
+    "TERMINFO_DIRS",
+    "TERMPATH",
+    "TMPPREFIX",
+    "ZDOTDIR",
+    NULL
+};
+
 /*********************************** Code *************************************/
+/*
+    Test if a CGI environment variable name is unsafe to pass to a child process.
+
+    The name is normalised the way a CGI variable name is built, upper cased with '-' folded to '_',
+    so callers may pass a raw header name, a prefixed name, or an already-converted one. Prefix
+    families (LD_, DYLD_, ...) are matched by prefix.
+
+    This tests names only. A hostile variable value, such as an exported shell function definition per
+    Shellshock, is handled by the route's CgiEscape directive.
+ */
+PUBLIC bool httpIsCgiVarBlocked(cchar *name)
+{
+    cchar **bp;
+    char  normal[ME_MAX_PATH];
+    int   i;
+
+    if (name == 0 || *name == '\0') {
+        return 0;
+    }
+    for (i = 0; i < (int) sizeof(normal) - 1 && name[i]; i++) {
+        normal[i] = (name[i] == '-') ? '_' : (char) toupper((uchar) name[i]);
+    }
+    normal[i] = '\0';
+
+    for (bp = envBlackList; *bp; bp++) {
+        if (smatch(normal, *bp)) {
+            return 1;
+        }
+    }
+    /*
+        Dynamic loader controls. These are families rather than single names, and any one of them
+        redirects library resolution in the child.
+     */
+    if (sstarts(normal, "LD_") || sstarts(normal, "LDR_") || sstarts(normal, "_RLD") ||
+        sstarts(normal, "DYLD_")) {
+        return 1;
+    }
+    return 0;
+}
+
+
 /*
     Define standard CGI variables
  */
@@ -28280,10 +30823,25 @@ PUBLIC void httpCreateCGIParams(HttpStream *stream)
         params = httpGetParams(stream);
         assert(params);
         for (ITERATE_ITEMS(rx->files, file, index)) {
+            if (httpFormParamLimitExceeded(stream, params, sfmt("FILE_%d_FILENAME", index))) {
+                return;
+            }
             mprWriteJson(params, sfmt("FILE_%d_FILENAME", index), file->filename, MPR_JSON_STRING);
+            if (httpFormParamLimitExceeded(stream, params, sfmt("FILE_%d_CLIENT_FILENAME", index))) {
+                return;
+            }
             mprWriteJson(params, sfmt("FILE_%d_CLIENT_FILENAME", index), file->clientFilename, MPR_JSON_STRING);
+            if (httpFormParamLimitExceeded(stream, params, sfmt("FILE_%d_CONTENT_TYPE", index))) {
+                return;
+            }
             mprWriteJson(params, sfmt("FILE_%d_CONTENT_TYPE", index), file->contentType, MPR_JSON_STRING);
+            if (httpFormParamLimitExceeded(stream, params, sfmt("FILE_%d_NAME", index))) {
+                return;
+            }
             mprWriteJson(params, sfmt("FILE_%d_NAME", index), file->name, MPR_JSON_STRING);
+            if (httpFormParamLimitExceeded(stream, params, sfmt("FILE_%d_SIZE", index))) {
+                return;
+            }
             mprWriteJson(params, sfmt("FILE_%d_SIZE", index), sfmt("%zd", file->size), MPR_JSON_NUMBER);
         }
     }
@@ -28298,7 +30856,31 @@ PUBLIC void httpCreateCGIParams(HttpStream *stream)
     Make variables for each keyword in a query string. The buffer must be url encoded
     (ie. key=value&key2=value2..., spaces converted to '+' and all else should be %HEX encoded).
  */
-static void addParamsFromBuf(HttpStream *stream, cchar *buf, ssize len)
+PUBLIC bool httpFormParamLimitExceeded(HttpStream *stream, MprJson *params, cchar *name)
+{
+    HttpRx *rx;
+    int    limit;
+
+    rx = stream->rx;
+    limit = stream->limits->rxFormCount;
+    if (limit == MAXINT || (name && mprReadJsonObj(params, name) != 0)) {
+        return 0;
+    }
+    if ((name && rx->paramCount >= limit) || (!name && params->length > limit)) {
+        httpLimitError(stream, HTTP_CLOSE | HTTP_CODE_REQUEST_TOO_LARGE,
+                       "Too many request parameters. Limit %d", limit);
+        return 1;
+    }
+    if (name) {
+        rx->paramCount++;
+    } else if (params->length > rx->paramCount) {
+        rx->paramCount = params->length;
+    }
+    return 0;
+}
+
+
+static int addParamsFromBuf(HttpStream *stream, cchar *buf, ssize len)
 {
     MprJson *params, *prior;
     char    *newValue, *decoded, *keyword, *value, *tok;
@@ -28314,8 +30896,17 @@ static void addParamsFromBuf(HttpStream *stream, cchar *buf, ssize len)
     json = scontains(buf, "_encoded_json_") ? 1 : 0;
     if (json) {
         value = mprUriDecode(buf);
-        mprParseJsonInto(value, params);
-        return;
+        /*
+            A rejected document must be an error rather than a silently empty parameter table, otherwise a
+            request the parser refused is indistinguishable from one that carried no parameters.
+         */
+        if (mprParseJsonInto(value, params) == 0) {
+            return MPR_ERR_BAD_FORMAT;
+        }
+        if (httpFormParamLimitExceeded(stream, params, 0)) {
+            return MPR_ERR_WONT_FIT;
+        }
+        return 0;
     }
 
     decoded = mprAlloc(len + 1);
@@ -28336,19 +30927,21 @@ static void addParamsFromBuf(HttpStream *stream, cchar *buf, ssize len)
             /*
                 Append to existing keywords
              */
-            prior = mprGetJsonObj(params, keyword);
+            prior = mprReadJsonObj(params, keyword);
+            if (!prior && httpFormParamLimitExceeded(stream, params, keyword)) {
+                return MPR_ERR_WONT_FIT;
+            }
 #if (ME_EJS_PRODUCT || ME_EJSCRIPT_PRODUCT)
-            if (prior && prior->type == MPR_JSON_VALUE) {
+            if (prior && prior->type & MPR_JSON_VALUE) {
                 if (*value) {
                     newValue = sjoin(prior->value, " ", value, NULL);
-                    //  Uses SetJson instead of WriteJson which permits embedded . and []
-                    mprSetJson(params, keyword, newValue, MPR_JSON_STRING);
+                    mprWriteJson(params, keyword, newValue, MPR_JSON_STRING);
                 }
             } else {
-                mprSetJson(params, keyword, value, MPR_JSON_STRING);
+                mprWriteJson(params, keyword, value, MPR_JSON_STRING);
             }
 #else
-            if (prior && prior->type == MPR_JSON_VALUE) {
+            if (prior && prior->type & MPR_JSON_VALUE) {
                 if (*value) {
                     newValue = sjoin(prior->value, " ", value, NULL);
                     mprWriteJson(params, keyword, newValue, MPR_JSON_STRING);
@@ -28360,18 +30953,22 @@ static void addParamsFromBuf(HttpStream *stream, cchar *buf, ssize len)
         }
         keyword = stok(0, "&", &tok);
     }
+    return 0;
 }
 
 
-PUBLIC void httpAddQueryParams(HttpStream *stream)
+PUBLIC int httpAddQueryParams(HttpStream *stream)
 {
     HttpRx *rx;
+    int    rc;
 
+    rc = 0;
     rx = stream->rx;
     if (rx->parsedUri->query && !(rx->flags & HTTP_ADDED_QUERY_PARAMS) && !stream->error) {
-        addParamsFromBuf(stream, rx->parsedUri->query, slen(rx->parsedUri->query));
+        rc = addParamsFromBuf(stream, rx->parsedUri->query, slen(rx->parsedUri->query));
         rx->flags |= HTTP_ADDED_QUERY_PARAMS;
     }
+    return rc;
 }
 
 
@@ -28381,6 +30978,7 @@ PUBLIC int httpAddBodyParams(HttpStream *stream)
     HttpQueue *q;
     MprBuf    *content;
     cchar     *method;
+    int       rc;
 
     rx = stream->rx;
     q = stream->readq;
@@ -28395,8 +30993,11 @@ PUBLIC int httpAddBodyParams(HttpStream *stream)
                 if (mprParseJsonInto(httpGetBodyInput(stream), httpGetParams(stream)) == 0) {
                     return MPR_ERR_BAD_FORMAT;
                 }
-            } else {
-                addParamsFromBuf(stream, mprGetBufStart(content), mprGetBufLength(content));
+                if (httpFormParamLimitExceeded(stream, httpGetParams(stream), 0)) {
+                    return MPR_ERR_WONT_FIT;
+                }
+            } else if ((rc = addParamsFromBuf(stream, mprGetBufStart(content), mprGetBufLength(content))) < 0) {
+                return rc;
             }
         }
         rx->flags |= HTTP_ADDED_BODY_PARAMS;
@@ -28413,17 +31014,23 @@ PUBLIC int httpAddBodyParams(HttpStream *stream)
 }
 
 
-PUBLIC void httpAddJsonParams(HttpStream *stream)
+PUBLIC int httpAddJsonParams(HttpStream *stream)
 {
     HttpRx *rx;
 
     rx = stream->rx;
     if (rx->eof && sstarts(rx->mimeType, "application/json") && !stream->error) {
         if (!(rx->flags & HTTP_ADDED_BODY_PARAMS)) {
-            mprParseJsonInto(httpGetBodyInput(stream), httpGetParams(stream));
             rx->flags |= HTTP_ADDED_BODY_PARAMS;
+            if (mprParseJsonInto(httpGetBodyInput(stream), httpGetParams(stream)) == 0) {
+                return MPR_ERR_BAD_FORMAT;
+            }
+            if (httpFormParamLimitExceeded(stream, httpGetParams(stream), 0)) {
+                return MPR_ERR_WONT_FIT;
+            }
         }
     }
+    return 0;
 }
 
 
@@ -28525,13 +31132,23 @@ PUBLIC void httpRemoveParam(HttpStream *stream, cchar *var)
 
 PUBLIC void httpSetParam(HttpStream *stream, cchar *var, cchar *value)
 {
-    mprSetJson(httpGetParams(stream), var, value, 0);
+    MprJson *params;
+
+    params = httpGetParams(stream);
+    if (!httpFormParamLimitExceeded(stream, params, var)) {
+        mprSetJson(params, var, value, 0);
+    }
 }
 
 
 PUBLIC void httpSetIntParam(HttpStream *stream, cchar *var, int value)
 {
-    mprSetJson(httpGetParams(stream), var, sfmt("%d", value), MPR_JSON_NUMBER);
+    MprJson *params;
+
+    params = httpGetParams(stream);
+    if (!httpFormParamLimitExceeded(stream, params, var)) {
+        mprSetJson(params, var, sfmt("%d", value), MPR_JSON_NUMBER);
+    }
 }
 
 
@@ -28558,7 +31175,7 @@ PUBLIC bool httpMatchParam(HttpStream *stream, cchar *var, cchar *value)
 
 /********************************* Includes ***********************************/
 
-
+#include    "http.h"
 
 #if ME_HTTP_WEB_SOCKETS
 /********************************** Locals ************************************/
@@ -28652,9 +31269,11 @@ static void incomingWebSockData(HttpQueue *q, HttpPacket *packet);
 static void manageWebSocket(HttpWebSocket *ws, int flags);
 static int matchWebSock(HttpStream *stream, HttpRoute *route, int dir);
 static int openWebSock(HttpQueue *q);
+static void releaseWebSocketLimit(HttpStream *stream, HttpWebSocket *ws);
 static void outgoingWebSockService(HttpQueue *q);
 static int processWebSocketFrame(HttpQueue *q, HttpPacket *packet);
 static void readyWebSock(HttpQueue *q);
+static ssize receivedMessageLength(HttpWebSocket *ws, int opcode);
 static int validUTF8(HttpStream *stream, cchar *str, ssize len);
 static bool validateText(HttpStream *stream, HttpPacket *packet);
 static void webSockPing(HttpStream *stream);
@@ -28699,7 +31318,7 @@ static int matchWebSock(HttpStream *stream, HttpRoute *route, int dir)
     HttpTx        *tx;
     char          *kind, *tok;
     cchar         *key, *protocols;
-    int           version;
+    int           active, max, version;
 
     assert(stream);
     assert(route);
@@ -28775,6 +31394,21 @@ static int matchWebSock(HttpStream *stream, HttpRoute *route, int dir)
             /* Just pick the first protocol */
             ws->subProtocol = stok(sclone(protocols), " ,", NULL);
         }
+        lock(route->http);
+        active = stream->limits->webSocketsCount;
+        max = stream->limits->webSocketsMax;
+        if (active >= max) {
+            unlock(route->http);
+            rx->webSocket = 0;
+            httpError(stream, HTTP_CLOSE | HTTP_CODE_SERVICE_UNAVAILABLE,
+                      "Request denied. Too many concurrent WebSockets, active: %d max: %d",
+                      active, max);
+            return HTTP_ROUTE_OMIT_FILTER;
+        }
+        stream->limits->webSocketsCount++;
+        ws->counted = 1;
+        unlock(route->http);
+
         httpSetStatus(stream, HTTP_CODE_SWITCHING);
         httpSetHeader(stream, "Connection", "Upgrade");
         httpSetHeader(stream, "Upgrade", "WebSocket");
@@ -28849,12 +31483,31 @@ static void closeWebSock(HttpQueue *q)
         ws = q->stream->rx->webSocket;
         assert(ws);
         if (ws) {
+            releaseWebSocketLimit(q->stream, ws);
             ws->state = WS_STATE_CLOSED;
             if (ws->pingEvent) {
                 mprRemoveEvent(ws->pingEvent);
                 ws->pingEvent = 0;
             }
         }
+    }
+}
+
+
+static void releaseWebSocketLimit(HttpStream *stream, HttpWebSocket *ws)
+{
+    HttpLimits *limits;
+    Http       *http;
+
+    if (ws->counted) {
+        limits = stream->limits;
+        http = stream->http;
+        lock(http);
+        if (limits->webSocketsCount > 0) {
+            limits->webSocketsCount--;
+        }
+        ws->counted = 0;
+        unlock(http);
     }
 }
 
@@ -28867,6 +31520,29 @@ static void readyWebSock(HttpQueue *q)
 }
 
 
+/*
+    Bytes of the current message received so far, for a frame arriving with the given opcode.
+
+    Derived from the two existing halves rather than counted in a field of its own:
+
+        ws->messageLength                    bytes already delivered to the handler
+        httpGetPacketLength(currentMessage)  bytes buffered for this message and not yet delivered
+
+    Exactly one of them is moving at any time, so their sum is the total either way.
+
+    A non-continuation opcode begins a new message and starts from zero. That case cannot be read off
+    the two fields: ws->messageLength is reset in processWebSocketFrame when the first frame of a
+    message completes, which is after this is consulted.
+ */
+static ssize receivedMessageLength(HttpWebSocket *ws, int opcode)
+{
+    if (opcode != WS_MSG_CONT) {
+        return 0;
+    }
+    return ws->messageLength + httpGetPacketLength(ws->currentMessage);
+}
+
+
 static void incomingWebSockData(HttpQueue *q, HttpPacket *packet)
 {
     HttpStream    *stream;
@@ -28875,8 +31551,9 @@ static void incomingWebSockData(HttpQueue *q, HttpPacket *packet)
     HttpLimits    *limits;
     MprBuf        *content;
     char          *fp, *cp;
-    ssize         len, currentFrameLen, offset, frameLen;
-    int           i, error, mask, lenBytes, opcode;
+    ssize         len, currentFrameLen, messageLength, offset, frameLen;
+    uint64        frameLength;
+    int           i, error, mask, lenBytes, opcode, extendedLenBytes;
 
     assert(packet);
     stream = q->stream;
@@ -28958,15 +31635,15 @@ static void incomingWebSockData(HttpQueue *q, HttpPacket *packet)
                 break;
             }
             fp++;
-            len = GET_LEN(*fp);
+            frameLength = GET_LEN(*fp);
             mask = GET_MASK(*fp);
             lenBytes = 1;
-            if (len == 126) {
+            if (frameLength == 126) {
                 lenBytes += 2;
-                len = 0;
-            } else if (len == 127) {
+                frameLength = 0;
+            } else if (frameLength == 127) {
                 lenBytes += 8;
-                len = 0;
+                frameLength = 0;
             }
             if (httpGetPacketLength(packet) < (lenBytes + 1 + (mask * 4))) {
                 /* Return if we don't have the required packet control fields */
@@ -28974,10 +31651,40 @@ static void incomingWebSockData(HttpQueue *q, HttpPacket *packet)
                 return;
             }
             fp++;
+            extendedLenBytes = lenBytes - 1;
             while (--lenBytes > 0) {
-                len <<= 8;
-                len += (uchar) * fp++;
+                frameLength = (frameLength << 8) | (uchar) * fp++;
             }
+            if (extendedLenBytes == 8 && (frameLength & (UINT64(1) << 63))) {
+                traceError(stream, "Protocol error, 64-bit frame length high bit set");
+                error = WS_STATUS_PROTOCOL_ERROR;
+                break;
+            }
+            if (frameLength > MAXSSIZE || frameLength > (uint64) limits->webSocketsMessageSize) {
+                traceError(stream, "Incoming frame is too large, length %llu, max %d", frameLength,
+                           limits->webSocketsMessageSize);
+                error = WS_STATUS_MESSAGE_TOO_LARGE;
+                break;
+            }
+            /*
+                LimitWebSocketsMessage bounds the message, not the frame. The check above bounds one
+                frame, so without this a client could split an unbounded message into continuation
+                frames each under the limit. This is the only cap on how much a single WebSocket message
+                may allocate: a WebSocket session is not a request body, so LimitRequestBody cannot apply.
+
+                Enforced here rather than where the data arrives so the frame is refused from its
+                declared length, before a byte of it is buffered.
+             */
+            if (opcode < WS_MSG_CONTROL) {
+                messageLength = receivedMessageLength(ws, opcode);
+                if (frameLength > (uint64) (limits->webSocketsMessageSize - messageLength)) {
+                    traceError(stream, "Incoming message is too large, length %zd, frame %llu, max %zd",
+                               messageLength, frameLength, limits->webSocketsMessageSize);
+                    error = WS_STATUS_MESSAGE_TOO_LARGE;
+                    break;
+                }
+            }
+            len = (ssize) frameLength;
             if (packet->type >= WS_MSG_CONTROL && len > WS_MAX_CONTROL) {
                 /* Too big */
                 traceError(stream, "Protocol error, control frame too big");
@@ -29481,7 +32188,15 @@ static void outgoingWebSockService(HttpQueue *q)
                 }
             }
             if (httpClientStream(stream)) {
-                mprGetRandomBytes(dataMask, sizeof(dataMask), 0);
+                /*
+                    RFC 6455 requires the masking key be unpredictable. Fail rather than mask with
+                    whatever the stack held, which is both guessable and undefined.
+                 */
+                if (mprGetRandomBytes(dataMask, sizeof(dataMask), 0) < 0) {
+                    httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR,
+                              "Cannot get random bytes for the WebSocket masking key");
+                    break;
+                }
                 for (i = 0; i < 4; i++) {
                     *prefix++ = dataMask[i];
                 }
@@ -29704,10 +32419,17 @@ PUBLIC int httpUpgradeWebSocket(HttpStream *stream)
     tx = stream->tx;
     assert(httpClientStream(stream));
 
+    /*
+        The handshake key must be unpredictable so the peer's response cannot be precomputed. Fail the
+        upgrade rather than send whatever the stack held.
+     */
+    if (mprGetRandomBytes(num, sizeof(num), 0) < 0) {
+        mprLog("error webSock", 0, "Cannot get random bytes for the WebSocket handshake key");
+        return MPR_ERR_CANT_INITIALIZE;
+    }
     httpSetStatus(stream, HTTP_CODE_SWITCHING);
     httpSetHeader(stream, "Upgrade", "websocket");
     httpSetHeader(stream, "Connection", "Upgrade");
-    mprGetRandomBytes(num, sizeof(num), 0);
     tx->webSockKey = mprEncode64Block(num, sizeof(num));
     httpSetHeaderString(stream, "Sec-WebSocket-Key", tx->webSockKey);
     httpSetHeaderString(stream, "Sec-WebSocket-Protocol", stream->protocols ? stream->protocols : "chat");
@@ -29794,3 +32516,6 @@ bool httpIsLastPacket(HttpPacket *packet)
     distributed with this software for full details and copyrights.
  */
 
+#else
+void dummyHttp(){}
+#endif /* ME_COM_HTTP */
