@@ -4,7 +4,7 @@
     Once a session existed, httpAuthenticate() accepted it for any route without checking that the
     session was established under the protocol that route requires. A Basic login therefore opened a
     route configured `AuthType digest`, with no Authorization header present at all. The ability
-    layer was unaffected — it was specifically the protocol requirement that went unenforced.
+    layer was unaffected: it was specifically the protocol requirement that went unenforced.
 
     Issue 10019. The session now records the protocol that created it and the route's requirement is
     checked against it.

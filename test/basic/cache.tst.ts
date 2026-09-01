@@ -11,7 +11,7 @@
 
     The assertion is made on the second request. cacheAtClient() only adds a header when none is
     present, and the first authenticated request already carries `Cache-Control: no-cache=set-cookie`
-    from establishing the session — so the first request never exercised the path either way. Every
+    from establishing the session, so the first request never exercised the path either way. Every
     subsequent request on that session does, which is the common case.
  */
 
