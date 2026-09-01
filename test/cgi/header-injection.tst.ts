@@ -14,7 +14,13 @@ import {ttrue, tget} from '@embedthis/testme'
 
 const HTTP = tget('TM_HTTP') || 'http://127.0.0.1:4100'
 
-const hdrtest = (query: string) => fetch(`${HTTP}/hdrtest.cgi?${query}`)
+/*
+    hdrtest.cgi is "#!/bin/sh" and there is no /bin/sh for a native Windows process, so the fixture
+    has a batch entry point there. Both emit the same bytes: it runs hdrtest.cgi through sh.
+ */
+const FIXTURE = process.platform == 'win32' ? 'hdrtest.bat' : 'hdrtest.cgi'
+
+const hdrtest = (query: string) => fetch(`${HTTP}/${FIXTURE}?${query}`)
 
 //  A CR inside a header value fails the request
 let response = await hdrtest('bare-cr')

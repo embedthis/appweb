@@ -55,9 +55,16 @@ export async function req(url: string, opts: any = {}): Promise<any> {
 
 /*
     A fresh cookie-jar path. Each flow needs its own, or one test's session leaks into the next.
+
+    Under test/tmp rather than /tmp. curl here is a native program, and a native program reads /tmp as
+    the drive-relative C:\tmp, which does not exist on a stock Windows machine -- so --cookie-jar wrote
+    nothing, every request after the login went out without its cookie, and a session that had been
+    established correctly looked like one the server had refused to honour.
  */
 export function jar(name: string): string {
-    return new Path('/tmp').join('appweb-session-' + name + '-' + process.pid + '.txt').toString()
+    let dir = new Path(import.meta.dir).dirname.join('tmp')
+    dir.makeDir()
+    return dir.join('session-' + name + '-' + process.pid + '.txt').toString()
 }
 
 export function sessionCookie(headers: string): string {

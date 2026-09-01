@@ -6,9 +6,18 @@
 set -u
 
 TESTDIR="$(cd "$(dirname "$0")/.." && pwd)"
-BIN="${TESTDIR}/../build/bin/appweb"
+. "${TESTDIR}/utils/testenv.sh"
+
+BIN="$(tmAppweb "${TESTDIR}/../build/bin")"
 WORK="${TESTDIR}/tmp/trace-formatters"
 SERVER=""
+
+#
+#   Paths that go into a configuration appweb reads. The shell keeps its own forms below for the
+#   greps that read the logs back.
+#
+NATIVE_TESTDIR="$(tmNative "${TESTDIR}")"
+NATIVE_WORK="$(tmNative "${WORK}")"
 
 #
 #   Do not call cleanup here. It is already the EXIT trap, and it captures $? -- which, called from
@@ -65,10 +74,10 @@ COMMON_ACCESS="${WORK}/access.log"
 COMMON_ERROR="${WORK}/common-error.log"
 
 cat > "${COMMON_CONF}" <<CONF
-ErrorLog ${COMMON_ERROR} level=4
-TraceLog ${COMMON_ACCESS} level=4 formatter=common format="%h %u %r %>s %b %{User-Agent}i"
+ErrorLog ${NATIVE_WORK}/common-error.log level=4
+TraceLog ${NATIVE_WORK}/access.log level=4 formatter=common format="%h %u %r %>s %b %{User-Agent}i"
 Listen ${COMMON_PORT}
-Documents ${TESTDIR}/web
+Documents ${NATIVE_TESTDIR}/web
 AddHandler fileHandler html txt ""
 CONF
 
@@ -99,10 +108,10 @@ INJECT_TRACE="${WORK}/inject-trace.log"
 INJECT_ERROR="${WORK}/inject-error.log"
 
 cat > "${INJECT_CONF}" <<CONF
-ErrorLog ${INJECT_ERROR} level=4
-TraceLog ${INJECT_TRACE} level=1 formatter=pretty
+ErrorLog ${NATIVE_WORK}/inject-error.log level=4
+TraceLog ${NATIVE_WORK}/inject-trace.log level=1 formatter=pretty
 Listen ${INJECT_PORT}
-Documents ${TESTDIR}/web
+Documents ${NATIVE_TESTDIR}/web
 AddHandler fileHandler html txt ""
 
 Role user view
@@ -110,7 +119,7 @@ User joshua 2fd6e47ff9bb70c0465fd2f5c8e5305e user
 
 <Route ^/auth/>
     Prefix /auth
-    Documents ${TESTDIR}/web
+    Documents ${NATIVE_TESTDIR}/web
     AuthType basic example.com
     Require user joshua
 </Route>

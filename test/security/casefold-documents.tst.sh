@@ -22,11 +22,17 @@
 set -u
 
 TESTDIR="$(cd "$(dirname "$0")/.." && pwd)"
-BIN="${TESTDIR}/../build/bin/appweb"
+. "${TESTDIR}/utils/testenv.sh"
+
+BIN="$(tmAppweb "${TESTDIR}/../build/bin")"
 PORT=4504
 WORK="${TESTDIR}/tmp/casefold-documents"
 CONF="${WORK}/casefold.conf"
 DOCS="${WORK}/8080"
+
+#   Paths that go into the configuration appweb reads, rather than into a shell command
+NATIVE_WORK="$(tmNative "${WORK}")"
+NATIVE_DOCS="$(tmNative "${DOCS}")"
 
 fail() { echo "FAIL: $*"; exit 1; }
 
@@ -42,9 +48,7 @@ server=""
 cleanup() {
     trap '' INT TERM QUIT
     if [ -n "${server}" ]; then
-        kill -TERM "${server}" 2>/dev/null
-        sleep 0.5
-        kill -KILL "${server}" 2>/dev/null
+        tmStopServer "${server}"
     fi
     rm -rf "${WORK}"
     return 0
@@ -62,9 +66,9 @@ else
 fi
 
 cat > "${CONF}" <<CONF
-ErrorLog ${WORK}/casefold.log level=2
+ErrorLog ${NATIVE_WORK}/casefold.log level=2
 Listen ${PORT}
-Documents ${DOCS}
+Documents ${NATIVE_DOCS}
 AddHandler fileHandler html txt ""
 DirectoryIndex index.html
 
@@ -74,7 +78,16 @@ DirectoryIndex index.html
 </Route>
 CONF
 
-perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV or die' "${BIN}" --config "${CONF}" >/dev/null 2>&1 &
+#
+#   The setsid wrapper detaches the server from this script's process group so the harness does not
+#   signal it out from under the test. There are no POSIX process groups on Windows and no perl
+#   POSIX::setsid to call, so launch it directly there; tmStopServer does the tearing down.
+#
+if [ "${TESTME_OS:-}" = "windows" ] ; then
+    "${BIN}" --config "${CONF}" >/dev/null 2>&1 &
+else
+    perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV or die' "${BIN}" --config "${CONF}" >/dev/null 2>&1 &
+fi
 server=$!
 
 for _ in $(seq 1 40); do

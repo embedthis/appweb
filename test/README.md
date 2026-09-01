@@ -84,14 +84,9 @@ test/
 ├── compress/          # Content compression tests
 ├── conn/              # Connection management tests
 ├── error/             # Error handling tests
-├── esp/               # ESP framework tests
-│   ├── caching/       # ESP caching functionality
-│   ├── chat/          # WebSocket chat application
-│   ├── session/       # Session management
-│   ├── solo/          # Standalone ESP tests
-│   └── websockets/    # WebSocket protocol tests
 ├── fast-bin/          # FastCGI executable programs
 ├── fast/              # FastCGI handler tests
+├── flow/              # Request and response flow control
 ├── ipv6/              # IPv6 connectivity tests
 ├── lang/              # Language/localization tests
 ├── leak/              # Memory leak detection (Valgrind)
@@ -103,11 +98,13 @@ test/
 ├── regress/           # Regression tests
 ├── route/             # Routing engine tests
 ├── security/          # Security feature tests
+├── soak/              # Sustained mixed workload and resource stability
 ├── ssl/               # SSL/TLS tests
 ├── stress/            # Load and stress tests
 ├── tmp/               # Temporary test files
-├── upload/            # File upload tests
-└── utils/             # Test utilities
+├── upload/            # Multipart upload tests
+├── utils/             # Test utilities
+└── ws/                # WebSocket protocol tests
 ```
 
 ### Test Directory Details
@@ -176,6 +173,7 @@ test/
 **cgi/**: Test files for CGI functionality
 
 **Tests** (in cgi/):
+- `action.tst.ts` - The `Action` directive selects an interpreter for a non-executable script
 - `alias.tst.ts` - CGI script aliasing
 - `args.tst.ts` - Command-line arguments
 - `big-post.tst.ts` - Large POST data
@@ -222,36 +220,10 @@ test/
 **Purpose**: ESP (Embedded Server Pages) framework testing
 
 **Subdirectories**:
-- `caching/` - Caching functionality (see above)
-- `chat/` - WebSocket chat application
-- `session/` - Session management
-- `solo/` - Standalone ESP tests
-- `websockets/` - WebSocket protocol tests
-
-**Tests** (root esp/):
-- `big.tst.ts` - Large ESP responses
-- `directives.tst.ts` - ESP directives
-- `dump.tst.ts` - State dumping
-- `get.tst.ts` - GET requests to ESP
-- `include.tst.ts` - ESP includes
-- `redirect.tst.ts` - ESP redirects
-- `reload.tst.ts` - ESP reload functionality
-- `uri-exploit.tst.ts` - URI security testing
-
-**WebSocket Tests** (esp/websockets/):
-- `big.tst.ts` - Large WebSocket messages
-- `close.tst.ts` - Connection closing
-- `construct.tst.ts` - WebSocket construction
-- `empty.tst.ts` - Empty messages
-- `frames.tst.ts` - Frame handling
-- `len-150.tst.ts` - 150 byte messages
-- `len-1500.tst.ts` - 1500 byte messages
-- `len-8200.tst.ts` - 8200 byte messages
-- `len-256K.tst.ts` - 256KB messages
-- `open.tst.ts` - Connection opening
-- `send.tst.ts` - Sending messages
-- `sendBlock.tst.ts` - Blocking send
-- `ssl.tst.ts` - Secure WebSockets
+ESP is a **separate add-on product** and is not part of this repository -- see the project
+CLAUDE.md. Neither `src/esp` nor `test/esp` exists. The `esp/` tree this section used to describe,
+including an `esp/websockets/` directory of thirteen WebSocket tests, was documentation for a layout
+that has not shipped here for years. WebSocket coverage lives in `ws/`; see below.
 
 #### fast-bin/, fast/
 **Purpose**: FastCGI handler testing
@@ -317,9 +289,11 @@ test/
 - `post.tst.ts` - POST requests
 - `put.tst.ts` - PUT requests
 - `timeout.tst.ts` - Timeout handling
-- `upload.tst.ts` - File uploads
-- `websockets-1.tst.ts` - WebSocket proxying (basic)
-- `websockets-2.tst.ts` - WebSocket proxying (advanced)
+- `websockets-1.tst.ts` - WebSocket proxying
+
+Uploads through the proxy are covered by `upload/handlers.tst.ts`, and proxied flow control by
+`flow/response.tst.ts` and `flow/request.tst.ts`. `websockets-2.tst.ts` was `if (false)` dead code for
+`sendBlock` APIs that do not exist, and has been deleted.
 
 **Configuration**: `proxy.conf`
 
@@ -389,11 +363,85 @@ test/
 - `bigForm.tst.ts` - Large form submissions
 - `bigUrl.tst.ts` - Large URLs
 - `cgi-dos.tst.ts` - CGI DoS protection
-- `foreign.tst.ts` - Foreign character handling
-- `huge.tst.ts` - Huge requests
-- `hugeForm.tst.ts` - Huge form data
+- `huge.tst.ts` - Huge requests (depth 6)
 - `post.tst.ts` - POST stress
+- `post-cgi.tst.ts` - POST stress through CGI
 - `upload.tst.ts` - Upload stress
+
+#### upload/
+**Purpose**: Multipart upload -- the filter's rejection paths, the handler matrix, and the size sweep
+
+**Tests**:
+- `boundary.tst.ts` - Every documented rejection path in `uploadFilter.c`, and the client-filename
+  policy. Pins [#10367](../doc/issues/tickets/10367.md): a malformed multipart gets no response and
+  the connection is held
+- `handlers.tst.ts` - The same upload behind `fileHandler`, `cgiHandler`, `fastHandler`,
+  `proxyHandler` and PHP through CGI. The PHP arm runs when `php-cgi` is on `PATH`
+- `sizes.tst.ts` - Zero bytes upward, a boundary straddling a write, and `LimitUpload`
+- `multipart.ts` - Shared body builder and raw-socket sender. Not a test
+
+These drive a socket rather than a client library: a malformed multipart is precisely the body a
+client library will not produce.
+
+**Routes**: `^/upload/`, `^/action/upload$`, `^/upload-file/`, `^/upload-limit/`, `^/fast-upload/`,
+`^/php-upload/` in `appweb.conf`; `^/upload` in `proxy.conf`
+
+#### flow/
+**Purpose**: Request and response flow control
+
+**Tests**:
+- `response.tst.ts` - A slow reader against `fileHandler`, `actionHandler`, `cgiHandler`,
+  `fastHandler` and `proxyHandler`
+- `request.tst.ts` - A body written slowly to the CGI, FastCGI and proxy gateways and to the upload
+  filter, plain and chunked, down to one byte per write
+- `slow.ts` - The slow client. Not a test
+
+The client pauses the **socket** rather than sleeping between reads, so the receive window actually
+closes -- `cgi/pausing.tst.ts` and `fast/pausing.tst.ts` sleep in the application and would pass
+against a server with backpressure removed.
+
+#### ws/
+**Purpose**: WebSocket protocol, at the level of individual frames
+
+**Tests**:
+- `frames.tst.c` - Handshake, accept token, the three length encodings, invalid declared lengths
+- `close.tst.c` - The close handshake: valid and reserved status codes, UTF-8 reasons
+- `control.tst.c` - Ping/pong, the 125-byte control limit, fragmented control frames, reserved opcodes
+- `message.tst.c` - Fragmentation and reassembly, opcode sequencing, UTF-8 validation,
+  `LimitWebSocketsMessage`. Pins [#10370](../doc/issues/tickets/10370.md) and
+  [#10099](../doc/issues/tickets/10099.md)
+- `flow.tst.c` - A 1MB fragmented message echoed to a client reading 16K at a time
+- `limit-websockets.tst.ts` - `LimitWebSockets` caps concurrent upgrades
+- `websockets.tst.ts` - A conventional client opens and closes on the primary endpoint
+- `wsclient.h` - Shared raw client. Not a test
+
+**These are `.tst.c` and must stay so.** The Ejscript shim UTF-8 encodes any octet above 0x7f, so it
+cannot write a frame header at all.
+
+**After editing `wsclient.h`, run `rm -rf test/ws/.testme`** -- TestMe keys its compile cache on the
+`.tst.c` alone, so a header change silently reruns the previous binary (testme #10003).
+
+**Routes**: `^/ws/` and `^/ws-limit/` (fixed-document handler), `^/wsecho$` and `^/wslimit$` (echo)
+
+#### soak/
+**Purpose**: A sustained mixed workload, and what the server's resource use does across it
+
+**Tests**:
+- `soak.tst.ts` - Static, large static, CGI, FastCGI, proxy, upload, blocking action write and
+  WebSocket, in a loop, for a depth-scaled duration. Samples resident memory, open descriptors and
+  child processes either side and asserts bounded growth
+
+Its own configuration group, and therefore its own server: the measurement is of one process across
+one interval, so a server that had already served the rest of the suite would start from an unknown
+baseline.
+
+**Duration by depth**: 3s, 10s, 30s, 60s, 120s, 240s, 480s, 900s, 1800s, 3600s. Depth 0 is a smoke
+test of the harness; the real runs are `tm --depth 3 soak` and above, invoked by hand.
+
+This produces the load evidence `doc/compliance/traceability.md` records as SEC-013's gap. It sees the
+operating system's view of the process only -- it cannot see inside the MPR heap, and a clean result
+is not a statement that the server does not leak. See `leak/valgrind.tst.ts` for the same limit from
+the other side.
 
 ---
 

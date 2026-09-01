@@ -25,6 +25,15 @@
 #include "testme.h"
 #include "mpr.h"
 
+/*
+    POSIX only, and guarded rather than assumed. startProcess has two implementations; the branch this
+    covers is the one that forks, which exists only where ME_UNIX_LIKE. Windows creates the child with
+    CreateProcess and has no forked child to escape, so there is nothing here to assert -- but the test
+    included unistd.h unconditionally, so instead of skipping it failed to compile and was reported as
+    an error for the whole run.
+ */
+#if ME_UNIX_LIKE
+
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -86,8 +95,12 @@ static int cloneEscaped(cchar *dir)
 }
 
 
+#endif /* ME_UNIX_LIKE */
+
+
 int main(int argc, char **argv)
 {
+#if ME_UNIX_LIKE
     cchar *missing;
 
     mprCreate(argc, argv, 0);
@@ -106,5 +119,8 @@ int main(int argc, char **argv)
     teq(cloneEscaped(mprGetTempPath(NULL)), 0, "a valid directory must spawn without escaping a clone");
 
     mprDestroy();
+#else
+    tskip("startProcess forks only where ME_UNIX_LIKE; Windows has no forked child to escape");
+#endif
     return 0;
 }

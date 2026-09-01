@@ -6,9 +6,15 @@
 set -u
 
 TESTDIR="$(cd "$(dirname "$0")/.." && pwd)"
-BIN="${TESTDIR}/../build/bin/appweb"
+. "${TESTDIR}/utils/testenv.sh"
+
+BIN="$(tmAppweb "${TESTDIR}/../build/bin")"
 PORT=4501
 WORK="${TESTDIR}/tmp/cors-config-invalid"
+
+#   Paths that go into the configuration appweb reads, rather than into a shell command
+NATIVE_TESTDIR="$(tmNative "${TESTDIR}")"
+NATIVE_WORK="$(tmNative "${WORK}")"
 
 fail() { echo "FAIL: $*"; exit 1; }
 
@@ -29,9 +35,9 @@ check_rejected() {
     local log="${WORK}/${name}.log"
 
     cat > "${conf}" <<CONF
-ErrorLog ${log} level=4
+ErrorLog ${NATIVE_WORK}/${name}.log level=4
 Listen ${PORT}
-Documents ${TESTDIR}/web
+Documents ${NATIVE_TESTDIR}/web
 AddHandler fileHandler html txt ""
 
 <Route ^/cors>

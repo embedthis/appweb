@@ -6,32 +6,29 @@
     so never ran this -- the previous revision reported PASS having asserted nothing. See issue
     10047.
 
-    curl reuses the connection within one invocation and starts a new one between invocations, so
-    the two modes are a batched request list versus repeated single requests. The counts are lower
-    than the previous 110 and 50 because each handshake is a real one rather than a skipped test,
-    and the group already runs alongside the rest of the suite.
+    The two modes are many requests over one connection versus one request per connection. The counts
+    are lower than the previous 110 and 50 because each handshake is a real one rather than a skipped
+    test, and the group already runs alongside the rest of the suite.
+
+    The reused half went through curl directly rather than through the helper, and kept a --cacert
+    that no Windows curl honours -- every curl there is built against Schannel, which validates only
+    against the Windows certificate store. It now goes through getMany, which does not verify at all:
+    what this file asserts is that a connection survives reuse and that repeated handshakes do not
+    leak, and ssl/cert.tst.ts is where verification is asserted.
  */
 
 import {ttrue, tget} from '@embedthis/testme'
-import {get, cert} from './tls'
-import {Cmd} from '@embedthis/ejscript'
+import {get, getMany, cert} from './tls'
 
 const CA = cert('ca.crt')
 const HTTPS = (tget('TM_HTTPS') || 'https://localhost:4443').replace('127.0.0.1', 'localhost')
 
 /*
-    Keep-alive: one curl invocation issuing many requests over a reused connection. Every response
-    must be 200, so the count of 200s must equal the count requested.
+    Keep-alive: many requests over one reused connection. Every response must be 200, so the count of
+    200s must equal the count requested.
  */
 const REUSED = 40
-let urls = ''
-for (let i = 0; i < REUSED; i++) {
-    urls += " '" + HTTPS + "/index.html'"
-}
-let out = await Cmd.sh("curl --silent --output /dev/null --write-out '%{http_code}\\n' " +
-                       "--max-time 60 --cacert '" + CA + "'" + urls + " 2>/dev/null")
-let codes = out.trim().split('\n').filter((s: string) => s.trim() == '200')
-ttrue(codes.length == REUSED)
+ttrue(await getMany(HTTPS + '/index.html', REUSED) == REUSED)
 
 //  Fresh connection and handshake per request
 const FRESH = 10

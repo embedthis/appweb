@@ -38,7 +38,12 @@ if (Config.OS == 'windows') {
     ttrue(http.status == 200)
     contains(http, 'cgiProgram: Output')
 
-    //  Test batch file
+    /*
+        A batch file named with its extension is an ordinary CGI target: the operator put it in the
+        CGI directory, exactly as they would an .exe. This is not the 10155 case, which was
+        /cgi-bin/name silently resolving to name.bat and running through cmd.exe -- a target the
+        request never named. cgi/windows-shell-fallback.tst.ts covers that, and it stays refused.
+     */
     http.get(HTTP + '/cgi-bin/test.bat')
     await http.finalize()
     ttrue(http.status == 200)

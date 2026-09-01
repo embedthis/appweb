@@ -20,7 +20,7 @@ import {teq, ttrue} from '@embedthis/testme'
 import {existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs'
 import net from 'node:net'
 import {resolve} from 'node:path'
-import {BIN, TESTDIR, workDir} from './server'
+import {BIN, TESTDIR, removeDir, workDir} from './server'
 
 const OVER_PORT = 4523
 const UNDER_PORT = 4524
@@ -36,6 +36,10 @@ interface Attempt {
     text: string
     closed: boolean
     connected: boolean
+    //  How the connection ended: 'close', 'error:<code>' or 'timeout'. Reported in the failure messages
+    //  because "not closed" alone does not say whether the server hung or the peer was reset, and this
+    //  test has failed on CI in a way that could not be reproduced locally.
+    how: string
 }
 
 /*
@@ -46,7 +50,7 @@ interface Attempt {
 async function attempt(port: number, timeout = 5000): Promise<Attempt> {
     return await new Promise<Attempt>(resolvePromise => {
         let socket = net.connect(port, '127.0.0.1')
-        let result: Attempt = {text: '', closed: false, connected: false}
+        let result: Attempt = {text: '', closed: false, connected: false, how: 'timeout'}
         let done = false
 
         let finish = () => {
@@ -65,10 +69,28 @@ async function attempt(port: number, timeout = 5000): Promise<Attempt> {
         })
         socket.on('data', chunk => (result.text += chunk.toString()))
         socket.on('close', () => {
+            result.how = 'close'
             result.closed = true
             finish()
         })
-        socket.on('error', () => finish())
+        /*
+            A reset is a close, and must be counted as one. The deny path closes the accepted socket
+            without reading it, so whether the peer sees FIN or RST is a race with its own request:
+            close first and the request never lands, giving a clean FIN; request first and the socket
+            is closed with unread data still in its receive queue, which is the case TCP answers with
+            RST. The peer then sees ECONNRESET, or EPIPE if it was mid-write. Either is the server
+            refusing the connection, not leaving it hanging.
+
+            A genuine hang is still caught. It produces neither a close nor an error, and finishes on
+            the timeout with closed false and how 'timeout'.
+         */
+        socket.on('error', (error: NodeJS.ErrnoException) => {
+            result.how = `error:${error.code}`
+            if (result.connected && (error.code === 'ECONNRESET' || error.code === 'EPIPE')) {
+                result.closed = true
+            }
+            finish()
+        })
     })
 }
 
@@ -135,8 +157,14 @@ async function withLimit(name: string, port: number, limit: string, test: (serve
         }
         await test(server)
     } finally {
+        /*
+            Wait for the server to go before removing the directory it was writing into. Killing is
+            asynchronous, and Windows will not unlink a directory while a handle is still open on a
+            file in it -- so every assertion here passed and the test failed anyway, in the cleanup
+            that runs after them. withServer in ./server had the same fault; removeDir is its fix.
+         */
         server.kill('SIGKILL')
-        rmSync(work, {recursive: true, force: true})
+        await removeDir(work, server.exited)
     }
 }
 
@@ -145,7 +173,7 @@ await withLimit('mem-limit-over', OVER_PORT, TINY, async server => {
     let first = await attempt(OVER_PORT)
     ttrue(first.connected, 'the listener must still accept at the TCP level')
     teq(first.text, '', `a request over the memory limit must not be served, got: ${first.text.slice(0, 80)}`)
-    ttrue(first.closed, 'the refused connection must be closed, not left hanging')
+    ttrue(first.closed, `the refused connection must be closed, not left hanging; ended by ${first.how}`)
 
     let second = await attempt(OVER_PORT)
     teq(second.text, '', 'the server must still be refusing rather than serving')

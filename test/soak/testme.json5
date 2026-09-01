@@ -1,0 +1,27 @@
+{
+    /*
+        The soak group runs a mixed workload for a sustained period and measures what the server's
+        resource use does over time. It gets its own configuration group, and therefore its own
+        server, for the same reason test/stress/ does: whatever a long run leaves behind -- cache
+        entries, session table, keep-alive slots, the MPR heap's high-water mark -- dies with that
+        server instead of being inherited by whatever runs next.
+
+        Here the isolation is load bearing in the other direction too. The measurement is of one
+        process across one interval, so a server that had already served the rest of the suite would
+        start from an unknown baseline and the growth figure would mean nothing.
+     */
+    services: {
+        prep: '../prep.sh',
+        setup: '../setup.sh',
+        cleanup: '../cleanup.sh',
+        healthcheck: { url: 'http://localhost:4100/index.html' },
+    },
+    execution: {
+        /*
+            Well above the group's own budget. The workload is depth-scaled and at depth 0 finishes in
+            a few seconds; at higher depths it is measured in minutes and the default 120s would kill
+            it mid-run, which reads as a hang rather than as a timeout.
+         */
+        timeout: 900,
+    },
+}

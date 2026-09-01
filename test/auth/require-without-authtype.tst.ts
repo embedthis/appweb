@@ -21,7 +21,7 @@
 import {ttrue} from '@embedthis/testme'
 import {mkdirSync, rmSync, writeFileSync} from 'node:fs'
 import {resolve} from 'node:path'
-import {BIN, TESTDIR, withServer, workDir} from '../security/server'
+import {BIN, TESTDIR, removeDir, withServer, workDir} from '../security/server'
 
 const PORT = 4526
 const REALM = 'example.com'
@@ -59,7 +59,7 @@ async function reject(name: string, directives: string[]): Promise<string | null
         return killed || status == 0 ? null : error
     } finally {
         server.kill('SIGKILL')
-        rmSync(work, {recursive: true, force: true})
+        await removeDir(work, server.exited)
     }
 }
 

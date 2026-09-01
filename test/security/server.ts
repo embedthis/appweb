@@ -23,6 +23,31 @@ export function workDir(name: string): string {
 }
 
 /*
+    Remove a work directory that a server has been writing into.
+
+    Killing a process is asynchronous: kill() returns as soon as the signal is delivered, not when the
+    process has gone. On Unix that costs nothing, because a directory can be unlinked while a handle is
+    still open on a file in it. On Windows it cannot -- the delete fails with EBUSY while the server
+    still holds its error and trace logs -- so a test whose assertions had all passed still failed, in
+    the cleanup that runs after them. Wait for the exit, then retry briefly: the handles are released as
+    the process is torn down, which is not always complete when "exited" resolves.
+ */
+export async function removeDir(dir: string, exited?: Promise<unknown>): Promise<void> {
+    if (exited) {
+        await exited
+    }
+    for (let i = 0; i < 20; i++) {
+        try {
+            rmSync(dir, {recursive: true, force: true})
+            return
+        } catch (err) {
+            await Bun.sleep(50)
+        }
+    }
+    rmSync(dir, {recursive: true, force: true})
+}
+
+/*
     Is something already listening on this port? A server orphaned by an interrupted run keeps its port, the
     server started here then fails to bind, and waitForServer is answered by the orphan -- so the test silently
     runs against a stale build and reports on it. Refuse to start rather than report a result from the wrong
@@ -101,6 +126,6 @@ export async function withServer(name: string, port: number, extra: string[], te
         await test()
     } finally {
         server.kill('SIGKILL')
-        rmSync(work, {recursive: true, force: true})
+        await removeDir(work, server.exited)
     }
 }

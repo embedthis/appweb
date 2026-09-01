@@ -24,13 +24,21 @@ if (tget('TESTME_OS') == 'windows') {
     tskip("symbolic links require privilege on windows")
 } else {
     /*
-        Tests run with the cwd of their own directory, so anchor every path on the test directory that
-        holds testme.json5 -- it is the directory the server publishes from.
+        Anchor every path on this file's own directory, not on TESTME_CONFIGDIR.
+
+        The server publishes from test/, and this file is one level below it, so `..` from here is the
+        right base whatever the configuration looks like. TESTME_CONFIGDIR is the directory holding
+        the testme.json5 that applies to this test, which is not the same thing: it was test/ only for
+        as long as this group had no config of its own. Giving test/security/ its own configuration
+        group -- so the fuzz campaign's held-open connections stop poisoning the rest of the suite --
+        moved it to test/security/, and every fixture below was then created under a test/security/web
+        that does not exist. A path that changes meaning when a config file is added is not anchored
+        on anything.
 
         The document root is test/web. test/tmp is a sibling of it, so anything there is outside the
         published tree while still being a file the server could read.
      */
-    const base = resolve(tget('TESTME_CONFIGDIR') || '..')
+    const base = resolve(import.meta.dir, '..')
     const web = `${base}/web`
     const outside = `${base}/tmp`
     const secret = 'TOP-SECRET-OUTSIDE-DOCROOT\n'

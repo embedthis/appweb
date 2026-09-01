@@ -16,15 +16,31 @@ cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
 BIN="${BIN:-$(cd ../build/bin 2>/dev/null && pwd)}"
 BIN=$(cd "$(dirname "${BIN}")" && pwd)/$(basename "${BIN}")
 
+#
+#   NATIVE_BIN is BIN in the form a native Windows program can resolve. It is used only for the
+#   testScript shebang, which is read by appweb (prepWinProgram) rather than by this shell: appweb
+#   cannot resolve the /c/... paths MSYS works in, so a shebang written with one names a program that
+#   does not exist and every CGI test that runs testScript fails with "Cannot run CGI process".
+#   Everything else below is a shell file operation and stays in POSIX form.
+#
+NATIVE_BIN="${BIN}"
+
 if [ "$TESTME_OS" = "windows" ] ; then
     EXE=".exe"
+    NATIVE_BIN=$(cygpath -m "${BIN}")
     (cd .. ; test/utils/prep-test.bat)
 else
     EXE=""
     (cd .. ; test/utils/prep-test.sh)
 fi
 
-mkdir -p cgi-bin fast-bin web/tmp
+#
+#   tmp/keep is the upload directory for the /upload-file route, which runs with UploadAutoDelete
+#   off. Nothing else writes there, so a test can count it before and after a request. Emptied here
+#   rather than in cleanup.sh so a failed run leaves the evidence behind to look at.
+#
+mkdir -p cgi-bin fast-bin web/tmp tmp/keep
+rm -f tmp/keep/*
 
 #
 #   Install a program fixture.
@@ -55,6 +71,15 @@ if [ ! -f web/1K.txt ]; then
     utils/make-files 2050 web/100K.txt
     :
 fi
+
+#
+#   1MB, for the response flow-control tests. 100K.txt is too small to fill a write queue, so a
+#   slow-reader test against it can pass without the server ever applying backpressure.
+#
+if [ ! -f web/1M.txt ]; then
+    echo '   [Create] web/1M.txt'
+    utils/make-files 20972 web/1M.txt
+fi
 #   utils/make-files 10250 web/500K.txt
 #   utils/make-files 21000 web/1M.txt
 #   utils/make-files 210000 web/10M.txt
@@ -68,8 +93,30 @@ if [ -f "${BIN}/cgiProgram${EXE}" ]; then
     echo '   [Create] testScript'
     cgiProgram="${BIN}/cgiProgram${EXE}"
     rm -f cgi-bin/testScript
-    echo "#!${cgiProgram}" > cgi-bin/testScript
+    echo "#!${NATIVE_BIN}/cgiProgram${EXE}" > cgi-bin/testScript
     chmod 755 cgi-bin/testScript
+
+    #
+    #   cgi/programs.tst.ts asks for /cgi-bin/test on Windows to cover prepWinProgram's shebang
+    #   handling, which is a separate path from the extensionless one. The fixture was never
+    #   created, so that assertion had nothing to run and returned 404. It went unnoticed because
+    #   the Windows build failed earlier and the suite never reached the line.
+    #
+    if [ "$TESTME_OS" = "windows" ] ; then
+        echo '   [Create] test'
+        rm -f cgi-bin/test
+        echo "#!${NATIVE_BIN}/cgiProgram${EXE}" > cgi-bin/test
+        chmod 755 cgi-bin/test
+
+        #
+        #   A batch file under cgi-bin, for the .bat arm of cgi/programs.tst.ts. Naming the extension
+        #   is an ordinary CGI target, as an .exe would be; it is the extensionless spelling that must
+        #   not resolve to a .bat through cmd.exe, and cgi/windows-shell-fallback.tst.ts covers that.
+        #
+        echo '   [Create] test.bat'
+        rm -f cgi-bin/test.bat
+        printf '@echo off\r\necho Content-Type: text/plain\r\necho.\r\necho cgiProgram: Output\r\n' > cgi-bin/test.bat
+    fi
 
     install_program "${cgiProgram}" "cgi-bin/cgiProgram${EXE}"
     install_program "${cgiProgram}" "cgi-bin/nph-cgiProgram${EXE}"

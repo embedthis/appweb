@@ -15,7 +15,20 @@ const HTTP = tget('TM_HTTP') || '127.0.0.1:4100'
 if (Config.OS != 'windows') {
     tskip('Windows cmd.exe shell fallback regression')
 } else {
-    const base = resolve(tget('TESTME_CONFIGDIR') || '..')
+    /*
+        Anchor on this file's own directory. The server publishes from test/ -- ScriptAlias maps
+        /cgi-bin/ to ${HOME}/cgi-bin/ and Documents is web -- and this file is one level below it, so
+        `..` from here is the right base.
+
+        It used to read TESTME_CONFIGDIR, which is the directory holding the testme.json5 that applies
+        to the test, and that is not the same thing. test/cgi has its own config, so the base resolved
+        to test/cgi and every path below pointed at a test/cgi/cgi-bin and test/cgi/web/tmp that the
+        server does not publish and that nothing else creates. mkdirSync would have made them happily
+        and the request would then have 404'd on a program that was never staged where the server
+        looks. Wrong since the file was written, and invisible because the whole test is gated to
+        Windows and has never executed.
+     */
+    const base = resolve(import.meta.dir, '..')
     const cgiBin = `${base}/cgi-bin`
     const webTmp = `${base}/web/tmp`
     const name = `issue-10155-${App.pid}`

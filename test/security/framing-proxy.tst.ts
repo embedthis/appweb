@@ -14,8 +14,19 @@
     missing error response is tracked separately.
  */
 
-import {ttrue, tget} from '@embedthis/testme'
-import {Uri} from '@embedthis/ejscript'
+import {tget, tskip, ttrue} from '@embedthis/testme'
+import {Config, Uri} from '@embedthis/ejscript'
+
+/*
+    The proxy handler is ME_UNIX_LIKE only: proxyHandler.c compiles to nothing elsewhere, so
+    conditionalDefinition reports PROXY_MODULE false and the <if PROXY_MODULE> block that declares the
+    /badproxy/ route this drives is not read. Without the skip every case here fails with a 404 from
+    the default route, which reads as a framing defect rather than an absent handler.
+ */
+if (Config.OS == 'windows') {
+    tskip('the proxy handler is not built on Windows, so the /badproxy/ route does not exist')
+    process.exit(0)
+}
 
 const HTTP = new Uri(tget('TM_HTTP') || 'http://127.0.0.1:4100')
 const PROXY = `http://${HTTP.host}:${HTTP.port}/badproxy/x`

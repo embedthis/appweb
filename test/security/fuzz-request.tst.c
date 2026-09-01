@@ -38,19 +38,54 @@
 #define TAIL_WAIT    200
 
 /*
-    Held-open cases produced per round against the current server. Sixteen: a NUL anywhere in the
-    request line or header block (10165, confirmed), every mutation of a SIP request line, and two
-    variants of a corrupted absolute-form target. All are 10177. The gate in main() asserts this
-    count exactly, so a seventeenth fails the run.
+    The held-open baseline is a set of shapes, not a count.
 
-    FIRST_WAIT is 2000ms rather than something tighter because the count must not depend on load:
-    at 600ms one slow-but-valid response was miscounted as held, and the baseline moved between
-    runs. Three consecutive runs at 2000ms give 16.
+    It used to be a count -- HELD_BASELINE * rounds, with HELD_BASELINE 16 -- and that model is
+    wrong, because the number is not a constant. Two of the mutators pick a byte position from the
+    shared generator, whose state carries across rounds, so each round mutates differently and the
+    number of positions that happen to wedge the server is a draw. The count was measured at depth
+    0, where one round gives 16, and generalised to 16 per round. It survives depth 1 by luck (32)
+    and fails at depth 2, which yields 63 rather than 64 -- reproducibly, since the campaign is
+    deterministic. Asserting that a random variable equals a constant fails for a reason that says
+    nothing about the server.
+
+    What is actually invariant is which (seed, mutator) shapes wedge it:
+
+      - mutator 3, the NUL injection, on every seed. A NUL anywhere in the request line or header
+        block wedges the server, so where the random position lands does not change the outcome.
+        Ten shapes, held in every round.
+      - seed 6, the SIP request line, under every mutator. Five more shapes, held in every round --
+        six less the one already counted above.
+
+    Fifteen shapes, every round, at every depth. Everything else held is mutator 0, the bit flip,
+    whose effect genuinely does depend on which byte it lands on; observed once at depth 0, twice at
+    depth 1, three times at depth 2, and never more than once per round.
+
+    So the gate below asserts three things: every core shape wedges in every round, nothing outside
+    the core wedges under any mutator but the bit flip, and the bit flip does not suddenly start
+    wedging far more often. That is a stronger ratchet than the count ever was -- a new wedging
+    shape now fails even when the total happens to match -- and it does not fail on a draw.
+
+    FIRST_WAIT is 2000ms rather than something tighter because the classification must not depend on
+    load: at 600ms one slow-but-valid response was miscounted as held.
  */
-#define HELD_BASELINE 16
+#define MAX_SEEDS    16
+#define MUTATORS     6
+
+/*
+    True for a shape that must wedge the server in every round. When the underlying hold-open
+    defects are fixed this function returns 0 for everything and the gate becomes "nothing is held".
+ */
+static int coreShape(int seed, int op)
+{
+    return (op == 3 || seed == 6) ? 1 : 0;
+}
 
 static cchar *host = "127.0.0.1";
 static int   port;
+
+//  How many rounds each (seed, mutator) shape was held open. File scope so the collector cannot reach it.
+static int   heldShape[MAX_SEEDS][MUTATORS];
 
 /*
     Park-Miller. Adequate for shuffling bytes, and reproducible in one line on every platform.
@@ -209,8 +244,17 @@ static ssize mutate(int op, cchar *in, ssize inlen, char *out, ssize outsize)
 
 
 /*
-    Send request and read whatever comes back. Returns the response length; response is always
-    NUL terminated for the scontains below.
+    Send request and read whatever comes back. Returns the response length, or -1 if the connection
+    could never be established. Response is always NUL terminated for the scontains below.
+
+    The -1 matters as much as the oracle below it. A connection that cannot be established has
+    tested nothing, and it is not evidence about the server's framing: the campaign is the heaviest
+    client in the suite and can reach LimitConnectionsPerClient on its own, at which point the
+    server refuses the connect. Returning 0 for that -- an empty response with the connection never
+    opened, indistinguishable here from one held open having decided nothing -- made every refused
+    connect increment the held count. That is how a connection limit came to be reported as 112
+    wedged requests against a baseline of 16, sending the diagnosis after a server that wedges
+    rather than after a campaign that had run out of connections.
  */
 static ssize probe(cchar *request, ssize len, char *response, ssize size, int *closed)
 {
@@ -221,12 +265,12 @@ static ssize probe(cchar *request, ssize len, char *response, ssize size, int *c
     response[0] = '\0';
     *closed = 0;
     if ((sp = mprCreateSocket()) == 0) {
-        return 0;
+        return -1;
     }
     mprAddRoot(sp);
     if (mprConnectSocket(sp, host, port, 0) < 0) {
         mprRemoveRoot(sp);
-        return 0;
+        return -1;
     }
     mprSetSocketBlockingMode(sp, 1);
     mprWriteSocket(sp, (char*) request, len);
@@ -284,8 +328,10 @@ int main(int argc, char **argv)
 {
     char  *request, *mutated, *response;
     char  hostHeader[64];
+    char  missingAt[128], unexpectedAt[128];
     ssize len;
-    int   depth, rounds, round, cases, held, doubled, closed, i, op;
+    int   depth, rounds, round, cases, held, doubled, refused, closed, i, op;
+    int   missing, unexpected, extra, n;
 
     static int scale[] = {1, 2, 4, 8, 16, 24, 32, 40, 48, 64};
 
@@ -299,17 +345,28 @@ int main(int argc, char **argv)
     response = mprAlloc(MAX_RESPONSE);
     fmt(hostHeader, sizeof(hostHeader), "%s:%d", host, port);
 
-    cases = held = doubled = 0;
+    cases = held = doubled = refused = 0;
+
+    //  The shape tally is indexed by seed, so a corpus that outgrows it would write past the array
+    for (i = 0; seeds[i]; i++) { }
+    ttrue(i <= MAX_SEEDS, "the seed corpus has %d entries, more than MAX_SEEDS %d", i, MAX_SEEDS);
 
     for (round = 0; round < rounds; round++) {
         for (i = 0; seeds[i]; i++) {
             fmt(request, MAX_REQUEST, seeds[i], hostHeader);
 
-            for (op = 0; op < 6; op++) {
+            for (op = 0; op < MUTATORS; op++) {
                 len = mutate(op, request, slen(request), mutated, MAX_REQUEST);
                 cases++;
 
-                probe(mutated, len, response, MAX_RESPONSE, &closed);
+                if (probe(mutated, len, response, MAX_RESPONSE, &closed) < 0) {
+                    /*
+                        The connection was never established, so this case tested nothing. Counted
+                        separately and asserted zero below, never folded into held.
+                     */
+                    refused++;
+                    continue;
+                }
 
                 if (scontains(response, "HTTP/1.") == 0) {
                     /*
@@ -328,6 +385,7 @@ int main(int argc, char **argv)
                      */
                     if (!closed) {
                         held++;
+                        heldShape[i][op]++;
                         tinfo("held open: seed %d mutator %d", i, op);
                     }
                     continue;
@@ -353,23 +411,91 @@ int main(int argc, char **argv)
     teqi(doubled, 0, "no input may yield a second response");
 
     /*
-        Held-open connections are gated on a recorded baseline rather than on zero.
+        Every case must have reached the server. A refused connect is not a finding about framing,
+        it is the campaign having run out of connections, and it means the cases it was counted
+        against were never actually sent. Asserted separately from held so the two can never be
+        confused again, and stated in terms of the limit it will be, so the next person reads the
+        message rather than re-deriving it.
 
-        HELD_BASELINE is what this campaign produces per round against the current server. The
-        class is real -- 10165 is the confirmed and filed instance, a NUL anywhere in the request
-        line or header block -- and the rest are variants awaiting individual triage under 10177.
-        Failing on sight would block this file on that triage; asserting equality keeps every one
-        of them pinned and still fails the moment a new one appears.
-
-        Same shape as the scoped exemption test/sec's Makefile carries for the one known unfixed
-        stoiradix overflow, and for the same reason: a fuzzer blocked on triage of what it has
-        already found stops finding anything new.
-
-        When 10165 and 10177 are fixed this becomes teqi(held, 0, ...) and the constant goes.
+        If this fires, the campaign is exceeding LimitConnectionsPerClient in appweb.conf. That
+        should not be reachable: the campaign holds about one stranded connection at a time, because
+        probe() closes every socket and the server releases a held-open connection the instant the
+        client does. Measured directly -- forty-five simultaneous strays exhaust the limit, and the
+        server is usable again 0.0s after they are closed. So this firing means either something has
+        changed about that release, or another client is consuming the same budget: on the shared
+        test server that is most often a leftover appweb from an earlier run, which reuses the port
+        and carries the previous run's state.
      */
-    teqi(held, HELD_BASELINE * rounds,
-         "held-open count is %d against a baseline of %d per round over %d round(s)",
-         held, HELD_BASELINE, rounds);
+    teqi(refused, 0,
+         "%d of %d connections were refused: the campaign exceeded the server's connection limit "
+         "and those cases never reached it", refused, cases);
+
+    /*
+        The held-open gate, over shapes rather than over the total. The reasoning is with
+        coreShape() above.
+
+        Held-open connections are gated on a recorded baseline rather than on zero because the class
+        is real and unfixed: a NUL anywhere in the request line or header block is the confirmed
+        instance, and the rest are variants awaiting individual triage. Failing on sight would block
+        this file on that triage, and a fuzzer blocked on triage of what it has already found stops
+        finding anything new. Same shape as the scoped exemption test/sec's Makefile carries for the
+        one known unfixed stoiradix overflow.
+
+        When those defects are fixed, coreShape() returns 0 for everything and this becomes
+        "nothing may be held" with no edit to the gate itself.
+     */
+    missing = unexpected = extra = 0;
+    missingAt[0] = unexpectedAt[0] = '\0';
+
+    for (i = 0; seeds[i]; i++) {
+        for (op = 0; op < MUTATORS; op++) {
+            n = heldShape[i][op];
+            if (coreShape(i, op)) {
+                /*
+                    A core shape that stops wedging is as much a finding as a new one that starts:
+                    either the server was fixed, in which case this baseline is stale and must be
+                    retightened, or the campaign stopped reaching it.
+                 */
+                if (n != rounds) {
+                    missing++;
+                    if (!missingAt[0]) {
+                        fmt(missingAt, sizeof(missingAt), "seed %d mutator %d held in %d of %d round(s)",
+                            i, op, n, rounds);
+                    }
+                }
+            } else if (n > 0) {
+                if (op == 0) {
+                    //  The bit flip picks its byte at random, so which seeds it wedges is a draw
+                    extra += n;
+                } else {
+                    unexpected++;
+                    if (!unexpectedAt[0]) {
+                        fmt(unexpectedAt, sizeof(unexpectedAt), "seed %d mutator %d held in %d of %d round(s)",
+                            i, op, n, rounds);
+                    }
+                }
+            }
+        }
+    }
+
+    teqi(missing, 0, "%d known held-open shape(s) stopped wedging the server; first: %s",
+         missing, missingAt);
+
+    teqi(unexpected, 0, "%d shape(s) wedged the server that are not known; first: %s",
+         unexpected, unexpectedAt);
+
+    /*
+        The bit flip is allowed to wedge, because where it lands is a draw -- but at most once per
+        round. Observed once at depth 0, twice at depth 1 and three times at depth 2. A jump here
+        means many more byte positions began wedging, which is a finding even though any single one
+        of them is expected.
+     */
+    ttrue(extra <= rounds,
+          "the bit-flip mutator wedged %d time(s) over %d round(s), more than one per round",
+          extra, rounds);
+
+    tinfo("held open: %d total -- %d from core shapes over %d round(s), %d from the bit flip",
+          held, held - extra, rounds, extra);
 
     /*
         The server is still serving. Without this the campaign could pass against a server that

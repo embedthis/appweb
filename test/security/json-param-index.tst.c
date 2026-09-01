@@ -31,21 +31,25 @@ static uint64 insertProperties(int count, int reps)
 
 int main(int argc, char **argv)
 {
-    uint64  small, large;
+    /*
+        Not "small" and "large": rpcndr.h, which windows.h includes, defines "small" as char, so the
+        declaration expanded to "uint64 char, large" and the test could not be compiled on Windows.
+     */
+    uint64  smallDoc, largeDoc;
 
     mprCreate(argc, argv, 0);
     mprStart();
 
     insertProperties(16, 10);
-    small = insertProperties(51, 200);
-    large = insertProperties(512, 200);
+    smallDoc = insertProperties(51, 200);
+    largeDoc = insertProperties(512, 200);
 
     /*
         512 is 10x 51. The indexed path should be close to that order. Leave generous headroom for
         allocator noise while still catching the old O(N^2) insertion shape.
      */
-    ttrue(large < max(small, 1) * 35, "512 inserts took %llu ticks vs 51 inserts %llu ticks",
-          large, small);
+    ttrue(largeDoc < max(smallDoc, 1) * 35, "512 inserts took %llu ticks vs 51 inserts %llu ticks",
+          largeDoc, smallDoc);
 
     mprDestroy();
     return 0;

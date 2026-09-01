@@ -31,6 +31,18 @@
 #define FIRST_WAIT   5000               /* Wait for the response to start */
 #define TAIL_WAIT    1000               /* Wait for more of a response already begun, or a second one */
 
+/*
+    The fixture that emits the header blocks below. web/hdrtest.cgi is "#!/bin/sh", which a native
+    Windows process cannot run -- appweb reads the shebang and cannot find the interpreter, so every
+    case answered 404 and asserted nothing. web/hdrtest.bat is the entry point there and emits the
+    same bytes: it runs hdrtest.cgi through sh.
+ */
+#if ME_WIN_LIKE
+    #define HDRTEST "/hdrtest.bat"
+#else
+    #define HDRTEST "/hdrtest.cgi"
+#endif
+
 static cchar *host = "127.0.0.1";
 static int   port;
 
@@ -166,24 +178,24 @@ int main(int argc, char **argv)
     port = tgeti("TM_HTTP_PORT", 4100);
 
     //  The ordinary cases must not regress: the body arrives and the connection stays usable
-    checkOk("/hdrtest.cgi?cl-exact", "Content-Length: 5", "CGI declaring its exact body length");
-    checkOk("/hdrtest.cgi?cl-empty", "Content-Length: 0", "CGI declaring an empty body");
+    checkOk(HDRTEST "?cl-exact", "Content-Length: 5", "CGI declaring its exact body length");
+    checkOk(HDRTEST "?cl-empty", "Content-Length: 0", "CGI declaring an empty body");
 
-    r = probe("/hdrtest.cgi?cl-exact");
+    r = probe(HDRTEST "?cl-exact");
     tcontains(r, "SHORT", "CGI body must arrive intact");
 
     //  Declares 9999 and writes 5. The next response would be read as the remainder of this one
-    checkMismatch("/hdrtest.cgi?cl-long", "CGI declaring more than it writes");
+    checkMismatch(HDRTEST "?cl-long", "CGI declaring more than it writes");
 
     //  Declares 2 and writes 49, the excess being a complete response of its own
-    r = probe("/hdrtest.cgi?cl-short");
+    r = probe(HDRTEST "?cl-short");
     ttrue(scontains(r, "INJECTED") == 0, "excess CGI output must not reach the client");
     ttrue(scontains(r, "ALIVE") == 0, "CGI overrun must not answer the next request on the connection");
     ttrue(responses(r) <= 1, "CGI overrun must not yield a second response");
 
     //  Not 1*DIGIT, and an int64 overflow. Both were read as a length by the lenient conversion
-    checkRefused("/hdrtest.cgi?cl-bad", "a non numeric CGI Content-Length");
-    checkRefused("/hdrtest.cgi?cl-huge", "an overflowing CGI Content-Length");
+    checkRefused(HDRTEST "?cl-bad", "a non numeric CGI Content-Length");
+    checkRefused(HDRTEST "?cl-huge", "an overflowing CGI Content-Length");
 
 #if ME_UNIX_LIKE
     /*
