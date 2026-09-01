@@ -203,6 +203,60 @@ consider migrating to [Ioto Device Agent](https://www.embedthis.com/ioto/).
   blocked `sendfile` transfer whose stream was destroyed leaving the garbage collector free to reclaim the
   file being written from. Found internally; no separate advisory.
 
+- **High**: Fixed an authorization requirement that enforced nothing and said nothing. `Require
+  ability|role|user|valid-user` recorded the requirement on the route, but the check that reads it at
+  request time is installed by `AuthType` — so a route carrying a `Require` with no `AuthType` anywhere in
+  its ancestry parsed without error, started without a warning and **served every client**. Nothing in the
+  configuration, the logs or the startup output distinguished it from a route that was genuinely
+  protected. Such a configuration is now rejected and the server does not start, naming the route. The
+  same defect and the same repair apply to `auth.require` in a JSON configuration. Found internally; no
+  separate advisory. **See Breaking Changes.**
+
+  Deployments with a `Require` or `auth.require` on any route should check that an `AuthType` or
+  `auth.type` is in scope for it before upgrading — see the migration note below.
+
+- **High**: Fixed a CGI or FastCGI `Content-Length` being echoed to the client and never checked against
+  the body that followed (CWE-444). Appweb took the gateway program's declared length at face value, made
+  it the response content length, turned off chunking, and then forwarded however many bytes the program
+  actually wrote. Where the two disagreed the response did not match its own framing statement: declaring
+  **more** than was sent left the client reading the next response on the connection as the tail of this
+  one; declaring **less** left the excess at the head of the client's buffer to be parsed as the start of
+  the next response — gateway output injected into a later response, and behind a connection-pooling proxy
+  into a **different client's** response. Both handlers now count the bytes they forward and end the
+  connection on a disagreement. A declared length that is not a plain decimal number that fits is
+  `502 Bad Gateway`, raised before any response header is committed. The reverse-proxy handler was never
+  affected: it discards the backend's length and frames the client response itself. Found internally; no
+  separate advisory.
+
+  Deployments serving CGI or FastCGI programs should upgrade, most sharply where Appweb sits behind a
+  proxy, cache or load balancer that pools connections. A correct program is unaffected.
+
+- **Medium**: Fixed a memory ceiling that did not bind. `LimitMemory` set a limit that nothing enforced:
+  crossing it logged a line, called the memory notifier, and then completed the allocation, so a server
+  could run at many times its configured limit and keep accepting work. Measured with a 4 MB limit, none
+  of 64 allocations was refused at 67 MB resident. The limit is now enforced by shedding load rather than
+  by failing an allocation — at or above it the server stops accepting new connections, answers a new
+  request on an established connection with `503`, and prunes its caches, resuming when memory is
+  reclaimed. `MemoryPolicy continue` now prunes the cache, which it had always claimed to do and never
+  did. Found internally; no separate advisory. **See Behavior Changes.**
+
+- **Medium**: Fixed two defects in configuration parsing that silently discarded a security setting. An
+  `Order` directive cleared every other authentication flag on the route, so `AuthSession off` written
+  before it was undone without a word. And `auth.require.roles` written as a plain string rather than a
+  list was discarded entirely when the configuration was parsed, rather than merely left unenforced.
+  Found internally; no separate advisory.
+
+- **Medium**: Fixed a stack overflow collecting a wide JSON document. Garbage collection marked an
+  object's properties by recursing from each into the next, one stack frame per property, so a wide
+  document terminated the process — measured at 20,000 properties against a default 512 KB thread stack,
+  and fewer on targets with smaller stacks. Properties are now marked from their parent, iteratively.
+  Affects applications that build wide trees through the JSON API; a parsed document, configuration files
+  included, could not reach the threshold. Found internally; no separate advisory.
+
+- **Medium**: Fixed a route-scoped `User` rewriting that credential server-wide. A nested route
+  redeclaring a user its parent had declared updated the parent's credential in place, so the password the
+  parent route declared stopped working on the parent route. Found internally; no separate advisory.
+
 ## Supply Chain
 
 - **The vendored PCRE 7.7 regular-expression engine has been removed.** Appweb now ships no regexp engine.
@@ -245,8 +299,24 @@ consider migrating to [Ioto Device Agent](https://www.embedthis.com/ioto/).
 
 ## Testing
 
-- Full TestMe suite: **156 of 156 tests passing**, 1840 of 1840 assertions.
-- Clean build with **zero warnings**.
+- Full TestMe suite: **182 of 182 tests passing**, 2075 of 2075 assertions, from a clean build on
+  macOS arm64. The source archive runs one test fewer — the fuzzing group builds only against an
+  internal repository and is not distributed — and passes **181 of 181 with 2068 assertions** from a
+  clean unpack.
+- **The suite is verified on Linux for this release**: Ubuntu 24.04 on aarch64 with GCC 13.3 and
+  OpenSSL 3.0.13, **181 passed, 0 failed**, with the same non-distributed group skipped. Linux
+  verification is now a local step rather than a CI round trip, so it runs before a release rather
+  than after one.
+- **The suite is verified on Windows for this release**, for the first time: **159 passed, 0 failed**
+  of 183, with 1297 of 1297 assertions, over two consecutive runs on Windows 11 with Visual Studio
+  2026 and OpenSSL 3.6. The Windows-specific fixes in these notes are exercised on Windows, not
+  inferred from POSIX. Two limits are worth stating plainly. The 24 tests not run are the FastCGI and
+  reverse-proxy groups and one fuzzing group: **neither the FastCGI handler nor the proxy handler is
+  built on Windows**, so those features have no coverage there and the notes below should be read
+  accordingly. And the build is x64; a native ARM64 Windows target is not produced.
+- Clean build with **zero compiler and zero linker warnings on macOS clang**. GCC is not yet at
+  parity: the same source emits warnings there, none currently known to indicate a defect, and
+  closing that gap is tracked for a later release.
 - **The vendored HTTP and MPR sources are now verified against their upstream packages on every run.**
   Both are large generated files; nothing checked that a fix present in one was present in the other, so
   a re-import could silently revert one. A guard test now compares all five vendored files byte for byte
@@ -268,6 +338,20 @@ consider migrating to [Ioto Device Agent](https://www.embedthis.com/ioto/).
 ## Compatibility
 
 ### Breaking Changes
+
+- **A `Require` with no `AuthType` in scope now stops the server from starting.** Previously such a route
+  parsed cleanly, started cleanly and served every client — the configuration read as protected and was
+  not. It now fails closed: the configuration is rejected and the server exits, naming the offending
+  route. The same applies to `auth.require` with no `auth.type` in a JSON configuration.
+
+  *Migration:* if your server does not start after upgrading, the error names the route. Add the missing
+  `AuthType` (or `auth.type`) to that route or an enclosing one, or remove the `Require` if the route is
+  meant to be public. **Do not suppress the error** — a server that started before this change was
+  serving that route to everyone.
+
+  *Not affected:* `Require secure`, which installs its own check and needs no `AuthType`; an `AuthType`
+  written after the `Require` in the same block; and an `AuthType` inherited from an enclosing route. The
+  check runs once the whole configuration has been read, so all three keep working.
 
 - **ESP is now a separate add-on product and is no longer bundled with Appweb.** `src/esp/` and the ESP test
   suite have been removed. The conditional hooks that bind ESP back in as a plugin remain, all gated on
@@ -316,6 +400,21 @@ consider migrating to [Ioto Device Agent](https://www.embedthis.com/ioto/).
   binary with assertions live. `make OPTIMIZE=debug` selects the old behaviour.
 
 ### Behavior Changes
+
+- **A server that reaches its `LimitMemory` now sheds load.** At or above the limit it stops accepting new
+  connections, answers a new request on an established connection with `503`, and prunes its caches,
+  resuming as soon as memory is reclaimed. Previously the limit was not enforced at all: crossing it
+  logged a line and the allocation completed anyway, and only `MemoryPolicy abort`, `restart` and `exit`
+  had any effect — each of which takes the whole server down. A deployment whose `LimitMemory` is set
+  below its real working set will now start refusing connections where it previously ran on. Size the
+  limit for the working set you expect, and treat `503`s together with *"Memory use … exceeds the
+  configured limit"* in the error log as the signal that it is too low. `MemoryPolicy continue` now
+  prunes the cache rather than doing nothing.
+
+- **A CGI or FastCGI program whose `Content-Length` disagrees with its body now loses the connection.**
+  Appweb forwards what the declared length covers and then ends the connection rather than emitting a
+  response that does not match its own framing. A malformed declared length is `502 Bad Gateway`. A
+  program whose `Content-Length` matches what it writes is served exactly as before, keep-alive included.
 
 - On a case-insensitive document root, route patterns now match case-insensitively. A route intended to
   protect `/auth/basic/` now also claims `/AUTH/BASIC/`. This is the fail-safe direction, but a configuration
