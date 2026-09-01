@@ -112,9 +112,15 @@ typedef struct ProxyRequest {
     HttpTrace *trace;                       // Default tracing configuration
 } ProxyRequest;
 
+/*
+    List of proxies
+ */
+ static MprList *proxies;
+
 /*********************************** Forwards *********************************/
 
 static Proxy *allocProxy(HttpRoute *route);
+static void proxyTerminator(int state, int exitStrategy, int status);
 static ProxyApp *allocProxyApp(Proxy *proxy);
 static ProxyRequest *allocProxyRequest(ProxyApp *app, HttpNet *net, HttpStream *stream);
 static void closeAppNetworks(ProxyApp *app);
@@ -143,6 +149,7 @@ static void proxyBackNotifier(HttpStream *stream, int event, int arg);
 static void proxyDeath(ProxyApp *app, MprSignal *sp);
 static void proxyStartRequest(HttpQueue *q);
 static void proxyStreamIncoming(HttpQueue *q);
+static void proxyStreamOutgoing(HttpQueue *q);
 static ProxyApp *startProxyApp(Proxy *proxy, HttpStream *stream);
 static void proxyMaintenance(Proxy *proxy);
 static void releaseAppNetworks(ProxyApp *app);
@@ -183,10 +190,43 @@ PUBLIC int httpProxyInit(Http *http, MprModule *module)
     handler->incoming = proxyClientIncoming;
     handler->outgoingService = proxyClientOutgoingService;
 
+    proxies = mprCreateList(0, 0);
+    mprAddRoot(proxies);
+    mprAddTerminator(proxyTerminator);
+
 #if ME_DEBUG
     mprAddRoot(mprAddSignalHandler(ME_SIGINFO, proxyInfo, 0, 0, MPR_SIGNAL_AFTER));
 #endif
     return 0;
+}
+
+
+/*
+    Kill every launched proxy application on shutdown.
+
+    A proxy application started via "ProxyConnect ... launch=" is forked by this process but is not
+    in its process group and is not killed with it. Without this it outlives the server, holds its
+    listening port, and the next server start finds the address in use.
+ */
+static void proxyTerminator(int state, int exitStrategy, int status)
+{
+    Proxy    *proxy;
+    ProxyApp *app;
+    int      next, nextApp;
+
+    if (state < MPR_STOPPING) {
+        return;
+    }
+    for (ITERATE_ITEMS(proxies, proxy, next)) {
+        lock(proxy);
+        for (ITERATE_ITEMS(proxy->apps, app, nextApp)) {
+            killProxyApp(app);
+        }
+        for (ITERATE_ITEMS(proxy->idleApps, app, nextApp)) {
+            killProxyApp(app);
+        }
+        unlock(proxy);
+    }
 }
 
 
@@ -341,6 +381,7 @@ static Proxy *allocProxy(HttpRoute *route)
     proxy->ssl = NULL;
     proxy->limits = route->limits;
     proxy->trace = httpCreateTrace(route->trace);
+    mprAddItem(proxies, proxy);
     proxy->timer = mprCreateTimerEvent(NULL, "proxy-watchdog", PROXY_WATCHDOG_TIMEOUT,
                                        proxyMaintenance, proxy, MPR_EVENT_QUICK);
     return proxy;
@@ -617,6 +658,14 @@ static void proxyClientIncoming(HttpQueue *q, HttpPacket *packet)
         }
     } else {
         httpPutPacket(proxyStream->writeq, packet);
+        /*
+            Body packets are dispatched to this routine directly, so stream->readq->count never rises and the
+            generic room test upstream always finds space no matter how far behind the proxy is. Suspend the read
+            queue while the proxy is behind; proxyStreamOutgoing resumes it as the proxy drains.
+         */
+        if (proxyStream->writeq->count >= proxyStream->writeq->max) {
+            httpSuspendQueue(q);
+        }
     }
 }
 
@@ -668,7 +717,7 @@ static void proxyStreamIncoming(HttpQueue *q)
     //  Client stream
     stream = req->stream;
 
-    //  If client write queue (browser) is suspended -- cannot transfer any packets here
+    //  If client write queue (browser) is suspended, cannot transfer any packets here
     if (httpIsQueueSuspended(stream->writeq)) {
         httpSuspendQueue(q);
         return;
@@ -697,6 +746,35 @@ static void proxyStreamIncoming(HttpQueue *q)
 
 
 /*
+    Send the request body on to the proxy and pass back-pressure to the client.
+    The queue is the proxyStream writeq (QueueHead-tx)
+ */
+static void proxyStreamOutgoing(HttpQueue *q)
+{
+    HttpPacket   *packet;
+    HttpStream   *stream;
+    ProxyRequest *req;
+
+    if ((req = q->queueData) == 0) {
+        return;
+    }
+    for (packet = httpGetPacket(q); packet; packet = httpGetPacket(q)) {
+        if (!httpWillNextQueueAcceptPacket(q, packet)) {
+            httpPutBackPacket(q, packet);
+            return;
+        }
+        httpPutPacketToNext(q, packet);
+    }
+    /*
+        Manual flow control to the client stream. Resume reading the request body now the proxy has drained.
+     */
+    if ((stream = req->stream) != 0 && httpIsQueueSuspended(stream->readq)) {
+        httpResumeQueue(stream->readq, 0);
+    }
+}
+
+
+/*
     Transfer response headers from the proxy to the client
  */
 static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
@@ -706,6 +784,7 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
     HttpUri *target, *proxyApp, *uri;
     bool    local;
     cchar   *hval, *location;
+    int     complete;
 
     assert(stream);
     assert(proxyStream);
@@ -761,8 +840,18 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
              */
             if (stream->rx->route->canonical) {
                 uri = httpCloneUri(stream->rx->route->canonical, 0);
+                complete = HTTP_COMPLETE_URI;
             } else {
-                uri = httpCloneUri(stream->rx->parsedUri, 0);
+                /*
+                    No CanonicalName. Do not build an absolute URL out of rx->parsedUri: its host is
+                    the client's own Host header, checked for character class and nothing else, so the
+                    client would be choosing the domain it is redirected to. Emit a relative reference instead.
+                 */
+                uri = httpCloneUri(target, 0);
+                uri->scheme = 0;
+                uri->host = 0;
+                uri->port = 0;
+                complete = 0;
             }
             uri->path = sjoin(stream->rx->route->prefix, target->path, NULL);
             uri->ext = target->ext;
@@ -771,8 +860,9 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
         } else {
             //  External redirection - keep as is
             uri = target;
+            complete = HTTP_COMPLETE_URI;
         }
-        location = httpUriToString(uri, HTTP_COMPLETE_URI);
+        location = httpUriToString(uri, complete);
         httpSetHeaderString(stream, "Location", location);
     }
     httpSetStatus(stream, proxyStream->rx->status);
@@ -1197,6 +1287,11 @@ static HttpStream *proxyCreateStream(ProxyRequest *req)
     httpSetNetCallback(stream->net, proxyIO);
     httpCreatePipeline(proxyStream);
     proxyStream->readq->service = proxyStreamIncoming;
+    /*
+        Give the proxy write queue a service routine so request body data is counted there rather than passed
+        straight through. Without a count there is nothing to measure the proxy's backlog against.
+     */
+    proxyStream->writeq->service = proxyStreamOutgoing;
 
     proxyStream->trace = proxy->trace;
     proxyStream->proxied = 1;
@@ -1235,6 +1330,11 @@ static void manageProxyRequest(ProxyRequest *req, int flags)
 static int proxyConfigDirective(MaState *state, cchar *key, cchar *value)
 {
     state = maPushState(state);
+    /*
+        Every SSLxxx directive in this block configures the outbound connection to the backend, not
+        this server's listener. checkSsl() cannot tell the difference on its own, so mark the scope.
+     */
+    state->flags |= MA_PARSE_PROXY_CLIENT;
     if (state->enabled) {
         state->route = httpCreateInheritedRoute(state->route);
     }
@@ -1248,13 +1348,20 @@ static int proxyCloseConfigDirective(MaState *state, cchar *key, cchar *value)
 {
     Proxy *proxy;
 
-    proxy = getProxy(state->route);
+    /*
+        The Proxy belongs to the route enclosing this block, not to the inherited route the block created.
+     */
+    proxy = getProxy(state->prev->route);
     if (state->route != state->prev->route) {
         /*
-            Extract SSL and limit configuration
+            Extract SSL and limit configuration. The block's SSL object wins over anything ProxyConnect
+            defaulted,  so re-apply the ALPN it asked for rather than losing it here.
          */
         if (state->route->ssl) {
             proxy->ssl = state->route->ssl;
+            if (proxy->protocol == 2) {
+                mprSetSslAlpn(proxy->ssl, "h2");
+            }
         }
         proxy->limits = state->route->limits;
     }
@@ -1293,7 +1400,6 @@ static int proxyConnectDirective(MaState *state, cchar *key, cchar *value)
 
             } else if (smatch(option, "http2")) {
                 proxy->protocol = 2;
-                proxy->ssl = state->route->ssl;
                 if (!proxy->ssl) {
                     proxy->ssl = mprCreateSsl(0);
                 }
@@ -1321,7 +1427,6 @@ static int proxyConnectDirective(MaState *state, cchar *key, cchar *value)
                 }
 
             } else if (smatch(option, "ssl")) {
-                proxy->ssl = state->route->ssl;
                 if (!proxy->ssl) {
                     proxy->ssl = mprCreateSsl(0);
                 }
