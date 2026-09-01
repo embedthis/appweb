@@ -21,6 +21,8 @@ typedef struct Cgi {
     HttpQueue *readq;                   /**< Queue to read from the CGI */
     HttpPacket *headers;                /**< CGI response headers */
     char *location;                     /**< Redirection location */
+    MprOff declaredLength;              /**< Content-Length declared by the CGI, or negative if none */
+    MprOff bodyBytes;                   /**< Body bytes forwarded from the CGI to the client */
     int seenHeader;                     /**< Parsed response header from CGI */
 } Cgi;
 
@@ -29,8 +31,9 @@ typedef struct Cgi {
 static void browserToCgiService(HttpQueue *q);
 static void buildArgs(HttpStream *stream, int *argcp, cchar ***argvp);
 static void cgiCallback(MprCmd *cmd, int channel, void *data);
+static void checkCgiLength(Cgi *cgi);
 static void cgiToBrowserData(HttpQueue *q, HttpPacket *packet);
-static void copyInner(HttpStream *stream, cchar **envv, int index, cchar *key, cchar *value, cchar *prefix);
+static int copyInner(HttpStream *stream, cchar **envv, int index, cchar *key, cchar *value, cchar *prefix);
 static int copyParams(HttpStream *stream, cchar **envv, int index, MprJson *params, cchar *prefix);
 static int copyVars(HttpStream *stream, cchar **envv, int index, MprHash *vars, cchar *prefix);
 static char *getCgiToken(MprBuf *buf, cchar *delim);
@@ -81,6 +84,7 @@ static int openCgi(HttpQueue *q)
     httpMapFile(stream);
     q->queueData = q->pair->queueData = cgi;
     cgi->stream = stream;
+    cgi->declaredLength = -1;
     cgi->readq = httpCreateQueue(stream->net, stream, stream->http->cgiConnector, HTTP_QUEUE_RX, 0);
     cgi->writeq = httpCreateQueue(stream->net, stream, stream->http->cgiConnector, HTTP_QUEUE_TX, 0);
     cgi->readq->pair = cgi->writeq;
@@ -256,6 +260,16 @@ static void browserToCgiData(HttpQueue *q, HttpPacket *packet)
         }
     }
     httpPutForService(cgi->writeq, packet, HTTP_SCHEDULE_QUEUE);
+
+    /*
+        Body packets are passed to this routine directly, so stream->readq->count never rises and the generic
+        room test upstream always finds space no matter how far behind the gateway is. Suspend the read queue
+        while the gateway is behind; browserToCgiService resumes it as the gateway drains, once the gateway
+        is running.
+     */
+    if (cgi->cmd && cgi->writeq->count >= cgi->writeq->max) {
+        httpSuspendQueue(q);
+    }
 }
 
 
@@ -323,6 +337,12 @@ static void browserToCgiService(HttpQueue *q)
         } else {
             mprDisableCmdEvents(cmd, MPR_CMD_STDIN);
         }
+    }
+    /*
+        Resume reading the request body now the gateway has taken what browserToCgiData queued for it.
+     */
+    if (q->count < q->max && httpIsQueueSuspended(stream->readq)) {
+        httpResumeQueue(stream->readq, 0);
     }
 }
 
@@ -462,6 +482,7 @@ static void readFromCgi(Cgi *cgi, int channel)
         } else if (nbytes == 0) {
             mprCloseCmdFd(cmd, channel);
             if (channel == MPR_CMD_STDOUT) {
+                checkCgiLength(cgi);
                 httpFinalizeOutput(stream);
             }
             break;
@@ -486,10 +507,39 @@ static void readFromCgi(Cgi *cgi, int channel)
             cgi->seenHeader = 1;
         }
         if (!tx->finalizedOutput && httpGetPacketLength(packet) > 0) {
+            cgi->bodyBytes += httpGetPacketLength(packet);
+            if (cgi->declaredLength >= 0 && cgi->bodyBytes > cgi->declaredLength) {
+                /* Overrun. Do not forward bytes the framing statement does not cover */
+                checkCgiLength(cgi);
+                break;
+            }
             /* Put the data to the CGI readq, then cgiToBrowserService will take care of it */
             httpPutPacket(q, packet);
         }
     }
+}
+
+
+/*
+    Reconcile the Content-Length the CGI declared against the body bytes it actually produced.
+    A mismatch mis-frames the response and lets CGI output be read as the head of the next one
+    (request smuggling), so close the connection rather than leave it poisonable.
+    Nothing to reconcile if the server has replaced the CGI response with an error document or redirect.
+ */
+static void checkCgiLength(Cgi *cgi)
+{
+    HttpStream *stream;
+
+    stream = cgi->stream;
+    if (cgi->declaredLength < 0 || cgi->bodyBytes == cgi->declaredLength) {
+        return;
+    }
+    if (stream->error || stream->tx->finalizedOutput || cgi->location) {
+        return;
+    }
+    httpLog(stream->trace, "cgi.error", "error", "msg:CGI Content-Length mismatch, declared:%lld, sent:%lld",
+            cgi->declaredLength, cgi->bodyBytes);
+    httpError(stream, HTTP_CLOSE | HTTP_CODE_BAD_GATEWAY, "CGI response length mismatch");
 }
 
 
@@ -504,8 +554,9 @@ static bool parseCgiHeaders(Cgi *cgi, HttpPacket *packet)
     HttpStream *stream;
     MprBuf     *buf;
     char       *endHeaders, *headers, *key, *value;
+    int64      length;
     ssize      blen;
-    int        len;
+    int        len, status;
 
     stream = cgi->stream;
     value = 0;
@@ -561,11 +612,28 @@ static bool parseCgiHeaders(Cgi *cgi, HttpPacket *packet)
                 value[len - 1] = '\0';
                 len--;
             }
+            /*
+                An embedded CR or LF would split the response header block for a downstream client, cache or proxy,
+                so fail the request rather than sanitize it. A CGI emitting a control character here is malfunctioning
+                or compromised.
+             */
+            if (schr(value, '\r') || schr(value, '\n')) {
+                httpError(stream, HTTP_CODE_BAD_GATEWAY, "CGI response header contains a control character");
+                return 0;
+            }
             if (scaselesscmp(key, "location") == 0) {
                 cgi->location = value;
 
             } else if (scaselesscmp(key, "status") == 0) {
-                httpSetStatus(stream, atoi(value));
+                /*
+                    A 1xx is not a final status. It makes the response body-less while the CGI is still
+                    writing a body, so only a final status can be relayed to the client.
+                 */
+                if ((status = httpParseStatus(value)) < HTTP_CODE_OK) {
+                    httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad CGI status: %s", value);
+                    return 0;
+                }
+                httpSetStatus(stream, status);
 
             } else if (scaselesscmp(key, "content-type") == 0) {
                 if (stream->tx->charSet && !scaselesscontains(value, "charset")) {
@@ -574,8 +642,21 @@ static bool parseCgiHeaders(Cgi *cgi, HttpPacket *packet)
                     httpSetHeaderString(stream, "Content-Type", value);
                 }
 
+            } else if (scaselesscmp(key, "transfer-encoding") == 0) {
+                /*
+                    A message must not carry both Content-Length and Transfer-Encoding
+                 */
+                httpError(stream, HTTP_CODE_BAD_GATEWAY,
+                          "CGI response declares an unsupported Transfer-Encoding");
+                return 0;
+
             } else if (scaselesscmp(key, "content-length") == 0) {
-                httpSetContentLength(stream, (MprOff) stoi(value));
+                if (httpParseDigits(value, &length) < 0) {
+                    httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad CGI Content-Length: %s", value);
+                    return 0;
+                }
+                cgi->declaredLength = (MprOff) length;
+                httpSetContentLength(stream, cgi->declaredLength);
                 httpSetChunkSize(stream, 0);
 
             } else {
@@ -629,7 +710,7 @@ static void buildArgs(HttpStream *stream, int *argcp, cchar ***argvp)
 {
     HttpRx *rx;
     HttpTx *tx;
-    cchar  *actionProgram, *cp, *fileName, *query;
+    cchar  *actionProgram, *cp, *fileName, *mimeType, *query;
     char   **argv, *tok;
     ssize  len;
     int    argc, argind, i;
@@ -645,7 +726,13 @@ static void buildArgs(HttpStream *stream, int *argcp, cchar ***argvp)
     argc = *argcp;
 
     if (tx->ext) {
-        actionProgram = mprGetMimeProgram(rx->route->mimeTypes, tx->ext);
+        /*
+            Action is keyed by MIME type, so the extension must be resolved to one first.
+            mprGetMimeProgram matches on the type and its first-character guard makes a mismatch
+            silent: an extension passed here never matches any entry and no interpreter is selected.
+         */
+        mimeType = mprLookupMime(rx->route->mimeTypes, tx->ext);
+        actionProgram = mprGetMimeProgram(rx->route->mimeTypes, mimeType);
         if (actionProgram != 0) {
             argc++;
         }
@@ -753,15 +840,33 @@ static void traceCGIData(MprCmd *cmd, char *src, ssize size)
 #endif
 
 
-static void copyInner(HttpStream *stream, cchar **envv, int index, cchar *key, cchar *value, cchar *prefix)
+/*
+    Emit one environment variable. Returns the number of slots consumed: zero if the variable is
+    unsafe to hand to the child and was dropped.
+ */
+static int copyInner(HttpStream *stream, cchar **envv, int index, cchar *key, cchar *value, cchar *prefix)
 {
-    char *cp;
+    char *cp, *name;
 
-    if (prefix) {
-        cp = sjoin(prefix, key, "=", value, NULL);
-    } else {
-        cp = sjoin(key, "=", value, NULL);
+    name = prefix ? sjoin(prefix, key, NULL) : sclone(key);
+    for (cp = name; *cp; cp++) {
+        if (*cp == '-') {
+            *cp = '_';
+        } else {
+            *cp = toupper((uchar) * cp);
+        }
     }
+    /*
+        Test the name the child would actually receive, after prefixing and conversion. Without this
+        a client-supplied request header sets the matching HTTP_ variable in the child, HTTP_PROXY
+        being the httpoxy case.
+     */
+    if (httpIsCgiVarBlocked(name)) {
+        httpLog(stream->trace, "cgi.env.filter", "detail",
+                "msg:Dropped unsafe CGI environment variable, var:%s", name);
+        return 0;
+    }
+    cp = sjoin(name, "=", value, NULL);
     if (stream->rx->route->flags & HTTP_ROUTE_ENV_ESCAPE) {
         /*
             This will escape: "&;`'\"|*?~<>^()[]{}$\\\n" and also on windows \r%
@@ -769,13 +874,7 @@ static void copyInner(HttpStream *stream, cchar **envv, int index, cchar *key, c
         cp = mprEscapeCmd(cp, 0);
     }
     envv[index] = cp;
-    for (; *cp != '='; cp++) {
-        if (*cp == '-') {
-            *cp = '_';
-        } else {
-            *cp = toupper((uchar) * cp);
-        }
-    }
+    return 1;
 }
 
 
@@ -785,7 +884,7 @@ static int copyVars(HttpStream *stream, cchar **envv, int index, MprHash *vars, 
 
     for (ITERATE_KEYS(vars, kp)) {
         if (kp->data) {
-            copyInner(stream, envv, index++, kp->key, kp->data, prefix);
+            index += copyInner(stream, envv, index, kp->key, kp->data, prefix);
         }
     }
     envv[index] = 0;
@@ -801,7 +900,7 @@ static int copyParams(HttpStream *stream, cchar **envv, int index, MprJson *para
     for (ITERATE_JSON(params, param, i)) {
         //  Workaround for large form fields that are also copied as post data
         if (slen(param->value) <= ME_MAX_RX_FORM_FIELD) {
-            copyInner(stream, envv, index++, param->name, param->value, prefix);
+            index += copyInner(stream, envv, index, param->name, param->value, prefix);
         }
     }
     envv[index] = 0;

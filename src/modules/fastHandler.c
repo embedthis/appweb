@@ -8,10 +8,14 @@
 
     <Route /fast>
         LoadModule fastHandler libmod_fast
-        Action application/x-php /usr/local/bin/php-cgi
         AddHandler fastHandler php
-        FastConnect 127.0.0.1:9991 launch min=1 max=2 count=500 timeout=5mins multiplex=1
+        FastConnect 127.0.0.1:9991 launch="/usr/local/bin/php-cgi" min=1 max=2 count=500 timeout=5mins multiplex=1
     </Route>
+
+    The interpreter can also come from "Action application/x-php /usr/local/bin/php-cgi", which
+    buildFastArgs falls back to when there is no launch=. Prefer launch=: routes share one mime table
+    by reference, so an Action is server-wide wherever it is written and would decide how every other
+    route runs PHP as well.
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
@@ -76,9 +80,9 @@ static cchar *fastTypes[FAST_MAX + 1] = {
 #define FAST_Q_SIZE           ((FAST_PACKET_SIZE + 65535 + 8) * 2)
 
 #define FAST_REQUEST_COMPLETE 0             //  End Request response status for request complete
-#define FAST_CANT_MPX_CONN    1             //  Request rejected -- FastCGI app cannot multiplex requests
-#define FAST_OVERLOADED       2             //  Request rejected -- app server is overloaded
-#define FAST_UNKNOWN_ROLE     3             //  Request rejected -- unknown role
+#define FAST_CANT_MPX_CONN    1             //  Request rejected, FastCGI app cannot multiplex requests
+#define FAST_OVERLOADED       2             //  Request rejected, app server is overloaded
+#define FAST_UNKNOWN_ROLE     3             //  Request rejected, unknown role
 
 #ifndef FAST_WAIT_TIMEOUT
 #define FAST_WAIT_TIMEOUT     (10 * TPS)    //  Time to wait for a app
@@ -135,8 +139,15 @@ typedef struct FastApp {
     MprList *requests;                      // Requests
     cchar *ip;                              // Bound IP address
     int port;                               // Bound listening port
+    int exitStatus;                         // Child exit status, -1 until reaped
+    bool noexec;                            // The launch program could not be executed
     MprTicks lastActivity;                  // Last I/O activity
 } FastApp;
+
+/*
+    Exit status of a child whose execve() failed
+ */
+#define FAST_EXIT_NOEXEC 127
 
 /*
     Per FastCGI request instance. This is separate from the FastApp properties because the
@@ -156,14 +167,23 @@ typedef struct FastRequest {
     bool writeBlocked;                      // Socket is full of write data
     int eventMask;                          // Socket eventMask
     uint64 bytesRead;                       // Bytes read in response
+    MprOff declaredLength;                  // Content-Length declared by the app, or negative if none
+    MprOff bodyBytes;                       // Body bytes forwarded from the app to the client
 } FastRequest;
+
+/*
+    List of Fast instances
+ */
+static MprList *fasts;
 
 /*********************************** Forwards *********************************/
 
 static void addFastPacket(HttpNet *net, HttpPacket *packet);
 static void addToFastVector(HttpNet *net, char *ptr, ssize bytes);
 static void adjustFastVec(HttpNet *net, ssize written);
+static void checkFastLength(FastRequest *req);
 static Fast *allocFast(void);
+static void fastTerminator(int state, int exitStrategy, int status);
 static FastRequest *allocFastRequest(FastApp *app, HttpStream *stream, MprSocket *socket);
 static FastApp *allocFastApp(Fast *fast, HttpStream *stream);
 static void closeAppSockets(FastApp *app);
@@ -198,7 +218,7 @@ static void manageFast(Fast *fast, int flags);
 static void manageFastApp(FastApp *app, int flags);
 static void manageFastRequest(FastRequest *fastConnector, int flags);
 static int fastOpenRequest(HttpQueue *q);
-static bool parseFastHeaders(HttpPacket *packet);
+static bool parseFastHeaders(FastRequest *req, HttpPacket *packet);
 static bool parseFastResponseLine(HttpPacket *packet);
 static void prepFastRequestStart(HttpQueue *q);
 static void prepFastRequestParams(HttpQueue *q);
@@ -247,10 +267,43 @@ PUBLIC int httpFastInit(Http *http, MprModule *module)
     connector->incomingService = fastConnectorIncomingService;
     connector->outgoingService = fastConnectorOutgoingService;
 
+    fasts = mprCreateList(0, 0);
+    mprAddRoot(fasts);
+    mprAddTerminator(fastTerminator);
+
 #if ME_DEBUG
     mprAddRoot(mprAddSignalHandler(ME_SIGINFO, fastInfo, 0, 0, MPR_SIGNAL_AFTER));
 #endif
     return 0;
+}
+
+
+/*
+    Kill every launched FastCGI application on shutdown.
+
+    A FastCGI application started via "FastConnect ... launch" is forked by this process but is not
+    in its process group and is not killed with it. Without this it outlives the server and lingers
+    holding the listening socket it inherited.
+ */
+static void fastTerminator(int state, int exitStrategy, int status)
+{
+    Fast    *fast;
+    FastApp *app;
+    int     next, nextApp;
+
+    if (state < MPR_STOPPING) {
+        return;
+    }
+    for (ITERATE_ITEMS(fasts, fast, next)) {
+        lock(fast);
+        for (ITERATE_ITEMS(fast->apps, app, nextApp)) {
+            killFastApp(app);
+        }
+        for (ITERATE_ITEMS(fast->idleApps, app, nextApp)) {
+            killFastApp(app);
+        }
+        unlock(fast);
+    }
 }
 
 
@@ -290,13 +343,36 @@ static int fastOpenRequest(HttpQueue *q)
         Open a dedicated client socket to the FastCGI app
      */
     if ((socket = getFastSocket(app)) == NULL) {
-        httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot connect to fast app: %d", errno);
+        /*
+            Emit 502, not 500, when the gateway could not be executed: the fault is the upstream program's
+            absence, not an error inside this server. Matches what the CGI handler returns for the
+            same condition.
+         */
+        if (app->noexec) {
+            httpError(stream, HTTP_CODE_BAD_GATEWAY, "Cannot execute FastCGI program");
+        } else {
+            httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot connect to fast app: %d", errno);
+        }
         return MPR_ERR_CANT_CONNECT;
     }
 
     req = allocFastRequest(app, stream, socket);
     mprAddItem(app->requests, req);
     q->queueData = q->pair->queueData = req;
+
+    /*
+        The app can die between being launched and this request being registered on it.
+        Re-check now that the request is registered. After this point the reap handler owns the
+        notification and there is no window.
+     */
+    if (app->destroyed || app->exitStatus >= 0) {
+        if (app->noexec) {
+            httpError(stream, HTTP_CODE_BAD_GATEWAY, "Cannot execute FastCGI program");
+        } else {
+            httpError(stream, HTTP_CODE_BAD_GATEWAY, "FastCGI app exited before serving the request");
+        }
+        return MPR_ERR_CANT_CONNECT;
+    }
 
     /*
         Send a start request followed by the request parameters
@@ -387,6 +463,7 @@ static Fast *allocFast(void)
     fast->port = 0;
     fast->keep = 1;
     fast->appTimeout = FAST_APP_TIMEOUT;
+    mprAddItem(fasts, fast);
     fast->timer = mprCreateTimerEvent(NULL, "fast-watchdog", FAST_WATCHDOG_TIMEOUT, fastMaintenance, fast,
                                       MPR_EVENT_QUICK);
     return fast;
@@ -481,6 +558,15 @@ static void fastIncomingRequestPacket(HttpQueue *q, HttpPacket *packet)
     }
     createFastPacket(q, FAST_STDIN, packet);
     httpPutForService(req->connWriteq, packet, HTTP_SCHEDULE_QUEUE);
+
+    /*
+        Body packets are sent to this routine directly, so stream->readq->count never increments and the generic
+        room test upstream always finds space no matter how far behind the FastCGI app is. Suspend the read queue
+        while the app is behind; fastConnectorOutgoingService resumes it as the connection drains.
+     */
+    if (req->socket && req->connWriteq->count >= req->connWriteq->max) {
+        httpSuspendQueue(q);
+    }
 }
 
 
@@ -506,7 +592,11 @@ static void fastOutgoingService(HttpQueue *q)
 
 static void fastHandlerReapResponse(FastRequest *req)
 {
+    HttpNet *net;
+
+    net = req->stream->net;
     fastHandlerResponse(req, FAST_REAP, NULL);
+    httpServiceNetQueues(net, 0);
 }
 
 
@@ -530,7 +620,14 @@ static void fastHandlerResponse(FastRequest *req, int type, HttpPacket *packet)
         httpError(stream, HTTP_ABORT | HTTP_CODE_COMMS_ERROR, "FastRequest: comms error");
 
     } else if (type == FAST_REAP) {
-        httpError(stream, HTTP_ABORT | HTTP_CODE_COMMS_ERROR, "FastRequest: process killed error");
+        /*
+            The app died before answering
+         */
+        if (req->app && req->app->noexec) {
+            httpError(stream, HTTP_CODE_BAD_GATEWAY, "Cannot execute FastCGI program");
+        } else {
+            httpError(stream, HTTP_ABORT | HTTP_CODE_COMMS_ERROR, "FastRequest: process killed error");
+        }
 
     } else if (type == FAST_END_REQUEST && packet) {
         if (httpGetPacketLength(packet) < 8) {
@@ -561,16 +658,23 @@ static void fastHandlerResponse(FastRequest *req, int type, HttpPacket *packet)
             return;
         }
         httpLog(stream->trace, "rx.fast.eof", "detail", "msg:FastCGI end request, id:%d", req->id);
+        checkFastLength(req);
         httpFinalizeOutput(stream);
 
     } else if (type == FAST_STDOUT && packet) {
         if (!req->parsedHeaders) {
-            if (!parseFastHeaders(packet)) {
+            if (!parseFastHeaders(req, packet)) {
                 return;
             }
             req->parsedHeaders = 1;
         }
         if (httpGetPacketLength(packet) > 0) {
+            req->bodyBytes += httpGetPacketLength(packet);
+            if (req->declaredLength >= 0 && req->bodyBytes > req->declaredLength) {
+                /* Overrun. Do not forward bytes the framing statement does not cover */
+                checkFastLength(req);
+                return;
+            }
             // httpPutPacketToNext(stream->writeq, packet);
             httpPutForService(stream->writeq, packet, HTTP_SCHEDULE_QUEUE);
             httpServiceQueue(stream->writeq);
@@ -580,20 +684,42 @@ static void fastHandlerResponse(FastRequest *req, int type, HttpPacket *packet)
 
 
 /*
+    Reconcile the Content-Length the FastCGI app declared against the body bytes it actually produced.
+    The declared value frames the response and disables chunking, so a disagreement puts bytes on the
+    wire that do not match the response's own framing statement.
+ */
+static void checkFastLength(FastRequest *req)
+{
+    HttpStream *stream;
+
+    stream = req->stream;
+    if (req->declaredLength < 0 || req->bodyBytes == req->declaredLength) {
+        return;
+    }
+    if (stream->error || stream->tx->finalizedOutput) {
+        return;
+    }
+    httpLog(stream->trace, "rx.fast.error", "error",
+            "msg:FastCGI Content-Length mismatch, declared:%lld, sent:%lld", req->declaredLength, req->bodyBytes);
+    httpError(stream, HTTP_CLOSE | HTTP_CODE_BAD_GATEWAY, "FastCGI response length mismatch");
+}
+
+
+/*
     Parse the FastCGI app output headers. Sample FastCGI program output:
         Content-type: text/html
         <html.....
  */
-static bool parseFastHeaders(HttpPacket *packet)
+static bool parseFastHeaders(FastRequest *req, HttpPacket *packet)
 {
-    FastRequest *req;
     HttpStream  *stream;
     MprBuf      *buf;
     char        *endHeaders, *headers, *key, *value;
+    int64       length;
     ssize       blen, len;
+    int         status;
 
     stream = packet->stream;
-    req = packet->data;
     buf = packet->content;
     headers = mprGetBufStart(buf);
     value = 0;
@@ -645,13 +771,25 @@ static bool parseFastHeaders(HttpPacket *packet)
                 value[len - 1] = '\0';
                 len--;
             }
+            if (schr(value, '\r') || schr(value, '\n')) {
+                httpError(stream, HTTP_CODE_BAD_GATEWAY, "FastCGI response header contains a control character");
+                return 0;
+            }
             httpLog(stream->trace, "rx.fast", "detail", "key:%s, value: %s", key, value);
 
             if (scaselesscmp(key, "location") == 0) {
                 httpRedirect(stream, HTTP_CODE_MOVED_TEMPORARILY, value);
 
             } else if (scaselesscmp(key, "status") == 0) {
-                httpSetStatus(stream, atoi(value));
+                /*
+                    A 1xx is not a final status. It makes the response body-less while the app is still
+                    writing a body, so only a final status can be relayed to the client.
+                 */
+                if ((status = httpParseStatus(value)) < HTTP_CODE_OK) {
+                    httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad FastCGI status: %s", value);
+                    return 0;
+                }
+                httpSetStatus(stream, status);
 
             } else if (scaselesscmp(key, "content-type") == 0) {
                 if (stream->tx->charSet && !scaselesscontains(value, "charset")) {
@@ -660,8 +798,21 @@ static bool parseFastHeaders(HttpPacket *packet)
                     httpSetHeaderString(stream, "Content-Type", value);
                 }
 
+            } else if (scaselesscmp(key, "transfer-encoding") == 0) {
+                /*
+                    A message carrying both Content-Length and Transfer-Encoding is a framing conflict.
+                 */
+                httpError(stream, HTTP_CODE_BAD_GATEWAY,
+                          "FastCGI response declares an unsupported Transfer-Encoding");
+                return 0;
+
             } else if (scaselesscmp(key, "content-length") == 0) {
-                httpSetContentLength(stream, (MprOff) stoi(value));
+                if (httpParseDigits(value, &length) < 0) {
+                    httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad FastCGI Content-Length: %s", value);
+                    return 0;
+                }
+                req->declaredLength = (MprOff) length;
+                httpSetContentLength(stream, req->declaredLength);
                 httpSetChunkSize(stream, 0);
 
             } else {
@@ -749,6 +900,7 @@ static FastApp *allocFastApp(Fast *fast, HttpStream *stream)
     app->sockets = mprCreateList(0, 0);
     app->port = fast->port;
     app->ip = fast->ip;
+    app->exitStatus = -1;
 
     /*
         The requestID must start at 1 by spec
@@ -855,7 +1007,8 @@ static FastApp *startFastApp(Fast *fast, HttpStream *stream)
     FastApp   *app;
     MprSocket *listen;
     cchar     **argv, *command;
-    int       argc, i;
+    ssize     nbytes;
+    int       argc, i, execStatus[2], execErrno;
 
 #if KEEP
     cchar **envv;
@@ -887,29 +1040,75 @@ static FastApp *startFastApp(Fast *fast, HttpStream *stream)
         if (!app->signal) {
             app->signal = mprAddSignalHandler(SIGCHLD, reapSignalHandler, app, NULL, MPR_SIGNAL_BEFORE);
         }
+        /*
+            Exec status pipe. The child's write end is close-on-exec, so a successful execve closes
+            it and the parent reads EOF; a failed execve writes errno instead. The parent must know
+            which happened before it hands the app to a request, and waiting for SIGCHLD is too
+            late: the child holds the listening socket it was given, so until it exits the parent's
+            connect() completes against the backlog of a socket that is already doomed, and the
+            request is written into a connection the kernel has reset where it is owed a 502.
+         */
+        if (pipe(execStatus) < 0) {
+            httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot create FastCGI exec status pipe");
+            return NULL;
+        }
+        fcntl(execStatus[1], F_SETFD, FD_CLOEXEC);
+
         if ((app->pid = fork()) < 0) {
-            fprintf(stderr, "Fork failed for FastCGI");
+            close(execStatus[0]);
+            close(execStatus[1]);
+            httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot fork for FastCGI");
             return NULL;
 
         } else if (app->pid == 0) {
-            // Child
+            // Child. Close the read end first: it may hold fd 0, which the listener is about to take.
+            close(execStatus[0]);
             dup2(listen->fd, 0);
 
             /*
                 When debugging, keep stdout/stderr open so printf/fprintf from the FastCGI app will show in the console.
+                The exec status pipe must survive to report a failed execve, so it is exempt.
              */
             for (i = FAST_DEBUG ? 3 : 1; i < 128; i++) {
-                close(i);
+                if (i != execStatus[1]) {
+                    close(i);
+                }
             }
-            if (execve(command, (char**) argv, (char**) NULL) < 0) {
-                printf("Cannot exec fast app: %s\n", command);
+            execve(command, (char**) argv, (char**) NULL);
+            execErrno = errno;
+            if (write(execStatus[1], &execErrno, sizeof(execErrno)) < 0) {
             }
-            return NULL;
+            _exit(FAST_EXIT_NOEXEC);
         } else {
             //  Close without a shutdown as this is duped for the child
             close(listen->fd);
             listen->fd = -1;
-            httpLog(app->trace, "fast", "context", "msg:FastCGI started app, command:%s, pid:%d", command, app->pid);
+            close(execStatus[1]);
+
+            /*
+                Blocks only until the child execs or dies (both close the write end), so it cannot
+                outlast the fork it is reporting on.
+             */
+            execErrno = 0;
+            do {
+                nbytes = read(execStatus[0], &execErrno, sizeof(execErrno));
+            } while (nbytes < 0 && errno == EINTR);
+            close(execStatus[0]);
+
+            if (nbytes > 0) {
+                /*
+                    A deployment fault the operator has to see by name, so it is logged at level 0
+                    where a production error log will carry it. From the outside it presents as the
+                    site being down.
+                 */
+                mprLog("error fast", 0, "Cannot execute FastCGI program \"%s\": %s. Check the FastConnect "
+                       "launch path exists and is executable.", command, strerror(execErrno));
+                app->noexec = 1;
+                app->destroyed = 1;
+            } else {
+                httpLog(app->trace, "fast", "context", "msg:FastCGI started app, command:%s, pid:%d", command,
+                        app->pid);
+            }
         }
     }
     return app;
@@ -924,8 +1123,8 @@ static cchar *buildFastArgs(FastApp *app, HttpStream *stream, int *argcp, cchar 
     Fast   *fast;
     HttpRx *rx;
     HttpTx *tx;
-    cchar  *actionProgram, *cp, *fileName, *query;
-    char   **argv, *tok;
+    cchar  *actionProgram, *fileName, *mimeType;
+    char   **argv;
     ssize  len;
     int    argc, argind;
 
@@ -947,26 +1146,26 @@ static cchar *buildFastArgs(FastApp *app, HttpStream *stream, int *argcp, cchar 
         argc++;
 
     } else if (tx->ext) {
-        actionProgram = mprGetMimeProgram(rx->route->mimeTypes, tx->ext);
+        /*
+            Action is keyed by MIME type, so the extension must be resolved to one first. See the
+            same call in cgiHandler.c: mprGetMimeProgram matches on the type, so an extension passed
+            here matches nothing and no interpreter is ever selected.
+         */
+        mimeType = mprLookupMime(rx->route->mimeTypes, tx->ext);
+        actionProgram = mprGetMimeProgram(rx->route->mimeTypes, mimeType);
         if (actionProgram != 0) {
             argc++;
         }
     }
     /*
-        Count the args for ISINDEX queries. Only valid if there is not a "=" in the query.
-        If this is so, then we must not have these args in the query env also?
+        No ISINDEX arguments. A FastCGI app is launched once and reused for every request on the
+        route, so arguments taken from the launching request would decide the command line of a
+        process that serves all later requests. A non-option argument is also, by convention, the
+        endpoint the app should listen on, so it would displace the descriptor the app was handed.
+
+        The request is carried in FCGI_PARAMS instead. CGI keeps ISINDEX (cgiHandler.c, RFC 3875
+        4.4) because a CGI program is forked per request.
      */
-    query = (char*) rx->parsedUri->query;
-    if (query && !schr(query, '=')) {
-        argc++;
-        for (cp = query; *cp; cp++) {
-            if (*cp == '+') {
-                argc++;
-            }
-        }
-    } else {
-        query = 0;
-    }
     len = (argc + 1) * sizeof(char*);
     argv = mprAlloc(len);
 
@@ -974,13 +1173,6 @@ static cchar *buildFastArgs(FastApp *app, HttpStream *stream, int *argcp, cchar 
         argv[argind++] = sclone(actionProgram);
     }
     argv[argind++] = sclone(fileName);
-    if (query) {
-        cp = stok(sclone(query), "+", &tok);
-        while (cp) {
-            argv[argind++] = mprEscapeCmd(mprUriDecode(cp), 0);
-            cp = stok(NULL, "+", &tok);
-        }
-    }
     assert(argind <= argc);
     argv[argind] = 0;
     *argcp = argc;
@@ -1004,8 +1196,9 @@ static void reapSignalHandler(FastApp *app, MprSignal *sp)
 
     lock(fast);
     if (app->pid && waitpid(app->pid, &status, WNOHANG) == app->pid) {
-        httpLog(app->trace, "fast", WEXITSTATUS(status) == 0 ? "context" : "error",
-                "msg:FastCGI exited, pid:%d, status:%d", app->pid, WEXITSTATUS(status));
+        app->exitStatus = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+        httpLog(app->trace, "fast", app->exitStatus == 0 ? "context" : "error",
+                "msg:FastCGI exited, pid:%d, status:%d", app->pid, app->exitStatus);
         if (app->signal) {
             mprRemoveSignalHandler(app->signal);
             app->signal = 0;
@@ -1072,6 +1265,12 @@ static MprSocket *getFastSocket(FastApp *app)
         socket = mprCreateSocket();
         if (mprConnectSocket(socket, app->ip, app->port, MPR_SOCKET_NODELAY) == 0) {
             connected = 1;
+            break;
+        }
+        /*
+            A launched app that has already been reaped is not going to start listening
+         */
+        if (app->fast->launch && app->exitStatus >= 0) {
             break;
         }
         if (mprGetTicks() >= timeout) {
@@ -1202,6 +1401,7 @@ static FastRequest *allocFastRequest(FastApp *app, HttpStream *stream, MprSocket
     req = mprAllocObj(FastRequest, manageFastRequest);
     req->stream = stream;
     req->socket = socket;
+    req->declaredLength = -1;
     req->trace = stream->trace;
     req->fast = app->fast;
     req->app = app;
@@ -1482,6 +1682,13 @@ static void fastConnectorOutgoingService(HttpQueue *q)
         }
     }
     req->app->lastActivity = q->net->http->now;
+
+    /*
+        Resume reading the request body now the app has taken what fastIncomingRequestPacket queued for it.
+     */
+    if (q->count < q->max && httpIsQueueSuspended(req->stream->readq)) {
+        httpResumeQueue(req->stream->readq, 0);
+    }
     enableFastConnector(req);
     unlock(fast);
 }
@@ -1666,6 +1873,14 @@ static void copyFastInner(HttpPacket *packet, cchar *key, cchar *value, cchar *p
     req = packet->data;
     if (prefix) {
         key = sjoin(prefix, key, NULL);
+    }
+    /*
+        FastCGI params become environment variables in the application, so the same names a CGI child
+        must not receive are unsafe here, HTTP_PROXY above all. See httpIsCgiVarBlocked().
+     */
+    if (httpIsCgiVarBlocked(key)) {
+        httpLog(req->trace, "tx.fast", "detail", "msg:Dropped unsafe FastCGI env, key:%s", key);
+        return;
     }
     httpLog(req->trace, "tx.fast", "detail", "msg:FastCGI env, key:%s, value:%s", key, value);
     encodeFastName(packet, key, value);

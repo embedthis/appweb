@@ -11,6 +11,7 @@
             -e                  Output the environment
             -h lines            Output header "lines" long
             -l location         Output "location" header
+            -L length           Output "length" verbatim as the Content-Length header
             -n                  Non-parsed-header ouput
             -p                  Ouput the post data
             -q                  Ouput the query data
@@ -22,6 +23,10 @@
 
 /********************************** Includes **********************************/
 
+/*
+    This program is POSIX only. The FastCGI handler is compiled for ME_UNIX_LIKE targets
+    only.
+ */
 #include "fcgiapp.h"
 
 #include <errno.h>
@@ -29,6 +34,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -48,8 +54,12 @@ typedef struct State {
     int numPostKeys;
     int numQueryKeys;
     int outputArgs, outputEnv, outputPost, outputQuery;
+    int outputControlHeader;
+    int splitHeaders;
+    int outputTransferEncoding;
     int outputLines, outputHeaderLines, responseStatus;
     char *outputLocation;
+    char *outputContentLength;
     char *postBuf;
     size_t postBufLen;
     char **postKeys;
@@ -101,7 +111,7 @@ int main(int argc, char **argv, char **envp)
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-?") == 0) {
             fprintf(stderr,
-                    "usage: fastProgram -aenp [-b bytes] [-h lines] [-l location] [-s status] [-t timeout] [endpoint]\n");
+                    "usage: fastProgram -acefnpT [-b bytes] [-h lines] [-l location] [-s status] [-t timeout] [endpoint]\n");
             exit(2);
         } else if (argv[i][0] != '-') {
             close(0);
@@ -176,13 +186,36 @@ static void *worker(State *state)
 #endif
         FCGX_FPrintF(request.out, "Content-Type: %s\r\n", "text/html");
 
+        if (state->splitHeaders) {
+            /*
+                Flush mid header block so the handler receives a FAST_STDOUT record that holds no end of
+                headers delimiter. The FastCGI spec permits this and ordinary buffering makes it routine.
+             */
+            FCGX_FFlush(request.out);
+        }
         if (state->outputHeaderLines) {
             for (i = 0; i < state->outputHeaderLines; i++) {
                 FCGX_FPrintF(request.out, "X-FAST-%d: A loooooooooooooooooooooooong string\r\n", i);
             }
         }
+        if (state->outputTransferEncoding) {
+            FCGX_FPrintF(request.out, "Transfer-Encoding: chunked\r\n");
+        }
+        if (state->outputControlHeader) {
+            /*
+                A CR inside the value. Not a line terminator to the FastCGI handler, but is one to many other
+                parsers, so the handler must refuse to forward it.
+             */
+            FCGX_FPrintF(request.out, "X-Test: aaa\rbbb\r\n");
+        }
         if (state->outputLocation) {
             FCGX_FPrintF(request.out, "Location: %s\r\n", state->outputLocation);
+        }
+        if (state->outputContentLength) {
+            /*
+                A verbatim Content-Length, which need not be well formed and need not match the body that follows.
+             */
+            FCGX_FPrintF(request.out, "Content-Length: %s\r\n", state->outputContentLength);
         }
         if (state->responseStatus) {
             FCGX_FPrintF(request.out, "Status: %d\r\n", state->responseStatus);
@@ -254,6 +287,10 @@ static int parseArgs(State *state)
                 }
                 break;
 
+            case 'c':
+                state->outputControlHeader++;
+                break;
+
             case 'd':
                 if (++i >= argc) {
                     err = __LINE__;
@@ -263,6 +300,14 @@ static int parseArgs(State *state)
                 break;
             case 'e':
                 state->outputEnv++;
+                break;
+
+            case 'f':
+                state->splitHeaders++;
+                break;
+
+            case 'T':
+                state->outputTransferEncoding++;
                 break;
 
             case 'h':
@@ -281,6 +326,14 @@ static int parseArgs(State *state)
                     if (state->responseStatus == 0) {
                         state->responseStatus = 302;
                     }
+                }
+                break;
+
+            case 'L':
+                if (++i >= argc) {
+                    err = __LINE__;
+                } else {
+                    state->outputContentLength = argv[i];
                 }
                 break;
 
