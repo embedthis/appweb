@@ -1,5 +1,5 @@
 --
---  projects/premake5.lua -- Appweb Web Server Build
+--  projects/premake5.lua: Appweb Web Server Build
 --
 --  Builds libappweb (shared library), appweb, http, authpass, cgiProgram, fastProgram, watchdog.
 --
@@ -103,7 +103,7 @@ local opensslPaths = {
 --
 --  On Windows the OpenSSL location is discovered at build time by projects/openssl-prep.bat, which
 --  exports ME_COM_OPENSSL_PATH. msbuild expands $(NAME) from the environment, so naming it here lets
---  a vcpkg or other non-default install be found without regenerating the projects -- the INCLUDE and
+--  a vcpkg or other non-default install be found without regenerating the projects. The INCLUDE and
 --  LIB variables that script also sets cannot do this, because msbuild overwrites both from the
 --  project's own IncludePath and LibraryPath. The literal default is kept alongside it so an IDE
 --  build with OpenSSL in its usual place still resolves, and a directory that does not exist costs
@@ -114,8 +114,8 @@ local opensslWinEnv = "$(ME_COM_OPENSSL_PATH)"
 --
 --  The Windows projects compile /MTd and /MT, so OpenSSL must be built against the static CRT.
 --  The Shining Light installer puts its import libraries under lib/VC/<arch>/<crt>; vcpkg puts them
---  in lib, and the triplet that matches is x64-windows-static -- x64-windows is dynamic-CRT and
---  fails at link with a RuntimeLibrary mismatch.
+--  in lib, and the triplet that matches is x64-windows-static. The x64-windows triplet is
+--  dynamic-CRT and fails at link with a RuntimeLibrary mismatch.
 --
 local function opensslWinLibDirs(roots)
     local dirs = {}
@@ -289,7 +289,7 @@ workspace "appweb"
         --
         --  No explicit "-s" for release. symbols "Off" already strips where the linker supports it, so
         --  passing it again emitted "-s -s" on Linux, and Apple's linker answers it with
-        --  "ld: warning: -s is obsolete" once per link -- six warnings in a build reported as clean.
+        --  "ld: warning: -s is obsolete" once per link: six warnings in a build reported as clean.
         --
     end
 
@@ -557,8 +557,8 @@ project "cgiProgram"
 --  fastProgram links libfcgi only. As with cgiProgram, it is copied out of build/bin into
 --  fast-bin, so it must not carry an @rpath reference to libappweb.dylib.
 --
---  Not emitted for Windows. The FastCGI handler is ME_UNIX_LIKE only -- fastHandler.c compiles to
---  nothing there -- so there is no handler for the fixture to exercise, and libfcgi is not among the
+--  Not emitted for Windows. The FastCGI handler is ME_UNIX_LIKE only (fastHandler.c compiles to
+--  nothing there), so there is no handler for the fixture to exercise, and libfcgi is not among the
 --  dependencies a Windows build is expected to have. Emitting it only ever failed the whole Windows
 --  build on a missing fcgiapp.h. test/fast/skip.sh already skips the group when the fixture is
 --  absent, so the tests report as skipped rather than failing.
@@ -606,11 +606,9 @@ project "watchdog"
 --  "      [Link] appweb" and "        [CC] appweb.c", and drops premake's directory-creation lines,
 --  per-project build banner and wiki footer.
 --
---  That style used to be applied to the generated makefiles by hand, 78 lines of it, so regenerating
---  reverted the lot and any flag change arrived as a 79-line diff with one line that mattered -- and a
---  flag added by hand to a generated file would vanish at the next regeneration with no warning
---  (issue 10237). It is applied here instead, as part of generation, so the committed makefiles are a
---  pure function of this file. "make verify-projects" proves it and fails if they ever diverge.
+--  Applied here as part of generation rather than by hand to the generated makefiles, so those stay
+--  a pure function of this file and a hand edit cannot vanish at the next regeneration.
+--  "make verify-projects" proves it and fails if they ever diverge.
 --
 local houseStyle = {
     --  Compile: premake emits the bare file name, quoted or not depending on the rule

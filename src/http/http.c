@@ -1308,7 +1308,8 @@ static int processResponse(HttpStream *stream)
             app->success = 0;
         }
         if (!app->showStatus) {
-            mprLog("error http", 0, "\nCannot process request for %s \"%s\" (%d) %s", app->method, req->url, status, httpGetError(
+            mprLog("error http", 0, "\nCannot process request for %s \"%s\" (%d) %s", app->method, req->url, status,
+                   httpGetError(
                        stream));
             return MPR_ERR_CANT_READ;
         }

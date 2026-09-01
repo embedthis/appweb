@@ -2,11 +2,9 @@
 #
 #   coverage.sh - Build Appweb instrumented, run the suite, and report line and branch coverage
 #
-#   No build in this repository could produce a coverage figure (10067). Every coverage statement
-#   in doc/engineering/test-coverage-audit.md was inferred from reading source and grepping, and
-#   gaps invisible to inspection were simply unknown. Under the CRA process this project follows,
-#   test adequacy is a claim that has to be evidenced in the retained technical documentation, and
-#   a figure produced by the build is the cheapest form of that evidence.
+#   Under the CRA process this project follows, test adequacy has to be evidenced in the retained
+#   technical documentation, and a figure produced by the build is the cheapest form of that
+#   evidence.
 #
 #   Additive by construction: instrumentation is passed through CFLAGS and LDFLAGS to the existing
 #   generated makefiles, which already honour both. No configuration is added to premake5.lua and

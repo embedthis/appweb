@@ -101,21 +101,7 @@ stats:
 	@bash bin/compliance-stats.sh
 
 #
-#   Re-import the vendored amalgamations (src/mpr, src/http, src/osdep) from the module paks,
-#   then verify the result. There was no target for this flow at all, which is half of why 10132
-#   went unnoticed.
-#
-#   The verification is the point, not a formality. A pak's version does not change when the
-#   module is rebuilt after a fix, so paks/mpr carried pre-fix code under the same 9.2.0 version
-#   as the published pak -- indistinguishable to anything that resolves by version. Byte
-#   comparison is the only thing that can catch it, and an import that silently reverted 10023
-#   and 10056 would not have failed to build or failed a test.
-#
-#   Run "pak update" first when the upstream module has been rebuilt, so the global cache in
-#   ~/.paks is newer than what is already in src/.
-#
-#   Named "import" rather than "sync" because pak's package.json config calls this operation
-#   import, and because .local.mk already defines a "sync" target for the ejs test client.
+#   Re-import the vendored in-house amalgamations
 #
 import:
 	pak sync
@@ -129,15 +115,7 @@ check-sync:
 
 #
 #   Verify dist/ matches src/. dist/ is generated from src/ but committed, because it is the
-#   payload of the published appweb pak and it ships in the source archive. Nothing regenerates it
-#   outside "make package", so a source change -- a security fix above all -- can sit in src/ while
-#   dist/ still carries the defect.
-#
-#   Regenerates into a scratch directory and diffs. Never regenerates in place: a full
-#   bin/buildLib.sh run also rebuilds the tarball and rewrites the recorded release checksums.
-#
-#   bin/buildLib.sh belongs to the packaging process and is not staged into the source archive, so
-#   a customer tree cannot run this. Say so and skip there; a silent no-op would read as a pass.
+#   payload of the published appweb pak and it ships in the source archive.
 #
 check-dist:
 	@if [ ! -f bin/buildLib.sh ] ; then \
@@ -164,10 +142,9 @@ verify-projects:
 
 #
 #   Instrumented build plus the suite, reporting line and branch coverage per source file.
-#
 #   Additive: the instrumentation is passed through CFLAGS and LDFLAGS, which the generated
 #   makefiles already honour, so no premake configuration is added and no generated file changes.
-#   The default build is untouched. See bin/coverage.sh and issue 10067.
+#   The default build is untouched. See bin/coverage.sh.
 #
 coverage:
 	bin/coverage.sh
