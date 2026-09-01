@@ -1,40 +1,25 @@
 /*
-    osdep.h -- O/S abstraction layer.
+    osdep.h - Operating system dependent abstraction layer.
 
-    This module provides a portable cross-platform abstraction layer.
-    By including "osdep.h", you will include most common O/S headers and define
-    a set of useful cross-platform constants.
+    This header provides a comprehensive cross-platform abstraction layer for embedded IoT applications.
+    It defines standard types, platform detection constants, compiler abstractions, and operating system compatibility
+    macros to enable portability across diverse embedded and desktop systems. This is the foundational module consumed
+    by all other EmbedThis modules and must be included first in any source file. The module automatically detects
+    the target platform's CPU architecture, operating system, compiler, and endianness to provide consistent behavior
+    across ARM, x86, MIPS, PowerPC, SPARC, RISC-V, Xtensa, and other architectures running on Linux, macOS, Windows,
+    VxWorks, FreeRTOS, ESP32, and other operating systems.
+
+    Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
 #ifndef _h_OSDEP
 #define _h_OSDEP 1
 
-/********************************** Includes **********************************/
-
-/**
-    Operating system dependent layer that provides a portable cross-platform abstraction layer.
-    @defgroup Osdep Osdep
-    @stability Evolving
-*/
-
-#ifndef OSDEP_USE_ME
-#define OSDEP_USE_ME 1
-#endif
-
-#if OSDEP_USE_ME
-#include "me.h"
-#endif
-
 /******************************* Default Features *****************************/
+
 /*
-    MakeMe defaults
+    Default features
  */
-#ifndef ME_COM_SSL
-    #define ME_COM_SSL 0                /**< Build without SSL support */
-#endif
-#ifndef ME_DEBUG
-    #define ME_DEBUG 0                  /**< Default to a debug build */
-#endif
 #ifndef ME_FLOAT
     #define ME_FLOAT 1                  /**< Build with floating point support */
 #endif
@@ -42,53 +27,173 @@
     #define ME_ROM 0                    /**< Build for execute from ROM */
 #endif
 
-/********************************* CPU Families *******************************/
-/*
-    CPU Architectures
- */
+/**
+    @section CPU Architecture Detection
+
+    CPU architecture constants for cross-platform compilation. These constants are used with the ME_CPU_ARCH macro
+    to determine the target processor architecture at compile time. The osdep module automatically detects the
+    architecture based on compiler-defined symbols and sets ME_CPU_ARCH to the appropriate value.
+*/
+
+/**
+    Unknown or unsupported CPU architecture.
+    @stability Stable
+*/
 #define ME_CPU_UNKNOWN     0
-#define ME_CPU_ARM         1           /**< Arm */
-#define ME_CPU_ARM64       2           /**< Arm64 */
-#define ME_CPU_ITANIUM     3           /**< Intel Itanium */
-#define ME_CPU_X86         4           /**< X86 */
-#define ME_CPU_X64         5           /**< AMD64 or EMT64 */
-#define ME_CPU_MIPS        6           /**< Mips */
-#define ME_CPU_MIPS64      7           /**< Mips 64 */
-#define ME_CPU_PPC         8           /**< Power PC */
-#define ME_CPU_PPC64       9           /**< Power PC 64 */
-#define ME_CPU_SPARC       10          /**< Sparc */
-#define ME_CPU_TIDSP       11          /**< TI DSP */
-#define ME_CPU_SH          12          /**< SuperH */
-#define ME_CPU_RISCV       13          /**< RiscV */
-#define ME_CPU_RISCV64     14          /**< RiscV64 */
-#define ME_CPU_XTENSA      15          /**< Xtensa / ESP32 */
 
-/*
-    Byte orderings
- */
-#define ME_LITTLE_ENDIAN   1           /**< Little endian byte ordering */
-#define ME_BIG_ENDIAN      2           /**< Big endian byte ordering */
+/**
+    ARM 32-bit architecture (ARMv7 and earlier).
+    @description Covers ARM Cortex-A, Cortex-R, and Cortex-M series processors commonly used in embedded systems.
+    @stability Stable
+*/
+#define ME_CPU_ARM         1
 
-/*
-    Use compiler definitions to determine the CPU type.
-    The default endianness can be overridden by configure --endian big|little.
- */
+/**
+    ARM 64-bit architecture (ARMv8 and later).
+    @description Covers ARM Cortex-A64 and newer 64-bit ARM processors including Apple Silicon and server processors.
+    @stability Stable
+*/
+#define ME_CPU_ARM64       2
+
+/**
+    Intel Itanium (IA-64) architecture.
+    @description Legacy 64-bit architecture primarily used in high-end servers and workstations.
+    @stability Stable
+*/
+#define ME_CPU_ITANIUM     3
+
+/**
+    Intel x86 32-bit architecture.
+    @description Standard 32-bit x86 processors including Intel and AMD variants.
+    @stability Stable
+*/
+#define ME_CPU_X86         4
+
+/**
+    Intel/AMD x86-64 architecture.
+    @description 64-bit x86 processors including Intel x64 and AMD64 variants.
+    @stability Stable
+*/
+#define ME_CPU_X64         5
+
+/**
+    MIPS 32-bit architecture.
+    @description MIPS processors commonly used in embedded systems and networking equipment.
+    @stability Stable
+*/
+#define ME_CPU_MIPS        6
+
+/**
+    MIPS 64-bit architecture.
+    @description 64-bit MIPS processors used in high-performance embedded and server applications.
+    @stability Stable
+*/
+#define ME_CPU_MIPS64      7
+
+/**
+    PowerPC 32-bit architecture.
+    @description IBM PowerPC processors used in embedded systems and legacy workstations.
+    @stability Stable
+*/
+#define ME_CPU_PPC         8
+
+/**
+    PowerPC 64-bit architecture.
+    @description 64-bit PowerPC processors used in high-performance computing and servers.
+    @stability Stable
+*/
+#define ME_CPU_PPC64       9
+
+/**
+    SPARC architecture.
+    @description Sun/Oracle SPARC processors used in servers and workstations.
+    @stability Stable
+*/
+#define ME_CPU_SPARC       10
+
+/**
+    Texas Instruments DSP architecture.
+    @description TI digital signal processors used in specialized embedded applications.
+    @stability Stable
+*/
+#define ME_CPU_TIDSP       11
+
+/**
+    SuperH architecture.
+    @description Hitachi/Renesas SuperH processors used in embedded systems.
+    @stability Stable
+*/
+#define ME_CPU_SH          12
+
+/**
+    RISC-V 32-bit architecture.
+    @description Open-source RISC-V processors gaining popularity in embedded and IoT applications.
+    @stability Stable
+*/
+#define ME_CPU_RISCV       13
+
+/**
+    RISC-V 64-bit architecture.
+    @description 64-bit RISC-V processors for high-performance applications.
+    @stability Stable
+*/
+#define ME_CPU_RISCV64     14
+
+/**
+    Xtensa architecture including ESP32.
+    @description Tensilica Xtensa processors, notably used in Espressif ESP32 Wi-Fi/Bluetooth microcontrollers.
+    @stability Stable
+*/
+#define ME_CPU_XTENSA      15
+
+/**
+    @section Byte Order Detection
+
+    Endianness constants for cross-platform byte order handling. These constants are used with the ME_ENDIAN macro
+    to determine the target platform's byte ordering at compile time. Little endian stores the least significant
+    byte first, while big endian stores the most significant byte first.
+*/
+
+/**
+    Little endian byte ordering.
+    @description In little endian format, the least significant byte is stored at the lowest memory address.
+    Most x86, ARM, and RISC-V processors use little endian ordering.
+    @stability Stable
+*/
+#define ME_LITTLE_ENDIAN   1
+
+/**
+    Big endian byte ordering.
+    @description In big endian format, the most significant byte is stored at the lowest memory address.
+    SPARC, some MIPS, and PowerPC processors traditionally use big endian ordering.
+    @stability Stable
+*/
+#define ME_BIG_ENDIAN      2
+
+/**
+    @section Platform Detection Logic
+
+    Automatic detection of CPU architecture and endianness based on compiler-defined preprocessor symbols.
+    The osdep module examines compiler-specific macros to determine the target platform and sets the
+    appropriate ME_CPU, ME_CPU_ARCH, and CPU_ENDIAN macros. The default endianness can be overridden
+    by the build system using configure --endian big|little.
+*/
 #if defined(__alpha__)
     #define ME_CPU "alpha"
     #define ME_CPU_ARCH ME_CPU_ALPHA
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__arm64__) || defined(__aarch64__)
+#elif defined(__arm64__) || defined(__aarch64__) || defined(_M_ARM64)
     #define ME_CPU "arm64"
     #define ME_CPU_ARCH ME_CPU_ARM64
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(_M_ARM)
     #define ME_CPU "arm"
     #define ME_CPU_ARCH ME_CPU_ARM
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__x86_64__) || defined(_M_AMD64)
+#elif defined(__x86_64__) || defined(_M_AMD64) || defined(__amd64__) || defined(__amd64)
     #define ME_CPU "x64"
     #define ME_CPU_ARCH ME_CPU_X64
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
@@ -113,14 +218,15 @@
     #define ME_CPU_ARCH ME_CPU_MIPS64
     #define CPU_ENDIAN ME_BIG_ENDIAN
 
-#elif defined(__ppc__) || defined(__powerpc__) || defined(__ppc)
+#elif defined(__ppc64__) || defined(__powerpc64__)
+    #define ME_CPU "ppc64"
+    #define ME_CPU_ARCH ME_CPU_PPC64
+    #define CPU_ENDIAN ME_BIG_ENDIAN
+
+#elif defined(__ppc__) || defined(__powerpc__) || defined(__ppc) || defined(__POWERPC__)
     #define ME_CPU "ppc"
     #define ME_CPU_ARCH ME_CPU_PPC
     #define CPU_ENDIAN ME_BIG_ENDIAN
-
-#elif defined(__ppc64__)
-    #define CPU "ppc64"
-    #define CPU_ARCH CPU_PPC64
 
 #elif defined(__sparc__)
     #define ME_CPU "sparc"
@@ -138,20 +244,20 @@
     #define ME_CPU_ARCH ME_CPU_SH
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__riscv_32)
-    #define ME_CPU "riscv"
-    #define ME_CPU_ARCH CPU_RISCV
-    #define ME_CPU_ENDIAN LITTLE_ENDIAN
-
-#elif defined(__riscv_64)
+#elif defined(__riscv) && (__riscv_xlen == 64)
     #define ME_CPU "riscv64"
-    #define ME_CPU_ARCH CPU_RISCV64
-    #define ME_CPU_ENDIAN LITTLE_ENDIAN
+    #define ME_CPU_ARCH ME_CPU_RISCV64
+    #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__XTENSA__)
+#elif defined(__riscv) && (__riscv_xlen == 32)
+    #define ME_CPU "riscv"
+    #define ME_CPU_ARCH ME_CPU_RISCV
+    #define CPU_ENDIAN ME_LITTLE_ENDIAN
+
+#elif defined(__XTENSA__) || defined(__xtensa__)
     #define ME_CPU "xtensa"
-    #define ME_CPU_ARCH CPU_XTENSA
-    #define ME_CPU_ENDIAN LITTLE_ENDIAN
+    #define ME_CPU_ARCH ME_CPU_XTENSA
+    #define CPU_ENDIAN ME_LITTLE_ENDIAN
 #else
     #error "Cannot determine CPU type in osdep.h"
 #endif
@@ -163,201 +269,699 @@
     #define ME_ENDIAN CPU_ENDIAN
 #endif
 
-/*
-    Operating system defines. Use compiler standard defintions to sleuth. Works for all except 
-    VxWorks which does not define any special symbol (ugh). 
- */
-#if defined(__APPLE__)
+/**
+    @section Operating System Constants
+
+    Operating system constants for cross-platform compilation. These constants are used with the ME_OS_TYPE macro
+    to determine the target operating system at compile time. The osdep module automatically detects the
+    operating system based on compiler-defined symbols and sets ME_OS_TYPE to the appropriate numeric value.
+*/
+
+/**
+    Unknown or unsupported operating system.
+    @stability Stable
+*/
+#define ME_OS_UNKNOWN   0
+
+/**
+    macOS / Mac OS X operating system.
+    @stability Stable
+*/
+#define ME_OS_MACOSX    1
+
+/**
+    Linux operating system.
+    @stability Stable
+*/
+#define ME_OS_LINUX     2
+
+/**
+    FreeBSD operating system.
+    @stability Stable
+*/
+#define ME_OS_FREEBSD   3
+
+/**
+    OpenBSD operating system.
+    @stability Stable
+*/
+#define ME_OS_OPENBSD   4
+
+/**
+    Microsoft Windows operating system.
+    @stability Stable
+*/
+#define ME_OS_WINDOWS   5
+
+/**
+    OS/2 operating system.
+    @stability Stable
+*/
+#define ME_OS_OS2       6
+
+/**
+    MS-DOS operating system.
+    @stability Stable
+*/
+#define ME_OS_MSDOS     7
+
+/**
+    NetWare operating system.
+    @stability Stable
+*/
+#define ME_OS_NETWARE   8
+
+/**
+    BSDi operating system.
+    @stability Stable
+*/
+#define ME_OS_BSDI      9
+
+/**
+    NetBSD operating system.
+    @stability Stable
+*/
+#define ME_OS_NETBSD    10
+
+/**
+    QNX operating system.
+    @stability Stable
+*/
+#define ME_OS_QNX       11
+
+/**
+    HP-UX operating system.
+    @stability Stable
+*/
+#define ME_OS_HPUX      12
+
+/**
+    IBM AIX operating system.
+    @stability Stable
+*/
+#define ME_OS_AIX       13
+
+/**
+    Cygwin POSIX compatibility layer on Windows.
+    @stability Stable
+*/
+#define ME_OS_CYGWIN    14
+
+/**
+    OpenVMS operating system.
+    @stability Stable
+*/
+#define ME_OS_VMS       15
+
+/**
+    VxWorks real-time operating system.
+    @stability Stable
+*/
+#define ME_OS_VXWORKS   16
+
+/**
+    eCos embedded operating system.
+    @stability Stable
+*/
+#define ME_OS_ECOS      17
+
+/**
+    Texas Instruments DSP platform.
+    @stability Stable
+*/
+#define ME_OS_TIDSP     18
+
+/**
+    FreeRTOS real-time operating system (including ESP32).
+    @stability Stable
+*/
+#define ME_OS_FREERTOS  19
+
+/**
+    Sun/Oracle Solaris operating system.
+    @stability Stable
+*/
+#define ME_OS_SOLARIS   20
+
+/**
+    @section Operating System Detection
+
+    Automatic detection of the target operating system based on compiler-defined preprocessor symbols.
+    The osdep module examines compiler-specific OS macros and sets ME_OS_TYPE to the appropriate numeric constant.
+    Most operating systems provide standard compiler symbols, with VxWorks being a notable exception
+    requiring explicit detection via VXWORKS define.
+
+    Order matters for cross compilation
+*/
+#ifndef ME_OS_TYPE
+    #if defined(__APPLE__)
+        #define ME_OS_TYPE ME_OS_MACOSX
+    #elif defined(__linux__)
+        #define ME_OS_TYPE ME_OS_LINUX
+    #elif defined(__FreeBSD__)
+        #define ME_OS_TYPE ME_OS_FREEBSD
+    #elif defined(__OpenBSD__)
+        #define ME_OS_TYPE ME_OS_OPENBSD
+    #elif defined(_WIN32)
+        #define ME_OS_TYPE ME_OS_WINDOWS
+    #elif defined(__OS2__)
+        #define ME_OS_TYPE ME_OS_OS2
+    #elif defined(MSDOS) || defined(__DME__)
+        #define ME_OS_TYPE ME_OS_MSDOS
+    #elif defined(__NETWARE_386__)
+        #define ME_OS_TYPE ME_OS_NETWARE
+    #elif defined(__bsdi__)
+        #define ME_OS_TYPE ME_OS_BSDI
+    #elif defined(__NetBSD__)
+        #define ME_OS_TYPE ME_OS_NETBSD
+    #elif defined(__QNX__)
+        #define ME_OS_TYPE ME_OS_QNX
+    #elif defined(__hpux)
+        #define ME_OS_TYPE ME_OS_HPUX
+    #elif defined(_AIX)
+        #define ME_OS_TYPE ME_OS_AIX
+    #elif defined(__CYGWIN__)
+        #define ME_OS_TYPE ME_OS_CYGWIN
+    #elif defined(__VMS)
+        #define ME_OS_TYPE ME_OS_VMS
+    #elif defined(VXWORKS)
+        #define ME_OS_TYPE ME_OS_VXWORKS
+    #elif defined(ESP_PLATFORM) || defined(INC_FREERTOS_H) || defined(FREERTOS_CONFIG_H) || defined(ARDUINO) || defined(FREERTOS)
+        #define ME_OS_TYPE ME_OS_FREERTOS
+    #elif defined(ECOS)
+        #define ME_OS_TYPE ME_OS_ECOS
+    #elif defined(TIDSP)
+        #define ME_OS_TYPE ME_OS_TIDSP
+    #elif defined(__sun) && defined(__SVR4)
+        #define ME_OS_TYPE ME_OS_SOLARIS
+    #else
+        #define ME_OS_TYPE ME_OS_UNKNOWN
+    #endif
+#endif
+
+/**
+    @section Operating System Platform Attributes
+
+    Based on the detected ME_OS_TYPE value, this section sets platform-specific attributes including:
+    - ME_OS string name for the platform
+    - OS name macros (LINUX, MACOSX, WINDOWS, etc.)
+    - POSIX compliance flag
+    - ME_UNIX_LIKE and ME_WIN_LIKE classification
+    - ME_BSD_LIKE for BSD-derived systems
+    - HAS_USHORT, HAS_UINT type availability
+    - PTHREADS threading support
+*/
+#if ME_OS_TYPE == ME_OS_MACOSX
     #define ME_OS "macosx"
     #define MACOSX 1
+    #define HAS_USHORT 1
+    #define HAS_UINT 1
+    #define PTHREADS 1
     #define POSIX 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
     #define ME_BSD_LIKE 1
-    #define HAS_USHORT 1
-    #define HAS_UINT 1
 
-#elif defined(__linux__)
+#elif ME_OS_TYPE == ME_OS_LINUX
     #define ME_OS "linux"
     #define LINUX 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
-    #define PTHREADS 1
 
-#elif defined(__FreeBSD__)
+#elif ME_OS_TYPE == ME_OS_FREEBSD
     #define ME_OS "freebsd"
     #define FREEBSD 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
     #define ME_BSD_LIKE 1
     #define HAS_USHORT 1
     #define HAS_UINT 1
-    #define PTHREADS 1
 
-#elif defined(__OpenBSD__)
+#elif ME_OS_TYPE == ME_OS_OPENBSD
     #define ME_OS "openbsd"
     #define OPENBSD 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
     #define ME_BSD_LIKE 1
-    #define PTHREADS 1
 
-#elif defined(_WIN32)
+#elif ME_OS_TYPE == ME_OS_WINDOWS
     #define ME_OS "windows"
     #define WINDOWS 1
     #define POSIX 1
+    #define PTHREADS 0
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 1
 
-#elif defined(__OS2__)
+#elif ME_OS_TYPE == ME_OS_OS2
     #define ME_OS "os2"
-    #define OS2 0
+    #define OS2 1
+    #define PTHREADS 0
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
 
-#elif defined(MSDOS) || defined(__DME__)
+#elif ME_OS_TYPE == ME_OS_MSDOS
     #define ME_OS "msdos"
-    #define WINDOWS 0
+    #define MSDOS 1
+    #define PTHREADS 0
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
 
-#elif defined(__NETWARE_386__)
+#elif ME_OS_TYPE == ME_OS_NETWARE
     #define ME_OS "netware"
-    #define NETWARE 0
+    #define NETWARE 1
+    #define PTHREADS 0
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
 
-#elif defined(__bsdi__)
+#elif ME_OS_TYPE == ME_OS_BSDI
     #define ME_OS "bsdi"
     #define BSDI 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
     #define ME_BSD_LIKE 1
-    #define PTHREADS 1
 
-#elif defined(__NetBSD__)
+#elif ME_OS_TYPE == ME_OS_NETBSD
     #define ME_OS "netbsd"
     #define NETBSD 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
     #define ME_BSD_LIKE 1
-    #define PTHREADS 1
 
-#elif defined(__QNX__)
+#elif ME_OS_TYPE == ME_OS_QNX
     #define ME_OS "qnx"
-    #define QNX 0
+    #define QNX 1
+    #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
-    #define PTHREADS 1
 
-#elif defined(__hpux)
+#elif ME_OS_TYPE == ME_OS_HPUX
     #define ME_OS "hpux"
     #define HPUX 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
-    #define PTHREADS 1
 
-#elif defined(_AIX)
+#elif ME_OS_TYPE == ME_OS_AIX
     #define ME_OS "aix"
     #define AIX 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
-    #define PTHREADS 1
 
-#elif defined(__CYGWIN__)
+#elif ME_OS_TYPE == ME_OS_CYGWIN
     #define ME_OS "cygwin"
     #define CYGWIN 1
+    #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
 
-#elif defined(__VMS)
+#elif ME_OS_TYPE == ME_OS_VMS
     #define ME_OS "vms"
     #define VMS 1
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
 
-#elif defined(VXWORKS)
-    /* VxWorks does not have a pre-defined symbol */
+#elif ME_OS_TYPE == ME_OS_VXWORKS
     #define ME_OS "vxworks"
+    #define VXWORKS 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
     #define HAS_USHORT 1
 
-#elif defined(ECOS)
-    /* ECOS may not have a pre-defined symbol */
+#elif ME_OS_TYPE == ME_OS_ECOS
     #define ME_OS "ecos"
+    #define ECOS 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
 
-#elif defined(TIDSP)
+#elif ME_OS_TYPE == ME_OS_TIDSP
     #define ME_OS "tidsp"
+    #define TIDSP 1
+    #define HAS_INT32 1
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
-    #define HAS_INT32 1
 
-#elif defined(ESP_PLATFORM)
+#elif ME_OS_TYPE == ME_OS_FREERTOS
     #define ME_OS "freertos"
     #define FREERTOS 1
-    #define ESP32 1
+    #define HAS_INT32 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
-    #define PLATFORM "esp"
-    #define PTHREADS 1
-    #define HAS_INT32 1
+    #if defined(ESP_PLATFORM)
+        #define ESP32 1
+        #define PLATFORM "esp"
+    #endif
 
-#elif defined(INC_FREERTOS_H)
-    #define ME_OS "freertos"
-    #define FREERTOS 1
+#elif ME_OS_TYPE == ME_OS_SOLARIS
+    #define ME_OS "solaris"
+    #define SOLARIS 1
     #define POSIX 1
-    #define ME_UNIX_LIKE 0
-    #define ME_WIN_LIKE 0
     #define PTHREADS 1
-    #define HAS_INT32 1
-
-#elif defined(ARDUINO)
-    #define ME_OS "freertos"
-    #define FREERTOS 1
-    #define POSIX 1
-    #define ME_UNIX_LIKE 0
+    #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
-    #define PTHREADS 1
-    #define HAS_INT32 1
 #endif
 
+/*
+    Simulated platforms hosted on MacOS, Linux, or Windows
+ */
+#if defined(__APPLE__) || defined(__linux__)
+    #define ME_SIMULATED 1
+    #define ME_ON_UNIX 1
+#elif defined(_WIN32)
+    #define ME_SIMULATED 1
+    #define ME_ON_WINDOWS 1
+#endif
+
+/**
+    @section Compiler Feature Detection
+
+    Auto-detection of compiler capabilities based on OS type and compiler. These defaults match
+    MakeMe probe results for supported platforms. All macros are #ifndef guarded so that values
+    from a MakeMe-generated me.h (included before osdep.h) take precedence.
+*/
+
+/*
+    ME_COMPILER_HAS_ATOMIC - C11 __atomic_* builtins.
+    Available with GCC 4.7+ and Clang on all platforms except VxWorks.
+ */
+#ifndef ME_COMPILER_HAS_ATOMIC
+    #if (defined(__GNUC__) && !VXWORKS) || defined(__clang__)
+        #define ME_COMPILER_HAS_ATOMIC 1
+    #else
+        #define ME_COMPILER_HAS_ATOMIC 0
+    #endif
+#endif
+
+#ifndef ME_COMPILER_HAS_ATOMIC64
+    #define ME_COMPILER_HAS_ATOMIC64 ME_COMPILER_HAS_ATOMIC
+#endif
+
+/*
+    ME_COMPILER_HAS_DOUBLE_BRACES - {{0}} aggregate initialization.
+    Supported by GCC and Clang but not VxWorks old toolchains or MSVC.
+ */
+#ifndef ME_COMPILER_HAS_DOUBLE_BRACES
+    #if (defined(__GNUC__) || defined(__clang__)) && !VXWORKS && !defined(_MSC_VER)
+        #define ME_COMPILER_HAS_DOUBLE_BRACES 1
+    #else
+        #define ME_COMPILER_HAS_DOUBLE_BRACES 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_HAS_DYN_LOAD - Dynamic library loading (dlopen/LoadLibrary).
+ */
+#ifndef ME_COMPILER_HAS_DYN_LOAD
+    #define ME_COMPILER_HAS_DYN_LOAD 1
+#endif
+
+/*
+    ME_COMPILER_HAS_LIB_EDIT - BSD libedit (editline) library.
+    Only available on macOS by default.
+ */
+#ifndef ME_COMPILER_HAS_LIB_EDIT
+    #if MACOSX
+        #define ME_COMPILER_HAS_LIB_EDIT 1
+    #else
+        #define ME_COMPILER_HAS_LIB_EDIT 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_HAS_LIB_RT - POSIX real-time library (librt).
+    Only Linux provides librt as a separate library.
+ */
+#ifndef ME_COMPILER_HAS_LIB_RT
+    #if LINUX
+        #define ME_COMPILER_HAS_LIB_RT 1
+    #else
+        #define ME_COMPILER_HAS_LIB_RT 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_HAS_MMU - Memory Management Unit present.
+    Override to 0 for no-MMU embedded targets.
+ */
+#ifndef ME_COMPILER_HAS_MMU
+    #define ME_COMPILER_HAS_MMU 1
+#endif
+
+/*
+    ME_COMPILER_HAS_MTUNE - GCC/Clang -mtune flag support.
+ */
+#ifndef ME_COMPILER_HAS_MTUNE
+    #if (defined(__GNUC__) || defined(__clang__)) && !VXWORKS && !defined(_MSC_VER)
+        #define ME_COMPILER_HAS_MTUNE 1
+    #else
+        #define ME_COMPILER_HAS_MTUNE 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_HAS_PAM - Pluggable Authentication Modules.
+    Only macOS ships PAM by default.
+ */
+#ifndef ME_COMPILER_HAS_PAM
+    #if MACOSX
+        #define ME_COMPILER_HAS_PAM 1
+    #else
+        #define ME_COMPILER_HAS_PAM 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_HAS_STACK_PROTECTOR - GCC/Clang -fstack-protector support.
+ */
+#ifndef ME_COMPILER_HAS_STACK_PROTECTOR
+    #if defined(__GNUC__) || defined(__clang__)
+        #define ME_COMPILER_HAS_STACK_PROTECTOR 1
+    #else
+        #define ME_COMPILER_HAS_STACK_PROTECTOR 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_HAS_SYNC - GCC __sync_* builtins (pre-C11 atomics).
+    Available on Linux and macOS with GCC/Clang.
+ */
+#ifndef ME_COMPILER_HAS_SYNC
+    #if (LINUX || MACOSX) && (defined(__GNUC__) || defined(__clang__))
+        #define ME_COMPILER_HAS_SYNC 1
+    #else
+        #define ME_COMPILER_HAS_SYNC 0
+    #endif
+#endif
+
+#ifndef ME_COMPILER_HAS_SYNC64
+    #define ME_COMPILER_HAS_SYNC64 ME_COMPILER_HAS_SYNC
+#endif
+
+#ifndef ME_COMPILER_HAS_SYNC_CAS
+    #define ME_COMPILER_HAS_SYNC_CAS ME_COMPILER_HAS_SYNC
+#endif
+
+/*
+    ME_COMPILER_HAS_UNNAMED_UNIONS - Unnamed union support.
+    Supported by all modern compilers.
+ */
+#ifndef ME_COMPILER_HAS_UNNAMED_UNIONS
+    #define ME_COMPILER_HAS_UNNAMED_UNIONS 1
+#endif
+
+/*
+    ME_COMPILER_NOEXECSTACK - Linker noexecstack support (GNU ld).
+ */
+#ifndef ME_COMPILER_NOEXECSTACK
+    #if LINUX
+        #define ME_COMPILER_NOEXECSTACK 1
+    #else
+        #define ME_COMPILER_NOEXECSTACK 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_WARN64TO32 - Clang -Wshorten-64-to-32 warning support.
+ */
+#ifndef ME_COMPILER_WARN64TO32
+    #if defined(__clang__)
+        #define ME_COMPILER_WARN64TO32 1
+    #else
+        #define ME_COMPILER_WARN64TO32 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_WARN_UNUSED - Unused result warning support.
+ */
+#ifndef ME_COMPILER_WARN_UNUSED
+    #if (LINUX || MACOSX) && (defined(__GNUC__) || defined(__clang__))
+        #define ME_COMPILER_WARN_UNUSED 1
+    #else
+        #define ME_COMPILER_WARN_UNUSED 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_FORTIFY - Compile with _FORTIFY_SOURCE buffer overflow protection.
+ */
+#ifndef ME_COMPILER_FORTIFY
+    #define ME_COMPILER_FORTIFY 1
+#endif
+
+/**
+    @section File Suffix Defaults
+
+    Default file extension suffixes based on the operating system.
+*/
+
+#ifndef ME_EXE
+    #if ME_WIN_LIKE
+        #define ME_EXE ".exe"
+    #elif VXWORKS
+        #define ME_EXE ".out"
+    #else
+        #define ME_EXE ""
+    #endif
+#endif
+
+#ifndef ME_SHLIB
+    #if MACOSX
+        #define ME_SHLIB ".dylib"
+    #elif ME_WIN_LIKE
+        #define ME_SHLIB ".lib"
+    #elif VXWORKS
+        #define ME_SHLIB ".out"
+    #else
+        #define ME_SHLIB ".so"
+    #endif
+#endif
+
+#ifndef ME_SHOBJ
+    #if MACOSX
+        #define ME_SHOBJ ".dylib"
+    #elif ME_WIN_LIKE
+        #define ME_SHOBJ ".dll"
+    #elif VXWORKS
+        #define ME_SHOBJ ".out"
+    #else
+        #define ME_SHOBJ ".so"
+    #endif
+#endif
+
+#ifndef ME_LIB
+    #if ME_WIN_LIKE
+        #define ME_LIB ".lib"
+    #else
+        #define ME_LIB ".a"
+    #endif
+#endif
+
+#ifndef ME_OBJ
+    #if ME_WIN_LIKE
+        #define ME_OBJ ".obj"
+    #else
+        #define ME_OBJ ".o"
+    #endif
+#endif
+
+/**
+    @section Word Size Detection
+
+    Automatic detection of the target platform's word size (32-bit or 64-bit) based on compiler-defined
+    preprocessor symbols. This sets ME_64 and ME_WORDSIZE macros used throughout the codebase for
+    size-dependent operations and pointer arithmetic.
+*/
 #if __WORDSIZE == 64 || __amd64 || __x86_64 || __x86_64__ || _WIN64 || __mips64 || __arch64__ || __arm64__ || __aarch64__
+    /**
+        64-bit platform indicator.
+        @description Set to 1 on 64-bit platforms, 0 on 32-bit platforms.
+        @stability Stable
+    */
     #define ME_64 1
+    /**
+        Platform word size in bits.
+        @description Set to 64 on 64-bit platforms, 32 on 32-bit platforms.
+        @stability Stable
+    */
     #define ME_WORDSIZE 64
 #else
     #define ME_64 0
     #define ME_WORDSIZE 32
 #endif
 
-/*
-    Unicode
- */
+/**
+    @section Unicode Support
+
+    Unicode character support configuration. The ME_CHAR_LEN macro determines the wide character size
+    and enables appropriate Unicode handling. This affects string literals and character processing
+    throughout the system.
+*/
 #ifndef ME_CHAR_LEN
+    /**
+        Character length for Unicode support.
+        @description Set to 1 for ASCII/UTF-8, 2 for UTF-16, or 4 for UTF-32.
+        @stability Stable
+    */
     #define ME_CHAR_LEN 1
 #endif
 #if ME_CHAR_LEN == 4
+    /**
+        Wide character type for 32-bit Unicode (UTF-32).
+        @stability Stable
+    */
     typedef int wchar;
+    /**
+        Unicode string literal macro for UTF-32.
+        @param s String literal to convert to Unicode
+        @stability Stable
+    */
     #define UT(s) L ## s
     #define UNICODE 1
 #elif ME_CHAR_LEN == 2
+    /**
+        Wide character type for 16-bit Unicode (UTF-16).
+        @stability Stable
+    */
     typedef short wchar;
+    /**
+        Unicode string literal macro for UTF-16.
+        @param s String literal to convert to Unicode
+        @stability Stable
+    */
     #define UT(s) L ## s
     #define UNICODE 1
 #else
+    /**
+        Wide character type for ASCII/UTF-8.
+        @stability Stable
+    */
     typedef char wchar;
+    /**
+        String literal macro for ASCII/UTF-8 (no conversion).
+        @param s String literal
+        @stability Stable
+    */
     #define UT(s) s
 #endif
 
@@ -424,6 +1028,7 @@
     #include    <process.h>
     #include    <windows.h>
     #include    <shlobj.h>
+    #include    <malloc.h>
     #if _MSC_VER >= 1800
         #include    <stdbool.h>
     #endif
@@ -471,6 +1076,7 @@
     #include    <netinet/ip.h>
 #endif
 #if ME_UNIX_LIKE
+    #include    <stdbool.h>
     #include    <pthread.h>
     #include    <pwd.h>
 #if !CYGWIN
@@ -485,9 +1091,8 @@
     #include    <setjmp.h>
     #include    <signal.h>
     #include    <stdarg.h>
-#if ME_UNIX_LIKE
+    #include    <stddef.h>
     #include    <stdint.h>
-#endif
     #include    <stdio.h>
     #include    <stdlib.h>
     #include    <string.h>
@@ -528,6 +1133,7 @@
     #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0)
         #include    <sys/epoll.h>
     #endif
+    #include    <malloc.h>
     #include    <sys/prctl.h>
     #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,22)
         #include    <sys/eventfd.h>
@@ -542,6 +1148,17 @@
         #include    <sys/sendfile.h>
     #endif
 #endif
+
+/*
+    Sendfile support for zero-copy file transfers
+ */
+#if LINUX && !__UCLIBC__
+    #define ME_HAS_SENDFILE 1
+#elif MACOSX || FREEBSD
+    #define ME_HAS_SENDFILE 1
+#else
+    #define ME_HAS_SENDFILE 0
+#endif
 #if MACOSX
     #include    <stdbool.h>
     #include    <mach-o/dyld.h>
@@ -549,6 +1166,7 @@
     #include    <mach/mach_init.h>
     #include    <mach/mach_time.h>
     #include    <mach/task.h>
+    #include    <malloc/malloc.h>
     #include    <libkern/OSAtomic.h>
     #include    <net/if_dl.h>
 #endif
@@ -587,56 +1205,85 @@
 #endif
 
 #if ME_COMPILER_HAS_ATOMIC
-    #include   <stdatomic.h>
+    #ifndef __cplusplus
+        #include   <stdatomic.h>
+    #endif
 #endif
 
 #if FREERTOS
-#include <stddef.h>
-#include <string.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
-#include "freertos/task.h"
-#include "time.h"
+    #include <string.h>
+    #include <stdbool.h>
+    #include "time.h"
+#if ESP32
+    #include "freertos/FreeRTOS.h"
+    #include "freertos/event_groups.h"
+    #include "freertos/task.h"
+#else
+    #include "FreeRTOS.h"
+    #include "event_groups.h"
+    #include "task.h"
+#endif /* ESP32 */
+#if defined(__APPLE__) || defined(__linux__)
+    // Simulation of FreeRTOS on MacOS or Linux
+    #include <unistd.h>
+    #include <fcntl.h>
+    #include <sys/stat.h>
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #include <unistd.h>
+    #include <netdb.h>
+    #include <sys/types.h>
+    #include <netinet/tcp.h>
+    #include <sys/time.h>
+    #define closesocket(x)  close(x)
+#endif
 #endif
 
 #if ESP32
-#include "esp_system.h"
-#include "esp_log.h"
-#include "esp_heap_caps.h"
-#include "esp_err.h"
-#include "esp_event.h"
-#include "esp_log.h"
-#include "esp_system.h"
-#include "esp_heap_caps.h"
-#include "esp_psram.h"
-#include "esp_pthread.h"
-#include "esp_littlefs.h"
-#include "esp_crt_bundle.h"
-#include "esp_pthread.h"
-#include "esp_wifi.h"
-#include "esp_netif.h"
-#include "nvs_flash.h"
-#include "lwip/err.h"
-#include "lwip/sockets.h"
-#include "lwip/sys.h"
-#include "lwip/netdb.h"
+    #include "sdkconfig.h"
+    #include "esp_system.h"
+    #include "esp_log.h"
+    #include "esp_heap_caps.h"
+    #include "esp_err.h"
+    #include "esp_event.h"
+    #include "esp_log.h"
+    #include "esp_system.h"
+    #include "esp_heap_caps.h"
+    #include "esp_psram.h"
+    #include "esp_pthread.h"
+    #include "esp_littlefs.h"
+    #include "esp_crt_bundle.h"
+    #include "esp_pthread.h"
+    #include "esp_wifi.h"
+    #include "esp_netif.h"
+    #include "nvs_flash.h"
+    #include "lwip/err.h"
+    #include "lwip/sockets.h"
+    #include "lwip/sys.h"
+    #include "lwip/netdb.h"
 #endif
 
 #if PTHREADS
-#include <pthread.h>
+    #include <pthread.h>
 #endif
 
-/************************************** Types *********************************/
-/*
-    Standard types
- */
+/**
+    @section Type Definitions
+
+    Cross-platform type definitions for consistent behavior across different operating systems and compilers.
+    These types provide fixed-size integers, enhanced character types, and platform-specific abstractions
+    for sockets, file offsets, and time values. All types are designed to be null-tolerant and provide
+    consistent sizing across 32-bit and 64-bit platforms.
+*/
 #ifndef HAS_BOOL
     #ifndef __cplusplus
-        #if !MACOSX && !FREERTOS
+        #if !ME_UNIX_LIKE && !FREERTOS
             #define HAS_BOOL 1
             /**
                 Boolean data type.
-                @ingroup Osdep
+                @description Provides consistent boolean type across platforms. Uses char underlying type for
+                compatibility with systems lacking native bool support. Should be used with true/false constants.
                 @stability Stable
              */
             #if !WINDOWS || ((_MSC_VER < 1800) && !defined(bool))
@@ -650,8 +1297,8 @@
 #ifndef HAS_UCHAR
     #define HAS_UCHAR 1
     /**
-        Unsigned char data type.
-        @ingroup Osdep
+        Unsigned 8-bit character type.
+        @description Provides explicit unsigned char semantics for byte manipulation and binary data handling.
         @stability Stable
      */
     typedef unsigned char uchar;
@@ -660,8 +1307,8 @@
 #ifndef HAS_SCHAR
     #define HAS_SCHAR 1
     /**
-        Signed char data type.
-        @ingroup Osdep
+        Signed 8-bit character type.
+        @description Provides explicit signed char semantics when the sign of char values matters.
         @stability Stable
      */
     typedef signed char schar;
@@ -670,8 +1317,8 @@
 #ifndef HAS_CCHAR
     #define HAS_CCHAR 1
     /**
-        Constant char data type.
-        @ingroup Osdep
+        Constant character pointer type.
+        @description Commonly used for read-only string parameters and immutable text data.
         @stability Stable
      */
     typedef const char cchar;
@@ -680,8 +1327,8 @@
 #ifndef HAS_CUCHAR
     #define HAS_CUCHAR 1
     /**
-        Unsigned char data type.
-        @ingroup Osdep
+        Constant unsigned character type.
+        @description Provides read-only access to unsigned byte data.
         @stability Stable
      */
     typedef const unsigned char cuchar;
@@ -691,7 +1338,6 @@
     #define HAS_USHORT 1
     /**
         Unsigned short data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef unsigned short ushort;
@@ -701,7 +1347,6 @@
     #define HAS_CUSHORT 1
     /**
         Constant unsigned short data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef const unsigned short cushort;
@@ -711,7 +1356,6 @@
     #define HAS_CVOID 1
     /**
         Constant void data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef const void cvoid;
@@ -720,8 +1364,8 @@
 #ifndef HAS_INT8
     #define HAS_INT8 1
     /**
-        Integer 8 bits data type.
-        @ingroup Osdep
+        Signed 8-bit integer type.
+        @description Guaranteed 8-bit signed integer (-128 to 127) for precise byte-level operations.
         @stability Stable
      */
     typedef char int8;
@@ -730,8 +1374,8 @@
 #ifndef HAS_UINT8
     #define HAS_UINT8 1
     /**
-        Unsigned integer 8 bits data type.
-        @ingroup Osdep
+        Unsigned 8-bit integer type.
+        @description Guaranteed 8-bit unsigned integer (0 to 255) for byte manipulation and flags.
         @stability Stable
      */
     typedef unsigned char uint8;
@@ -740,8 +1384,8 @@
 #ifndef HAS_INT16
     #define HAS_INT16 1
     /**
-        Integer 16 bits data type.
-        @ingroup Osdep
+        Signed 16-bit integer type.
+        @description Guaranteed 16-bit signed integer (-32,768 to 32,767) for network protocols and compact data.
         @stability Stable
      */
     typedef short int16;
@@ -750,8 +1394,8 @@
 #ifndef HAS_UINT16
     #define HAS_UINT16 1
     /**
-        Unsigned integer 16 bits data type.
-        @ingroup Osdep
+        Unsigned 16-bit integer type.
+        @description Guaranteed 16-bit unsigned integer (0 to 65,535) for ports, packet sizes, and compact counters.
         @stability Stable
      */
     typedef unsigned short uint16;
@@ -760,8 +1404,8 @@
 #ifndef HAS_INT32
     #define HAS_INT32 1
     /**
-        Integer 32 bits data type.
-        @ingroup Osdep
+        Signed 32-bit integer type.
+        @description Guaranteed 32-bit signed integer for general-purpose arithmetic and system values.
         @stability Stable
      */
     typedef int int32;
@@ -770,8 +1414,8 @@
 #ifndef HAS_UINT32
     #define HAS_UINT32 1
     /**
-        Unsigned integer 32 bits data type.
-        @ingroup Osdep
+        Unsigned 32-bit integer type.
+        @description Guaranteed 32-bit unsigned integer for addresses, large counters, and hash values.
         @stability Stable
      */
     typedef unsigned int uint32;
@@ -781,7 +1425,6 @@
     #define HAS_UINT 1
     /**
         Unsigned integer (machine dependent bit size) data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef unsigned int uint;
@@ -791,7 +1434,6 @@
     #define HAS_ULONG 1
     /**
         Unsigned long (machine dependent bit size) data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef unsigned long ulong;
@@ -801,7 +1443,6 @@
     #define HAS_CINT 1
     /**
         Constant int data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef const int cint;
@@ -809,23 +1450,22 @@
 
 #ifndef HAS_SSIZE
     #define HAS_SSIZE 1
-    #if ME_UNIX_LIKE || VXWORKS || DOXYGEN
+    #if ME_WIN_LIKE
+        typedef SSIZE_T ssize;
+        typedef SSIZE_T ssize_t;
+    #else
         /**
-            Signed integer size field large enough to hold a pointer offset.
-            @ingroup Osdep
+            Signed size type for memory and I/O operations.
+            @description Platform-appropriate signed integer type large enough to hold array indices, memory sizes,
+            and I/O transfer counts. Can represent negative values for error conditions. Equivalent to size_t but signed.
             @stability Stable
          */
-        typedef ssize_t ssize;
-    #elif ME_WIN_LIKE
-        typedef SSIZE_T ssize;
-    #else
         typedef ssize_t ssize;
     #endif
 #endif
 
 /**
     Windows uses uint for write/read counts (Ugh!)
-    @ingroup Osdep
     @stability Stable
  */
 #if ME_WIN_LIKE
@@ -840,7 +1480,6 @@
     #elif VXWORKS || DOXYGEN
         /**
             Integer 64 bit data type.
-            @ingroup Osdep
             @stability Stable
          */
         typedef long long int int64;
@@ -864,8 +1503,9 @@
 #endif
 
 /**
-    Signed file offset data type. Supports large files greater than 4GB in size on all systems.
-    @ingroup Osdep
+    Signed 64-bit file offset type.
+    @description Supports large files greater than 4GB in size on all systems. Used for file positioning,
+    seeking, and size calculations. Always 64-bit regardless of platform word size.
     @stability Stable
  */
 typedef int64 Offset;
@@ -873,12 +1513,15 @@ typedef int64 Offset;
 #if DOXYGEN
     /**
         Size to hold the length of a socket address
-        @ingroup Osdep
         @stability Stable
      */
     typedef int Socklen;
 #elif VXWORKS
     typedef int Socklen;
+#elif ESP32
+    typedef socklen_t Socklen;
+#elif FREERTOS
+    typedef uint Socklen;
 #else
     typedef socklen_t Socklen;
 #endif
@@ -886,7 +1529,6 @@ typedef int64 Offset;
 #if DOXYGEN || ME_UNIX_LIKE || VXWORKS
     /**
         Argument for sockets
-        @ingroup Osdep
         @stability Stable
     */
     typedef int Socket;
@@ -913,33 +1555,52 @@ typedef int64 Offset;
 #endif
 
 /**
-    Time in milliseconds since Jan 1, 1970.
-    @ingroup Osdep
+    Absolute time in milliseconds since Unix epoch.
+    @description Time value representing milliseconds since January 1, 1970 UTC (Unix epoch).
+    Used for timestamps, timeouts, and absolute time calculations across the system.
     @stability Stable
 */
 typedef int64 Time;
 
 /**
-    Elapsed time data type. Stores time in milliseconds from some arbitrary start epoch.
-    @ingroup Osdep
+    Relative time in milliseconds for durations and intervals.
+    @description Elapsed time measurement in milliseconds from an arbitrary starting point.
+    Used for timeouts, delays, performance measurements, and relative time calculations.
     @stability Stable
  */
 typedef int64 Ticks;
 
 /**
     Time/Ticks units per second (milliseconds)
-    @ingroup Osdep
     @stability Stable
  */
 #define TPS 1000
 
-/*********************************** Defines **********************************/
+/**
+    @section Utility Macros and Constants
+
+    Common macros and constants for bit manipulation, limits, and cross-platform compatibility.
+    These provide consistent behavior for mathematical operations, type introspection, and
+    platform-specific value definitions.
+*/
 
 #ifndef BITSPERBYTE
+    /**
+        Number of bits per byte.
+        @description Standard definition for bits in a byte, typically 8 on all modern platforms.
+        @stability Stable
+    */
     #define BITSPERBYTE     ((int) (8 * sizeof(char)))
 #endif
 
 #ifndef BITS
+    /**
+        Calculate number of bits in a data type.
+        @description Macro to determine the total number of bits in any data type at compile time.
+        @param type Data type to calculate bits for
+        @return Number of bits in the specified type
+        @stability Stable
+    */
     #define BITS(type)      ((int) (BITSPERBYTE * (int) sizeof(type)))
 #endif
 
@@ -955,8 +1616,14 @@ typedef int64 Ticks;
         #undef isnan
         #define isnan(n)  ((n) != (n))
         #define isnanf(n) ((n) != (n))
-        #define isinf(n)  ((n) == (1.0 / 0.0) || (n) == (-1.0 / 0.0))
-        #define isinff(n) ((n) == (1.0 / 0.0) || (n) == (-1.0 / 0.0))
+        #if defined(__GNUC__)
+            #define isinf(n)  __builtin_isinf(n)
+            #define isinff(n) __builtin_isinff(n)
+        #else
+            #include <math.h>
+            #define isinf(n)  ((n) == HUGE_VAL || (n) == -HUGE_VAL)
+            #define isinff(n) ((n) == HUGE_VALF || (n) == -HUGE_VALF)
+        #endif
     #endif
     #if ME_WIN_LIKE
         #define isNan(f) (_isnan(f))
@@ -998,20 +1665,16 @@ typedef int64 Ticks;
     #define MAXUINT64   INT64(0xffffffffffffffff)
 #endif
 
-#if SIZE_T_MAX
-    #define MAXSIZE     SIZE_T_MAX
-#elif ME_64
-    #define MAXSIZE     INT64(0xffffffffffffffff)
-#else
-    #define MAXSIZE     MAXINT
-#endif
-
-#if SSIZE_T_MAX
-    #define MAXSSIZE     SSIZE_T_MAX
+#if SSIZE_MAX
+    #define MAXSSIZE     ((ssize) SSIZE_MAX)
 #elif ME_64
     #define MAXSSIZE     INT64(0x7fffffffffffffff)
 #else
     #define MAXSSIZE     MAXINT
+#endif
+
+#ifndef SSIZE_MAX
+    #define SSIZE_MAX    MAXSSIZE
 #endif
 
 #if OFF_T_MAX
@@ -1019,6 +1682,11 @@ typedef int64 Ticks;
 #else
     #define MAXOFF       INT64(0x7fffffffffffffff)
 #endif
+
+/*
+    Safe time max value to avoid overflows
+ */
+#define MAXTIME         (MAXINT64 - MAXINT)
 
 /*
     Word size and conversions between integer and pointer.
@@ -1056,14 +1724,45 @@ typedef int64 Ticks;
 #undef max
 #undef min
 
+/**
+    Return the maximum of two values.
+    @description Safe macro to return the larger of two values. Arguments are evaluated twice,
+    so avoid using expressions with side effects.
+    @param a First value to compare
+    @param b Second value to compare
+    @return The larger of the two values
+    @stability Stable
+*/
 #define max(a,b)  (((a) > (b)) ? (a) : (b))
+
+/**
+    Return the minimum of two values.
+    @description Safe macro to return the smaller of two values. Arguments are evaluated twice,
+    so avoid using expressions with side effects.
+    @param a First value to compare
+    @param b Second value to compare
+    @return The smaller of the two values
+    @stability Stable
+*/
 #define min(a,b)  (((a) < (b)) ? (a) : (b))
+
+/**
+    @section Compiler Abstractions
+
+    Compiler-specific macros for function attributes, optimization hints, and cross-platform compatibility.
+    These abstractions allow the code to take advantage of compiler-specific features while maintaining
+    portability across different toolchains.
+*/
 
 #ifndef PRINTF_ATTRIBUTE
     #if ((__GNUC__ >= 3) && !DOXYGEN) || MACOSX
         /**
-            Use gcc attribute to check printf fns.  a1 is the 1-based index of the parameter containing the format,
-            and a2 the index of the first argument. Note that some gcc 2.x versions don't handle this properly
+            Printf-style function format checking attribute.
+            @description Enables GCC to check printf-style format strings against their arguments at compile time.
+            Helps catch format string bugs and type mismatches early in development.
+            @param a1 1-based index of the format string parameter
+            @param a2 1-based index of the first format argument parameter
+            @stability Stable
          */
         #define PRINTF_ATTRIBUTE(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
     #else
@@ -1071,13 +1770,28 @@ typedef int64 Ticks;
     #endif
 #endif
 
-/*
-    Optimize expression evaluation code depending if the value is likely or not
- */
 #undef likely
 #undef unlikely
 #if (__GNUC__ >= 3)
+    /**
+        Branch prediction hint for likely conditions.
+        @description Tells the compiler that the condition is likely to be true, enabling better
+        branch prediction and code optimization. Use sparingly and only for conditions that are
+        overwhelmingly likely to be true.
+        @param x Condition expression to evaluate
+        @return Same value as x, with optimization hint
+        @stability Stable
+    */
     #define likely(x)   __builtin_expect(!!(x), 1)
+
+    /**
+        Branch prediction hint for unlikely conditions.
+        @description Tells the compiler that the condition is likely to be false, enabling better
+        branch prediction and code optimization. Commonly used for error handling paths.
+        @param x Condition expression to evaluate
+        @return Same value as x, with optimization hint
+        @stability Stable
+    */
     #define unlikely(x) __builtin_expect(!!(x), 0)
 #else
     #define likely(x)   (x)
@@ -1121,9 +1835,9 @@ typedef int64 Ticks;
     #define LD_LIBRARY_PATH "LD_LIBRARY_PATH"
 #endif
 
-#if VXWORKS
+#if VXWORKS || WINDOWS
     /*
-        Old VxWorks cannot do array[]
+        Use in arra[ARRAY_FLEX] to avoid compiler warnings
      */
     #define ARRAY_FLEX 0
 #else
@@ -1141,58 +1855,127 @@ typedef int64 Ticks;
 
 #define NOT_USED(x) ((void*) x)
 
-/********************************** Tunables *********************************/
-/*
-    These can be defined in main.bit settings (pascal case) to override. E.g.
+/**
+    @section System Configuration Tunables
 
-    settings: {
-        maxPath: 4096
-    }
- */
+    Configurable constants that define system limits and buffer sizes. These values are optimized for
+    different target platforms, with smaller values for microcontrollers and embedded systems, and
+    larger values for desktop and server platforms. Values can be overridden in build configuration
+    files using pascal case names (e.g., maxPath: 4096 in settings).
+*/
 #if ESP32 || FREERTOS || VXWORKS
-    //  Microcontrollers and smaller systems
+    //  Microcontrollers and embedded systems with constrained memory
     #ifndef ME_MAX_FNAME
-        #define ME_MAX_FNAME        128         /**< Reasonable filename size */
+        /**
+            Maximum filename length for embedded systems.
+            @description Conservative filename size limit for microcontrollers and embedded systems
+            where memory is constrained. Sufficient for most embedded application file naming.
+            @stability Stable
+        */
+        #define ME_MAX_FNAME        128
     #endif
     #ifndef ME_MAX_PATH
-        #define ME_MAX_PATH         256        /**< Reasonable path size */
+        /**
+            Maximum path length for embedded systems.
+            @description Conservative path size limit for microcontrollers and embedded systems.
+            Balances functionality with memory constraints typical of embedded applications.
+            @stability Stable
+        */
+        #define ME_MAX_PATH         256
     #endif
     #ifndef ME_BUFSIZE
-        #define ME_BUFSIZE          1024        /**< Reasonable size for buffers */
+        /**
+            Standard buffer size for embedded systems.
+            @description Conservative buffer size for I/O operations, string manipulation, and temporary
+            storage in memory-constrained embedded environments.
+            @stability Stable
+        */
+        #define ME_BUFSIZE          1024
     #endif
     #ifndef ME_MAX_BUFFER
         #define ME_MAX_BUFFER       ME_BUFSIZE  /* DEPRECATE */
     #endif
     #ifndef ME_MAX_ARGC
-        #define ME_MAX_ARGC         16          /**< Maximum number of command line args if using MAIN()*/
+        /**
+            Maximum command line arguments for embedded systems.
+            @description Conservative limit for command line argument parsing in embedded applications
+            where argument lists are typically simple and memory is limited.
+            @stability Stable
+        */
+        #define ME_MAX_ARGC         16
     #endif
     #ifndef ME_DOUBLE_BUFFER
+        /**
+            Buffer size for double-precision floating point string conversion.
+            @description Calculated buffer size needed for converting double values to strings.
+            @stability Stable
+        */
         #define ME_DOUBLE_BUFFER    (DBL_MANT_DIG - DBL_MIN_EXP + 4)
     #endif
     #ifndef ME_MAX_IP
+        /**
+            Maximum IP address string length for embedded systems.
+            @description Buffer size for IP address string representation in embedded networking.
+            @stability Stable
+        */
         #define ME_MAX_IP           128
     #endif
 #else
+    // Desktop, server, and high-resource embedded systems
     #ifndef ME_MAX_FNAME
-        #define ME_MAX_FNAME        256         /**< Reasonable filename size */
+        /**
+            Maximum filename length for desktop/server systems.
+            @description Generous filename size limit for desktop and server environments where
+            memory is less constrained and longer filenames are common.
+            @stability Stable
+        */
+        #define ME_MAX_FNAME        256
     #endif
     #ifndef ME_MAX_PATH
-        #define ME_MAX_PATH         1024        /**< Reasonable path size */
+        /**
+            Maximum path length for desktop/server systems.
+            @description Standard path size limit for desktop and server systems, accommodating
+            deep directory structures and long component names.
+            @stability Stable
+        */
+        #define ME_MAX_PATH         1024
     #endif
     #ifndef ME_BUFSIZE
-        #define ME_BUFSIZE          8192        /**< Reasonable size for buffers */
+        /**
+            Standard buffer size for desktop/server systems.
+            @description Larger buffer size for I/O operations and string manipulation in environments
+            with abundant memory. Optimized for performance over memory usage.
+            @stability Stable
+        */
+        #define ME_BUFSIZE          4096
     #endif
     #ifndef ME_MAX_BUFFER
         #define ME_MAX_BUFFER       ME_BUFSIZE  /* DEPRECATE */
     #endif
 
     #ifndef ME_MAX_ARGC
-        #define ME_MAX_ARGC         32          /**< Maximum number of command line args if using MAIN()*/
+        /**
+            Maximum command line arguments for desktop/server systems.
+            @description Higher limit for command line argument parsing in desktop and server
+            applications where complex argument lists are common.
+            @stability Stable
+        */
+        #define ME_MAX_ARGC         32
     #endif
     #ifndef ME_DOUBLE_BUFFER
+        /**
+            Buffer size for double-precision floating point string conversion.
+            @description Calculated buffer size needed for converting double values to strings.
+            @stability Stable
+        */
         #define ME_DOUBLE_BUFFER    (DBL_MANT_DIG - DBL_MIN_EXP + 4)
     #endif
     #ifndef ME_MAX_IP
+        /**
+            Maximum IP address string length for desktop/server systems.
+            @description Extended buffer size for IP address strings, URLs, and network identifiers.
+            @stability Stable
+        */
         #define ME_MAX_IP           1024
     #endif
 #endif
@@ -1200,17 +1983,22 @@ typedef int64 Ticks;
 
 #ifndef ME_STACK_SIZE
 #if ME_COMPILER_HAS_MMU && !VXWORKS
-    /*
-        If the system supports virtual memory, then stack size should use system default. Only used pages will
-        actually consume memory
+    /**
+        Default thread stack size for systems with virtual memory.
+        @description On systems with MMU and virtual memory support, use system default stack size
+        since only actually used pages consume physical memory. Value of 0 means use system default.
+        @stability Stable
     */
-    #define ME_STACK_SIZE    0               /**< Default thread stack size (0 means use system default) */
+    #define ME_STACK_SIZE    0
 #else
-    /*
-        No MMU, so the stack size actually consumes memory. Set this as low as possible.
-        NOTE: php and ejs use stack heavily.
+    /**
+        Default thread stack size for systems without virtual memory.
+        @description On systems without MMU (microcontrollers, embedded), the entire stack size
+        consumes physical memory, so this is set conservatively. Increase if using script engines
+        or deep recursion. Value in bytes.
+        @stability Stable
     */
-    #define ME_STACK_SIZE    (128 * 1024)    /**< Default thread stack size (0 means use system default) */
+    #define ME_STACK_SIZE    (32 * 1024)
 #endif
 #endif
 
@@ -1329,6 +2117,7 @@ typedef int64 Ticks;
     #define MSG_NOSIGNAL    0
     #define FILE_BINARY     "b"
     #define FILE_TEXT       "t"
+    #define O_CLOEXEC       0
 
     /*
         Error codes
@@ -1396,6 +2185,7 @@ typedef int64 Ticks;
     #endif
 
     #if !WINCE
+    #ifndef access
     #define access      _access
     #define chdir       _chdir
     #define chmod       _chmod
@@ -1406,6 +2196,7 @@ typedef int64 Ticks;
     #define getpid      _getpid
     #define gettimezone _gettimezone
     #define lseek       _lseek
+    //  SECURITY Acceptable: - the omode parameter is ignored on Windows
     #define mkdir(a,b)  _mkdir(a)
     #define open        _open
     #define putenv      _putenv
@@ -1419,8 +2210,33 @@ typedef int64 Ticks;
     #define write       _write
     PUBLIC void         sleep(int secs);
     #endif
+    #endif
+
+    #ifndef strcasecmp
     #define strcasecmp scaselesscmp
     #define strncasecmp sncaselesscmp
+    #endif
+    #ifndef strncasecmp
+        #define strncasecmp sncaselesscmp
+    #endif
+
+    /*
+        Define S_ISREG and S_ISDIR macros for Windows if not already defined
+     */
+    #ifndef S_ISDIR
+        #define S_ISDIR(m) (((m) & _S_IFMT) == _S_IFDIR)
+    #endif
+    #ifndef S_ISREG
+        #define S_ISREG(m) (((m) & _S_IFMT) == _S_IFREG)
+    #endif
+
+    /*
+        Define strtok_r for Windows if not already defined
+    */
+    #ifndef strtok_r
+        #define strtok_r strtok_s
+    #endif
+
     #pragma comment( lib, "ws2_32.lib" )
 #endif /* WIN_LIKE */
 
@@ -1461,6 +2277,13 @@ typedef int64 Ticks;
         #define S_ISREG(X) (((X) & S_IFMT) == S_IFREG)
     #endif
 
+    /*
+        Windows uses strtok_s instead of strtok_r
+     */
+    #ifndef strtok_r
+        #define strtok_r strtok_s
+    #endif
+
     #define STARTF_USESHOWWINDOW 0
     #define STARTF_USESTDHANDLES 0
 
@@ -1488,8 +2311,9 @@ typedef int64 Ticks;
 #endif
 
 #if FREERTOS
-typedef u32_t socklen_t;
-#define SOMAXCONN 5
+#ifndef SOMAXCONN
+    #define SOMAXCONN 5
+#endif
 #endif
 
 /*********************************** Externs **********************************/
