@@ -41,7 +41,7 @@ CDPATH      :=
 
 .EXPORT_ALL_VARIABLES:
 
-.PHONY: all build check-sync clean coverage help import release-check sec-lint sec-sync-check sec-test stats test verify-projects
+.PHONY: all build check-dist check-sync clean coverage help import release-check sec-lint sec-sync-check sec-test stats test test-linux verify-projects
 
 ifndef SHOW
 .SILENT:
@@ -63,6 +63,13 @@ clean:
 test: build
 	tm test
 
+#
+#   Run the same build and the same suite under Linux, on this Mac, in a local VM driven by Apple's
+#   container tool. Pass arguments through to tm with ARGS, e.g. make test-linux ARGS="auth".
+#
+test-linux:
+	@bash bin/test-linux.sh $(ARGS)
+
 sec-lint:
 	$(SEC_SCAN) lint sec-scan.json5 --root $(TOP)
 
@@ -71,10 +78,7 @@ sec-sync-check:
 	git diff --exit-code -- sec-scan.json5 test/sec .claude/agents .claude/skills/sec-audit
 
 #
-#   Security gates. Deliberately NOT chained into `test`: sec-test hard-errors without a
-#   sec-scan checkout, and appweb's own suite must run for anyone who does not have the
-#   framework repo. CI invokes these explicitly with SEC_SCAN_ROOT set, so the gate is
-#   fail-closed where it matters without blocking a plain `make test`.
+#   Security check. 
 #
 sec-test:
 	@if [ -z "$(SEC_SCAN_ROOT)" ] || [ ! -f "$(SEC_SCAN_ROOT)/fuzzcore/fuzz.c" ] ; then \
@@ -124,6 +128,34 @@ check-sync:
 	@bash test/utils/check-amalgamation.sh
 
 #
+#   Verify dist/ matches src/. dist/ is generated from src/ but committed, because it is the
+#   payload of the published appweb pak and it ships in the source archive. Nothing regenerates it
+#   outside "make package", so a source change -- a security fix above all -- can sit in src/ while
+#   dist/ still carries the defect.
+#
+#   Regenerates into a scratch directory and diffs. Never regenerates in place: a full
+#   bin/buildLib.sh run also rebuilds the tarball and rewrites the recorded release checksums.
+#
+#   bin/buildLib.sh belongs to the packaging process and is not staged into the source archive, so
+#   a customer tree cannot run this. Say so and skip there; a silent no-op would read as a pass.
+#
+check-dist:
+	@if [ ! -f bin/buildLib.sh ] ; then \
+		echo "      [Skip] check-dist: the amalgamation script is not part of this tree." ; \
+		exit 0 ; \
+	fi ; \
+	rm -fr $(BUILD)/dist-check ; \
+	DIST=$(TOP)/$(BUILD)/dist-check bash bin/buildLib.sh --dist-only >/dev/null ; \
+	if ! diff -r -q dist $(BUILD)/dist-check >/dev/null 2>&1 ; then \
+		echo "      [Error] dist/ is stale. Run 'make package' and commit the result." >&2 ; \
+		diff -r -u dist $(BUILD)/dist-check | head -40 >&2 ; \
+		rm -fr $(BUILD)/dist-check ; \
+		exit 1 ; \
+	fi ; \
+	rm -fr $(BUILD)/dist-check ; \
+	echo "      [Info] dist/ is in sync with src/"
+
+#
 #   Prove projects/gmake2 is what projects/premake5.lua generates. A hand edit to a generated
 #   makefile survives until the next regeneration and is then silently reverted.
 #
@@ -148,9 +180,11 @@ help:
 	@echo '  build               Build libappweb and executables (default)' >&2
 	@echo '  clean               Remove build artifacts' >&2
 	@echo '  test                Run unit tests' >&2
+	@echo '  test-linux          Run unit tests under Linux in a local container' >&2
 	@echo '  coverage            Build instrumented, run the suite, report line and branch coverage' >&2
 	@echo '  import              Re-import the module amalgamations from their paks, then verify' >&2
 	@echo '  check-sync          Verify the amalgamations match their pak sources (read-only)' >&2
+	@echo '  check-dist          Verify the committed dist/ amalgamation matches src/ (read-only)' >&2
 	@echo '  verify-projects     Verify projects/gmake2 matches what premake5.lua generates' >&2
 	@echo '  release-check       Mechanical pre-release gate (links, markers, advisories, SBOM)' >&2
 	@echo '  stats               Ticket corpus and severity figures for the compliance documents' >&2
@@ -161,6 +195,7 @@ help:
 	@echo 'Make variables:' >&2
 	@echo '  OPTIMIZE=debug|release    Optimization level (default: release)' >&2
 	@echo '  SHOW=1                    Show build commands' >&2
+	@echo '  ARGS="..."                Arguments passed to tm by test-linux' >&2
 	@echo '' >&2
 
 ifneq ($(LOCAL),)

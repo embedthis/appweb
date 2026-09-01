@@ -88,6 +88,15 @@ jobs:
         run: |
           make.bat /v:normal
 
+      #
+      #   dist/ is generated from src/ but committed, because it is the payload of the published
+      #   appweb pak and it ships in the source archive. Fail if a source change.
+      #
+      - name: Verify dist/ is in sync with src/
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          make check-dist
+
       - name: Run test suite (Unix)
         if: runner.os != 'Windows'
         run: |
