@@ -101,6 +101,34 @@ local opensslPaths = {
 }
 
 --
+--  On Windows the OpenSSL location is discovered at build time by projects/openssl-prep.bat, which
+--  exports ME_COM_OPENSSL_PATH. msbuild expands $(NAME) from the environment, so naming it here lets
+--  a vcpkg or other non-default install be found without regenerating the projects -- the INCLUDE and
+--  LIB variables that script also sets cannot do this, because msbuild overwrites both from the
+--  project's own IncludePath and LibraryPath. The literal default is kept alongside it so an IDE
+--  build with OpenSSL in its usual place still resolves, and a directory that does not exist costs
+--  nothing: the compiler and linker skip it.
+--
+local opensslWinEnv = "$(ME_COM_OPENSSL_PATH)"
+
+--
+--  The Windows projects compile /MTd and /MT, so OpenSSL must be built against the static CRT.
+--  The Shining Light installer puts its import libraries under lib/VC/<arch>/<crt>; vcpkg puts them
+--  in lib, and the triplet that matches is x64-windows-static -- x64-windows is dynamic-CRT and
+--  fails at link with a RuntimeLibrary mismatch.
+--
+local function opensslWinLibDirs(roots)
+    local dirs = {}
+    for _, root in ipairs(roots) do
+        table.insert(dirs, root .. "/lib")
+        for _, crt in ipairs({ "MTd", "MT", "MDd", "MD" }) do
+            table.insert(dirs, root .. "/lib/VC/x64/" .. crt)
+        end
+    end
+    return dirs
+end
+
+--
 --  Iterate an ordered list, never pairs() over the table above: the generated files are committed
 --  and diffed, so the emission order has to be stable from run to run. Keep this list in step with
 --  the platforms{} blocks in the workspace below.
@@ -430,16 +458,14 @@ project "appweb-lib"
         end
 
     filter "platforms:windows"
-        links   { "ws2_32", "advapi32", "user32", "kernel32", "oldnames", "shell32" }
+        --
+        --  psapi is for GetProcessMemoryInfo in mprGetMem. Windows 7 and later forward it from
+        --  kernel32, but only when the SDK selects PSAPI_VERSION 2, so link psapi explicitly.
+        --
+        links   { "ws2_32", "advapi32", "user32", "kernel32", "oldnames", "shell32", "psapi" }
         if tlsProvider == "openssl" then
-            includedirs { opensslWinPath .. "/include" }
-            libdirs {
-                opensslWinPath .. "/lib",
-                opensslWinPath .. "/lib/VC/x64/MTd",
-                opensslWinPath .. "/lib/VC/x64/MT",
-                opensslWinPath .. "/lib/VC/x64/MDd",
-                opensslWinPath .. "/lib/VC/x64/MD",
-            }
+            includedirs { opensslWinEnv .. "/include", opensslWinPath .. "/include" }
+            libdirs(opensslWinLibDirs({ opensslWinEnv, opensslWinPath }))
             links   { "libssl", "libcrypto" }
         else
             libdirs { mbedtlsPath .. "/lib", mbedtlsPath .. "/library" }
