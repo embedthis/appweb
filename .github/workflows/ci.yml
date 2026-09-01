@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -75,16 +75,18 @@ jobs:
         run: |
           make SHOW=1
 
-      - name: Setup MSBuild (Windows)
-        if: runner.os == 'Windows'
-        uses: microsoft/setup-msbuild@v3
-
+      #
+      #   Build the documented way, through make.bat, and not by invoking msbuild with arguments of
+      #   this workflow's own. Doing the latter is how make.bat came to name a configuration the
+      #   solution does not have, and to rely on INCLUDE and LIB that msbuild discards, without
+      #   anything failing. windows.bat locates Visual Studio itself, so no MSBuild setup action is
+      #   needed; the Windows test step below has always relied on that.
+      #
       - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: cmd
         run: |
-          call projects\openssl-prep.bat
-          msbuild projects\vs2022\appweb.sln /p:Configuration=debug /p:Platform=windows /v:normal
+          make.bat /v:normal
 
       - name: Run test suite (Unix)
         if: runner.os != 'Windows'
@@ -92,23 +94,23 @@ jobs:
           make test
 
       #
-      #   Windows builds but does not run the suite. It reports 79 pass and 55 fail across whole
-      #   groups at a time -- auth, basic, route, ssl, security -- and aborts in the monitor group on
-      #   a health check timeout, so even that count is a floor. None of it is triaged, and it needs
-      #   a Windows host to triage rather than a CI round trip per hypothesis.
+      #   Re-enabled once the Windows suite passed: 159 passed, 0 failed of 183 with 1297/1297
+      #   assertions, twice, recorded in doc/releases/9.2.0/test-report.md §2.2.
       #
-      #   Running it would keep CI permanently red, and a build that is always red stops being read:
-      #   the cost lands on the Linux and macOS signal, which is green and worth keeping that way.
-      #   The build is still gated here, so a Windows compile break is still caught. See
-      #   doc/issues/tickets/10347.md, which is where the gap is tracked and where the step is
-      #   restored from.
+      #   Through windows.bat rather than openssl-prep.bat alone: TestMe compiles the .tst.c tests
+      #   with cl.exe, so the step needs the whole VC environment and not just msbuild on PATH.
+      #   windows.bat sources vcvarsall and then openssl-prep, selecting the x64 toolchain the
+      #   solution targets whatever the host architecture is, so it and the build step above agree.
+      #
+      #   The suite needs openssl and sh on PATH -- the ssl group drives "openssl s_client", and the
+      #   hdrtest CGI fixture runs through sh. Both ship with the runner image; if this step fails to
+      #   find either, add them to PATH here rather than reverting to "if: false".
       #
       - name: Run test suite (Windows)
-        if: false
+        if: runner.os == 'Windows'
         shell: cmd
         run: |
-          call projects\openssl-prep.bat
-          tm test
+          call projects\windows.bat cmd /c "cd test && tm"
 
       #
       #   A server that will not start is reported by the runner as an exit code and nothing else,
