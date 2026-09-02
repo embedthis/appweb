@@ -155,10 +155,6 @@ All public APIs are declared in the single header [src/mpr.h](src/mpr.h). Functi
 
 See [LICENSE.md](LICENSE.md) for details.
 
-## AI Documentation
-
-Machine-readable documentation for LLMs is available in `AI/designs/` and `CLAUDE.md`.
-
 ## Resources
 
 - [Embedthis Website](https://www.embedthis.com/)

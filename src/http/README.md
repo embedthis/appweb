@@ -39,10 +39,6 @@ This will run appweb in the src/server directory using the src/server/appweb.con
 
     make package
 
-## AI Documentation
-
-Machine-readable documentation for LLMs is available in `AI/designs/` and `CLAUDE.md`.
-
 Resources
 ---
 - [Embedthis web site](https://embedthis.com/)

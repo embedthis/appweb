@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/embedthis/appweb/security/policy
+    about: Do not open a public issue. Report privately to security@embedthis.com.
+  - name: Documentation
+    url: https://www.embedthis.com/appweb/doc/
+    about: User guide, configuration and routing reference.
+  - name: Commercial support
+    url: https://www.embedthis.com/builder/
+    about: Support and update distribution for licensed customers.

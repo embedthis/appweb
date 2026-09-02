@@ -14,10 +14,7 @@
         "email": "dev@embedthis.com",
         "url": "https://www.embedthis.com"
     },
-    "license": {
-        "type": "Commercial",
-        "url": "https://www.embedthis.com/licensing/"
-    },
+    "license": "GPL-2.0-only OR LicenseRef-EmbedThis-Commercial OR LicenseRef-EmbedThis-Evaluation",
     "devDependencies": {
         "@embedthis/ejscript": "^2.1.2",
         "@embedthis/testme": "^0.8.33"

@@ -2,7 +2,7 @@ Embedthis Appweb
 ===
 
 <p align="center">
-  <a href="https://github.com/embedthis/appweb-core/actions/workflows/ci.yml"><img src="https://github.com/embedthis/appweb-core/actions/workflows/ci.yml/badge.svg" alt="CI  Status"></a>
+  <a href="https://github.com/embedthis/appweb/actions/workflows/ci.yml"><img src="https://github.com/embedthis/appweb/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
 </p>
 
 Appweb is a compact, fast and secure embedded web server supporting HTTP/1, HTTP/2, and WebSockets. With a 1-4MB memory footprint, event-driven multi-threaded architecture, and comprehensive security features, it's optimized for embedded applications, IoT devices, and resource-constrained environments.
@@ -66,10 +66,10 @@ See [LICENSE.md](LICENSE.md) for details.
 - Routing Guide: https://www.embedthis.com/appweb/doc/users/routing.html
 - Security Guide: https://www.embedthis.com/appweb/doc/users/security.html
 
-**Local Documentation:**
-- API Reference: `doc/index.html` (generate with `make doc`)
-- Design Document: `doc/DESIGN.md` (comprehensive architecture and implementation guide)
-- Build Guide: `CLAUDE.md` and `AGENTS.md`
+**Local Documentation (included in the source archive):**
+- API Reference: `doc/api/appweb.html`, `doc/api/http.html`, `doc/api/mpr.html`, `doc/api/osdep.html`
+- Manual pages: `doc/man/`
+- Release notes, CRA user information and Declaration of Conformity: `doc/`
 
 ## Building from Source
 
@@ -85,13 +85,9 @@ or to see the commands as they are invoked:
 
     make SHOW=1
 
-You can pass make variables to tailor the build. For a list of variables:
+You can pass make variables to tailor the build. For a list of targets and variables:
 
 	make help
-
-To run
-
-	make run
 
 ### Windows
 
@@ -113,7 +109,7 @@ To build with Visual Studio, you will need to install the [vcpkg](https://vcpkg.
 
 Then open the Visual Studio solution file at:
 
-    projects/appweb-windows-default.sln
+    projects/vs2022/appweb.sln
 
 Then select Build -> Solution.
 
@@ -132,25 +128,15 @@ You may need to install the Windows Power Shell if not already installed on your
 
 ## To Build with Xcode.
 
-Open the solution file:
+Open the workspace:
 
-    projects/appweb-macosx-default.sln
+    projects/xcode/appweb.xcworkspace
 
 Choose Product -> Scheme -> Edit Scheme, and select "Build" on the left of the dialog. Click the "+" symbol at the bottom in the center and then select all targets to be built. Before leaving this dialog, set the debugger options by selecting "Run/Debug" on the left hand side. Under "Info" set the Executable to be "appweb", set the launch arguments to be "-v" and set the working directory to be an absolute path to the "./test" directory in the appweb source. The click "Close" to save.
 
 Click Project -> Build to build.
 
 Click Project -> Run to run.
-
-## To install:
-
-If you have built from source using Make, you can install the software using:
-
-    sudo make install
-
-## To uninstall
-
-    sudo make uninstall
 
 ## To Run:
 
@@ -185,9 +171,10 @@ To run a specific test or group of tests, use the `tm` command with the test nam
 
     tm basic/
 
-## AI Documentation
+## Reporting Security Issues
 
-Machine-readable documentation for LLMs is available in `AI/designs/` and `CLAUDE.md`.
+Please report suspected vulnerabilities privately to security@embedthis.com rather than in a public
+issue. See [SECURITY.md](SECURITY.md).
 
 ## Resources
 ---
