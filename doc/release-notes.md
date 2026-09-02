@@ -1,6 +1,6 @@
 # Appweb v9.2.0 Release Notes
 
-**Release Date**: 2026-08-06
+**Release Date**: 2026-09-02
 
 ## Overview
 
@@ -473,7 +473,7 @@ required. Deployments using ESP must install the add-on as described under Break
 
 - **Homepage**: https://www.embedthis.com/appweb/
 - **Documentation**: https://www.embedthis.com/appweb/doc/
-- **GitHub**: https://github.com/embedthis/appweb-core
+- **GitHub**: https://github.com/embedthis/appweb
 - **Support**: support@embedthis.com
 - **Security Issues**: security@embedthis.com (private disclosure)
 
@@ -489,4 +489,4 @@ See https://www.embedthis.com/licensing/ for details.
 ---
 
 **Previous Release:** 9.1.0
-**Full Changelog:** https://github.com/embedthis/appweb-core/compare/v9.1.0...v9.2.0
+**Full Changelog:** https://github.com/embedthis/appweb/compare/v9.1.0...v9.2.0

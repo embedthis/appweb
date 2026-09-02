@@ -2,7 +2,7 @@
 
 Product: Embedthis Appweb
 Version: 9.2.0
-Release Date: 2026-08-06
+Release Date: 2026-09-02
 
 This document provides required user information per the EU Cyber Resilience Act (CRA) Annex II. It
 accompanies the product and is distributed with every release archive.
@@ -24,10 +24,10 @@ accompanies the product and is distributed with every release archive.
 | Product name | Embedthis Appweb |
 | Version | 9.2.0 |
 | Product type | Software library (embeddable, multi-threaded HTTP/1 and HTTP/2 web server library `libappweb`) plus the `appweb` reference executable and the `watchdog`, `authpass` and `makerom` utilities |
-| Release date | 2026-08-06 |
+| Release date | 2026-09-02 |
 | Lifecycle phase | Maintenance mode — security updates and critical bug fixes only; no new features. Successor product line: Ioto Device Agent (https://www.embedthis.com/ioto/). |
 | License | Distributed under three licenses — GPL-2.0, the Embedthis Commercial License, and the Embedthis Evaluation License. See `LICENSE.md` in the distribution, `EVAL.md` for the evaluation terms, and https://www.embedthis.com/licensing/. The GPL does not generally permit incorporating the software into non-open-source products; embedding in a proprietary product requires a commercial license. |
-| Source repository | https://github.com/embedthis/appweb-core |
+| Source repository | https://github.com/embedthis/appweb |
 
 ### 2.1 Conformity and Component Inventory
 
@@ -159,7 +159,7 @@ successor product line for embedded device connectivity.
 |-------|-------|
 | Reporting address | security@embedthis.com |
 | Policy | https://www.embedthis.com/security |
-| Advisories | https://github.com/embedthis/appweb-core/security/advisories |
+| Advisories | https://github.com/embedthis/appweb/security/advisories |
 | Acknowledgement | The manufacturer acknowledges receipt and provides an initial assessment; coordinated disclosure is the default |
 
 Please report suspected vulnerabilities privately to the address above rather than in a public issue.
@@ -245,8 +245,8 @@ Security updates are published to the channels in §6 for the support period in 
 | Field | Value |
 |-------|-------|
 | Support period | 5 years from the release date |
-| Support start | 2026-08-06 |
-| Support end | 2031-08-06 |
+| Support start | 2026-09-02 |
+| Support end | 2031-09-02 |
 | Scope | Security updates and critical bug fixes. Appweb is in maintenance mode; no new features |
 | Download availability | Published updates remain downloadable for at least 10 years |
 
