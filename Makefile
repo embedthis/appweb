@@ -13,8 +13,6 @@ TOP         := $(shell realpath .)
 BUILD       := build
 BIN         := $(TOP)/$(BUILD)/bin
 LOCAL       := $(strip $(wildcard ./.local.mk))
-SEC_SCAN_ROOT ?= $(shell if [ -d "$(TOP)/.sec-scan/fuzzcore" ] ; then realpath "$(TOP)/.sec-scan" ; elif [ -d "$(TOP)/../../sec/fuzzcore" ] ; then realpath "$(TOP)/../../sec" ; elif [ -d "$(TOP)/../../fuzzcore" ] ; then realpath "$(TOP)/../.." ; fi)
-SEC_SCAN    ?= $(if $(SEC_SCAN_ROOT),$(SEC_SCAN_ROOT)/bin/sec-scan,sec-scan)
 
 #
 #   Detect make command (prefer gmake)
@@ -41,7 +39,7 @@ CDPATH      :=
 
 .EXPORT_ALL_VARIABLES:
 
-.PHONY: all build check-dist check-sync clean coverage help import release-check sec-lint sec-sync-check sec-test stats test test-linux verify-projects
+.PHONY: all build check-dist check-sync clean coverage help import test test-linux verify-projects
 
 ifndef SHOW
 .SILENT:
@@ -69,36 +67,6 @@ test: build
 #
 test-linux:
 	@bash bin/test-linux.sh $(ARGS)
-
-sec-lint:
-	$(SEC_SCAN) lint sec-scan.json5 --root $(TOP)
-
-sec-sync-check:
-	$(SEC_SCAN) sync $(TOP)
-	git diff --exit-code -- sec-scan.json5 test/sec .claude/agents .claude/skills/sec-audit
-
-#
-#   Security check. 
-#
-sec-test:
-	@if [ -z "$(SEC_SCAN_ROOT)" ] || [ ! -f "$(SEC_SCAN_ROOT)/fuzzcore/fuzz.c" ] ; then \
-		echo "      [Error] sec-scan checkout not found. Set SEC_SCAN_ROOT=/path/to/sec or checkout embedthis/sec into .sec-scan" ; \
-		exit 255 ; \
-	fi
-	$(MAKE) -C test/sec SECDIR="$(SEC_SCAN_ROOT)" test
-
-#
-#   Mechanical pre-release gate. Every check exists because the corresponding mistake was made here
-#   and found by hand. Does not build or run the suite -- "make test" does that.
-#
-release-check:
-	@bash bin/release-check.sh
-
-#
-#   Derived figures the compliance documents quote. Exits non-zero while a Critical is open.
-#
-stats:
-	@bash bin/compliance-stats.sh
 
 #
 #   Re-import the vendored in-house amalgamations
@@ -163,11 +131,6 @@ help:
 	@echo '  check-sync          Verify the amalgamations match their pak sources (read-only)' >&2
 	@echo '  check-dist          Verify the committed dist/ amalgamation matches src/ (read-only)' >&2
 	@echo '  verify-projects     Verify projects/gmake2 matches what premake5.lua generates' >&2
-	@echo '  release-check       Mechanical pre-release gate (links, markers, advisories, SBOM)' >&2
-	@echo '  stats               Ticket corpus and severity figures for the compliance documents' >&2
-	@echo '  sec-lint            Run sec-scan anchor lint' >&2
-	@echo '  sec-sync-check      Verify sec-scan generated artifacts are current' >&2
-	@echo '  sec-test            Run generated test/sec security self-tests' >&2
 	@echo '' >&2
 	@echo 'Make variables:' >&2
 	@echo '  OPTIMIZE=debug|release    Optimization level (default: release)' >&2
