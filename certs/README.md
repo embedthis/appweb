@@ -1,11 +1,37 @@
 certs
 ===
 
-Test SSL/TLS certificate generation for Embedthis Appweb.
+Test SSL/TLS certificate generation.
 
 **WARNING: All certificates are for testing only — never use in production.**
 
+## Certificate Files
+
+These are the files this module installs, as a flat directory. In a consuming product they are
+installed into `certs/`; in this repository they are generated into `dist/`, which is what is
+published.
+
+| File | Purpose |
+|------|---------|
+| `ca.crt` / `ca.key` | Test Certificate Authority (signs test.crt) |
+| `self.crt` / `self.key` | Self-signed server certificate |
+| `test.crt` / `test.key` | CA-signed test server certificate |
+| `ec.crt` / `ec.key` | Elliptic Curve (prime256v1) certificate |
+| `aws.crt` | AWS IoT root CA certificate |
+| `roots-min.crt` | Minimal root CA bundle |
+| `openssl.conf` | OpenSSL CA configuration with certificate extensions |
+| `*.ans` | Answer files providing non-interactive input to OpenSSL prompts |
+| `Makefile` | Regenerates the certificates |
+
+Default: 2048-bit RSA keys, 3650-day validity (10 years).
+
+`make roots` additionally downloads the full Mozilla root CA bundle as `roots.crt`. It is not
+published with the module because of its size.
+
 ## Building
+
+The targets below regenerate the certificates. Sources live under `src/` in this repository and the
+results are staged into `dist/`; a consuming product receives only the generated files.
 
 ```bash
 make                    # Generate all test certificates
@@ -22,25 +48,3 @@ make cache              # Build, package and cache
 make clean              # Remove all generated files
 ```
 
-## Certificate Files
-
-Generated certificates are placed in the `dist/` directory.
-
-| File | Purpose |
-|------|---------|
-| `dist/ca.crt` / `dist/ca.key` | Test Certificate Authority (signs test.crt) |
-| `dist/self.crt` / `dist/self.key` | Self-signed server certificate |
-| `dist/test.crt` / `dist/test.key` | CA-signed test server certificate |
-| `dist/ec.crt` / `dist/ec.key` | Elliptic Curve (prime256v1) certificate |
-| `src/aws.crt` | AWS IoT root CA certificate |
-| `roots.crt` | Full Mozilla root CA bundle |
-| `roots-min.crt` | Minimal root CA bundle |
-| `CLAUDE.md` | AI coding assistant instructions |
-| `README.md` | Module documentation |
-| `Makefile` | Build script for certificate generation |
-
-## Configuration
-
-- `src/openssl.conf` — OpenSSL CA configuration with certificate extensions
-- `src/*.ans` — Answer files providing non-interactive input to OpenSSL prompts
-- Default: 2048-bit RSA keys, 3650-day validity (10 years)

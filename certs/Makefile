@@ -12,9 +12,10 @@ SRC     := src
 DIST    := dist
 BITS    := 2048
 DAYS    := 3650
+LOCAL   := $(strip $(wildcard ./.local.mk))
 
 .PHONY: all build ca-cert self-signed-cert test-cert ec-cert cert-request \
-        show-certs roots package cache clean help
+        show-certs roots package cache clean help publish sync
 
 ifndef SHOW
 .SILENT:
@@ -74,20 +75,6 @@ roots:
 	mkdir -p $(DIST)
 	curl -s -o $(DIST)/roots.crt https://curl.se/ca/cacert.pem
 
-package:
-	@echo "      [Run] Package dist/"
-	mkdir -p $(DIST)
-	cp $(SRC)/*.ans $(DIST)/
-	cp $(SRC)/openssl.conf $(DIST)/
-	cp $(SRC)/aws.crt $(DIST)/
-	cp $(SRC)/roots-min.crt $(DIST)/
-	cp CLAUDE.md $(DIST)/
-	cp README.md $(DIST)/
-	cp Makefile $(DIST)/
-
-cache: build doc package
-	cache
-
 clean:
 	@echo "      [Run] clean"
 	rm -rf $(DIST)/
@@ -106,9 +93,15 @@ help:
 	@echo '  show-certs          Display all certificate details' >&2
 	@echo '  roots               Download Mozilla root CA bundle' >&2
 	@echo '  package             Copy source files to dist/' >&2
-	@echo '  cache               Build, package and cache' >&2
+	@echo '  publish             Build, package and publish as a pak' >&2
+	@echo '  cache               Alias for publish' >&2
+	@echo '  sync                Import pak dependencies' >&2
 	@echo '  clean               Remove all generated files' >&2
 	@echo '' >&2
 	@echo 'Make variables:' >&2
 	@echo '  SHOW=1              Show build commands' >&2
 	@echo '' >&2
+
+ifneq ($(LOCAL),)
+include $(LOCAL)
+endif
