@@ -18,8 +18,13 @@ jobs:
         include:
           - os: ubuntu-latest
             install-deps: sudo apt-get update && sudo apt-get install -y gcc build-essential libc6-dev openssl libssl-dev libfcgi-dev
+          # aws/tap is pre-tapped on GitHub's macOS runners and is untrusted under Homebrew's tap-trust
+          # policy, so every brew invocation prints a nine-line warning about it. Nothing here uses it --
+          # fcgi and openssl are homebrew/core, which is trusted -- so drop the tap rather than silencing
+          # the check with HOMEBREW_NO_REQUIRE_TAP_TRUST. A warning nobody can act on is a warning
+          # everybody learns to scroll past, and the next one may matter.
           - os: macos-latest
-            install-deps: brew update && brew install fcgi openssl
+            install-deps: brew untap aws/tap >/dev/null 2>&1 || true; brew update && brew install fcgi openssl
           - os: windows-latest
             install-deps: echo "Windows dependencies are prepared by projects\\openssl-prep.bat"
 
@@ -92,8 +97,14 @@ jobs:
       #   dist/ is generated from src/ but committed, because it is the payload of the published
       #   appweb pak and it ships in the source archive. Fail if a source change.
       #
+      #
+      #   Only in a tree that carries the amalgamation script. The published source distribution does
+      #   not ship bin/buildLib.sh, so there "make check-dist" prints [Skip] and exits 0 -- this step
+      #   passed downstream without checking anything, which is worse than not running it. Condition on
+      #   the script so the step reports as skipped there rather than as a green gate.
+      #
       - name: Verify dist/ is in sync with src/
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && hashFiles('bin/buildLib.sh') != ''
         run: |
           make check-dist
 
@@ -104,7 +115,7 @@ jobs:
 
       #
       #   Re-enabled once the Windows suite passed: 159 passed, 0 failed of 183 with 1297/1297
-      #   assertions, twice, recorded in doc/releases/9.2.0/test-report.md §2.2.
+      #   assertions, twice.
       #
       #   Through windows.bat rather than openssl-prep.bat alone: TestMe compiles the .tst.c tests
       #   with cl.exe, so the step needs the whole VC environment and not just msbuild on PATH.
