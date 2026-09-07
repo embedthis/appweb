@@ -8920,6 +8920,7 @@ PUBLIC int httpTestBenchInit(Http *http, MprModule *module)
     httpDefineAction("/test/upload/", testBenchUpload);
     httpDefineAction("/action/sessionTest", sessionTestAction);
     httpDefineAction("/action/sessionCacheTest", sessionTestAction);
+    httpDefineAction("/action/sessionCacheCookieTest", sessionTestAction);
     httpDefineAction("/action/sessionXsrfTest", sessionTestAction);
 
     /*
