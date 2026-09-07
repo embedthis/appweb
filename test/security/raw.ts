@@ -20,7 +20,16 @@ export const HOST = HTTP.host
 export const CGI = '/cgiProgram.cgi?switches=-e%20-p'
 
 export interface Reply {
+    //  The bytes as they arrived, chunk framing included. Use this only to reason about the framing
     text: string
+    /*
+        The same response with the chunk framing removed. Match content against this: a chunk-size line
+        can land in the middle of a marker, and where it falls depends on the size of the CGI environment
+        dump, so a match against the raw bytes passes or fails by luck. It is the environment that decides
+        it, so the same server passes on a developer machine and fails under CI, where the environment is
+        several KB larger.
+     */
+    decoded: string
     //  The server closed the connection. Only determined when detectClose is set
     closed: boolean
 }
@@ -59,7 +68,8 @@ export async function send(request: string, marker: string, detectClose: boolean
         //  A read timeout means the server is holding the connection open
     }
     s.close()
-    return {text: response.toString(), closed}
+    let text = response.toString()
+    return {text, decoded: dechunk(text), closed}
 }
 
 /*
@@ -122,10 +132,9 @@ export async function reject(name: string, request: string, status: string): Pro
  */
 export async function accept(name: string, request: string, marker: string): Promise<void> {
     let reply = await send(request, marker)
-    let body = dechunk(reply.text)
-    if (!reply.text.includes('200 OK') || !body.includes(marker)) {
+    if (!reply.decoded.includes('200 OK') || !reply.decoded.includes(marker)) {
         console.log(name + ' expected a 200 containing "' + marker + '" but got:\n' + reply.text)
     }
-    ttrue(reply.text.includes('200 OK'))
-    ttrue(body.includes(marker))
+    ttrue(reply.decoded.includes('200 OK'))
+    ttrue(reply.decoded.includes(marker))
 }

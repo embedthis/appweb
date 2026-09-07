@@ -40,8 +40,8 @@ function request(path: string, contentType: string, body: string): string {
 
 async function post(path: string, contentType: string, body: string): Promise<string> {
     let reply = await send(request(path, contentType, body), '</HTML>', true)
-    check(reply.text, '200 OK')
-    return reply.text
+    check(reply.decoded, '200 OK')
+    return reply.decoded
 }
 
 const boundary = '----literal-param-boundary'
