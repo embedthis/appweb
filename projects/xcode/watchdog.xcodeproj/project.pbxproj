@@ -200,6 +200,97 @@
 			};
 			name = debug;
 		};
+		67D571888DFBA13AF50297C8 /* test */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../build/bin;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = watchdog;
+			};
+			name = test;
+		};
+		9B2431F93E6FBB2B59408839 /* test */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_VERSION=\\\"9.3.0\\\"",
+					"ME_APPWEB_PRODUCT=1",
+					"ME_APP_PREFIX=\\\"/usr/local/lib/appweb\\\"",
+					"ME_COM_CGI=1",
+					"ME_COM_FAST=1",
+					"ME_COM_PROXY=1",
+					"ME_HTTP_BASIC=1",
+					"ME_HTTP_CACHE=1",
+					"ME_HTTP_DEFENSE=1",
+					"ME_HTTP_DIGEST=1",
+					"ME_HTTP_DIR=1",
+					"ME_HTTP_HTTP2=1",
+					"ME_HTTP_PAM=1",
+					"ME_HTTP_SENDFILE=1",
+					"ME_HTTP_UPLOAD=1",
+					"ME_HTTP_WEB_SOCKETS=1",
+					"ME_COM_PCRE2=0",
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_SSL=1",
+					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
+					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+					"ME_COM_TEST=1",
+					"ME_COM_TEST_WEBSOCKETS=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@loader_path/.",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					../../build/bin,
+				);
+				OBJROOT = "../../build/obj/watchdog-macosx-test";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CFLAGS = (
+					"-Wno-unused-parameter",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector-strong",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wformat-nonliteral",
+					"-Werror=format-security",
+					"-Werror=implicit-function-declaration",
+					"-Wnull-dereference",
+					"-Wsign-compare",
+				);
+				OTHER_LDFLAGS = (
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-lpam",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				SYMROOT = ../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../src,
+					../../src/osdep,
+					../../src/mpr,
+					../../src/http,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = test;
+		};
 		A1EA57C0AEA7073223917600 /* debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -210,7 +301,7 @@
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					"ME_VERSION=\\\"9.2.0\\\"",
+					"ME_VERSION=\\\"9.3.0\\\"",
 					"ME_APPWEB_PRODUCT=1",
 					"ME_APP_PREFIX=\\\"/usr/local/lib/appweb\\\"",
 					"ME_COM_CGI=1",
@@ -218,7 +309,6 @@
 					"ME_COM_PROXY=1",
 					"ME_HTTP_BASIC=1",
 					"ME_HTTP_CACHE=1",
-					"ME_HTTP_CMD=1",
 					"ME_HTTP_DEFENSE=1",
 					"ME_HTTP_DIGEST=1",
 					"ME_HTTP_DIR=1",
@@ -247,19 +337,18 @@
 				OBJROOT = "../../build/obj/watchdog-macosx-debug";
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = (
-					"-Wno-sign-conversion",
 					"-Wno-unused-parameter",
-					"-Wno-unused-result",
-					"-Wshorten-64-to-32",
 					"-Wall",
 					"-Wno-unknown-warning-option",
-					"-fstack-protector",
+					"-fstack-protector-strong",
 					"--param=ssp-buffer-size=4",
 					"-Wformat",
 					"-Wformat-security",
-					"-Wno-sign-compare",
-					"-Wno-cast-function-type-mismatch",
-					"-Wno-shorten-64-to-32",
+					"-Wformat-nonliteral",
+					"-Werror=format-security",
+					"-Werror=implicit-function-declaration",
+					"-Wnull-dereference",
+					"-Wsign-compare",
 				);
 				OTHER_LDFLAGS = (
 					"-ldl",
@@ -290,7 +379,7 @@
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					"ME_VERSION=\\\"9.2.0\\\"",
+					"ME_VERSION=\\\"9.3.0\\\"",
 					"ME_APPWEB_PRODUCT=1",
 					"ME_APP_PREFIX=\\\"/usr/local/lib/appweb\\\"",
 					"ME_COM_CGI=1",
@@ -298,7 +387,6 @@
 					"ME_COM_PROXY=1",
 					"ME_HTTP_BASIC=1",
 					"ME_HTTP_CACHE=1",
-					"ME_HTTP_CMD=1",
 					"ME_HTTP_DEFENSE=1",
 					"ME_HTTP_DIGEST=1",
 					"ME_HTTP_DIR=1",
@@ -326,19 +414,18 @@
 				OBJROOT = "../../build/obj/watchdog-macosx-release";
 				ONLY_ACTIVE_ARCH = NO;
 				OTHER_CFLAGS = (
-					"-Wno-sign-conversion",
 					"-Wno-unused-parameter",
-					"-Wno-unused-result",
-					"-Wshorten-64-to-32",
 					"-Wall",
 					"-Wno-unknown-warning-option",
-					"-fstack-protector",
+					"-fstack-protector-strong",
 					"--param=ssp-buffer-size=4",
 					"-Wformat",
 					"-Wformat-security",
-					"-Wno-sign-compare",
-					"-Wno-cast-function-type-mismatch",
-					"-Wno-shorten-64-to-32",
+					"-Wformat-nonliteral",
+					"-Werror=format-security",
+					"-Werror=implicit-function-declaration",
+					"-Wnull-dereference",
+					"-Wsign-compare",
 				);
 				OTHER_LDFLAGS = (
 					"-ldl",
@@ -379,6 +466,7 @@
 			buildConfigurations = (
 				A1EA57C0AEA7073223917600 /* debug */,
 				BA4721FAE8ED75EC422ED03A /* release */,
+				9B2431F93E6FBB2B59408839 /* test */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = debug;
@@ -388,6 +476,7 @@
 			buildConfigurations = (
 				2F5EBC0F1A4AE2016230AA4F /* debug */,
 				C8C116C91F4E813BF7C79509 /* release */,
+				67D571888DFBA13AF50297C8 /* test */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = debug;

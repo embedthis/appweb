@@ -45,9 +45,9 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/cgiProgram-macosx-debug
-DEFINES += -DME_VERSION=\"9.2.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_CMD=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/opt/homebrew\" -DME_DEBUG=1
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wno-sign-conversion -Wno-unused-parameter -Wno-unused-result -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wno-sign-compare -Wno-cast-function-type-mismatch -Wno-shorten-64-to-32
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wno-sign-conversion -Wno-unused-parameter -Wno-unused-result -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wno-sign-compare -Wno-cast-function-type-mismatch -Wno-shorten-64-to-32
+DEFINES += -DME_VERSION=\"9.3.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/opt/homebrew\" -DME_DEBUG=1
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wall -Wno-unknown-warning-option -fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wformat-nonliteral -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -Wsign-compare
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wno-unused-parameter -Wall -Wno-unknown-warning-option -fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wformat-nonliteral -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -Wsign-compare
 LIBS += -ldl -lpthread -lm -lpam
 ALL_LDFLAGS += $(LDFLAGS) -g -Wl,-no_warn_duplicate_libraries -Wl,-rpath,@executable_path/ -Wl,-rpath,@loader_path/
 
@@ -63,11 +63,11 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/cgiProgram-linux-debug
-DEFINES += -DME_VERSION=\"9.2.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_CMD=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_DEBUG=1
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
+DEFINES += -DME_VERSION=\"9.3.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_DEBUG=1
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wall -fstack-protector-strong --param=ssp-buffer-size=4 -fstack-clash-protection -Wformat -Wformat-security -Wformat-nonliteral -Wduplicated-branches -Wduplicated-cond -Wsign-compare -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -fPIE
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wno-unused-parameter -Wall -fstack-protector-strong --param=ssp-buffer-size=4 -fstack-clash-protection -Wformat -Wformat-security -Wformat-nonliteral -Wduplicated-branches -Wduplicated-cond -Wsign-compare -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -fPIE
 LIBS += -lrt -ldl -lpthread -lm
-ALL_LDFLAGS += $(LDFLAGS) -g -Wl,-z,relro,-z,now -Wl,--as-needed -Wl,--no-copy-dt-needed-entries -Wl,-z,noexecheap -Wl,--no-warn-execstack
+ALL_LDFLAGS += $(LDFLAGS) -g -Wl,-z,relro,-z,now -Wl,-z,noexecstack -Wl,--as-needed -Wl,--no-copy-dt-needed-entries -Wl,--no-warn-execstack -pie
 
 else ifeq ($(config),debug_freebsd)
 ifeq ($(origin CC), default)
@@ -81,11 +81,11 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/cgiProgram-freebsd-debug
-DEFINES += -DME_VERSION=\"9.2.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_CMD=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_DEBUG=1
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
+DEFINES += -DME_VERSION=\"9.3.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_DEBUG=1
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wall -fstack-protector-strong --param=ssp-buffer-size=4 -fstack-clash-protection -Wformat -Wformat-security -Wformat-nonliteral -Wduplicated-branches -Wduplicated-cond -Wsign-compare -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -fPIE
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wno-unused-parameter -Wall -fstack-protector-strong --param=ssp-buffer-size=4 -fstack-clash-protection -Wformat -Wformat-security -Wformat-nonliteral -Wduplicated-branches -Wduplicated-cond -Wsign-compare -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -fPIE
 LIBS += -ldl -lpthread -lm
-ALL_LDFLAGS += $(LDFLAGS) -g
+ALL_LDFLAGS += $(LDFLAGS) -g -Wl,-z,relro,-z,now -Wl,-z,noexecstack -Wl,--as-needed -pie
 
 else ifeq ($(config),release_macosx)
 ifeq ($(origin CC), default)
@@ -99,9 +99,9 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/cgiProgram-macosx-release
-DEFINES += -DME_VERSION=\"9.2.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_CMD=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/opt/homebrew\"
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wno-sign-conversion -Wno-unused-parameter -Wno-unused-result -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wno-sign-compare -Wno-cast-function-type-mismatch -Wno-shorten-64-to-32
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wno-sign-conversion -Wno-unused-parameter -Wno-unused-result -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wno-sign-compare -Wno-cast-function-type-mismatch -Wno-shorten-64-to-32
+DEFINES += -DME_VERSION=\"9.3.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/opt/homebrew\"
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wall -Wno-unknown-warning-option -fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wformat-nonliteral -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -Wsign-compare
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wno-unused-parameter -Wall -Wno-unknown-warning-option -fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wformat-nonliteral -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -Wsign-compare
 LIBS += -ldl -lpthread -lm -lpam
 ALL_LDFLAGS += $(LDFLAGS) -Wl,-no_warn_duplicate_libraries -Wl,-rpath,@executable_path/ -Wl,-rpath,@loader_path/
 
@@ -117,11 +117,11 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/cgiProgram-linux-release
-DEFINES += -DME_VERSION=\"9.2.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_CMD=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\"
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
+DEFINES += -DME_VERSION=\"9.3.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\"
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wall -fstack-protector-strong --param=ssp-buffer-size=4 -fstack-clash-protection -Wformat -Wformat-security -Wformat-nonliteral -Wduplicated-branches -Wduplicated-cond -Wsign-compare -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fPIE
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wno-unused-parameter -Wall -fstack-protector-strong --param=ssp-buffer-size=4 -fstack-clash-protection -Wformat -Wformat-security -Wformat-nonliteral -Wduplicated-branches -Wduplicated-cond -Wsign-compare -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fPIE
 LIBS += -lrt -ldl -lpthread -lm
-ALL_LDFLAGS += $(LDFLAGS) -s -Wl,-z,relro,-z,now -Wl,--as-needed -Wl,--no-copy-dt-needed-entries -Wl,-z,noexecheap -Wl,--no-warn-execstack
+ALL_LDFLAGS += $(LDFLAGS) -s -Wl,-z,relro,-z,now -Wl,-z,noexecstack -Wl,--as-needed -Wl,--no-copy-dt-needed-entries -Wl,--no-warn-execstack -pie
 
 else ifeq ($(config),release_freebsd)
 ifeq ($(origin CC), default)
@@ -135,11 +135,65 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/cgiProgram-freebsd-release
-DEFINES += -DME_VERSION=\"9.2.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_CMD=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\"
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
+DEFINES += -DME_VERSION=\"9.3.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\"
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wall -fstack-protector-strong --param=ssp-buffer-size=4 -fstack-clash-protection -Wformat -Wformat-security -Wformat-nonliteral -Wduplicated-branches -Wduplicated-cond -Wsign-compare -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fPIE
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wno-unused-parameter -Wall -fstack-protector-strong --param=ssp-buffer-size=4 -fstack-clash-protection -Wformat -Wformat-security -Wformat-nonliteral -Wduplicated-branches -Wduplicated-cond -Wsign-compare -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fPIE
 LIBS += -ldl -lpthread -lm
-ALL_LDFLAGS += $(LDFLAGS) -s
+ALL_LDFLAGS += $(LDFLAGS) -s -Wl,-z,relro,-z,now -Wl,-z,noexecstack -Wl,--as-needed -pie
+
+else ifeq ($(config),test_macosx)
+ifeq ($(origin CC), default)
+  CC = clang
+endif
+ifeq ($(origin CXX), default)
+  CXX = clang++
+endif
+ifeq ($(origin AR), default)
+  AR = ar
+endif
+RESCOMP = windres
+OBJDIR = ../../build/obj/cgiProgram-macosx-test
+DEFINES += -DME_VERSION=\"9.3.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/opt/homebrew\" -DME_COM_TEST=1 -DME_COM_TEST_WEBSOCKETS=1
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -g -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wall -Wno-unknown-warning-option -fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wformat-nonliteral -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -Wsign-compare
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -g -Wall -Wextra -Wno-unused-parameter -Wall -Wno-unknown-warning-option -fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wformat-nonliteral -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -Wsign-compare
+LIBS += -ldl -lpthread -lm -lpam
+ALL_LDFLAGS += $(LDFLAGS) -Wl,-no_warn_duplicate_libraries -Wl,-rpath,@executable_path/ -Wl,-rpath,@loader_path/
+
+else ifeq ($(config),test_linux)
+ifeq ($(origin CC), default)
+  CC = gcc
+endif
+ifeq ($(origin CXX), default)
+  CXX = g++
+endif
+ifeq ($(origin AR), default)
+  AR = ar
+endif
+RESCOMP = windres
+OBJDIR = ../../build/obj/cgiProgram-linux-test
+DEFINES += -DME_VERSION=\"9.3.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_COM_TEST=1 -DME_COM_TEST_WEBSOCKETS=1
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -g -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wall -fstack-protector-strong --param=ssp-buffer-size=4 -fstack-clash-protection -Wformat -Wformat-security -Wformat-nonliteral -Wduplicated-branches -Wduplicated-cond -Wsign-compare -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fPIE
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -g -Wall -Wextra -Wno-unused-parameter -Wall -fstack-protector-strong --param=ssp-buffer-size=4 -fstack-clash-protection -Wformat -Wformat-security -Wformat-nonliteral -Wduplicated-branches -Wduplicated-cond -Wsign-compare -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fPIE
+LIBS += -lrt -ldl -lpthread -lm
+ALL_LDFLAGS += $(LDFLAGS) -Wl,-z,relro,-z,now -Wl,-z,noexecstack -Wl,--as-needed -Wl,--no-copy-dt-needed-entries -Wl,--no-warn-execstack -pie
+
+else ifeq ($(config),test_freebsd)
+ifeq ($(origin CC), default)
+  CC = gcc
+endif
+ifeq ($(origin CXX), default)
+  CXX = g++
+endif
+ifeq ($(origin AR), default)
+  AR = ar
+endif
+RESCOMP = windres
+OBJDIR = ../../build/obj/cgiProgram-freebsd-test
+DEFINES += -DME_VERSION=\"9.3.0\" -DME_APPWEB_PRODUCT=1 -DME_APP_PREFIX=\"/usr/local/lib/appweb\" -DME_COM_CGI=1 -DME_COM_FAST=1 -DME_COM_PROXY=1 -DME_HTTP_BASIC=1 -DME_HTTP_CACHE=1 -DME_HTTP_DEFENSE=1 -DME_HTTP_DIGEST=1 -DME_HTTP_DIR=1 -DME_HTTP_HTTP2=1 -DME_HTTP_PAM=1 -DME_HTTP_SENDFILE=1 -DME_HTTP_UPLOAD=1 -DME_HTTP_WEB_SOCKETS=1 -DME_COM_PCRE2=0 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_COM_TEST=1 -DME_COM_TEST_WEBSOCKETS=1
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -g -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wall -fstack-protector-strong --param=ssp-buffer-size=4 -fstack-clash-protection -Wformat -Wformat-security -Wformat-nonliteral -Wduplicated-branches -Wduplicated-cond -Wsign-compare -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fPIE
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -g -Wall -Wextra -Wno-unused-parameter -Wall -fstack-protector-strong --param=ssp-buffer-size=4 -fstack-clash-protection -Wformat -Wformat-security -Wformat-nonliteral -Wduplicated-branches -Wduplicated-cond -Wsign-compare -Werror=format-security -Werror=implicit-function-declaration -Wnull-dereference -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fPIE
+LIBS += -ldl -lpthread -lm
+ALL_LDFLAGS += $(LDFLAGS) -Wl,-z,relro,-z,now -Wl,-z,noexecstack -Wl,--as-needed -pie
 
 endif
 

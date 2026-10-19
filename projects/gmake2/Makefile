@@ -62,6 +62,33 @@ else ifeq ($(config),release_freebsd)
   fastProgram_config = release_freebsd
   watchdog_config = release_freebsd
 
+else ifeq ($(config),test_macosx)
+  appweb_lib_config = test_macosx
+  appweb_config = test_macosx
+  httpcmd_config = test_macosx
+  authpass_config = test_macosx
+  cgiProgram_config = test_macosx
+  fastProgram_config = test_macosx
+  watchdog_config = test_macosx
+
+else ifeq ($(config),test_linux)
+  appweb_lib_config = test_linux
+  appweb_config = test_linux
+  httpcmd_config = test_linux
+  authpass_config = test_linux
+  cgiProgram_config = test_linux
+  fastProgram_config = test_linux
+  watchdog_config = test_linux
+
+else ifeq ($(config),test_freebsd)
+  appweb_lib_config = test_freebsd
+  appweb_config = test_freebsd
+  httpcmd_config = test_freebsd
+  authpass_config = test_freebsd
+  cgiProgram_config = test_freebsd
+  fastProgram_config = test_freebsd
+  watchdog_config = test_freebsd
+
 else
   $(error "invalid configuration $(config)")
 endif
@@ -126,6 +153,9 @@ help:
 	@echo "  release_macosx"
 	@echo "  release_linux"
 	@echo "  release_freebsd"
+	@echo "  test_macosx"
+	@echo "  test_linux"
+	@echo "  test_freebsd"
 	@echo ""
 	@echo "TARGETS:"
 	@echo "   all (default)"

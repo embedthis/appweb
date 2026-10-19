@@ -61,6 +61,39 @@ newoption {
     description = "Build with regular expression support using a customer-supplied PCRE2 library",
 }
 
+-- Optional features default on; --without=cgi,proxy disables selected entries.
+local features = {
+    { name = "cgi",        define = "ME_COM_CGI" },
+    { name = "fast",       define = "ME_COM_FAST" },
+    { name = "proxy",      define = "ME_COM_PROXY" },
+    { name = "basic",      define = "ME_HTTP_BASIC" },
+    { name = "cache",      define = "ME_HTTP_CACHE" },
+    { name = "defense",    define = "ME_HTTP_DEFENSE" },
+    { name = "digest",     define = "ME_HTTP_DIGEST" },
+    { name = "dir",        define = "ME_HTTP_DIR" },
+    { name = "http2",      define = "ME_HTTP_HTTP2" },
+    { name = "pam",        define = "ME_HTTP_PAM" },
+    { name = "sendfile",   define = "ME_HTTP_SENDFILE" },
+    { name = "upload",     define = "ME_HTTP_UPLOAD" },
+    { name = "websockets", define = "ME_HTTP_WEB_SOCKETS" },
+}
+
+local featureNames = {}
+for _, feature in ipairs(features) do
+    table.insert(featureNames, feature.name)
+end
+
+newoption {
+    trigger     = "without",
+    value       = "LIST",
+    description = "Comma separated features to compile out: " .. table.concat(featureNames, ", "),
+}
+
+newoption {
+    trigger     = "no-pie",
+    description = "Build Linux and FreeBSD executables without PIE, for MMU-less or XIP targets",
+}
+
 newoption {
     trigger     = "pcre2-path",
     value       = "PATH",
@@ -159,12 +192,46 @@ local fcgiOverride   = _OPTIONS["fcgi-path"]
 local fcgiMacPath    = fcgiOverride or "/opt/homebrew"
 local withEsp = _OPTIONS["esp"] ~= nil
 
+local without = {}
+for name in string.gmatch(_OPTIONS["without"] or "", "[^,%s]+") do
+    local known = false
+    for _, feature in ipairs(features) do
+        known = known or feature.name == name
+    end
+    if not known then
+        error("Unknown feature \"" .. name .. "\" for --without. Features: " .. table.concat(featureNames, ", "), 0)
+    end
+    without[name] = true
+end
+
+-- Shared ELF compile and link hardening.
+local elfBuildOptions = {
+    "-Wno-unused-parameter",
+    "-Wall",
+    "-fstack-protector-strong",
+    "--param=ssp-buffer-size=4",
+    --  Requested rather than left to distro defaults, which cross toolchains lack. Needs gcc 8 or clang 11.
+    "-fstack-clash-protection",
+    "-Wformat", "-Wformat-security", "-Wformat-nonliteral",
+    "-Wduplicated-branches", "-Wduplicated-cond",
+    "-Wsign-compare",
+    --  A format-string or undeclared-call warning fails the build; see test/guard/werror.tst.sh
+    "-Werror=format-security",
+    "-Werror=implicit-function-declaration",
+    "-Wnull-dereference",
+}
+local elfLinkHardening = {
+    "-Wl,-z,relro,-z,now",
+    "-Wl,-z,noexecstack",
+    "-Wl,--as-needed",
+}
+
 ---------------------------------------------------------------------
 --  Workspace
 ---------------------------------------------------------------------
 
 workspace "appweb"
-    configurations { "debug", "release" }
+    configurations { "debug", "release", "test" }
     language       "C"
     warnings       "Extra"
     objdir         (ROOT .. "/build/obj/%{prj.name}-%{cfg.platform}-%{cfg.buildcfg}")
@@ -213,23 +280,10 @@ workspace "appweb"
         'ME_VERSION="' .. VERSION .. '"',
         "ME_APPWEB_PRODUCT=1",
         'ME_APP_PREFIX="/usr/local/lib/appweb"',
-        -- Enable core components
-        "ME_COM_CGI=1",
-        "ME_COM_FAST=1",
-        "ME_COM_PROXY=1",
-        -- HTTP feature flags
-        "ME_HTTP_BASIC=1",
-        "ME_HTTP_CACHE=1",
-        "ME_HTTP_CMD=1",
-        "ME_HTTP_DEFENSE=1",
-        "ME_HTTP_DIGEST=1",
-        "ME_HTTP_DIR=1",
-        "ME_HTTP_HTTP2=1",
-        "ME_HTTP_PAM=1",
-        "ME_HTTP_SENDFILE=1",
-        "ME_HTTP_UPLOAD=1",
-        "ME_HTTP_WEB_SOCKETS=1",
     }
+    for _, feature in ipairs(features) do
+        defines { feature.define .. "=" .. (without[feature.name] and "0" or "1") }
+    end
 
     -- Regular expression engine (optional, supplied by the deployer)
     if withPcre2 then
@@ -276,9 +330,19 @@ workspace "appweb"
         optimize "Off"
         defines  { "ME_DEBUG=1" }
 
+    filter "configurations:release or test"
+        optimize "On"
+
     filter "configurations:release"
         symbols  "Off"
-        optimize "On"
+
+-- The test configuration is never shipped. Keep its symbols so sanitizer reports from it can be resolved.
+    filter "configurations:test"
+        symbols  "On"
+
+-- Enable test handlers only in the test configuration.
+    filter "configurations:test"
+        defines  { "ME_COM_TEST=1", "ME_COM_TEST_WEBSOCKETS=1" }
 
     filter {}
 
@@ -300,13 +364,21 @@ workspace "appweb"
         filter "platforms:windows"
             system  "windows"
             toolset "msc"
+            -- The select notifier is the Windows default; the winsock default of 64 would cap concurrent sockets
+            defines { "FD_SETSIZE=1024" }
+            -- Enable Control Flow Guard at compile and link. /SAFESEH applies only to x86, not this x86_64 workspace.
+            buildoptions { "/GS", "/guard:cf" }
+            --  /CETCOMPAT applies to x64 only. A future ARM64 platform must filter it out.
+            linkoptions { "/DYNAMICBASE", "/NXCOMPAT", "/HIGHENTROPYVA", "/guard:cf", "/CETCOMPAT" }
+            --  /guard:cf cannot be combined with /ZI (Edit and Continue) or incremental linking
+            editandcontinue "Off"
+            incrementallink "Off"
             disablewarnings {
                 "4100",     -- unreferenced formal parameter
                 "4127",     -- conditional expression is constant
                 "4133",     -- incompatible types (char*/LPCWSTR)
                 "4152",     -- function/data pointer conversion
                 "4244",     -- conversion, possible loss of data
-                "4389",     -- signed/unsigned mismatch
             }
         filter {}
     else
@@ -314,18 +386,16 @@ workspace "appweb"
             system  "macosx"
             toolset "clang"
             buildoptions {
-                "-Wno-sign-conversion",
                 "-Wno-unused-parameter",
-                "-Wno-unused-result",
-                "-Wshorten-64-to-32",
                 "-Wall",
                 "-Wno-unknown-warning-option",
-                "-fstack-protector",
+                "-fstack-protector-strong",
                 "--param=ssp-buffer-size=4",
-                "-Wformat", "-Wformat-security",
-                "-Wno-sign-compare",
-                "-Wno-cast-function-type-mismatch",
-                "-Wno-shorten-64-to-32"
+                "-Wformat", "-Wformat-security", "-Wformat-nonliteral",
+                "-Werror=format-security",
+                "-Werror=implicit-function-declaration",
+                "-Wnull-dereference",
+                "-Wsign-compare"
             }
             linkoptions {
                 "-Wl,-no_warn_duplicate_libraries",
@@ -337,20 +407,11 @@ workspace "appweb"
         filter "platforms:linux"
             system  "linux"
             toolset "gcc"
-            buildoptions {
-                "-Wno-unused-parameter",
-                "-Wno-unused-result",
-                "-Wall",
-                "-fstack-protector",
-                "--param=ssp-buffer-size=4",
-                "-Wformat", "-Wformat-security",
-                "-Wsign-compare",
-            }
+            buildoptions(elfBuildOptions)
+            linkoptions(elfLinkHardening)
+            --  GNU ld only
             linkoptions {
-                "-Wl,-z,relro,-z,now",
-                "-Wl,--as-needed",
                 "-Wl,--no-copy-dt-needed-entries",
-                "-Wl,-z,noexecheap",
                 "-Wl,--no-warn-execstack",
             }
             links { "rt", "dl", "pthread", "m" }
@@ -358,16 +419,21 @@ workspace "appweb"
         filter "platforms:freebsd"
             system  "bsd"
             toolset "gcc"
-            buildoptions {
-                "-Wno-unused-parameter",
-                "-Wno-unused-result",
-                "-Wall",
-                "-fstack-protector",
-                "--param=ssp-buffer-size=4",
-                "-Wformat", "-Wformat-security",
-                "-Wsign-compare",
-            }
+            buildoptions(elfBuildOptions)
+            linkoptions(elfLinkHardening)
             links { "dl", "pthread", "m" }
+
+-- FORTIFY requires optimization; older glibc and FreeBSD treat 3 as 2.
+-- Do not select architecture-specific CET or BTI/PAC flags in OS-wide projects.
+        filter { "platforms:linux or freebsd", "configurations:release or test" }
+            buildoptions { "-U_FORTIFY_SOURCE", "-D_FORTIFY_SOURCE=3" }
+
+-- Enable position-independent executables for address randomization.
+        if not _OPTIONS["no-pie"] then
+            filter { "platforms:linux or freebsd", "kind:ConsoleApp" }
+                buildoptions { "-fPIE" }
+                linkoptions  { "-pie" }
+        end
 
         filter {}
     end
@@ -392,8 +458,10 @@ project "appweb-lib"
         ROOT .. "/src/rom.c",
         -- Handler modules. espHandler.c compiles to nothing unless ME_COM_ESP is set.
         ROOT .. "/src/modules/cgiHandler.c",
+        ROOT .. "/src/modules/cgiResponse.c",
         ROOT .. "/src/modules/espHandler.c",
         ROOT .. "/src/modules/fastHandler.c",
+        ROOT .. "/src/modules/launch.c",
         ROOT .. "/src/modules/proxyHandler.c",
         ROOT .. "/src/modules/testHandler.c",
         ROOT .. "/src/modules/testBenchHandler.c",

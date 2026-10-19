@@ -39,7 +39,7 @@ CDPATH      :=
 
 .EXPORT_ALL_VARIABLES:
 
-.PHONY: all build check-dist check-sync clean coverage help import test test-linux verify-projects
+.PHONY: all build check-archive check-dist check-sbom check-sync clean coverage help import test test-asan test-linux verify verify-projects
 
 ifndef SHOW
 .SILENT:
@@ -47,19 +47,30 @@ endif
 
 all: build
 
+# Configurations share build/bin; remove products on a switch to force relinking.
 build:
 	@if [ ! -f projects/gmake2/Makefile ] ; then \
 		echo "      [Error] projects/gmake2/Makefile not found. Run: cd projects && premake5 gmake" ; exit 255 ; \
 	fi
+	@if [ -f $(BUILD)/.config ] && [ "`cat $(BUILD)/.config`" != "$(CONFIG)" ] ; then rm -fr $(BIN) ; fi
 	$(MAKE) -C projects/gmake2 config=$(CONFIG) verbose=$(SHOW)
+	@mkdir -p $(BUILD) && echo "$(CONFIG)" > $(BUILD)/.config
 	@echo "      [Info] Appweb $(OPTIMIZE) [$(PLATFORM)]"
 
 clean:
 	@echo "       [Run] clean"
 	rm -fr $(BUILD)
 
-test: build
+test:
+	$(MAKE) build OPTIMIZE=test
 	tm test
+
+#
+#   The same suite against an AddressSanitizer and UndefinedBehaviorSanitizer build. Fails on any
+#   sanitizer report. Leaves no instrumented objects behind. See bin/sanitize.sh.
+#
+test-asan:
+	bin/sanitize.sh $(ARGS)
 
 #
 #   Run the same build and the same suite under Linux, on this Mac, in a local VM driven by Apple's
@@ -73,7 +84,19 @@ test-linux:
 #
 import:
 	pak sync
+	@cp paks/http/doc/api/http.html paks/mpr/doc/api/mpr.html paks/osdep/doc/api/osdep.html doc/api/
 	@bash test/utils/check-amalgamation.sh
+	@bash bin/vendor-manifest.sh write
+
+# Verify src/vendor.sha256 without paks, network, or Git.
+verify:
+	@bash bin/vendor-manifest.sh verify
+
+#
+#   Verify the SBOM agrees with package.json, bun.lock, src/vendor.sha256 and premake5.lua
+#
+check-sbom:
+	@bash bin/sbom-check.sh
 
 #
 #   Verify the amalgamations match their pak sources. Changes nothing; safe to run any time.
@@ -101,6 +124,19 @@ check-dist:
 	rm -fr $(BUILD)/dist-check ; \
 	echo "      [Info] dist/ is in sync with src/"
 
+# Stage and scan archive contents for internal references without building a tarball.
+check-archive:
+	@if [ ! -f bin/buildLib.sh ] ; then \
+		echo "      [Skip] check-archive: the packaging script is not part of this tree." ; \
+		exit 0 ; \
+	fi ; \
+	rm -fr $(BUILD)/archive-check $(BUILD)/archive-dist ; \
+	DIST=$(TOP)/$(BUILD)/archive-dist STAGE_ROOT=$(TOP)/$(BUILD)/archive-check bash bin/buildLib.sh --stage-only \
+		>/dev/null ; status=$$? ; \
+	rm -fr $(BUILD)/archive-check $(BUILD)/archive-dist ; \
+	if [ $$status -ne 0 ] ; then exit 1 ; fi ; \
+	echo "      [Info] The staged archive carries no internal references"
+
 #
 #   Prove projects/gmake2 is what projects/premake5.lua generates. A hand edit to a generated
 #   makefile survives until the next regeneration and is then silently reverted.
@@ -125,17 +161,21 @@ help:
 	@echo '  build               Build libappweb and executables (default)' >&2
 	@echo '  clean               Remove build artifacts' >&2
 	@echo '  test                Run unit tests' >&2
+	@echo '  test-asan           Run unit tests against an ASan and UBSan build' >&2
 	@echo '  test-linux          Run unit tests under Linux in a local container' >&2
 	@echo '  coverage            Build instrumented, run the suite, report line and branch coverage' >&2
 	@echo '  import              Re-import the module amalgamations from their paks, then verify' >&2
 	@echo '  check-sync          Verify the amalgamations match their pak sources (read-only)' >&2
+	@echo '  verify              Verify the vendored pak files against src/vendor.sha256 (read-only)' >&2
+	@echo '  check-sbom          Verify the SBOM agrees with the tree (read-only)' >&2
+	@echo '  check-archive       Verify the staged source archive carries no internal references (read-only)' >&2
 	@echo '  check-dist          Verify the committed dist/ amalgamation matches src/ (read-only)' >&2
 	@echo '  verify-projects     Verify projects/gmake2 matches what premake5.lua generates' >&2
 	@echo '' >&2
 	@echo 'Make variables:' >&2
-	@echo '  OPTIMIZE=debug|release    Optimization level (default: release)' >&2
+	@echo '  OPTIMIZE=debug|release|test  Build configuration (default: release). test adds the test modules' >&2
 	@echo '  SHOW=1                    Show build commands' >&2
-	@echo '  ARGS="..."                Arguments passed to tm by test-linux' >&2
+	@echo '  ARGS="..."                Arguments passed to tm by test-linux and test-asan' >&2
 	@echo '' >&2
 
 ifneq ($(LOCAL),)

@@ -20,10 +20,16 @@
     <ClCompile Include="..\..\src\modules\cgiHandler.c">
       <Filter>modules</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\modules\cgiResponse.c">
+      <Filter>modules</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\modules\espHandler.c">
       <Filter>modules</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\modules\fastHandler.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\modules\launch.c">
       <Filter>modules</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\modules\proxyHandler.c">

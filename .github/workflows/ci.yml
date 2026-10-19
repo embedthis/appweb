@@ -30,12 +30,15 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          #   make check-sbom compares the vendored paks with the last release tag
+          fetch-depth: 0
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: latest
+          bun-version-file: .bun-version
 
       - name: Install system dependencies
         shell: bash
@@ -54,15 +57,15 @@ jobs:
         run: echo "$env:USERPROFILE\.bun\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         if: runner.os == 'Windows'
 
+      # Install the lockfile's exact tools without lifecycle scripts, then run TestMe's trusted installer explicitly.
       - name: Install TestMe
-        if: true
         run: |
-          bun install -g --trust @embedthis/testme
+          bun install --frozen-lockfile
 
-      - name: Local TestMe
-        if: false
+      - name: Build and install tm
+        working-directory: node_modules/@embedthis/testme
         run: |
-          bun install --verbose -g --trust "${{ github.workspace }}/local/testme.tgz"
+          bun bin/postinstall.mjs
 
       - name: Verify TestMe installation (Unix)
         if: runner.os != 'Windows'
@@ -75,23 +78,20 @@ jobs:
           tm.exe --version
           # Get-ChildItem -Recurse -Path "C:\Program Files\OpenSSL"
 
+      #
+      #   Every platform builds warning-free and fails on any new compiler warning.
+      #
       - name: Build (Unix)
         if: runner.os != 'Windows'
         run: |
-          make SHOW=1
+          make SHOW=1 CFLAGS=-Werror
 
-      #
-      #   Build the documented way, through make.bat, and not by invoking msbuild with arguments of
-      #   this workflow's own. Doing the latter is how make.bat came to name a configuration the
-      #   solution does not have, and to rely on INCLUDE and LIB that msbuild discards, without
-      #   anything failing. windows.bat locates Visual Studio itself, so no MSBuild setup action is
-      #   needed; the Windows test step below has always relied on that.
-      #
+# Build through make.bat using the release configuration plus test handlers.
       - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: cmd
         run: |
-          make.bat /v:normal
+          make.bat test /v:normal /warnaserror
 
       #
       #   dist/ is generated from src/ but committed, because it is the payload of the published
@@ -107,6 +107,36 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && hashFiles('bin/buildLib.sh') != ''
         run: |
           make check-dist
+
+      # Scan staged archive contents for internal references; skip without packaging scripts.
+      - name: Verify the source archive carries no internal references
+        if: matrix.os == 'ubuntu-latest' && hashFiles('bin/buildLib.sh') != ''
+        run: |
+          make check-archive
+
+      # Verify vendored files against src/vendor.sha256 without requiring local paks.
+      - name: Verify vendored pak files
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          make verify
+
+      #
+      #   The SBOM must agree with package.json, bun.lock, src/vendor.sha256 and premake5.lua. The public
+      #   source distribution carries no doc/compliance, so the step is skipped there.
+      #
+      - name: Verify the SBOM agrees with the tree
+        if: matrix.os == 'ubuntu-latest' && hashFiles('doc/compliance/sbom/sbom.json') != ''
+        run: |
+          make check-sbom
+
+      # Reject CA bundles older than 180 days; refresh via make roots in certs.
+      - name: CA bundle freshness
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          snap=$(sed -n 's/^## Certificate data from Mozilla as of: //p' certs/roots.crt)
+          age=$(( ($(date +%s) - $(date -d "$snap" +%s)) / 86400 ))
+          echo "certs/roots.crt is $age days old ($snap)"
+          test "$age" -lt 180
 
       - name: Run test suite (Unix)
         if: runner.os != 'Windows'
@@ -145,3 +175,59 @@ jobs:
             if [ -s "$f" ] ; then echo "===== $f" ; cat "$f" ; fi
           done
           echo "===== done"
+
+      # Attach server logs retained after failures; download with gh run download.
+      - name: Upload server logs
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: server-logs-${{ runner.os }}
+          path: test/tmp/server-logs/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Run the functional suite under ASan/UBSan; fail on reports. See bin/sanitize.sh for MPR heap checks.
+  sanitize:
+    name: Sanitizers on ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y gcc build-essential libc6-dev openssl libssl-dev libfcgi-dev
+
+      - name: Add Bun to PATH
+        run: echo "$HOME/.bun/bin" >> $GITHUB_PATH
+
+      - name: Install TestMe
+        run: |
+          bun install --frozen-lockfile
+
+      - name: Build and install tm
+        working-directory: node_modules/@embedthis/testme
+        run: |
+          bun bin/postinstall.mjs
+
+      - name: Run the suite under ASan and UBSan
+        env:
+          SANITIZE_SYMBOLIZE: '0'
+        run: |
+          make test-asan
+
+      - name: Upload sanitizer reports
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sanitizer-reports
+          path: |
+            test/tmp/sanitizer/
+            test/tmp/server-logs/
+          if-no-files-found: ignore
+          retention-days: 14

@@ -49,7 +49,7 @@ fi
 if [ "$DO_BUILD" -eq 1 ]; then
     echo "      [Build] instrumented"
     make -C "${ROOT}" clean >/dev/null 2>&1
-    if ! make -C "${ROOT}" build \
+    if ! make -C "${ROOT}" build OPTIMIZE=test \
             CFLAGS="--coverage -fprofile-arcs -ftest-coverage -O0 -g" \
             LDFLAGS="--coverage" ; then
         echo "coverage.sh: instrumented build failed"

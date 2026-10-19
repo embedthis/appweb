@@ -62,4 +62,11 @@
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
 
-# *.sln eol=crlf
+# premake writes the Visual Studio files with CRLF, so checkout, regeneration and git archive must agree
+*.sln               text eol=crlf
+*.vcxproj           text eol=crlf
+*.vcxproj.filters   text eol=crlf
+
+# The SBOM records the SHA-256 of these files, so a Windows checkout must not convert their line endings
+bun.lock            text eol=lf
+certs/roots.crt     text eol=lf

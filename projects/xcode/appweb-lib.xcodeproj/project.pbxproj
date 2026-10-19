@@ -8,9 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		0E9039967BB848087D4B37D6 /* espHandler.c in Sources */ = {isa = PBXBuildFile; fileRef = 98DB18DEE63E0F105C5D0F1E /* espHandler.c */; };
+		2177BF601B397BD255387DA0 /* launch.c in Sources */ = {isa = PBXBuildFile; fileRef = B6BC3308FF2D173A43CBE948 /* launch.c */; };
 		4165394C9CA68CBE7000D78C /* mprLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 7260D09489736BC6798F66D4 /* mprLib.c */; };
 		5E9E2EDA70556ECCE5C35D1A /* testWebSocketsHandler.c in Sources */ = {isa = PBXBuildFile; fileRef = 2C386CE2A020E494C26E9322 /* testWebSocketsHandler.c */; };
 		60EAB7C2B8502AB46A5E4602 /* fastHandler.c in Sources */ = {isa = PBXBuildFile; fileRef = 6332D54A952C1FFC0F0B5B8A /* fastHandler.c */; };
+		787D05AECFE278A081F093EE /* cgiResponse.c in Sources */ = {isa = PBXBuildFile; fileRef = 0B13AE763D0CF928B6EC34B6 /* cgiResponse.c */; };
 		7D8A341E7E3D3110F21F025E /* rom.c in Sources */ = {isa = PBXBuildFile; fileRef = 235E9B6673723018F5F061A6 /* rom.c */; };
 		9F9442CEF621AD40CE9AC10E /* config.c in Sources */ = {isa = PBXBuildFile; fileRef = 4CA7DC165018AE48D1855256 /* config.c */; };
 		C775E23F14D8D8718AF7D87F /* httpLib.c in Sources */ = {isa = PBXBuildFile; fileRef = AA0B086794F72E59DCDCF6A7 /* httpLib.c */; };
@@ -22,6 +24,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0B13AE763D0CF928B6EC34B6 /* cgiResponse.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = cgiResponse.c; path = ../../src/modules/cgiResponse.c; sourceTree = "<group>"; };
 		113E59C4397912762114A004 /* convenience.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = convenience.c; path = ../../src/convenience.c; sourceTree = "<group>"; };
 		235E9B6673723018F5F061A6 /* rom.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rom.c; path = ../../src/rom.c; sourceTree = "<group>"; };
 		2C386CE2A020E494C26E9322 /* testWebSocketsHandler.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = testWebSocketsHandler.c; path = ../../src/modules/testWebSocketsHandler.c; sourceTree = "<group>"; };
@@ -33,6 +36,7 @@
 		A531674EE9453880DD16BD8E /* testBenchHandler.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = testBenchHandler.c; path = ../../src/modules/testBenchHandler.c; sourceTree = "<group>"; };
 		AA0B086794F72E59DCDCF6A7 /* httpLib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = httpLib.c; path = ../../src/http/httpLib.c; sourceTree = "<group>"; };
 		B47F3001DAA55FB341AC5641 /* libappweb.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; name = libappweb.dylib; path = libappweb.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		B6BC3308FF2D173A43CBE948 /* launch.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = launch.c; path = ../../src/modules/launch.c; sourceTree = "<group>"; };
 		BA7BE17407DED7A67DFDD7B4 /* cgiHandler.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = cgiHandler.c; path = ../../src/modules/cgiHandler.c; sourceTree = "<group>"; };
 		E9AA51527F211084EDBD6792 /* proxyHandler.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = proxyHandler.c; path = ../../src/modules/proxyHandler.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -87,8 +91,10 @@
 			isa = PBXGroup;
 			children = (
 				BA7BE17407DED7A67DFDD7B4 /* cgiHandler.c */,
+				0B13AE763D0CF928B6EC34B6 /* cgiResponse.c */,
 				98DB18DEE63E0F105C5D0F1E /* espHandler.c */,
 				6332D54A952C1FFC0F0B5B8A /* fastHandler.c */,
+				B6BC3308FF2D173A43CBE948 /* launch.c */,
 				E9AA51527F211084EDBD6792 /* proxyHandler.c */,
 				A531674EE9453880DD16BD8E /* testBenchHandler.c */,
 				984244AECA3B8F60441ACAEE /* testHandler.c */,
@@ -170,8 +176,10 @@
 				D9E30D5C4B05AE4E00CC5B9C /* convenience.c in Sources */,
 				C775E23F14D8D8718AF7D87F /* httpLib.c in Sources */,
 				C9D7968C36FFA4FE389294CC /* cgiHandler.c in Sources */,
+				787D05AECFE278A081F093EE /* cgiResponse.c in Sources */,
 				0E9039967BB848087D4B37D6 /* espHandler.c in Sources */,
 				60EAB7C2B8502AB46A5E4602 /* fastHandler.c in Sources */,
+				2177BF601B397BD255387DA0 /* launch.c in Sources */,
 				D8F92D4A9F8724BC0D894B8A /* proxyHandler.c in Sources */,
 				F6EA3D06EAE986786FD49B46 /* testBenchHandler.c in Sources */,
 				D45F93662BC50658DDD321A6 /* testHandler.c in Sources */,
@@ -187,6 +195,19 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		1EEBF6CF7A2D4A414D87950F /* test */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../build/bin;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				EXECUTABLE_PREFIX = lib;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/lib;
+				PRODUCT_NAME = appweb;
+			};
+			name = test;
+		};
 		792C6AB0C68F60E23CAE60F0 /* release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -199,6 +220,85 @@
 			};
 			name = release;
 		};
+		9C138C4B406629FD529E728B /* test */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_VERSION=\\\"9.3.0\\\"",
+					"ME_APPWEB_PRODUCT=1",
+					"ME_APP_PREFIX=\\\"/usr/local/lib/appweb\\\"",
+					"ME_COM_CGI=1",
+					"ME_COM_FAST=1",
+					"ME_COM_PROXY=1",
+					"ME_HTTP_BASIC=1",
+					"ME_HTTP_CACHE=1",
+					"ME_HTTP_DEFENSE=1",
+					"ME_HTTP_DIGEST=1",
+					"ME_HTTP_DIR=1",
+					"ME_HTTP_HTTP2=1",
+					"ME_HTTP_PAM=1",
+					"ME_HTTP_SENDFILE=1",
+					"ME_HTTP_UPLOAD=1",
+					"ME_HTTP_WEB_SOCKETS=1",
+					"ME_COM_PCRE2=0",
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_SSL=1",
+					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
+					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+					"ME_COM_TEST=1",
+					"ME_COM_TEST_WEBSOCKETS=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = (
+					/opt/homebrew/lib,
+				);
+				OBJROOT = "../../build/obj/appweb-lib-macosx-test";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CFLAGS = (
+					"-Wno-unused-parameter",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector-strong",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wformat-nonliteral",
+					"-Werror=format-security",
+					"-Werror=implicit-function-declaration",
+					"-Wnull-dereference",
+					"-Wsign-compare",
+				);
+				OTHER_LDFLAGS = (
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-lpam",
+					"-lssl",
+					"-lcrypto",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				SYMROOT = ../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../src,
+					../../src/osdep,
+					../../src/mpr,
+					../../src/http,
+					/opt/homebrew/include,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = test;
+		};
 		C0C4FC52EF6B504448ACAA92 /* debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -209,7 +309,7 @@
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					"ME_VERSION=\\\"9.2.0\\\"",
+					"ME_VERSION=\\\"9.3.0\\\"",
 					"ME_APPWEB_PRODUCT=1",
 					"ME_APP_PREFIX=\\\"/usr/local/lib/appweb\\\"",
 					"ME_COM_CGI=1",
@@ -217,7 +317,6 @@
 					"ME_COM_PROXY=1",
 					"ME_HTTP_BASIC=1",
 					"ME_HTTP_CACHE=1",
-					"ME_HTTP_CMD=1",
 					"ME_HTTP_DEFENSE=1",
 					"ME_HTTP_DIGEST=1",
 					"ME_HTTP_DIR=1",
@@ -243,19 +342,18 @@
 				OBJROOT = "../../build/obj/appweb-lib-macosx-debug";
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = (
-					"-Wno-sign-conversion",
 					"-Wno-unused-parameter",
-					"-Wno-unused-result",
-					"-Wshorten-64-to-32",
 					"-Wall",
 					"-Wno-unknown-warning-option",
-					"-fstack-protector",
+					"-fstack-protector-strong",
 					"--param=ssp-buffer-size=4",
 					"-Wformat",
 					"-Wformat-security",
-					"-Wno-sign-compare",
-					"-Wno-cast-function-type-mismatch",
-					"-Wno-shorten-64-to-32",
+					"-Wformat-nonliteral",
+					"-Werror=format-security",
+					"-Werror=implicit-function-declaration",
+					"-Wnull-dereference",
+					"-Wsign-compare",
 				);
 				OTHER_LDFLAGS = (
 					"-ldl",
@@ -302,7 +400,7 @@
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					"ME_VERSION=\\\"9.2.0\\\"",
+					"ME_VERSION=\\\"9.3.0\\\"",
 					"ME_APPWEB_PRODUCT=1",
 					"ME_APP_PREFIX=\\\"/usr/local/lib/appweb\\\"",
 					"ME_COM_CGI=1",
@@ -310,7 +408,6 @@
 					"ME_COM_PROXY=1",
 					"ME_HTTP_BASIC=1",
 					"ME_HTTP_CACHE=1",
-					"ME_HTTP_CMD=1",
 					"ME_HTTP_DEFENSE=1",
 					"ME_HTTP_DIGEST=1",
 					"ME_HTTP_DIR=1",
@@ -335,19 +432,18 @@
 				OBJROOT = "../../build/obj/appweb-lib-macosx-release";
 				ONLY_ACTIVE_ARCH = NO;
 				OTHER_CFLAGS = (
-					"-Wno-sign-conversion",
 					"-Wno-unused-parameter",
-					"-Wno-unused-result",
-					"-Wshorten-64-to-32",
 					"-Wall",
 					"-Wno-unknown-warning-option",
-					"-fstack-protector",
+					"-fstack-protector-strong",
 					"--param=ssp-buffer-size=4",
 					"-Wformat",
 					"-Wformat-security",
-					"-Wno-sign-compare",
-					"-Wno-cast-function-type-mismatch",
-					"-Wno-shorten-64-to-32",
+					"-Wformat-nonliteral",
+					"-Werror=format-security",
+					"-Werror=implicit-function-declaration",
+					"-Wnull-dereference",
+					"-Wsign-compare",
 				);
 				OTHER_LDFLAGS = (
 					"-ldl",
@@ -380,6 +476,7 @@
 			buildConfigurations = (
 				C945EA368CB1ABE8CB555076 /* debug */,
 				792C6AB0C68F60E23CAE60F0 /* release */,
+				1EEBF6CF7A2D4A414D87950F /* test */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = debug;
@@ -389,6 +486,7 @@
 			buildConfigurations = (
 				C0C4FC52EF6B504448ACAA92 /* debug */,
 				FA5D330C6BE84B7E1AE9714C /* release */,
+				9C138C4B406629FD529E728B /* test */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = debug;

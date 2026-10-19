@@ -62,11 +62,17 @@ if ! container system status >/dev/null 2>&1 ; then
 fi
 
 #
-#   The image carries only the toolchain, so it is rebuilt when its Dockerfile changes and not when
-#   the source does. The checksum is kept under build/, which "make clean" removes -- a clean tree
-#   then rebuilds the image once, which is the safe direction to be wrong in.
+#   The image carries only the toolchain, so it is rebuilt when its Dockerfile or the TestMe version
+#   bun.lock resolves changes, and not when the source does. The stamp is kept under build/, which
+#   "make clean" removes -- a clean tree then rebuilds the image once, which is the safe direction to
+#   be wrong in.
 #
-WANT="$(shasum -a 256 "${DOCKERFILE}" | cut -d' ' -f1)"
+TESTME="$(sed -n 's/.*"@embedthis\/testme@\([0-9.]*\)".*/\1/p' "${ROOT}/bun.lock" | head -1)"
+if [ -z "${TESTME}" ] ; then
+    echo "      [Error] bun.lock does not resolve @embedthis/testme" >&2
+    exit 255
+fi
+WANT="$(shasum -a 256 "${DOCKERFILE}" | cut -d' ' -f1) testme@${TESTME}"
 HAVE=""
 [ -f "${STAMP}" ] && HAVE="$(cat "${STAMP}")"
 
@@ -78,7 +84,8 @@ fi
 
 if [ ${REBUILD} -ne 0 ] ; then
     echo "       [Run] build ${IMAGE}"
-    container build -t "${IMAGE}" -f "${DOCKERFILE}" "${ROOT}/test/utils" || exit 255
+    container build -t "${IMAGE}" -f "${DOCKERFILE}" --build-arg "TESTME_VERSION=${TESTME}" "${ROOT}/test/utils" \
+        || exit 255
     mkdir -p "${ROOT}/build"
     echo "${WANT}" > "${STAMP}"
 fi
