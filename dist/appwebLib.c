@@ -28,12 +28,13 @@
 /********************************** Locals *************************************/
 
 static MprHash *directives;
+static bool    chrooted;
 
 /***************************** Forward Declarations ****************************/
 
 static int addCondition(MaState *state, cchar *name, cchar *condition, int flags);
 static int addUpdate(MaState *state, cchar *name, cchar *details, int flags);
-static bool conditionalDefinition(MaState *state, cchar *key);
+static int conditionalDefinition(MaState *state, cchar *key);
 static int configError(MaState *state, cchar *key);
 static MaState *createState(void);
 static char *getDirective(char *line, char **valuep);
@@ -224,10 +225,14 @@ PUBLIC int maParseFile(MaState *state, cchar *path)
 static int parseFileInner(MaState *state, cchar *path)
 {
     MaDirective *directive;
+    MaState     *floor;
     char        *tok, *key, *line, *value;
 
     assert(state);
     assert(path && *path);
+
+    // A closing directive may not pop below the state this file was opened with
+    floor = state;
 
     if (openConfig(state, path) < 0) {
         return MPR_ERR_CANT_OPEN;
@@ -243,14 +248,10 @@ static int parseFileInner(MaState *state, cchar *path)
         }
         if (!state->enabled) {
             /*
-                Skip the directives in a disabled block, but never the <if> and </if> that delimit a
-                nested one. </if> always pops a state, so skipping the open without skipping the close
-                pops the enclosing block instead. The parser then continues with the wrong state: the
-                directives after the block attach to a route that has already been finalized, and the
-                rest of the file is silently discarded, including any authorization it defines. A
-                nested <if> still evaluates to disabled here, because maPushState inherits enabled.
+                Process conditional directives even in disabled blocks to keep the state stack balanced.
              */
-            if (sncaselesscmp(key, "<if", 3) != 0 && sncaselesscmp(key, "</if", 4) != 0) {
+            if (sncaselesscmp(key, "<if", 3) != 0 && sncaselesscmp(key, "</if", 4) != 0 &&
+                sncaselesscmp(key, "<else", 5) != 0) {
                 continue;
             }
         }
@@ -266,14 +267,22 @@ static int parseFileInner(MaState *state, cchar *path)
                    state->key, state->lineNumber, state->filename);
             return MPR_ERR_BAD_SYNTAX;
         }
+        if (state->top->current == floor->prev) {
+            mprLog("error appweb config", 0, "Too many closing blocks. At line %d in %s", state->lineNumber,
+                   state->filename);
+            return MPR_ERR_BAD_SYNTAX;
+        }
         state = state->top->current;
     }
     /* EOF */
     if (state->prev && state->file == state->prev->file) {
+        //  An unclosed block is never finalized, so the route and the authentication it configures would be dropped
         mprLog("error appweb config", 0, "Unclosed directives in %s", state->filename);
         while (state->prev && state->file == state->prev->file) {
             state = state->prev;
         }
+        mprCloseFile(state->file);
+        return MPR_ERR_BAD_SYNTAX;
     }
     mprCloseFile(state->file);
     return 0;
@@ -437,7 +446,7 @@ static int addTypeDirective(MaState *state, cchar *key, cchar *value)
     if (!maTokenize(state, value, "%S %S", &mimeType, &ext)) {
         return MPR_ERR_BAD_SYNTAX;
     }
-    mprAddMime(state->route->mimeTypes, mimeType, ext);
+    mprAddMime(state->route->mimeTypes, ext, mimeType);
     return 0;
 }
 
@@ -525,6 +534,13 @@ static int authTypeDirective(MaState *state, cchar *key, cchar *value)
     if (httpSetAuthType(state->auth, type, details) < 0) {
         return MPR_ERR_BAD_SYNTAX;
     }
+#if !ME_COM_SSL
+    if (smatch(type, "basic") || smatch(type, "form")) {
+        mprLog("warn appweb config", 0,
+               "AuthType %s sends passwords in clear text and this build has no TLS. At line %d in %s",
+               type, state->lineNumber, state->filename);
+    }
+#endif
     if (!smatch(type, "none")) {
         if (realm) {
             httpSetAuthRealm(state->auth, strim(realm, "\"'", MPR_TRIM_BOTH));
@@ -609,6 +625,7 @@ static int autoFinalize(MaState *state, cchar *key, cchar *value)
  */
 static int cacheDirective(MaState *state, cchar *key, cchar *value)
 {
+#if ME_HTTP_CACHE
     MprTicks lifespan, clientLifespan, serverLifespan;
     char     *option, *ovalue, *tok;
     char     *methods, *extensions, *types, *uris;
@@ -667,11 +684,13 @@ static int cacheDirective(MaState *state, cchar *key, cchar *value)
     if (lifespan > 0 && !uris && !extensions && !types && !methods) {
         state->route->lifespan = lifespan;
     } else {
-#if ME_HTTP_CACHE
         httpAddCache(state->route, methods, uris, extensions, types, clientLifespan, serverLifespan, flags);
-#endif
     }
     return 0;
+#else
+    mprLog("error appweb config", 0, "Cache directive not built in binary");
+    return MPR_ERR_BAD_SYNTAX;
+#endif
 }
 
 
@@ -681,6 +700,70 @@ static int cacheDirective(MaState *state, cchar *key, cchar *value)
 static int canonicalNameDirective(MaState *state, cchar *key, cchar *value)
 {
     return httpSetRouteCanonicalName(state->route, value);
+}
+
+
+/*
+    CgiEscape on|off
+    Escape shell metacharacters in CGI and FastCGI environment variables
+ */
+static int cgiEscapeDirective(MaState *state, cchar *key, cchar *value)
+{
+    bool on;
+
+    if (!maTokenize(state, value, "%B", &on)) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    httpSetRouteEnvEscape(state->route, on);
+    return 0;
+}
+
+
+/*
+    CgiPrefix prefix
+    Prefix for the CGI and FastCGI environment variables made from request parameters
+ */
+static int cgiPrefixDirective(MaState *state, cchar *key, cchar *value)
+{
+    cchar *prefix;
+
+    if (!maTokenize(state, value, "%S", &prefix)) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    httpSetRouteEnvPrefix(state->route, prefix);
+    return 0;
+}
+
+
+PUBLIC int maChangeRoot(cchar *dir)
+{
+#if ME_UNIX_LIKE
+    if (chroot(dir) < 0) {
+        if (errno == EPERM) {
+            mprLog("error appweb", 0, "Must be super user to use chroot");
+        } else {
+            mprLog("error appweb", 0, "Cannot change root directory to %s, errno %d", dir, errno);
+        }
+        return MPR_ERR_CANT_ACCESS;
+    }
+    //  Keep the working directory inside the jail
+    if (chdir("/") < 0) {
+        mprLog("error appweb", 0, "Cannot change directory to the root of %s, errno %d", dir, errno);
+        return MPR_ERR_CANT_ACCESS;
+    }
+    chrooted = 1;
+    mprLog("info appweb", 2, "Chroot to: \"%s\"", dir);
+    return 0;
+#else
+    mprLog("error appweb", 0, "Chroot is not supported on this operating system");
+    return MPR_ERR_BAD_STATE;
+#endif
+}
+
+
+PUBLIC bool maIsChrooted(void)
+{
+    return chrooted;
 }
 
 
@@ -709,12 +792,7 @@ static int chrootDirective(MaState *state, cchar *key, cchar *value)
         /* Not running a web server */
         mprLog("info appweb config", 2, "Change directory to: \"%s\"", home);
     } else {
-        if (chroot(home) < 0) {
-            if (errno == EPERM) {
-                mprLog("error appweb config", 0, "Must be super user to use chroot");
-            } else {
-                mprLog("error appweb config", 0, "Cannot change change root directory to %s, errno %d", home, errno);
-            }
+        if (maChangeRoot(home) < 0) {
             return MPR_ERR_BAD_SYNTAX;
         }
         /*
@@ -729,8 +807,6 @@ static int chrootDirective(MaState *state, cchar *key, cchar *value)
                 kp->data = mprGetAbsPath(mprGetRelPath(kp->data, oldConfigDir));
             }
         }
-        httpSetJail(home);
-        mprLog("info appweb config", 2, "Chroot to: \"%s\"", home);
     }
     return 0;
 #else
@@ -745,6 +821,11 @@ static int chrootDirective(MaState *state, cchar *key, cchar *value)
  */
 static int closeDirective(MaState *state, cchar *key, cchar *value)
 {
+    if (state->prev == 0) {
+        mprLog("error appweb config", 0, "Too many closing blocks. At line %d in %s", state->lineNumber,
+               state->filename);
+        return MPR_ERR_BAD_SYNTAX;
+    }
     /*
         The order of route finalization will be from the inside. Route finalization causes the route to be added
         to the enclosing host. This ensures that nested routes are defined BEFORE outer/enclosing routes.
@@ -754,6 +835,22 @@ static int closeDirective(MaState *state, cchar *key, cchar *value)
     }
     maPopState(state);
     return 0;
+}
+
+
+/*
+    CoreDumps on|off
+
+    Off by default: a core file holds TLS private keys, session ids and credentials
+ */
+static int coreDumpsDirective(MaState *state, cchar *key, cchar *value)
+{
+    bool on;
+
+    if (!maTokenize(state, value, "%B", &on)) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    return mprSetCoreDumps(on) < 0 ? MPR_ERR_BAD_STATE : 0;
 }
 
 
@@ -940,7 +1037,12 @@ static int documentsDirective(MaState *state, cchar *key, cchar *value)
  */
 static int elseDirective(MaState *state, cchar *key, cchar *value)
 {
-    state->enabled = !state->enabled;
+    if (!state->conditional) {
+        mprLog("error appweb config", 0, "<else> without <if>. At line %d in %s", state->lineNumber, state->filename);
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    // The else branch runs only when the if branch did not and the enclosing block is itself enabled
+    state->enabled = state->prev->enabled && !state->enabled;
     return 0;
 }
 
@@ -1076,6 +1178,23 @@ static int followSymlinksDirective(MaState *state, cchar *key, cchar *value)
 
 
 /*
+    ServeSensitiveFiles on|off
+
+    Off by default: version control, backup and editor files are answered as missing
+ */
+static int serveSensitiveFilesDirective(MaState *state, cchar *key, cchar *value)
+{
+    bool on;
+
+    if (!maTokenize(state, value, "%B", &on)) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    httpSetRouteServeSensitive(state->route, on);
+    return 0;
+}
+
+
+/*
     GroupAccount groupName
  */
 static int groupAccountDirective(MaState *state, cchar *key, cchar *value)
@@ -1143,6 +1262,22 @@ static int http2Directive(MaState *state, cchar *key, cchar *value)
         return MPR_ERR_BAD_SYNTAX;
     }
     httpEnableHttp2(on);
+    return 0;
+}
+
+
+/*
+    Http2Cleartext [on|off]
+    Accept prior-knowledge HTTP/2 (h2c) on plaintext listeners. Off by default: HTTP/2 is then offered only over TLS.
+ */
+static int http2CleartextDirective(MaState *state, cchar *key, cchar *value)
+{
+    bool on;
+
+    if (!maTokenize(state, value, "%B", &on)) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    httpEnableHttp2Cleartext(on);
     return 0;
 }
 
@@ -1254,9 +1389,15 @@ static int indexOptionsDirective(MaState *state, cchar *key, cchar *value)
  */
 static int ifDirective(MaState *state, cchar *key, cchar *value)
 {
+    int cond;
+
     state = maPushState(state);
+    state->conditional = 1;
     if (state->enabled) {
-        state->enabled = conditionalDefinition(state, value);
+        if ((cond = conditionalDefinition(state, value)) < 0) {
+            return MPR_ERR_BAD_SYNTAX;
+        }
+        state->enabled = cond;
     }
     return 0;
 }
@@ -1329,6 +1470,9 @@ static int limitChunkDirective(MaState *state, cchar *key, cchar *value)
  */
 static int limitClientsDirective(MaState *state, cchar *key, cchar *value)
 {
+    if (httpCheckDefense(key) < 0) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
     httpGraduateLimits(state->route, 0);
     state->route->limits->clientMax = httpGetInt(value);
     return 0;
@@ -1351,6 +1495,9 @@ static int limitConnectionsDirective(MaState *state, cchar *key, cchar *value)
  */
 static int limitConnectionsPerClientDirective(MaState *state, cchar *key, cchar *value)
 {
+    if (httpCheckDefense(key) < 0) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
     httpGraduateLimits(state->route, 0);
     state->route->limits->connectionsPerClientMax = httpGetInt(value);
     return 0;
@@ -1378,8 +1525,13 @@ static int limitFrameDirective(MaState *state, cchar *key, cchar *value)
 
     httpGraduateLimits(state->route, 0);
     size = httpGetInt(value);
-    if (size > (1024 * 1024)) {
-        size = (1024 * 1024);
+    // RFC 9113 4.2: SETTINGS_MAX_FRAME_SIZE lies between 16K and 16M - 1
+    if (size < HTTP2_MIN_FRAME_SIZE) {
+        mprLog("error appweb config", 0, "LimitFrame must be at least %d", HTTP2_MIN_FRAME_SIZE);
+        return MPR_ERR_BAD_ARGS;
+    }
+    if (size > HTTP2_MAX_FRAME_SIZE) {
+        size = HTTP2_MAX_FRAME_SIZE;
     }
     state->route->limits->frameSize = size;
     return 0;
@@ -1421,6 +1573,9 @@ static int limitMemoryDirective(MaState *state, cchar *key, cchar *value)
  */
 static int limitProcessesDirective(MaState *state, cchar *key, cchar *value)
 {
+    if (httpCheckDefense(key) < 0) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
     httpGraduateLimits(state->route, 0);
     state->route->limits->processMax = httpGetInt(value);
     return 0;
@@ -1432,6 +1587,9 @@ static int limitProcessesDirective(MaState *state, cchar *key, cchar *value)
  */
 static int limitRequestsPerClientDirective(MaState *state, cchar *key, cchar *value)
 {
+    if (httpCheckDefense(key) < 0) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
     httpGraduateLimits(state->route, 0);
     state->route->limits->requestsPerClientMax = httpGetInt(value);
     return 0;
@@ -1550,6 +1708,28 @@ static int limitUploadDirective(MaState *state, cchar *key, cchar *value)
 {
     httpGraduateLimits(state->route, 0);
     state->route->limits->uploadSize = httpGetNumber(value);
+    return 0;
+}
+
+
+/*
+    LimitRanges count
+ */
+static int limitRangesDirective(MaState *state, cchar *key, cchar *value)
+{
+    httpGraduateLimits(state->route, 0);
+    state->route->limits->rangesMax = httpGetInt(value);
+    return 0;
+}
+
+
+/*
+    LimitUploadParts count
+ */
+static int limitUploadPartsDirective(MaState *state, cchar *key, cchar *value)
+{
+    httpGraduateLimits(state->route, 0);
+    state->route->limits->uploadParts = httpGetInt(value);
     return 0;
 }
 
@@ -2013,7 +2193,9 @@ static int paramDirective(MaState *state, cchar *key, cchar *value)
     if (!maTokenize(state, value, "?! %S %*", &not, &field, &value)) {
         return MPR_ERR_BAD_SYNTAX;
     }
-    httpAddRouteParam(state->route, field, value, not ? HTTP_ROUTE_NOT : 0);
+    if (httpAddRouteParam(state->route, field, value, not ? HTTP_ROUTE_NOT : 0) < 0) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
     return 0;
 }
 
@@ -2041,7 +2223,12 @@ static int redirectDirective(MaState *state, cchar *key, cchar *value)
     int       status;
 
     status = 0;
+    code = 0;
     if (smatch(value, "secure")) {
+#if !ME_COM_SSL
+        mprLog("error appweb config", 0, "Redirect secure requires TLS, which is not included in this build");
+        return MPR_ERR_BAD_STATE;
+#endif
         uri = "/";
         path = "https://";
 
@@ -2149,10 +2336,10 @@ static int requireDirective(MaState *state, cchar *key, cchar *value)
         if (age) {
             if (domains) {
                 /* Negative age signifies subdomains */
-                age = sjoin("-1", age, NULL);
+                age = sjoin("-", age, NULL);
             }
         }
-        addCondition(state, "secure", age, HTTP_ROUTE_STRICT_TLS);
+        addCondition(state, "secure", age, HTTP_ROUTE_STRICT_TLS | HTTP_ROUTE_REQUIRE_SECURE);
 
     } else if (scaselesscmp(type, "user") == 0) {
         httpSetAuthPermittedUsers(state->auth, rest);
@@ -2260,7 +2447,9 @@ static int routeDirective(MaState *state, cchar *key, cchar *value)
         }
         pattern = httpExpandRouteVars(state->route, pattern);
         state->route = httpCreateInheritedRoute(state->route);
-        httpSetRoutePattern(state->route, pattern, not ? HTTP_ROUTE_NOT : 0);
+        if (httpSetRoutePattern(state->route, pattern, not ? HTTP_ROUTE_NOT : 0) < 0) {
+            return MPR_ERR_BAD_SYNTAX;
+        }
         httpSetRouteHost(state->route, state->host);
         /* Routes are added when the route block is closed (see closeDirective) */
         state->auth = state->route->auth;
@@ -2282,7 +2471,9 @@ static int requestHeaderDirective(MaState *state, cchar *key, cchar *value)
     if (!maTokenize(state, value, "?! %S %*", &not, &header, &value)) {
         return MPR_ERR_BAD_SYNTAX;
     }
-    httpAddRouteRequestHeaderCheck(state->route, header, value, not ? HTTP_ROUTE_NOT : 0);
+    if (httpAddRouteRequestHeaderCheck(state->route, header, value, not ? HTTP_ROUTE_NOT : 0) < 0) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
     return 0;
 }
 
@@ -2612,7 +2803,13 @@ static int sslCertificateKeyFileDirective(MaState *state, cchar *key, cchar *val
 
 static int sslCipherSuiteDirective(MaState *state, cchar *key, cchar *value)
 {
+    cchar *cipher;
+
     checkSsl(state);
+    if ((cipher = mprGetSslInsecureCipher(value)) != 0) {
+        mprLog("error appweb config", 0, "Insecure cipher \"%s\" is not permitted", cipher);
+        return MPR_ERR_BAD_SYNTAX;
+    }
     mprAddSslCiphers(state->route->ssl, value);
     return 0;
 }
@@ -3167,6 +3364,16 @@ static int uploadAutoDeleteDirective(MaState *state, cchar *key, cchar *value)
 
 
 #if ME_HTTP_WEB_SOCKETS
+/*
+    WebSocketsOrigin origin[,origin...]|*
+ */
+static int webSocketsOriginDirective(MaState *state, cchar *key, cchar *value)
+{
+    httpSetRouteWebSocketsOrigin(state->route, value);
+    return 0;
+}
+
+
 static int webSocketsProtocolDirective(MaState *state, cchar *key, cchar *value)
 {
     state->route->webSocketsProtocol = sclone(value);
@@ -3182,7 +3389,36 @@ static int webSocketsPingDirective(MaState *state, cchar *key, cchar *value)
 #endif
 
 
-static bool conditionalDefinition(MaState *state, cchar *key)
+/*
+    Recognized platform, CPU, and profile names for conditional blocks.
+ */
+static cchar *platformNames[] = {
+    "aix", "bsdi", "cygwin", "ecos", "freebsd", "freertos", "hpux", "linux", "macosx", "msdos", "netbsd",
+    "netware", "openbsd", "os2", "qnx", "solaris", "tidsp", "vms", "vxworks", "windows",
+    "alpha", "arm", "arm64", "ia64", "mips", "mips64", "ppc", "ppc64", "riscv", "riscv64", "sh", "sparc",
+    "x64", "x86", "xtensa",
+    "debug", "dev", "prod", "release", "ME_DEBUG",
+    0
+};
+
+
+static bool isPlatformName(cchar *key)
+{
+    cchar **cp;
+
+    for (cp = platformNames; *cp; cp++) {
+        if (scaselessmatch(key, *cp)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+/*
+    Return 1 or 0 for known conditions; reject unknown names with MPR_ERR_BAD_SYNTAX.
+ */
+static int conditionalDefinition(MaState *state, cchar *key)
 {
     cchar *arch, *os, *platform, *profile;
     int   result, not;
@@ -3281,11 +3517,17 @@ static bool conditionalDefinition(MaState *state, cchar *key)
         } else if (scaselessmatch(key, "HTTP2")) {
             result = ME_HTTP_HTTP2;
         } else if (scaselessmatch(key, "PAM")) {
-            result = ME_HTTP_PAM;
+            //  The guard the PAM auth store is compiled under
+            result = ME_COMPILER_HAS_PAM && ME_HTTP_PAM;
         } else if (scaselessmatch(key, "UPLOAD")) {
             result = ME_HTTP_UPLOAD;
         } else if (scaselessmatch(key, "WEB_SOCKETS")) {
             result = ME_HTTP_WEB_SOCKETS;
+
+        } else if (!isPlatformName(key)) {
+            mprLog("error appweb config", 0, "Unknown condition \"%s\". At line %d in %s", key,
+                   state->lineNumber, state->filename);
+            return MPR_ERR_BAD_SYNTAX;
         }
     }
     return (not) ? !result : result;
@@ -3405,8 +3647,9 @@ PUBLIC MaState *maPushState(MaState *prev)
 PUBLIC MaState *maPopState(MaState *state)
 {
     if (state->prev == 0) {
-        mprLog("error appweb config", 0, "Too many closing blocks.\nAt line %d in %s\n\n", state->lineNumber,
+        mprLog("error appweb config", 0, "Too many closing blocks. At line %d in %s", state->lineNumber,
                state->filename);
+        return state;
     }
     state->prev->lineNumber = state->lineNumber;
     state = state->prev;
@@ -3590,9 +3833,12 @@ static int parseInit(void)
     maAddDirective("AutoFinalize", autoFinalize);
     maAddDirective("Cache", cacheDirective);
     maAddDirective("CanonicalName", canonicalNameDirective);
+    maAddDirective("CgiEscape", cgiEscapeDirective);
+    maAddDirective("CgiPrefix", cgiPrefixDirective);
     maAddDirective("CharSet", charSetDirective);
     maAddDirective("Chroot", chrootDirective);
     maAddDirective("Condition", conditionDirective);
+    maAddDirective("CoreDumps", coreDumpsDirective);
     maAddDirective("CrossOrigin", crossOriginDirective);
     maAddDirective("DefaultLanguage", defaultLanguageDirective);
     maAddDirective("Deny", denyDirective);
@@ -3609,6 +3855,7 @@ static int parseInit(void)
     maAddDirective("Header", headerDirective);
     maAddDirective("Home", homeDirective);
     maAddDirective("Http2", http2Directive);
+    maAddDirective("Http2Cleartext", http2CleartextDirective);
     maAddDirective("<If", ifDirective);
     maAddDirective("</If", closeDirective);
     maAddDirective("IgnoreEncodingErrors", ignoreEncodingErrorsDirective);
@@ -3637,6 +3884,8 @@ static int parseInit(void)
     maAddDirective("LimitStreams", limitStreamsDirective);
     maAddDirective("LimitUri", limitUriDirective);
     maAddDirective("LimitUpload", limitUploadDirective);
+    maAddDirective("LimitRanges", limitRangesDirective);
+    maAddDirective("LimitUploadParts", limitUploadPartsDirective);
     maAddDirective("LimitWindow", limitWindowDirective);
     maAddDirective("LimitWorkers", limitWorkersDirective);
     maAddDirective("Listen", listenDirective);
@@ -3669,6 +3918,7 @@ static int parseInit(void)
     maAddDirective("ServerName", serverNameDirective);
     maAddDirective("SessionCookie", sessionCookieDirective);
     maAddDirective("SessionTimeout", sessionTimeoutDirective);
+    maAddDirective("ServeSensitiveFiles", serveSensitiveFilesDirective);
     maAddDirective("Set", setDirective);
     maAddDirective("SetConnector", setConnectorDirective);
     maAddDirective("SetHandler", setHandlerDirective);
@@ -3719,6 +3969,7 @@ static int parseInit(void)
     maAddDirective("LimitWebSocketsMessage", limitWebSocketsMessageDirective);
     maAddDirective("LimitWebSocketsFrame", limitWebSocketsFrameDirective);
     maAddDirective("LimitWebSocketsPacket", limitWebSocketsPacketDirective);
+    maAddDirective("WebSocketsOrigin", webSocketsOriginDirective);
     maAddDirective("WebSocketsProtocol", webSocketsProtocolDirective);
     maAddDirective("WebSocketsPing", webSocketsPingDirective);
 #endif
@@ -3764,7 +4015,7 @@ PUBLIC int maLoadModule(cchar *name, cchar *libname)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
@@ -3846,7 +4097,7 @@ PUBLIC int maRunSimpleWebServer(cchar *ip, int port, cchar *home, cchar *documen
 
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
@@ -3898,26 +4149,25 @@ typedef struct Cgi {
     HttpQueue *writeq;                  /**< Queue to write to the CGI */
     HttpQueue *readq;                   /**< Queue to read from the CGI */
     HttpPacket *headers;                /**< CGI response headers */
-    char *location;                     /**< Redirection location */
+    cchar *location;                    /**< Redirection location */
     MprOff declaredLength;              /**< Content-Length declared by the CGI, or negative if none */
     MprOff bodyBytes;                   /**< Body bytes forwarded from the CGI to the client */
     int seenHeader;                     /**< Parsed response header from CGI */
+    int deferStart;                     /**< Start the CGI once a body of undeclared length is received */
 } Cgi;
 
 /*********************************** Forwards *********************************/
 
 static void browserToCgiService(HttpQueue *q);
-static void buildArgs(HttpStream *stream, int *argcp, cchar ***argvp);
+static int buildArgs(HttpStream *stream, int *argcp, cchar ***argvp);
 static void cgiCallback(MprCmd *cmd, int channel, void *data);
 static void checkCgiLength(Cgi *cgi);
 static void cgiToBrowserData(HttpQueue *q, HttpPacket *packet);
+static int copyInherited(cchar **envv, int index);
 static int copyInner(HttpStream *stream, cchar **envv, int index, cchar *key, cchar *value, cchar *prefix);
 static int copyParams(HttpStream *stream, cchar **envv, int index, MprJson *params, cchar *prefix);
 static int copyVars(HttpStream *stream, cchar **envv, int index, MprHash *vars, cchar *prefix);
-static char *getCgiToken(MprBuf *buf, cchar *delim);
 static void manageCgi(Cgi *cgi, int flags);
-static bool parseFirstCgiResponse(Cgi *cgi, HttpPacket *packet);
-static bool parseCgiHeaders(Cgi *cgi, HttpPacket *packet);
 static void readFromCgi(Cgi *cgi, int channel);
 
 #if ME_DEBUG
@@ -3935,6 +4185,17 @@ static void checkCompletion(HttpQueue *q, MprEvent *event);
 static void waitForCgi(Cgi *cgi, MprEvent *event);
 #endif
 
+/*
+    Allowlisted environment variables inherited by CGI programs.
+ */
+static cchar *inheritEnv[] = {
+    "PATH", "TZ", "LANG", "LC_ALL",
+#if ME_WIN_LIKE
+    "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "TEMP", "TMP",
+#endif
+    0
+};
+
 /************************************* Code ***********************************/
 /*
     Open the handler for a new request
@@ -3948,7 +4209,7 @@ static int openCgi(HttpQueue *q)
     stream = q->stream;
     if ((nproc = (int) httpMonitorEvent(stream, HTTP_COUNTER_ACTIVE_PROCESSES, 1)) > stream->limits->processMax) {
         httpMonitorEvent(q->stream, HTTP_COUNTER_ACTIVE_PROCESSES, -1);
-        httpLog(stream->trace, "cgi.limit.error", "error",
+        httpLogStream(stream, "cgi.limit.error", "error",
                 "msg=\"Too many concurrent processes\", activeProcesses=%d, maxProcesses=%d",
                 nproc - 1, stream->limits->processMax);
         httpError(stream, HTTP_CODE_SERVICE_UNAVAILABLE, "Server overloaded");
@@ -3956,10 +4217,15 @@ static int openCgi(HttpQueue *q)
     }
     if ((cgi = mprAllocObj(Cgi, manageCgi)) == 0) {
         /* Normal mem handler recovery */
+        httpMonitorEvent(stream, HTTP_COUNTER_ACTIVE_PROCESSES, -1);
         return MPR_ERR_MEMORY;
     }
     httpTrimExtraPath(stream);
     httpMapFile(stream);
+    if (stream->tx->filename == 0) {
+        httpMonitorEvent(stream, HTTP_COUNTER_ACTIVE_PROCESSES, -1);
+        return MPR_ERR_CANT_OPEN;
+    }
     q->queueData = q->pair->queueData = cgi;
     cgi->stream = stream;
     cgi->declaredLength = -1;
@@ -4027,6 +4293,13 @@ static void startCgi(HttpQueue *q)
     tx = stream->tx;
 
     /*
+        Receive undeclared-length bodies fully before starting CGI so CONTENT_LENGTH has the decoded size.
+     */
+    if (rx->length < 0 && !rx->eof) {
+        cgi->deferStart = 1;
+        return;
+    }
+    /*
         The command uses the stream dispatcher. This serializes all I/O for both the stream and the CGI gateway.
      */
     if ((cmd = mprCreateCmd(stream->dispatcher)) == 0) {
@@ -4039,15 +4312,18 @@ static void startCgi(HttpQueue *q)
         cmd->forkData = stream->http->forkData;
     }
     argc = 1;                                   /* argv[0] == programName */
-    buildArgs(stream, &argc, &argv);
+    if (buildArgs(stream, &argc, &argv) < 0) {
+        /* httpError already called */
+        return;
+    }
     fileName = argv[0];
     baseName = mprGetPathBase(fileName);
 
     /*
-        nph prefix means non-parsed-header. Don't parse the CGI output for a CGI header
+        Parse nph output as CGI under HTTP/2, which cannot forward raw HTTP/1 headers.
      */
-    if (strncmp(baseName, "nph-", 4) == 0 ||
-        (strlen(baseName) > 4 && strcmp(&baseName[strlen(baseName) - 4], "-nph") == 0)) {
+    if ((strncmp(baseName, "nph-", 4) == 0 ||
+        (strlen(baseName) > 4 && strcmp(&baseName[strlen(baseName) - 4], "-nph") == 0)) && stream->net->protocol < 2) {
         /* Pretend we've seen the header for Non-parsed Header CGI programs */
         cgi->seenHeader = 1;
         tx->flags |= HTTP_TX_USE_OWN_HEADERS;
@@ -4056,12 +4332,19 @@ static void startCgi(HttpQueue *q)
         Build environment variables
      */
     httpCreateCGIParams(stream);
-    varCount = mprGetHashLength(rx->headers) + mprGetHashLength(rx->svars) + mprGetJsonLength(rx->params);
+    varCount = mprGetHashLength(rx->headers) + mprGetHashLength(rx->svars) + mprGetJsonLength(rx->params) +
+        (int) (sizeof(inheritEnv) / sizeof(inheritEnv[0])) + 1;
     if ((envv = mprAlloc((varCount + 1) * sizeof(char*))) != 0) {
         //  OPTIONAL
         count = copyParams(stream, envv, 0, rx->params, route->envPrefix);
         count = copyVars(stream, envv, count, rx->svars, "");
         count = copyVars(stream, envv, count, rx->headers, "HTTP_");
+        if (tx->ext) {
+            // PHP CGI requires REDIRECT_STATUS.
+            envv[count++] = sclone("REDIRECT_STATUS=200");
+            envv[count] = 0;
+        }
+        count = copyInherited(envv, count);
         assert(count <= varCount);
     }
 #if !VXWORKS
@@ -4076,7 +4359,9 @@ static void startCgi(HttpQueue *q)
         httpError(stream, HTTP_CODE_NOT_FOUND, "Route check failed for CGI: %s, URI %s", fileName, rx->uri);
         return;
     }
-    if (mprStartCmd(cmd, argc, argv, envv, MPR_CMD_IN | MPR_CMD_OUT | MPR_CMD_ERR) < 0) {
+    // A new process group lets shutdown stop the script and its children.
+    if (mprStartCmd(cmd, argc, argv, envv,
+                    MPR_CMD_IN | MPR_CMD_OUT | MPR_CMD_ERR | MPR_CMD_NEW_SESSION | MPR_CMD_EXACT_ENV) < 0) {
         httpError(stream, HTTP_CODE_NOT_FOUND, "Cannot run CGI process: %s, URI %s", fileName, rx->uri);
         return;
     }
@@ -4139,6 +4424,12 @@ static void browserToCgiData(HttpQueue *q, HttpPacket *packet)
     }
     httpPutForService(cgi->writeq, packet, HTTP_SCHEDULE_QUEUE);
 
+    if (cgi->deferStart && (packet->flags & HTTP_PACKET_END) && !stream->error) {
+        cgi->deferStart = 0;
+        startCgi(q);
+        httpServiceQueue(cgi->writeq);
+    }
+
     /*
         Body packets are passed to this routine directly, so stream->readq->count never rises and the generic
         room test upstream always finds space no matter how far behind the gateway is. Suspend the read queue
@@ -4175,8 +4466,12 @@ static void browserToCgiService(HttpQueue *q)
     stream = cgi->stream;
 
     for (packet = httpGetPacket(q); packet; packet = httpGetPacket(q)) {
+        if (packet->flags & HTTP_PACKET_END) {
+            /* The end packet follows upload form data; rx->eof can precede it. */
+            mprCloseCmdFd(cmd, MPR_CMD_STDIN);
+            continue;
+        }
         if ((buf = packet->content) == 0) {
-            /* End packet */
             continue;
         }
         if (cmd) {
@@ -4191,7 +4486,7 @@ static void browserToCgiService(HttpQueue *q)
                     httpSuspendQueue(q);
                     break;
                 }
-                httpLog(stream->trace, "cgi.error", "error", "msg=\"Cannot write to CGI gateway\", errno=%d",
+                httpLogStream(stream, "cgi.error", "error", "msg=\"Cannot write to CGI gateway\", errno=%d",
                         mprGetOsError());
                 mprCloseCmdFd(cmd, MPR_CMD_STDIN);
                 httpDiscardQueueData(q, 1);
@@ -4210,8 +4505,6 @@ static void browserToCgiService(HttpQueue *q)
         if (q->count > 0) {
             /* Wait for writable event so cgiCallback can recall this routine */
             mprEnableCmdEvents(cmd, MPR_CMD_STDIN);
-        } else if (stream->rx->eof) {
-            mprCloseCmdFd(cmd, MPR_CMD_STDIN);
         } else {
             mprDisableCmdEvents(cmd, MPR_CMD_STDIN);
         }
@@ -4244,6 +4537,8 @@ static void cgiToBrowserService(HttpQueue *q)
     assert(q == stream->writeq);
     cmd = cgi->cmd;
     if (cmd == 0) {
+
+        httpDefaultService(q);
         return;
     }
     /*
@@ -4300,7 +4595,7 @@ static void cgiCallback(MprCmd *cmd, int channel, void *data)
         break;
     }
     if (cgi->location) {
-        httpRedirect(stream, HTTP_CODE_MOVED_TEMPORARILY, cgi->location);
+        httpRedirectUri(stream, HTTP_CODE_MOVED_TEMPORARILY, cgi->location);
     }
     if (cmd->complete || cgi->location) {
         cgi->location = 0;
@@ -4339,7 +4634,8 @@ static void readFromCgi(Cgi *cgi, int channel)
         mprCloseCmdFd(cmd, channel);
     }
     while (mprGetCmdFd(cmd, channel) >= 0 && !tx->finalized && writeq->count < writeq->max) {
-        if ((packet = cgi->headers) != 0) {
+        // A partly read header block belongs to stdout; stderr always reads into a packet of its own
+        if (channel == MPR_CMD_STDOUT && (packet = cgi->headers) != 0) {
             if (mprGetBufSpace(packet->content) < ME_BUFSIZE && mprGrowBuf(packet->content, ME_BUFSIZE) < 0) {
                 break;
             }
@@ -4360,6 +4656,13 @@ static void readFromCgi(Cgi *cgi, int channel)
         } else if (nbytes == 0) {
             mprCloseCmdFd(cmd, channel);
             if (channel == MPR_CMD_STDOUT) {
+                if (!cgi->seenHeader) {
+                    /*
+                        RFC 3875 requires a header field and blank line; incomplete output is a failed response.
+                     */
+                    httpError(stream, HTTP_CODE_BAD_GATEWAY, "CGI program ended without a response header");
+                    break;
+                }
                 checkCgiLength(cgi);
                 httpFinalizeOutput(stream);
             }
@@ -4370,14 +4673,16 @@ static void readFromCgi(Cgi *cgi, int channel)
             mprAdjustBufEnd(packet->content, nbytes);
         }
         if (channel == MPR_CMD_STDERR) {
-            httpLog(stream->trace, "cgi.error", "error", "msg:CGI failed, uri:%s, details: %s",
+            /*
+                Log stderr without exposing diagnostics to clients.
+             */
+            httpLogStream(stream, "cgi.error", "error", "msg:CGI stderr, uri:%s, details: %s",
                     stream->rx->uri, mprBufToString(packet->content));
-            httpSetContentType(stream, "text/plain");
-            httpSetStatus(stream, HTTP_CODE_SERVICE_UNAVAILABLE);
-            cgi->seenHeader = 1;
+            continue;
         }
         if (!cgi->seenHeader) {
-            if (!parseCgiHeaders(cgi, packet)) {
+            if (!maParseCgiResponse(stream, packet->content, "CGI", mprGetCmdFd(cgi->cmd, MPR_CMD_STDOUT) < 0,
+                    &cgi->location, &cgi->declaredLength)) {
                 cgi->headers = packet;
                 return;
             }
@@ -4415,183 +4720,23 @@ static void checkCgiLength(Cgi *cgi)
     if (stream->error || stream->tx->finalizedOutput || cgi->location) {
         return;
     }
-    httpLog(stream->trace, "cgi.error", "error", "msg:CGI Content-Length mismatch, declared:%lld, sent:%lld",
+    httpLogStream(stream, "cgi.error", "error", "msg:CGI Content-Length mismatch, declared:%lld, sent:%lld",
             cgi->declaredLength, cgi->bodyBytes);
     httpError(stream, HTTP_CLOSE | HTTP_CODE_BAD_GATEWAY, "CGI response length mismatch");
 }
 
 
 /*
-    Parse the CGI output headers. Sample CGI program output:
-        Content-type: text/html
-
-        <html.....
- */
-static bool parseCgiHeaders(Cgi *cgi, HttpPacket *packet)
-{
-    HttpStream *stream;
-    MprBuf     *buf;
-    char       *endHeaders, *headers, *key, *value;
-    int64      length;
-    ssize      blen;
-    int        len, status;
-
-    stream = cgi->stream;
-    value = 0;
-    buf = packet->content;
-    headers = mprGetBufStart(buf);
-    blen = mprGetBufLength(buf);
-
-    /*
-        Split the headers from the body. Add null to ensure we can search for line terminators.
-     */
-    len = 0;
-    if ((endHeaders = sncontains(headers, "\r\n\r\n", blen)) == NULL) {
-        if ((endHeaders = sncontains(headers, "\n\n", blen)) == NULL) {
-            if (mprGetCmdFd(cgi->cmd, MPR_CMD_STDOUT) >= 0 && strlen(headers) < ME_MAX_HEADERS) {
-                /* Not EOF and less than max headers and have not yet seen an end of headers delimiter */
-                return 0;
-            }
-        }
-        len = 2;
-    } else {
-        len = 4;
-    }
-    if (endHeaders) {
-        if (endHeaders > buf->end) {
-            assert(endHeaders <= buf->end);
-            return 0;
-        }
-    }
-    if (endHeaders) {
-        endHeaders[len - 1] = '\0';
-        endHeaders += len;
-    }
-    /*
-        Want to be tolerant of CGI programs that omit the status line.
-     */
-    if (strncmp((char*) buf->start, "HTTP/1.", 7) == 0) {
-        if (!parseFirstCgiResponse(cgi, packet)) {
-            /* httpError already called */
-            return 0;
-        }
-    }
-    if (endHeaders && strchr(mprGetBufStart(buf), ':')) {
-        while (mprGetBufLength(buf) > 0 && buf->start[0] && (buf->start[0] != '\r' && buf->start[0] != '\n')) {
-            if ((key = getCgiToken(buf, ":")) == 0) {
-                key = "Bad Header";
-            }
-            value = getCgiToken(buf, "\n");
-            while (isspace((uchar) * value)) {
-                value++;
-            }
-            len = (int) strlen(value);
-            while (len > 0 && (value[len - 1] == '\r' || value[len - 1] == '\n')) {
-                value[len - 1] = '\0';
-                len--;
-            }
-            /*
-                An embedded CR or LF would split the response header block for a downstream client, cache or proxy,
-                so fail the request rather than sanitize it. A CGI emitting a control character here is malfunctioning
-                or compromised.
-             */
-            if (schr(value, '\r') || schr(value, '\n')) {
-                httpError(stream, HTTP_CODE_BAD_GATEWAY, "CGI response header contains a control character");
-                return 0;
-            }
-            if (scaselesscmp(key, "location") == 0) {
-                cgi->location = value;
-
-            } else if (scaselesscmp(key, "status") == 0) {
-                /*
-                    A 1xx is not a final status. It makes the response body-less while the CGI is still
-                    writing a body, so only a final status can be relayed to the client.
-                 */
-                if ((status = httpParseStatus(value)) < HTTP_CODE_OK) {
-                    httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad CGI status: %s", value);
-                    return 0;
-                }
-                httpSetStatus(stream, status);
-
-            } else if (scaselesscmp(key, "content-type") == 0) {
-                if (stream->tx->charSet && !scaselesscontains(value, "charset")) {
-                    httpSetHeader(stream, "Content-Type", "%s; charset=%s", value, stream->tx->charSet);
-                } else {
-                    httpSetHeaderString(stream, "Content-Type", value);
-                }
-
-            } else if (scaselesscmp(key, "transfer-encoding") == 0) {
-                /*
-                    A message must not carry both Content-Length and Transfer-Encoding
-                 */
-                httpError(stream, HTTP_CODE_BAD_GATEWAY,
-                          "CGI response declares an unsupported Transfer-Encoding");
-                return 0;
-
-            } else if (scaselesscmp(key, "content-length") == 0) {
-                if (httpParseDigits(value, &length) < 0) {
-                    httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad CGI Content-Length: %s", value);
-                    return 0;
-                }
-                cgi->declaredLength = (MprOff) length;
-                httpSetContentLength(stream, cgi->declaredLength);
-                httpSetChunkSize(stream, 0);
-
-            } else {
-                /*
-                    Now pass all other headers back to the client
-                 */
-                key = ssplit(key, ":\r\n\t ", NULL);
-                httpSetHeaderString(stream, key, value);
-            }
-        }
-        buf->start = endHeaders;
-    }
-    return 1;
-}
-
-
-/*
-    Parse the CGI output first line
- */
-static bool parseFirstCgiResponse(Cgi *cgi, HttpPacket *packet)
-{
-    MprBuf *buf;
-    char   *protocol, *status, *msg;
-
-    buf = packet->content;
-    protocol = getCgiToken(buf, " ");
-    if (protocol == 0 || protocol[0] == '\0') {
-        httpError(cgi->stream, HTTP_CODE_BAD_GATEWAY, "Bad CGI HTTP protocol response");
-        return 0;
-    }
-    if (strncmp(protocol, "HTTP/1.", 7) != 0) {
-        httpError(cgi->stream, HTTP_CODE_BAD_GATEWAY, "Unsupported CGI protocol");
-        return 0;
-    }
-    status = getCgiToken(buf, " ");
-    if (status == 0 || *status == '\0') {
-        httpError(cgi->stream, HTTP_CODE_BAD_GATEWAY, "Bad CGI header response");
-        return 0;
-    }
-    msg = getCgiToken(buf, "\n");
-    mprNop(msg);
-    mprDebug("http cgi", 4, "CGI response status: %s %s %s", protocol, status, msg);
-    return 1;
-}
-
-
-/*
     Build the command arguments. NOTE: argv is untrusted input.
  */
-static void buildArgs(HttpStream *stream, int *argcp, cchar ***argvp)
+static int buildArgs(HttpStream *stream, int *argcp, cchar ***argvp)
 {
     HttpRx *rx;
     HttpTx *tx;
     cchar  *actionProgram, *cp, *fileName, *mimeType, *query;
-    char   **argv, *tok;
+    char   **argv, *arg, *tok;
     ssize  len;
-    int    argc, argind, i;
+    int    argc, argind, i, terms;
 
     rx = stream->rx;
     tx = stream->tx;
@@ -4614,18 +4759,13 @@ static void buildArgs(HttpStream *stream, int *argcp, cchar ***argvp)
         if (actionProgram != 0) {
             argc++;
         }
-        /*
-            This is an Apache compatible hack for PHP 5.3
-         */
-        mprAddKey(rx->headers, "REDIRECT_STATUS", itos(HTTP_CODE_MOVED_TEMPORARILY));
     }
     /*
-        Count the args for ISINDEX queries. Only valid if there is not a "=" in the query.
-        If this is so, then we must not have these args in the query env also?
+        Count slots for the end-of-options marker and each + separated ISINDEX term.
      */
     query = (char*) rx->parsedUri->query;
     if (query && !schr(query, '=')) {
-        argc++;
+        argc += 2;
         for (cp = query; *cp; cp++) {
             if (*cp == '+') {
                 argc++;
@@ -4648,49 +4788,42 @@ static void buildArgs(HttpStream *stream, int *argcp, cchar ***argvp)
         FUTURE - should query vars be set in the env?
      */
     if (query) {
+        terms = 0;
         cp = stok(sclone(query), "+", &tok);
         while (cp) {
-            argv[argind++] = mprEscapeCmd(mprUriDecode(cp), 0);
+            arg = mprUriDecode(cp);
+            /*
+                Reject decoded = and leading - to prevent data or options from entering ISINDEX argv.
+             */
+            if (schr(arg, '=')) {
+                httpError(stream, HTTP_CODE_BAD_REQUEST, "Bad ISINDEX query for CGI: %s", rx->uri);
+                return MPR_ERR_BAD_ARGS;
+            }
+            if (*arg == '-') {
+                httpError(stream, HTTP_CODE_BAD_REQUEST, "ISINDEX argument may not start with '-': %s",
+                    rx->uri);
+                return MPR_ERR_BAD_ARGS;
+            }
+            if (terms++ == 0) {
+                /*
+                    Add the POSIX end-of-options marker before the first search term.
+                 */
+                argv[argind++] = sclone("--");
+            }
+            argv[argind++] = mprEscapeCmd(arg, 0);
             cp = stok(NULL, "+", &tok);
         }
     }
     assert(argind <= argc);
     argv[argind] = 0;
-    *argcp = argc;
+    *argcp = argind;
     *argvp = (cchar**) argv;
 
     mprDebug("http cgi", 5, "CGI: command:");
     for (i = 0; i < argind; i++) {
         mprDebug("http cgi", 5, "   argv[%d] = %s", i, argv[i]);
     }
-}
-
-
-/*
-    Get the next input token. The content buffer is advanced to the next token. This routine always returns a
-    non-zero token. The empty string means the delimiter was not found.
- */
-static char *getCgiToken(MprBuf *buf, cchar *delim)
-{
-    char  *token, *nextToken;
-    ssize len;
-
-    len = mprGetBufLength(buf);
-    if (len == 0) {
-        return "";
-    }
-    token = mprGetBufStart(buf);
-    nextToken = sncontains(mprGetBufStart(buf), delim, len);
-    if (nextToken) {
-        *nextToken = '\0';
-        len = (int) strlen(delim);
-        nextToken += len;
-        buf->start = nextToken;
-
-    } else {
-        buf->start = mprGetBufEnd(buf);
-    }
-    return token;
+    return 0;
 }
 
 
@@ -4704,9 +4837,9 @@ static void traceCGIData(MprCmd *cmd, char *src, ssize size)
     int  index, i;
 
     if (mprGetLogLevel() >= 5) {
-        mprDebug("http cgi", 5, "CGI: process wrote (leading %zd bytes) => \n", min(sizeof(dest), size));
+        mprDebug("http cgi", 5, "CGI: process wrote (leading %zd bytes) => \n", min((ssize) sizeof(dest), size));
         for (index = 0; index < size; ) {
-            for (i = 0; i < (sizeof(dest) - 1) && index < size; i++) {
+            for (i = 0; i < (int) sizeof(dest) - 1 && index < size; i++) {
                 dest[i] = src[index];
                 index++;
             }
@@ -4716,6 +4849,20 @@ static void traceCGIData(MprCmd *cmd, char *src, ssize size)
     }
 }
 #endif
+
+
+static int copyInherited(cchar **envv, int index)
+{
+    cchar **name, *value;
+
+    for (name = inheritEnv; *name; name++) {
+        if ((value = getenv(*name)) != 0) {
+            envv[index++] = sfmt("%s=%s", *name, value);
+        }
+    }
+    envv[index] = 0;
+    return index;
+}
 
 
 /*
@@ -4740,7 +4887,7 @@ static int copyInner(HttpStream *stream, cchar **envv, int index, cchar *key, cc
         being the httpoxy case.
      */
     if (httpIsCgiVarBlocked(name)) {
-        httpLog(stream->trace, "cgi.env.filter", "detail",
+        httpLogStream(stream, "cgi.env.filter", "detail",
                 "msg:Dropped unsafe CGI environment variable, var:%s", name);
         return 0;
     }
@@ -4761,9 +4908,16 @@ static int copyVars(HttpStream *stream, cchar **envv, int index, MprHash *vars, 
     MprKey *kp;
 
     for (ITERATE_KEYS(vars, kp)) {
-        if (kp->data) {
-            index += copyInner(stream, envv, index, kp->key, kp->data, prefix);
+        if (!kp->data) {
+            continue;
         }
+        /*
+            Exclude hop-by-hop headers and underscore names that alias hyphenated environment variables.
+         */
+        if (vars == stream->rx->headers && (httpIsHopByHopHeader(kp->key) || httpIsCgiHeaderBlocked(kp->key))) {
+            continue;
+        }
+        index += copyInner(stream, envv, index, kp->key, kp->data, prefix);
     }
     envv[index] = 0;
     return index;
@@ -4783,30 +4937,6 @@ static int copyParams(HttpStream *stream, cchar **envv, int index, MprJson *para
     }
     envv[index] = 0;
     return index;
-}
-
-
-static int cgiEscapeDirective(MaState *state, cchar *key, cchar *value)
-{
-    bool on;
-
-    if (!maTokenize(state, value, "%B", &on)) {
-        return MPR_ERR_BAD_SYNTAX;
-    }
-    httpSetRouteEnvEscape(state->route, on);
-    return 0;
-}
-
-
-static int cgiPrefixDirective(MaState *state, cchar *key, cchar *value)
-{
-    cchar *prefix;
-
-    if (!maTokenize(state, value, "%S", &prefix)) {
-        return MPR_ERR_BAD_SYNTAX;
-    }
-    httpSetRouteEnvPrefix(state->route, prefix);
-    return 0;
 }
 
 
@@ -4833,19 +4963,229 @@ PUBLIC int httpCgiInit(Http *http, MprModule *module)
     http->cgiConnector = connector;
     connector->outgoingService = browserToCgiService;
     connector->incoming = cgiToBrowserData;
-
-    /*
-        Add configuration file directives
-     */
-    maAddDirective("CgiEscape", cgiEscapeDirective);
-    maAddDirective("CgiPrefix", cgiPrefixDirective);
     return 0;
 }
 
 #endif /* ME_COM_CGI */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
+    This software is distributed under a commercial license. Consult the LICENSE.md
+    distributed with this software for full details and copyrights.
+ */
+
+
+/********* Start of file src/modules/cgiResponse.c ************/
+
+/*
+    cgiResponse.c - Parse CGI and FastCGI response headers
+
+    Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+/*********************************** Includes *********************************/
+
+#include    "appweb.h"
+
+#if ME_COM_CGI || (ME_COM_FAST && ME_UNIX_LIKE)
+
+/********************************** Forwards **********************************/
+
+static char *getToken(MprBuf *buf, cchar *delim);
+static bool parseStatusLine(HttpStream *stream, MprBuf *buf, cchar *label);
+static bool startsWithHeader(cchar *start, cchar *end);
+
+/************************************* Code ***********************************/
+
+PUBLIC bool maParseCgiResponse(HttpStream *stream, MprBuf *buf, cchar *label, bool eof, cchar **location,
+    MprOff *declaredLength)
+{
+    char    *endHeaders, *headers, *key, *value;
+    int64   length;
+    ssize   blen, len;
+    int     status;
+    bool    hasHeaders, hasStatusLine;
+
+    //  The parser uses string functions, and the buffer may hold padding or the next record past its end
+    mprAddNullToBuf(buf);
+    headers = mprGetBufStart(buf);
+    blen = mprGetBufLength(buf);
+
+    if ((endHeaders = sncontains(headers, "\r\n\r\n", blen)) == NULL) {
+        if ((endHeaders = sncontains(headers, "\n\n", blen)) == NULL) {
+            if (!eof && blen < ME_MAX_HEADERS) {
+
+                return 0;
+            }
+        }
+        len = 2;
+    } else {
+        len = 4;
+    }
+    /*
+        Detect body-only output before changing the buffer.
+     */
+    hasStatusLine = strncmp((char*) buf->start, "HTTP/1.", 7) == 0;
+    hasHeaders = endHeaders && startsWithHeader(buf->start, endHeaders);
+    if (!hasStatusLine && !hasHeaders) {
+        return 1;
+    }
+
+    if (endHeaders) {
+        endHeaders[len - 1] = '\0';
+        endHeaders += len;
+    }
+    if (hasStatusLine && !parseStatusLine(stream, buf, label)) {
+        return 0;
+    }
+    if (endHeaders) {
+        while (mprGetBufLength(buf) > 0 && buf->start[0] && (buf->start[0] != '\r' && buf->start[0] != '\n')) {
+            //  The name must be a token: whitespace before the colon is forbidden (RFC 9112 5.1)
+            key = getToken(buf, ":");
+            if (!httpIsToken(key)) {
+                httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad %s response header name", label);
+                return 0;
+            }
+            value = getToken(buf, "\n");
+            while (isspace((uchar) * value)) {
+                value++;
+            }
+            len = (int) strlen(value);
+            while (len > 0 && (value[len - 1] == '\r' || value[len - 1] == '\n')) {
+                value[len - 1] = '\0';
+                len--;
+            }
+            /*
+                Reject embedded CR/LF to prevent response splitting.
+             */
+            if (schr(value, '\r') || schr(value, '\n')) {
+                httpError(stream, HTTP_CODE_BAD_GATEWAY, "%s response header contains a control character", label);
+                return 0;
+            }
+            httpLogStream(stream, "rx.gateway", "detail", "msg:%s response header, key:%s, value:%s", label, key,
+                httpIsRedactedHeader(key) ? "[redacted]" : value);
+
+            if (scaselesscmp(key, "location") == 0) {
+                if (location) {
+                    *location = value;
+                } else {
+                    httpRedirectUri(stream, HTTP_CODE_MOVED_TEMPORARILY, value);
+                }
+
+            } else if (scaselesscmp(key, "status") == 0) {
+                /*
+                    Relay only final statuses because the program may write a body.
+                 */
+                if ((status = httpParseStatus(value)) < HTTP_CODE_OK) {
+                    httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad %s status: %s", label, value);
+                    return 0;
+                }
+                httpSetStatus(stream, status);
+
+            } else if (scaselesscmp(key, "content-type") == 0) {
+                if (stream->tx->charSet && !scaselesscontains(value, "charset")) {
+                    httpSetHeader(stream, "Content-Type", "%s; charset=%s", value, stream->tx->charSet);
+                } else {
+                    httpSetHeaderString(stream, "Content-Type", value);
+                }
+
+            } else if (scaselesscmp(key, "transfer-encoding") == 0) {
+                //  A message must not carry both Content-Length and Transfer-Encoding
+                httpError(stream, HTTP_CODE_BAD_GATEWAY, "%s response declares an unsupported Transfer-Encoding",
+                    label);
+                return 0;
+
+            } else if (scaselesscmp(key, "content-length") == 0) {
+                if (httpParseDigits(value, &length) < 0) {
+                    httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad %s Content-Length: %s", label, value);
+                    return 0;
+                }
+                *declaredLength = (MprOff) length;
+                httpSetContentLength(stream, *declaredLength);
+                httpSetChunkSize(stream, 0);
+
+            } else {
+                httpSetHeaderString(stream, key, value);
+            }
+        }
+        buf->start = endHeaders;
+    }
+    return 1;
+}
+
+
+/*
+    Parse the status line: "HTTP/1.x CODE [REASON]"
+ */
+static bool parseStatusLine(HttpStream *stream, MprBuf *buf, cchar *label)
+{
+    char    *protocol, *status;
+    int     code;
+
+    protocol = getToken(buf, " ");
+    if (protocol == 0 || protocol[0] == '\0') {
+        httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad %s HTTP protocol response", label);
+        return 0;
+    }
+    if (strncmp(protocol, "HTTP/1.", 7) != 0) {
+        httpError(stream, HTTP_CODE_BAD_GATEWAY, "Unsupported %s protocol", label);
+        return 0;
+    }
+    //  The rest of the line is the status code and optional reason phrase, as in a Status header
+    status = strim(getToken(buf, "\n"), "\r", MPR_TRIM_END);
+    if ((code = httpParseStatus(status)) < HTTP_CODE_OK) {
+        httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad %s status: %s", label, status);
+        return 0;
+    }
+    httpSetStatus(stream, code);
+    return 1;
+}
+
+
+/*
+    Test if output begins with a header field: a token name then a colon on the first line
+ */
+static bool startsWithHeader(cchar *start, cchar *end)
+{
+    cchar *colon;
+
+    if ((colon = memchr(start, ':', end - start)) == 0 || memchr(start, '\n', colon - start)) {
+        return 0;
+    }
+    return httpIsToken(snclone(start, colon - start));
+}
+
+
+/*
+    Advance past the delimiter. Return an empty string if it is absent.
+ */
+static char *getToken(MprBuf *buf, cchar *delim)
+{
+    char  *token, *nextToken;
+    ssize len;
+
+    len = mprGetBufLength(buf);
+    if (len == 0) {
+        return "";
+    }
+    token = mprGetBufStart(buf);
+    nextToken = sncontains(mprGetBufStart(buf), delim, len);
+    if (nextToken) {
+        *nextToken = '\0';
+        len = (int) strlen(delim);
+        nextToken += len;
+        buf->start = nextToken;
+
+    } else {
+        buf->start = mprGetBufEnd(buf);
+    }
+    return token;
+}
+
+#endif /* ME_COM_CGI || ME_COM_FAST */
+
+/*
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
@@ -4942,7 +5282,7 @@ PUBLIC int httpEspInit(Http *http, MprModule *module)
 #endif /* ME_COM_ESP */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
@@ -4967,7 +5307,8 @@ PUBLIC int httpEspInit(Http *http, MprModule *module)
     The interpreter can also come from "Action application/x-php /usr/local/bin/php-cgi", which
     buildFastArgs falls back to when there is no launch=. Prefer launch=: routes share one mime table
     by reference, so an Action is server-wide wherever it is written and would decide how every other
-    route runs PHP as well.
+    route runs PHP as well. An interpreter is started with no arguments: the request that launches it
+    contributes nothing to its command line, and each script reaches it as SCRIPT_FILENAME.
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
@@ -5027,6 +5368,7 @@ static cchar *fastTypes[FAST_MAX + 1] = {
 #define FAST_MAX_MULTIPLEX    1             //  Max number of concurrent requests per app instance
 #define FAST_MAX_ID           0x10000       //  Maximum request ID
 #define FAST_PACKET_SIZE      8             //  Size of minimal FastCGI packet
+#define FAST_MAX_RECORD       65528         //  Largest 8-byte aligned record content (16-bit length field)
 #define FAST_KEEP_CONN        1             //  Flag to app to keep connection open
 
 #define FAST_Q_SIZE           ((FAST_PACKET_SIZE + 65535 + 8) * 2)
@@ -5065,6 +5407,7 @@ typedef struct Fast {
     uint64 keep;                            //  Keep alive
     uint64 maxRequests;                     //  Maximum number of requests for launched apps before respawning
     MprTicks appTimeout;                    //  Timeout for an idle app to be maintained
+    MprTicks waitTimeout;                   //  Time a request waits for an app to become available
     MprList *apps;                          //  List of active apps
     MprList *idleApps;                      //  Idle apps
     MprMutex *mutex;                        //  Multithread sync
@@ -5097,11 +5440,6 @@ typedef struct FastApp {
 } FastApp;
 
 /*
-    Exit status of a child whose execve() failed
- */
-#define FAST_EXIT_NOEXEC 127
-
-/*
     Per FastCGI request instance. This is separate from the FastApp properties because the
     FastRequest executes on a different dispatcher.
  */
@@ -5110,17 +5448,25 @@ typedef struct FastRequest {
     FastApp *app;                           // Owning app
     MprSocket *socket;                      // I/O socket
     HttpStream *stream;                     // Owning client request stream
+    HttpQueue *handlerq;                    // Handler queue whose queueData is this request
     HttpQueue *connWriteq;                  // Queue to write to the FastCGI app
     HttpQueue *connReadq;                   // Queue to hold read data from the FastCGI app
     HttpTrace *trace;                       // Default tracing configuration
     int id;                                 // FastCGI request ID - assigned from FastApp.nextID % FAST_MAX_ID
     bool eof;                               // Socket is closed
+    bool ended;
     bool parsedHeaders;                     // Parsed the FastCGI app header response
+    bool retried;                           // Sent again after its first app exited without answering
+    HttpPacket *headers;                    // Response output held until its header block is complete
     bool writeBlocked;                      // Socket is full of write data
     int eventMask;                          // Socket eventMask
     uint64 bytesRead;                       // Bytes read in response
     MprOff declaredLength;                  // Content-Length declared by the app, or negative if none
     MprOff bodyBytes;                       // Body bytes forwarded from the app to the client
+    MprList *heldBody;                      // Body of undeclared length held until received, so PARAMS can follow
+    MprIOVec iovec[ME_MAX_IOVEC];           // Write vector to the app, apart from the client connection's vector
+    int ioIndex;                            // Next index into iovec
+    MprOff ioCount;                         // Bytes in iovec
 } FastRequest;
 
 /*
@@ -5130,9 +5476,9 @@ static MprList *fasts;
 
 /*********************************** Forwards *********************************/
 
-static void addFastPacket(HttpNet *net, HttpPacket *packet);
-static void addToFastVector(HttpNet *net, char *ptr, ssize bytes);
-static void adjustFastVec(HttpNet *net, ssize written);
+static void addFastPacket(FastRequest *req, HttpPacket *packet);
+static void addToFastVector(FastRequest *req, char *ptr, ssize bytes);
+static void adjustFastVec(FastRequest *req, ssize written);
 static void checkFastLength(FastRequest *req);
 static Fast *allocFast(void);
 static void fastTerminator(int state, int exitStrategy, int status);
@@ -5142,6 +5488,7 @@ static void closeAppSockets(FastApp *app);
 static cchar *buildFastArgs(FastApp *app, HttpStream *stream, int *argcp, cchar ***argvp);
 static MprOff buildFastVec(HttpQueue *q);
 static void fastCloseRequest(HttpQueue *q);
+static FastRequest *connectFastRequest(HttpQueue *q, Fast *fast);
 static void fastMaintenance(Fast *fast);
 static MprSocket *getFastSocket(FastApp *app);
 static void copyFastInner(HttpPacket *packet, cchar *key, cchar *value, cchar *prefix);
@@ -5156,25 +5503,29 @@ static void fastConnectorIncoming(HttpQueue *q, HttpPacket *packet);
 static void fastConnectorIncomingService(HttpQueue *q);
 static void fastConnectorOutgoingService(HttpQueue *q);
 static void fastHandlerReapResponse(FastRequest *req);
+static void fastHandlerCommsResponse(FastRequest *req);
+static void fastHandlerLost(FastRequest *req, int type);
 static void fastHandlerResponse(FastRequest *req, int type, HttpPacket *packet);
 static void fastIncomingRequestPacket(HttpQueue *q, HttpPacket *packet);
 static void freeFastPackets(HttpQueue *q, ssize bytes);
 static Fast *getFast(HttpRoute *route);
-static char *getFastToken(MprBuf *buf, cchar *delim);
 static FastApp *getFastApp(Fast *fast, HttpStream *stream);
+static void releaseFastApp(Fast *fast, FastApp *app);
 static int getListenPort(MprSocket *socket);
 static void fastOutgoingService(HttpQueue *q);
 static void idleSocketIO(MprSocket *sp, MprEvent *event);
+static bool isIdleSocketAlive(MprSocket *sp);
 static void killFastApp(FastApp *app);
 static void manageFast(Fast *fast, int flags);
 static void manageFastApp(FastApp *app, int flags);
 static void manageFastRequest(FastRequest *fastConnector, int flags);
 static int fastOpenRequest(HttpQueue *q);
-static bool parseFastHeaders(FastRequest *req, HttpPacket *packet);
-static bool parseFastResponseLine(HttpPacket *packet);
+static void forwardFastBody(FastRequest *req, HttpPacket *packet);
 static void prepFastRequestStart(HttpQueue *q);
 static void prepFastRequestParams(HttpQueue *q);
+static void putFastRecords(HttpQueue *q, int type, HttpPacket *packet);
 static void reapSignalHandler(FastApp *app, MprSignal *sp);
+static bool retryFastRequest(FastRequest *req);
 static FastApp *startFastApp(Fast *fast, HttpStream *stream);
 
 #if ME_DEBUG
@@ -5265,16 +5616,22 @@ static void fastTerminator(int state, int exitStrategy, int status)
 static int fastOpenRequest(HttpQueue *q)
 {
     HttpStream  *stream;
-    MprSocket   *socket;
     Fast        *fast;
-    FastApp     *app;
     FastRequest *req;
+    bool        hold;
 
     stream = q->stream;
 
     httpTrimExtraPath(stream);
     httpMapFile(stream);
-    httpCreateCGIParams(stream);
+
+    /*
+        Receive undeclared-length bodies fully before creating PARAMS so CONTENT_LENGTH has the decoded size.
+     */
+    hold = stream->rx->length < 0 && !stream->rx->eof;
+    if (!hold) {
+        httpCreateCGIParams(stream);
+    }
 
     /*
         Get a Fast instance for this route. First time, this will allocate a new Fast instance. Second and
@@ -5282,58 +5639,120 @@ static int fastOpenRequest(HttpQueue *q)
      */
     fast = getFast(stream->rx->route);
 
-    /*
-        Get a FastApp instance. This will reuse an existing FastCGI app if possible. Otherwise,
-        it will launch a new FastCGI app if within limits. Otherwise it will wait until one becomes available.
-     */
-    if ((app = getFastApp(fast, stream)) == 0) {
-        httpError(stream, HTTP_CODE_NOT_FOUND, "Cannot allocate FastCGI app for route %s", stream->rx->route->pattern);
-        return MPR_ERR_CANT_OPEN;
-    }
-
-    /*
-        Open a dedicated client socket to the FastCGI app
-     */
-    if ((socket = getFastSocket(app)) == NULL) {
-        /*
-            Emit 502, not 500, when the gateway could not be executed: the fault is the upstream program's
-            absence, not an error inside this server. Matches what the CGI handler returns for the
-            same condition.
-         */
-        if (app->noexec) {
-            httpError(stream, HTTP_CODE_BAD_GATEWAY, "Cannot execute FastCGI program");
-        } else {
-            httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot connect to fast app: %d", errno);
-        }
+    if ((req = connectFastRequest(q, fast)) == 0) {
         return MPR_ERR_CANT_CONNECT;
     }
-
-    req = allocFastRequest(app, stream, socket);
-    mprAddItem(app->requests, req);
-    q->queueData = q->pair->queueData = req;
-
-    /*
-        The app can die between being launched and this request being registered on it.
-        Re-check now that the request is registered. After this point the reap handler owns the
-        notification and there is no window.
-     */
-    if (app->destroyed || app->exitStatus >= 0) {
-        if (app->noexec) {
-            httpError(stream, HTTP_CODE_BAD_GATEWAY, "Cannot execute FastCGI program");
-        } else {
-            httpError(stream, HTTP_CODE_BAD_GATEWAY, "FastCGI app exited before serving the request");
-        }
-        return MPR_ERR_CANT_CONNECT;
-    }
-
-    /*
-        Send a start request followed by the request parameters
-     */
     prepFastRequestStart(q);
-    prepFastRequestParams(q);
+    if (hold) {
+        req->heldBody = mprCreateList(0, 0);
+    } else {
+        prepFastRequestParams(q);
+    }
     httpServiceQueue(req->connWriteq);
     enableFastConnector(req);
     return 0;
+}
+
+
+/*
+    Acquire an app and dedicated socket, launching or waiting within limits, and register a request on it. The exit
+    check and registration share the lock with the reap handler, so a later exit always notifies the request. An app
+    that exited first is retired and another tried once. Failures release the app because the pipeline closes only
+    successful opens.
+ */
+static FastRequest *connectFastRequest(HttpQueue *q, Fast *fast)
+{
+    HttpStream  *stream;
+    MprSocket   *socket;
+    FastApp     *app;
+    FastRequest *req;
+    bool        exited, noexec;
+    int         retry;
+
+    stream = q->stream;
+    for (retry = 0; ; retry++) {
+        if ((app = getFastApp(fast, stream)) == 0) {
+            httpError(stream, HTTP_CODE_NOT_FOUND, "Cannot allocate FastCGI app for route %s",
+                      stream->rx->route->pattern);
+            return 0;
+        }
+        socket = getFastSocket(app);
+        lock(fast);
+        noexec = app->noexec;
+        exited = app->destroyed || app->exitStatus >= 0;
+        if (socket && !exited) {
+            req = allocFastRequest(app, stream, socket);
+            req->handlerq = q;
+            mprAddItem(app->requests, req);
+            q->queueData = q->pair->queueData = req;
+            unlock(fast);
+            return req;
+        }
+        if (exited) {
+            app->destroy = 1;
+        }
+        mprCloseSocket(socket, 1);
+        releaseFastApp(fast, app);
+        unlock(fast);
+
+        if (retry || noexec || !exited) {
+            if (noexec) {
+                httpError(stream, HTTP_CODE_BAD_GATEWAY, "Cannot execute FastCGI program");
+            } else if (exited) {
+                httpError(stream, HTTP_CODE_BAD_GATEWAY, "FastCGI app exited before serving the request");
+            } else {
+                httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot connect to fast app: %d", errno);
+            }
+            return 0;
+        }
+    }
+}
+
+
+/*
+    Send a request again on a new app when its app exited or dropped the connection without answering, as an app
+    does when it exits after its last request (php-cgi at PHP_FCGI_MAX_REQUESTS) while this request was queued on
+    it. Only once, and only for a safe method with no body: the app may have acted on a request it did not answer.
+ */
+static bool retryFastRequest(FastRequest *req)
+{
+    HttpStream *stream;
+    HttpRx     *rx;
+    HttpQueue  *q;
+    Fast       *fast;
+    FastApp    *app;
+
+    stream = req->stream;
+    rx = stream->rx;
+    q = req->handlerq;
+    if (req->retried || req->bytesRead > 0 || stream->tx->responded || !rx->eof || rx->bytesRead > 0 ||
+            !(rx->flags & (HTTP_GET | HTTP_HEAD | HTTP_OPTIONS)) || q->queueData != req) {
+        return 0;
+    }
+    httpLog(req->trace, "fast", "context", "msg:Retry request on another FastCGI app");
+
+    fast = req->fast;
+    app = req->app;
+    lock(fast);
+    mprRemoveItem(app->requests, req);
+    mprCloseSocket(req->socket, 1);
+    req->socket = 0;
+    req->eof = 1;
+    app->destroy = 1;
+    releaseFastApp(fast, app);
+    unlock(fast);
+    q->queueData = q->pair->queueData = 0;
+
+    if ((req = connectFastRequest(q, fast)) == 0) {
+        return 1;
+    }
+    req->retried = 1;
+    prepFastRequestStart(q);
+    prepFastRequestParams(q);
+    putFastRecords(q, FAST_STDIN, 0);
+    httpServiceQueue(req->connWriteq);
+    enableFastConnector(req);
+    return 1;
 }
 
 
@@ -5346,16 +5765,19 @@ static void fastCloseRequest(HttpQueue *q)
     Fast        *fast;
     FastRequest *req;
     FastApp     *app;
-    cchar       *msg;
 
-    req = q->queueData;
+    if ((req = q->queueData) == 0) {
+        //  A retry that could not reconnect has already released the app
+        return;
+    }
     fast = req->fast;
     app = req->app;
 
     lock(fast);
 
     if (req->socket) {
-        if (!fast->keep) {
+        // Reuse sockets only after request completion to prevent replies reaching another request.
+        if (!fast->keep || !req->ended) {
             mprCloseSocket(req->socket, 1);
         } else if (!(req->socket->flags & (MPR_SOCKET_EOF | MPR_SOCKET_DISCONNECTED))) {
             mprRemoveSocketHandler(req->socket);
@@ -5366,6 +5788,17 @@ static void fastCloseRequest(HttpQueue *q)
         }
     }
     mprRemoveItem(app->requests, req);
+    releaseFastApp(fast, app);
+    unlock(fast);
+}
+
+
+/*
+    Called with lock(fast). On the last release, retire dead apps or return reusable apps to the idle list.
+ */
+static void releaseFastApp(Fast *fast, FastApp *app)
+{
+    cchar *msg;
 
     if (--app->inUse <= 0) {
         if (mprRemoveItem(fast->apps, app) < 0) {
@@ -5381,19 +5814,18 @@ static void fastCloseRequest(HttpQueue *q)
                 killFastApp(app);
             }
         }
-        if (app->destroy) {
+        if (app->destroy || app->destroyed) {
             closeAppSockets(app);
         } else {
             mprAddItem(fast->idleApps, app);
             app->lastActive = mprGetTicks();
         }
         httpLog(app->trace, "fast", "context",
-                "msg:%s, pid:%d, idle:%d, active:%d, id:%d, destroy:%d, nextId:%lld",
+                "msg:%s, pid:%d, idle:%d, active:%d, destroy:%d, nextId:%lld",
                 msg, app->pid, mprGetListLength(fast->idleApps), mprGetListLength(fast->apps),
-                req->id, app->destroy, app->nextID);
+                app->destroy, app->nextID);
         mprSignalCond(fast->cond);
     }
-    unlock(fast);
 }
 
 
@@ -5415,6 +5847,7 @@ static Fast *allocFast(void)
     fast->port = 0;
     fast->keep = 1;
     fast->appTimeout = FAST_APP_TIMEOUT;
+    fast->waitTimeout = FAST_WAIT_TIMEOUT;
     mprAddItem(fasts, fast);
     fast->timer = mprCreateTimerEvent(NULL, "fast-watchdog", FAST_WATCHDOG_TIMEOUT, fastMaintenance, fast,
                                       MPR_EVENT_QUICK);
@@ -5492,6 +5925,8 @@ static void fastIncomingRequestPacket(HttpQueue *q, HttpPacket *packet)
 {
     HttpStream  *stream;
     FastRequest *req;
+    HttpPacket  *held;
+    int         next;
 
     assert(q);
     assert(packet);
@@ -5508,8 +5943,19 @@ static void fastIncomingRequestPacket(HttpQueue *q, HttpPacket *packet)
             packet = createFastPacket(q, FAST_ABORT_REQUEST, httpCreateDataPacket(0));
         }
     }
-    createFastPacket(q, FAST_STDIN, packet);
-    httpPutForService(req->connWriteq, packet, HTTP_SCHEDULE_QUEUE);
+    if (req->heldBody) {
+        if (!(packet->flags & HTTP_PACKET_END)) {
+            mprAddItem(req->heldBody, packet);
+            return;
+        }
+        httpCreateCGIParams(stream);
+        prepFastRequestParams(q);
+        for (ITERATE_ITEMS(req->heldBody, held, next)) {
+            putFastRecords(q, FAST_STDIN, held);
+        }
+        req->heldBody = 0;
+    }
+    putFastRecords(q, FAST_STDIN, packet);
 
     /*
         Body packets are sent to this routine directly, so stream->readq->count never increments and the generic
@@ -5536,7 +5982,7 @@ static void fastOutgoingService(HttpQueue *q)
         }
         httpPutPacketToNext(q, packet);
     }
-    if (!(req->eventMask & MPR_READABLE)) {
+    if (req && !(req->eventMask & MPR_READABLE)) {
         enableFastConnector(req);
     }
 }
@@ -5544,10 +5990,35 @@ static void fastOutgoingService(HttpQueue *q)
 
 static void fastHandlerReapResponse(FastRequest *req)
 {
-    HttpNet *net;
+    fastHandlerLost(req, FAST_REAP);
+}
 
+
+static void fastHandlerCommsResponse(FastRequest *req)
+{
+    fastHandlerLost(req, FAST_COMMS_ERROR);
+}
+
+
+/*
+    Report an app lost before completing a request. Runs on the request's dispatcher, without the fast lock.
+ */
+static void fastHandlerLost(FastRequest *req, int type)
+{
+    Fast    *fast;
+    HttpNet *net;
+    bool    registered;
+
+    fast = req->fast;
+    lock(fast);
+    registered = mprLookupItem(req->app->requests, req) >= 0;
+    unlock(fast);
+    if (!registered) {
+        //  Closed before this event ran (on the same dispatcher), so the stream may now serve another request
+        return;
+    }
     net = req->stream->net;
-    fastHandlerResponse(req, FAST_REAP, NULL);
+    fastHandlerResponse(req, type, NULL);
     httpServiceNetQueues(net, 0);
 }
 
@@ -5566,6 +6037,9 @@ static void fastHandlerResponse(FastRequest *req, int type, HttpPacket *packet)
 
     if (stream->state <= HTTP_STATE_BEGIN || stream->rx->route == NULL) {
         /* Request already complete and stream has been recycled (prepared for next request) */
+        return;
+    }
+    if ((type == FAST_COMMS_ERROR || type == FAST_REAP) && retryFastRequest(req)) {
         return;
     }
     if (type == FAST_COMMS_ERROR) {
@@ -5595,7 +6069,8 @@ static void fastHandlerResponse(FastRequest *req, int type, HttpPacket *packet)
         mprAdjustBufStart(buf, 3);
 
         if (protoStatus == FAST_REQUEST_COMPLETE) {
-            httpLog(stream->trace, "rx.fast", "context", "msg:Request complete, id:%d, status:%d", req->id, status);
+            httpLogStream(stream, "rx.fast", "context", "msg:Request complete, id:%d, status:%d", req->id, status);
+            req->ended = 1;
 
         } else if (protoStatus == FAST_CANT_MPX_CONN) {
             httpError(stream, HTTP_CODE_BAD_GATEWAY, "FastCGI cannot multiplex requests %s", rx->uri);
@@ -5609,28 +6084,53 @@ static void fastHandlerResponse(FastRequest *req, int type, HttpPacket *packet)
             httpError(stream, HTTP_CODE_BAD_GATEWAY, "FastCGI unknown role %s", rx->uri);
             return;
         }
-        httpLog(stream->trace, "rx.fast.eof", "detail", "msg:FastCGI end request, id:%d", req->id);
+        httpLogStream(stream, "rx.fast.eof", "detail", "msg:FastCGI end request, id:%d", req->id);
+        if (!req->parsedHeaders && req->headers) {
+            packet = req->headers;
+            req->headers = 0;
+            if (!maParseCgiResponse(stream, packet->content, "FastCGI", 1, NULL, &req->declaredLength)) {
+                return;
+            }
+            req->parsedHeaders = 1;
+            forwardFastBody(req, packet);
+        }
         checkFastLength(req);
         httpFinalizeOutput(stream);
 
     } else if (type == FAST_STDOUT && packet) {
         if (!req->parsedHeaders) {
-            if (!parseFastHeaders(req, packet)) {
+            //  The header block may span records, so hold the output until it is complete
+            if (req->headers) {
+                httpJoinPacket(req->headers, packet);
+                packet = req->headers;
+            }
+            if (!maParseCgiResponse(stream, packet->content, "FastCGI", 0, NULL, &req->declaredLength)) {
+                req->headers = stream->error ? 0 : packet;
                 return;
             }
+            req->headers = 0;
             req->parsedHeaders = 1;
         }
-        if (httpGetPacketLength(packet) > 0) {
-            req->bodyBytes += httpGetPacketLength(packet);
-            if (req->declaredLength >= 0 && req->bodyBytes > req->declaredLength) {
-                /* Overrun. Do not forward bytes the framing statement does not cover */
-                checkFastLength(req);
-                return;
-            }
-            // httpPutPacketToNext(stream->writeq, packet);
-            httpPutForService(stream->writeq, packet, HTTP_SCHEDULE_QUEUE);
-            httpServiceQueue(stream->writeq);
+        forwardFastBody(req, packet);
+    }
+}
+
+
+static void forwardFastBody(FastRequest *req, HttpPacket *packet)
+{
+    HttpStream *stream;
+
+    stream = req->stream;
+    //  A redirect or error has replaced the app's response, so its body must not follow on the connection
+    if (!stream->tx->finalizedOutput && httpGetPacketLength(packet) > 0) {
+        req->bodyBytes += httpGetPacketLength(packet);
+        if (req->declaredLength >= 0 && req->bodyBytes > req->declaredLength) {
+            /* Overrun. Do not forward bytes the framing statement does not cover */
+            checkFastLength(req);
+            return;
         }
+        httpPutForService(stream->writeq, packet, HTTP_SCHEDULE_QUEUE);
+        httpServiceQueue(stream->writeq);
     }
 }
 
@@ -5651,188 +6151,9 @@ static void checkFastLength(FastRequest *req)
     if (stream->error || stream->tx->finalizedOutput) {
         return;
     }
-    httpLog(stream->trace, "rx.fast.error", "error",
+    httpLogStream(stream, "rx.fast.error", "error",
             "msg:FastCGI Content-Length mismatch, declared:%lld, sent:%lld", req->declaredLength, req->bodyBytes);
     httpError(stream, HTTP_CLOSE | HTTP_CODE_BAD_GATEWAY, "FastCGI response length mismatch");
-}
-
-
-/*
-    Parse the FastCGI app output headers. Sample FastCGI program output:
-        Content-type: text/html
-        <html.....
- */
-static bool parseFastHeaders(FastRequest *req, HttpPacket *packet)
-{
-    HttpStream  *stream;
-    MprBuf      *buf;
-    char        *endHeaders, *headers, *key, *value;
-    int64       length;
-    ssize       blen, len;
-    int         status;
-
-    stream = packet->stream;
-    buf = packet->content;
-    headers = mprGetBufStart(buf);
-    value = 0;
-
-    headers = mprGetBufStart(buf);
-    blen = mprGetBufLength(buf);
-    len = 0;
-
-    if ((endHeaders = sncontains(headers, "\r\n\r\n", blen)) == NULL) {
-        if ((endHeaders = sncontains(headers, "\n\n", blen)) == NULL) {
-            if (slen(headers) < ME_MAX_HEADERS) {
-                // Not EOF and less than max headers and have not yet seen an end of headers delimiter
-                httpLog(stream->trace, "rx.fast", "detail", "msg:FastCGI incomplete headers, id:%d", req->id);
-                return 0;
-            }
-        }
-        len = 2;
-    } else {
-        len = 4;
-    }
-    /*
-        Split the headers from the body. Add null to ensure we can search for line terminators.
-     */
-    if (endHeaders) {
-        endHeaders[len - 1] = '\0';
-        endHeaders += len;
-    }
-
-    /*
-        Want to be tolerant of FastCGI programs that omit the status line.
-     */
-    if (strncmp((char*) buf->start, "HTTP/1.", 7) == 0) {
-        if (!parseFastResponseLine(packet)) {
-            /* httpError already called */
-            return 0;
-        }
-    }
-    if (endHeaders && strchr(mprGetBufStart(buf), ':')) {
-        while (mprGetBufLength(buf) > 0 && buf->start[0] && (buf->start[0] != '\r' && buf->start[0] != '\n')) {
-            if ((key = getFastToken(buf, ":")) == 0) {
-                key = "Bad Header";
-            }
-            value = getFastToken(buf, "\n");
-            while (isspace((uchar) * value)) {
-                value++;
-            }
-            len = (int) strlen(value);
-            while (len > 0 && (value[len - 1] == '\r' || value[len - 1] == '\n')) {
-                value[len - 1] = '\0';
-                len--;
-            }
-            if (schr(value, '\r') || schr(value, '\n')) {
-                httpError(stream, HTTP_CODE_BAD_GATEWAY, "FastCGI response header contains a control character");
-                return 0;
-            }
-            httpLog(stream->trace, "rx.fast", "detail", "key:%s, value: %s", key, value);
-
-            if (scaselesscmp(key, "location") == 0) {
-                httpRedirect(stream, HTTP_CODE_MOVED_TEMPORARILY, value);
-
-            } else if (scaselesscmp(key, "status") == 0) {
-                /*
-                    A 1xx is not a final status. It makes the response body-less while the app is still
-                    writing a body, so only a final status can be relayed to the client.
-                 */
-                if ((status = httpParseStatus(value)) < HTTP_CODE_OK) {
-                    httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad FastCGI status: %s", value);
-                    return 0;
-                }
-                httpSetStatus(stream, status);
-
-            } else if (scaselesscmp(key, "content-type") == 0) {
-                if (stream->tx->charSet && !scaselesscontains(value, "charset")) {
-                    httpSetHeader(stream, "Content-Type", "%s; charset=%s", value, stream->tx->charSet);
-                } else {
-                    httpSetHeaderString(stream, "Content-Type", value);
-                }
-
-            } else if (scaselesscmp(key, "transfer-encoding") == 0) {
-                /*
-                    A message carrying both Content-Length and Transfer-Encoding is a framing conflict.
-                 */
-                httpError(stream, HTTP_CODE_BAD_GATEWAY,
-                          "FastCGI response declares an unsupported Transfer-Encoding");
-                return 0;
-
-            } else if (scaselesscmp(key, "content-length") == 0) {
-                if (httpParseDigits(value, &length) < 0) {
-                    httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad FastCGI Content-Length: %s", value);
-                    return 0;
-                }
-                req->declaredLength = (MprOff) length;
-                httpSetContentLength(stream, req->declaredLength);
-                httpSetChunkSize(stream, 0);
-
-            } else {
-                /* Now pass all other headers back to the client */
-                key = ssplit(key, ":\r\n\t ", NULL);
-                httpSetHeaderString(stream, key, value);
-            }
-        }
-        buf->start = endHeaders;
-    }
-    return 1;
-}
-
-
-/*
-    Parse the FCGI output first line
- */
-static bool parseFastResponseLine(HttpPacket *packet)
-{
-    MprBuf *buf;
-    char   *protocol, *status, *msg;
-
-    buf = packet->content;
-    protocol = getFastToken(buf, " ");
-    if (protocol == 0 || protocol[0] == '\0') {
-        httpError(packet->stream, HTTP_CODE_BAD_GATEWAY, "Bad FCGI HTTP protocol response");
-        return 0;
-    }
-    if (strncmp(protocol, "HTTP/1.", 7) != 0) {
-        httpError(packet->stream, HTTP_CODE_BAD_GATEWAY, "Unsupported FCGI protocol");
-        return 0;
-    }
-    status = getFastToken(buf, " ");
-    if (status == 0 || *status == '\0') {
-        httpError(packet->stream, HTTP_CODE_BAD_GATEWAY, "Bad FCGI header response");
-        return 0;
-    }
-    msg = getFastToken(buf, "\n");
-    mprLog("http cgi", 4, "FCGI response status: %s %s %s", protocol, status, msg);
-    return 1;
-}
-
-
-/*
-    Get the next input token. The content buffer is advanced to the next token. This routine always returns a
-    non-zero token. The empty string means the delimiter was not found.
- */
-static char *getFastToken(MprBuf *buf, cchar *delim)
-{
-    char  *token, *nextToken;
-    ssize len;
-
-    len = mprGetBufLength(buf);
-    if (len == 0) {
-        return "";
-    }
-    token = mprGetBufStart(buf);
-    nextToken = sncontains(mprGetBufStart(buf), delim, len);
-    if (nextToken) {
-        *nextToken = '\0';
-        len = (int) strlen(delim);
-        nextToken += len;
-        buf->start = nextToken;
-
-    } else {
-        buf->start = mprGetBufEnd(buf);
-    }
-    return token;
 }
 
 
@@ -5892,9 +6213,9 @@ static FastApp *getFastApp(Fast *fast, HttpStream *stream)
     MprTicks timeout;
     int      next;
 
-    lock(fast);
+    timeout = mprGetTicks() + fast->waitTimeout;
     app = NULL;
-    timeout = mprGetTicks() +  FAST_WAIT_TIMEOUT;
+    lock(fast);
 
     /*
         Locate a FastApp to serve the request. Use an idle app first. If none available, start a new app
@@ -5917,8 +6238,12 @@ static FastApp *getFastApp(Fast *fast, HttpStream *stream)
                 break;
 
             } else {
+                /*
+                    Count selections (inUse), not registered requests: a request registers only after its socket
+                    connects, outside the lock, so an app selected but not yet connected would look free.
+                 */
                 for (ITERATE_ITEMS(fast->apps, app, next)) {
-                    if (mprGetListLength(app->requests) < fast->multiplex) {
+                    if (!app->destroy && !app->destroyed && app->inUse < fast->multiplex) {
                         break;
                     }
                 }
@@ -5959,8 +6284,7 @@ static FastApp *startFastApp(Fast *fast, HttpStream *stream)
     FastApp   *app;
     MprSocket *listen;
     cchar     **argv, *command;
-    ssize     nbytes;
-    int       argc, i, execStatus[2], execErrno;
+    int       argc, execErrno;
 
 #if KEEP
     cchar **envv;
@@ -5970,7 +6294,6 @@ static FastApp *startFastApp(Fast *fast, HttpStream *stream)
     app = allocFastApp(fast, stream);
 
     if (fast->launch) {
-        argc = 1;
         if ((command = buildFastArgs(app, stream, &argc, &argv)) == 0) {
             httpError(stream, HTTP_CODE_NOT_FOUND, "Cannot find Fast app command");
             return NULL;
@@ -5993,74 +6316,31 @@ static FastApp *startFastApp(Fast *fast, HttpStream *stream)
             app->signal = mprAddSignalHandler(SIGCHLD, reapSignalHandler, app, NULL, MPR_SIGNAL_BEFORE);
         }
         /*
-            Exec status pipe. The child's write end is close-on-exec, so a successful execve closes
-            it and the parent reads EOF; a failed execve writes errno instead. The parent must know
-            which happened before it hands the app to a request, and waiting for SIGCHLD is too
-            late: the child holds the listening socket it was given, so until it exits the parent's
-            connect() completes against the backlog of a socket that is already doomed, and the
-            request is written into a connection the kernel has reset where it is owed a 502.
+            Confirm exec succeeded before connecting: the child inherits the listening socket, so connect can
+            succeed even if exec fails.
          */
-        if (pipe(execStatus) < 0) {
-            httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot create FastCGI exec status pipe");
-            return NULL;
-        }
-        fcntl(execStatus[1], F_SETFD, FD_CLOEXEC);
+        app->pid = maLaunchProgram(command, argv, NULL, listen->fd, FAST_DEBUG, &execErrno);
 
-        if ((app->pid = fork()) < 0) {
-            close(execStatus[0]);
-            close(execStatus[1]);
-            httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot fork for FastCGI");
-            return NULL;
+        //  Close without a shutdown as this is duped for the child
+        close(listen->fd);
+        listen->fd = -1;
 
-        } else if (app->pid == 0) {
-            // Child. Close the read end first: it may hold fd 0, which the listener is about to take.
-            close(execStatus[0]);
-            dup2(listen->fd, 0);
-
-            /*
-                When debugging, keep stdout/stderr open so printf/fprintf from the FastCGI app will show in the console.
-                The exec status pipe must survive to report a failed execve, so it is exempt.
-             */
-            for (i = FAST_DEBUG ? 3 : 1; i < 128; i++) {
-                if (i != execStatus[1]) {
-                    close(i);
-                }
+        if (app->pid < 0) {
+            app->pid = 0;
+            mprRemoveSignalHandler(app->signal);
+            app->signal = 0;
+            if (!execErrno) {
+                httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot start FastCGI program");
+                return NULL;
             }
-            execve(command, (char**) argv, (char**) NULL);
-            execErrno = errno;
-            if (write(execStatus[1], &execErrno, sizeof(execErrno)) < 0) {
-            }
-            _exit(FAST_EXIT_NOEXEC);
+
+            mprLog("error fast", 0, "Cannot execute FastCGI program \"%s\": %s. Check the FastConnect "
+                   "launch path exists and is executable.", command, strerror(execErrno));
+            app->noexec = 1;
+            app->destroyed = 1;
         } else {
-            //  Close without a shutdown as this is duped for the child
-            close(listen->fd);
-            listen->fd = -1;
-            close(execStatus[1]);
-
-            /*
-                Blocks only until the child execs or dies (both close the write end), so it cannot
-                outlast the fork it is reporting on.
-             */
-            execErrno = 0;
-            do {
-                nbytes = read(execStatus[0], &execErrno, sizeof(execErrno));
-            } while (nbytes < 0 && errno == EINTR);
-            close(execStatus[0]);
-
-            if (nbytes > 0) {
-                /*
-                    A deployment fault the operator has to see by name, so it is logged at level 0
-                    where a production error log will carry it. From the outside it presents as the
-                    site being down.
-                 */
-                mprLog("error fast", 0, "Cannot execute FastCGI program \"%s\": %s. Check the FastConnect "
-                       "launch path exists and is executable.", command, strerror(execErrno));
-                app->noexec = 1;
-                app->destroyed = 1;
-            } else {
-                httpLog(app->trace, "fast", "context", "msg:FastCGI started app, command:%s, pid:%d", command,
-                        app->pid);
-            }
+            httpLog(app->trace, "fast", "context", "msg:FastCGI started app, command:%s, pid:%d", command,
+                    app->pid);
         }
     }
     return app;
@@ -6075,19 +6355,13 @@ static cchar *buildFastArgs(FastApp *app, HttpStream *stream, int *argcp, cchar 
     Fast   *fast;
     HttpRx *rx;
     HttpTx *tx;
-    cchar  *actionProgram, *fileName, *mimeType;
+    cchar  *actionProgram, *mimeType;
     char   **argv;
-    ssize  len;
-    int    argc, argind;
 
     fast = app->fast;
     rx = stream->rx;
     tx = stream->tx;
-    fileName = tx->filename;
-
     actionProgram = 0;
-    argind = 0;
-    argc = *argcp;
 
     if (fast->launch && fast->launch[0]) {
         if (mprMakeArgv(fast->launch, (cchar***) &argv, 0) != 1) {
@@ -6095,7 +6369,6 @@ static cchar *buildFastArgs(FastApp *app, HttpStream *stream, int *argcp, cchar 
             return 0;
         }
         actionProgram = argv[0];
-        argc++;
 
     } else if (tx->ext) {
         /*
@@ -6105,29 +6378,15 @@ static cchar *buildFastArgs(FastApp *app, HttpStream *stream, int *argcp, cchar 
          */
         mimeType = mprLookupMime(rx->route->mimeTypes, tx->ext);
         actionProgram = mprGetMimeProgram(rx->route->mimeTypes, mimeType);
-        if (actionProgram != 0) {
-            argc++;
-        }
     }
     /*
-        No ISINDEX arguments. A FastCGI app is launched once and reused for every request on the
-        route, so arguments taken from the launching request would decide the command line of a
-        process that serves all later requests. A non-option argument is also, by convention, the
-        endpoint the app should listen on, so it would displace the descriptor the app was handed.
-
-        The request is carried in FCGI_PARAMS instead. CGI keeps ISINDEX (cgiHandler.c, RFC 3875
-        4.4) because a CGI program is forked per request.
+        Launch with no request-derived arguments: the app is reused across requests.
+        Pass request data through FCGI_PARAMS; non-option arguments may change the listening endpoint.
      */
-    len = (argc + 1) * sizeof(char*);
-    argv = mprAlloc(len);
-
-    if (actionProgram) {
-        argv[argind++] = sclone(actionProgram);
-    }
-    argv[argind++] = sclone(fileName);
-    assert(argind <= argc);
-    argv[argind] = 0;
-    *argcp = argc;
+    argv = mprAlloc(2 * sizeof(char*));
+    argv[0] = sclone(actionProgram ? actionProgram : tx->filename);
+    argv[1] = 0;
+    *argcp = 1;
     *argvp = (cchar**) argv;
     return argv[0];
 }
@@ -6147,7 +6406,7 @@ static void reapSignalHandler(FastApp *app, MprSignal *sp)
     fast = app->fast;
 
     lock(fast);
-    if (app->pid && waitpid(app->pid, &status, WNOHANG) == app->pid) {
+    if (app->pid > 0 && waitpid(app->pid, &status, WNOHANG) == app->pid) {
         app->exitStatus = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
         httpLog(app->trace, "fast", app->exitStatus == 0 ? "context" : "error",
                 "msg:FastCGI exited, pid:%d, status:%d", app->pid, app->exitStatus);
@@ -6206,7 +6465,8 @@ static MprSocket *getFastSocket(FastApp *app)
 
     while ((socket = mprPopItem(app->sockets)) != 0) {
         mprRemoveSocketHandler(socket);
-        if (socket->flags & (MPR_SOCKET_EOF | MPR_SOCKET_DISCONNECTED)) {
+        if (socket->flags & (MPR_SOCKET_EOF | MPR_SOCKET_DISCONNECTED) || !isIdleSocketAlive(socket)) {
+            mprCloseSocket(socket, 0);
             continue;
         }
         return socket;
@@ -6260,7 +6520,8 @@ static HttpPacket *createFastPacket(HttpQueue *q, int type, HttpPacket *packet)
     if (!packet) {
         packet = httpCreateDataPacket(0);
     }
-    len = httpGetPacketLength(packet);
+    len = mprGetBufLength(packet->content);
+    assert(len <= FAST_MAX_RECORD);
 
     packet->prefix = mprCreateBuf(16, 16);
     buf = (uchar*) packet->prefix->start;
@@ -6280,13 +6541,15 @@ static HttpPacket *createFastPacket(HttpQueue *q, int type, HttpPacket *packet)
     pad = (len % 8) ? (8 - (len % 8)) : 0;
     assert(pad < 8);
 
-    if (pad > 0) {
+    if (pad > 0 && packet->content) {
         if (mprGetBufSpace(packet->content) < pad) {
             mprGrowBuf(packet->content, pad);
         }
+        memset(packet->content->end, 0, (size_t) pad);
         mprAdjustBufEnd(packet->content, pad);
     }
     *buf++ = (uchar) pad;
+    *buf = 0;
     mprAdjustBufEnd(packet->prefix, 8);
 
     httpLog(req->trace, "tx.fast", "packet", "msg:FastCGI tx packet, type:%s, id:%d, lenth:%ld", fastTypes[type],
@@ -6309,7 +6572,7 @@ static void prepFastRequestStart(HttpQueue *q)
     *buf++ = req->fast->keep ? FAST_KEEP_CONN : 0;
 
     // Reserved bytes
-    buf += 5;
+    memset(buf, 0, 5);
     mprAdjustBufEnd(packet->content, 8);
     httpPutForService(req->connWriteq, createFastPacket(q, FAST_BEGIN_REQUEST, packet), HTTP_SCHEDULE_QUEUE);
 }
@@ -6336,8 +6599,25 @@ static void prepFastRequestParams(HttpQueue *q)
     copyFastVars(packet, rx->svars, "");
     copyFastVars(packet, rx->headers, "HTTP_");
 
-    httpPutForService(req->connWriteq, createFastPacket(q, FAST_PARAMS, packet), HTTP_SCHEDULE_QUEUE);
-    httpPutForService(req->connWriteq, createFastPacket(q, FAST_PARAMS, 0), HTTP_SCHEDULE_QUEUE);
+    putFastRecords(q, FAST_PARAMS, packet);
+    putFastRecords(q, FAST_PARAMS, 0);
+}
+
+
+/* Split content into 16-bit FastCGI records; only the final record keeps the end-of-input flag. */
+static void putFastRecords(HttpQueue *q, int type, HttpPacket *packet)
+{
+    FastRequest *req;
+    HttpPacket  *tail;
+
+    req = q->queueData;
+    while (packet && httpGetPacketLength(packet) > FAST_MAX_RECORD) {
+        tail = httpSplitPacket(packet, FAST_MAX_RECORD);
+        packet->flags &= ~HTTP_PACKET_END;
+        httpPutForService(req->connWriteq, createFastPacket(q, type, packet), HTTP_SCHEDULE_QUEUE);
+        packet = tail;
+    }
+    httpPutForService(req->connWriteq, createFastPacket(q, type, packet), HTTP_SCHEDULE_QUEUE);
 }
 
 
@@ -6389,8 +6669,11 @@ static void manageFastRequest(FastRequest *req, int flags)
         mprMark(req->connReadq);
         mprMark(req->socket);
         mprMark(req->stream);
+        mprMark(req->handlerq);
         mprMark(req->trace);
         mprMark(req->connWriteq);
+        mprMark(req->headers);
+        mprMark(req->heldBody);
     }
 }
 
@@ -6438,15 +6721,34 @@ static void fastConnectorIncomingService(HttpQueue *q)
         len = contentLength + padLength;
 
         if (version != FAST_VERSION) {
-            httpLog(app->trace, "fast", "error", "msg:Bad FastCGI response version");
+            app->destroy = 1;
+            httpError(req->stream, HTTP_CLOSE | HTTP_CODE_BAD_GATEWAY, "Bad FastCGI response version");
+            break;
+        }
+        if (type <= 0 || type > FAST_MAX) {
+            app->destroy = 1;
+            httpError(req->stream, HTTP_CLOSE | HTTP_CODE_BAD_GATEWAY, "Bad FastCGI record type: %d", type);
+            break;
+        }
+        if (type != FAST_STDOUT && type != FAST_STDERR && type != FAST_END_REQUEST) {
+            app->destroy = 1;
+            httpError(req->stream, HTTP_CLOSE | HTTP_CODE_BAD_GATEWAY, "Unexpected FastCGI record type: %d", type);
+            break;
+        }
+        if (requestID != req->id) {
+            app->destroy = 1;
+            httpError(req->stream, HTTP_CLOSE | HTTP_CODE_BAD_GATEWAY, "FastCGI record for request %d, expected %d",
+                      requestID, req->id);
             break;
         }
         if (contentLength < 0 || contentLength > 65535) {
-            httpLog(app->trace, "fast", "error", "msg:Bad FastCGI content length, length:%ld", contentLength);
+            app->destroy = 1;
+            httpError(req->stream, HTTP_CLOSE | HTTP_CODE_BAD_GATEWAY, "Bad FastCGI content length");
             break;
         }
         if (padLength < 0 || padLength > 255) {
-            httpLog(app->trace, "fast", "error", "msg:Bad FastCGI pad length, padding:%ld", padLength);
+            app->destroy = 1;
+            httpError(req->stream, HTTP_CLOSE | HTTP_CODE_BAD_GATEWAY, "Bad FastCGI pad length");
             break;
         }
         if (mprGetBufLength(buf) < len) {
@@ -6477,11 +6779,6 @@ static void fastConnectorIncomingService(HttpQueue *q)
             // Log and discard stderr
             httpLog(app->trace, "fast", "error", "msg:FastCGI stderr, uri:%s, error:%s",
                     req->stream->rx->uri, mprBufToString(packet->content));
-
-        } else {
-            httpLog(app->trace, "fast", "error", "msg:FastCGI invalid packet, command:%s, type:%d",
-                    req->stream->rx->uri, type);
-            app->destroy = 1;
         }
     }
 }
@@ -6541,6 +6838,19 @@ static void idleSocketIO(MprSocket *sp, MprEvent *event)
 }
 
 
+/*
+    An idle connection has nothing to read. Readable means the app closed it or exited before its event ran.
+ */
+static bool isIdleSocketAlive(MprSocket *sp)
+{
+    char    byte;
+    ssize   rc;
+
+    rc = recv(sp->fd, &byte, 1, MSG_PEEK | MSG_DONTWAIT);
+    return rc < 0 && (errno == EAGAIN || errno == EWOULDBLOCK);
+}
+
+
 static void enableFastConnector(FastRequest *req)
 {
     MprSocket  *sp;
@@ -6585,7 +6895,6 @@ static void fastConnectorOutgoingService(HttpQueue *q)
     Fast        *fast;
     FastApp     *app;
     FastRequest *req, *cp;
-    HttpNet     *net;
     ssize       written;
     int         errCode, next;
 
@@ -6593,7 +6902,6 @@ static void fastConnectorOutgoingService(HttpQueue *q)
     app = req->app;
     fast = app->fast;
     app->lastActive = mprGetTicks();
-    net = q->net;
 
     if (req->eof || req->socket == 0) {
         return;
@@ -6601,12 +6909,12 @@ static void fastConnectorOutgoingService(HttpQueue *q)
     lock(fast);
     req->writeBlocked = 0;
 
-    while (q->first || net->ioIndex) {
-        if (net->ioIndex == 0 && buildFastVec(q) <= 0) {
+    while (q->first || req->ioIndex) {
+        if (req->ioIndex == 0 && buildFastVec(q) <= 0) {
             freeFastPackets(q, 0);
             break;
         }
-        written = mprWriteSocketVector(req->socket, net->iovec, net->ioIndex);
+        written = mprWriteSocketVector(req->socket, req->iovec, req->ioIndex);
         if (written < 0) {
             errCode = mprGetError();
             if (errCode == EAGAIN || errCode == EWOULDBLOCK) {
@@ -6620,13 +6928,13 @@ static void fastConnectorOutgoingService(HttpQueue *q)
             httpLog(req->app->trace, "fast", "error", "msg:Write error, errno:%d", errCode);
 
             for (ITERATE_ITEMS(app->requests, cp, next)) {
-                fastHandlerResponse(cp, FAST_COMMS_ERROR, NULL);
+                mprCreateLocalEvent(cp->stream->dispatcher, "fast-comms", 0, fastHandlerCommsResponse, cp, 0);
             }
             break;
 
         } else if (written > 0) {
             freeFastPackets(q, written);
-            adjustFastVec(net, written);
+            adjustFastVec(req, written);
 
         } else {
             /* Socket full */
@@ -6651,38 +6959,38 @@ static void fastConnectorOutgoingService(HttpQueue *q)
  */
 static MprOff buildFastVec(HttpQueue *q)
 {
-    HttpNet    *net;
-    HttpPacket *packet;
+    FastRequest *req;
+    HttpPacket  *packet;
 
-    net = q->net;
+    req = q->queueData;
     /*
         Examine each packet and accumulate as many packets into the I/O vector as possible. Leave the packets on
         the queue for now, they are removed after the IO is complete for the entire packet.
      */
     for (packet = q->first; packet; packet = packet->next) {
-        if (net->ioIndex >= (ME_MAX_IOVEC - 2)) {
+        if (req->ioIndex >= (ME_MAX_IOVEC - 2)) {
             break;
         }
         if (httpGetPacketLength(packet) > 0 || packet->prefix) {
-            addFastPacket(net, packet);
+            addFastPacket(req, packet);
         }
     }
-    return net->ioCount;
+    return req->ioCount;
 }
 
 
 /*
     Add a packet to the io vector. Return the number of bytes added to the vector.
  */
-static void addFastPacket(HttpNet *net, HttpPacket *packet)
+static void addFastPacket(FastRequest *req, HttpPacket *packet)
 {
-    assert(net->ioIndex < (ME_MAX_IOVEC - 2));
+    assert(req->ioIndex < (ME_MAX_IOVEC - 2));
 
     if (packet->prefix && mprGetBufLength(packet->prefix) > 0) {
-        addToFastVector(net, mprGetBufStart(packet->prefix), mprGetBufLength(packet->prefix));
+        addToFastVector(req, mprGetBufStart(packet->prefix), mprGetBufLength(packet->prefix));
     }
     if (packet->content && mprGetBufLength(packet->content) > 0) {
-        addToFastVector(net, mprGetBufStart(packet->content), mprGetBufLength(packet->content));
+        addToFastVector(req, mprGetBufStart(packet->content), mprGetBufLength(packet->content));
     }
 }
 
@@ -6690,14 +6998,14 @@ static void addFastPacket(HttpNet *net, HttpPacket *packet)
 /*
     Add one entry to the io vector
  */
-static void addToFastVector(HttpNet *net, char *ptr, ssize bytes)
+static void addToFastVector(FastRequest *req, char *ptr, ssize bytes)
 {
     assert(bytes > 0);
 
-    net->iovec[net->ioIndex].start = ptr;
-    net->iovec[net->ioIndex].len = bytes;
-    net->ioCount += bytes;
-    net->ioIndex++;
+    req->iovec[req->ioIndex].start = ptr;
+    req->iovec[req->ioIndex].len = bytes;
+    req->ioCount += bytes;
+    req->ioIndex++;
 }
 
 
@@ -6747,23 +7055,23 @@ static void freeFastPackets(HttpQueue *q, ssize bytes)
 /*
     Clear entries from the IO vector that have actually been transmitted. Support partial writes.
  */
-static void adjustFastVec(HttpNet *net, ssize written)
+static void adjustFastVec(FastRequest *req, ssize written)
 {
     MprIOVec *iovec;
     ssize    len;
     int      i, j;
 
-    if (written == net->ioCount) {
-        net->ioIndex = 0;
-        net->ioCount = 0;
+    if (written == req->ioCount) {
+        req->ioIndex = 0;
+        req->ioCount = 0;
     } else {
         /*
             Partial write of an vector entry. Need to copy down the unwritten vector entries.
          */
-        net->ioCount -= written;
-        assert(net->ioCount >= 0);
-        iovec = net->iovec;
-        for (i = 0; i < net->ioIndex; i++) {
+        req->ioCount -= written;
+        assert(req->ioCount >= 0);
+        iovec = req->iovec;
+        for (i = 0; i < req->ioIndex; i++) {
             len = iovec[i].len;
             if (written < len) {
                 iovec[i].start += written;
@@ -6776,10 +7084,10 @@ static void adjustFastVec(HttpNet *net, ssize written)
         /*
             Compact the vector
          */
-        for (j = 0; i < net->ioIndex; ) {
+        for (j = 0; i < req->ioIndex; ) {
             iovec[j++] = iovec[i++];
         }
-        net->ioIndex = j;
+        req->ioIndex = j;
     }
 }
 
@@ -6834,19 +7142,29 @@ static void copyFastInner(HttpPacket *packet, cchar *key, cchar *value, cchar *p
         httpLog(req->trace, "tx.fast", "detail", "msg:Dropped unsafe FastCGI env, key:%s", key);
         return;
     }
-    httpLog(req->trace, "tx.fast", "detail", "msg:FastCGI env, key:%s, value:%s", key, value);
+    httpLog(req->trace, "tx.fast", "detail", "msg:FastCGI env, key:%s, value:%s", key,
+            httpIsRedactedHeader(key) ? "[redacted]" : value);
     encodeFastName(packet, key, value);
 }
 
 
 static void copyFastVars(HttpPacket *packet, MprHash *vars, cchar *prefix)
 {
-    MprKey *kp;
+    FastRequest *req;
+    MprKey      *kp;
 
+    req = packet->data;
     for (ITERATE_KEYS(vars, kp)) {
-        if (kp->data) {
-            copyFastInner(packet, kp->key, kp->data, prefix);
+        if (!kp->data) {
+            continue;
         }
+        /*
+            Exclude hop-by-hop headers and underscore names that alias hyphenated environment variables.
+         */
+        if (vars == req->stream->rx->headers && (httpIsHopByHopHeader(kp->key) || httpIsCgiHeaderBlocked(kp->key))) {
+            continue;
+        }
+        copyFastInner(packet, kp->key, kp->data, prefix);
     }
 }
 
@@ -6924,6 +7242,12 @@ static int fastConnectDirective(MaState *state, cchar *key, cchar *value)
                 fast->appTimeout = httpGetTicks(ovalue);
                 if (fast->appTimeout < (30 * TPS)) {
                     fast->appTimeout = 30 * TPS;
+                }
+
+            } else if (smatch(option, "wait")) {
+                fast->waitTimeout = httpGetTicks(ovalue);
+                if (fast->waitTimeout < TPS) {
+                    fast->waitTimeout = TPS;
                 }
             } else {
                 mprLog("fast error", 0, "Unknown FastCGI option %s", option);
@@ -7083,7 +7407,98 @@ static void fastInfo(void *ignored, MprSignal *sp)
 #endif /* ME_COM_FAST */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
+    This software is distributed under a commercial license. Consult the LICENSE.md
+    distributed with this software for full details and copyrights.
+ */
+
+
+/********* Start of file src/modules/launch.c ************/
+
+/*
+    launch.c - Launch a backend program for the FastCGI and proxy handlers
+
+    Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+/*********************************** Includes *********************************/
+
+#include    "appweb.h"
+
+#if ME_UNIX_LIKE && (ME_COM_FAST || ME_COM_PROXY)
+
+#define LAUNCH_EXIT_NOEXEC 127
+
+/************************************* Code ***********************************/
+/*
+    The close-on-exec pipe reports errno on failure and EOF on success. Between fork and exec, use only async-
+    signal-safe calls. Reap failed children before returning.
+ */
+PUBLIC int maLaunchProgram(cchar *command, cchar **argv, cchar **envp, int stdinFd, bool keepStdio, int *execErrno)
+{
+    ssize nbytes;
+    int   pid, status[2], statusFd, err;
+
+    *execErrno = 0;
+    if (pipe(status) < 0) {
+        return MPR_ERR_CANT_CREATE;
+    }
+    fcntl(status[1], F_SETFD, FD_CLOEXEC);
+
+    if ((pid = fork()) < 0) {
+        close(status[0]);
+        close(status[1]);
+        return MPR_ERR_CANT_CREATE;
+
+    } else if (pid == 0) {
+        /*
+            Move the status pipe above stdio before dup/close operations, then keep it at descriptor 3.
+         */
+        close(status[0]);
+        statusFd = fcntl(status[1], F_DUPFD, 3);
+        close(status[1]);
+        if (stdinFd >= 0 && stdinFd != 0) {
+            dup2(stdinFd, 0);
+        }
+        if (!keepStdio) {
+            close(1);
+            close(2);
+        }
+        if (statusFd != 3) {
+            dup2(statusFd, 3);
+            statusFd = 3;
+        }
+        fcntl(statusFd, F_SETFD, FD_CLOEXEC);
+        mprCloseFilesFrom(4);
+        execve(command, (char**) argv, (char**) envp);
+        err = errno;
+        if (write(statusFd, &err, sizeof(err)) < 0) {
+        }
+        _exit(LAUNCH_EXIT_NOEXEC);
+    }
+    close(status[1]);
+
+    //  Blocks only until the child execs or exits, both of which close the write end
+    err = 0;
+    do {
+        nbytes = read(status[0], &err, sizeof(err));
+    } while (nbytes < 0 && errno == EINTR);
+    close(status[0]);
+
+    if (nbytes > 0) {
+        *execErrno = err ? err : ENOEXEC;
+
+        while (waitpid(pid, NULL, 0) < 0 && errno == EINTR) {
+        }
+        return MPR_ERR_CANT_ACCESS;
+    }
+    return pid;
+}
+
+#endif
+
+/*
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
@@ -7203,7 +7618,14 @@ typedef struct ProxyRequest {
     HttpNet *proxyNet;                      // Network to the proxy backend
     HttpStream *proxyStream;                // Stream to the proxy backend for the current request
     HttpTrace *trace;                       // Default tracing configuration
+    MprList *held;                          // Client bytes held until the backend accepts an upgrade
+    int upgrade;                            // PROXY_UPGRADE_* state of a client upgrade request
 } ProxyRequest;
+
+#define PROXY_UPGRADE_NONE     0
+#define PROXY_UPGRADE_PENDING  1            // Upgrade requested, the backend has not answered
+#define PROXY_UPGRADE_SWITCHED 2
+#define PROXY_UPGRADE_REFUSED  3            // The backend did not switch, further client bytes are discarded
 
 /*
     List of proxies
@@ -7246,6 +7668,9 @@ static void proxyStreamOutgoing(HttpQueue *q);
 static ProxyApp *startProxyApp(Proxy *proxy, HttpStream *stream);
 static void proxyMaintenance(Proxy *proxy);
 static void releaseAppNetworks(ProxyApp *app);
+static void releaseProxyApp(Proxy *proxy, ProxyApp *app);
+static void forwardCookies(HttpStream *proxyStream, cchar *cookies, cchar *name);
+static void resolveUpgrade(ProxyRequest *req, bool switched);
 static void transferClientHeaders(HttpStream *stream, HttpStream *proxyStream);
 static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream);
 
@@ -7362,6 +7787,7 @@ static int proxyOpenRequest(HttpQueue *q)
     if ((proxyNet = getProxyNetwork(app, stream->dispatcher)) == 0) {
         httpError(stream, HTTP_CODE_SERVICE_UNAVAILABLE, "Cannot allocate network for proxy %s",
                   stream->rx->route->pattern);
+        releaseProxyApp(proxy, app);
         return MPR_ERR_CANT_OPEN;
     }
     proxyNet->trace = proxy->trace;
@@ -7373,6 +7799,7 @@ static int proxyOpenRequest(HttpQueue *q)
         httpError(stream, HTTP_CODE_SERVICE_UNAVAILABLE, "Cannot allocate proxy request for proxy %s",
                   stream->rx->route->pattern);
         httpDestroyNet(proxyNet);
+        releaseProxyApp(proxy, app);
         return MPR_ERR_CANT_OPEN;
     }
     q->queueData = q->pair->queueData = req;
@@ -7386,20 +7813,24 @@ static int proxyOpenRequest(HttpQueue *q)
 
 /*
     Release a proxy app and request when the request completes. This closes the connection to the Proxy app.
-    It will destroy the Proxy app on errors or if the number of requests exceeds the maxRequests limit.
  */
 static void proxyCloseRequest(HttpQueue *q)
 {
-    Proxy        *proxy;
     ProxyRequest *req;
-    ProxyApp     *app;
-    cchar        *msg;
 
     req = q->queueData;
-    proxy = req->proxy;
-    app = req->app;
+    mprRemoveItem(req->app->requests, req);
+    releaseProxyApp(req->proxy, req->app);
+}
 
-    mprRemoveItem(app->requests, req);
+
+/*
+    Release the app even after a failed open; the pipeline closes only successful opens. Retire failed, exhausted or
+    exited apps; otherwise return them to the idle list.
+ */
+static void releaseProxyApp(Proxy *proxy, ProxyApp *app)
+{
+    cchar *msg;
 
     lock(proxy);
     if (--app->inUse <= 0) {
@@ -7416,7 +7847,7 @@ static void proxyCloseRequest(HttpQueue *q)
                 killProxyApp(app);
             }
         }
-        if (app->destroy) {
+        if (app->destroy || app->destroyed) {
             closeAppNetworks(app);
         } else {
             app->lastActive = mprGetTicks();
@@ -7448,6 +7879,9 @@ static void proxyStartRequest(HttpQueue *q)
         req->proxyStream->upgraded = 1;
         rx->eof = 0;
         rx->remainingContent = HTTP_UNLIMITED;
+        //  Client bytes after the request headers belong to the tunnel only once the backend answers 101
+        req->upgrade = PROXY_UPGRADE_PENDING;
+        req->held = mprCreateList(0, 0);
     }
 }
 
@@ -7639,7 +8073,7 @@ static void proxyBackNotifier(HttpStream *proxyStream, int event, int arg)
         break;
 
     case HTTP_EVENT_DONE:
-        httpLog(proxyStream->trace, "tx.proxy", "result", "msg:Request complete");
+        httpLogStream(proxyStream, "tx.proxy", "result", "msg:Request complete");
         if (proxyStream->error) {
             proxyAbortRequest(req);
         }
@@ -7654,6 +8088,8 @@ static void proxyBackNotifier(HttpStream *proxyStream, int event, int arg)
         break;
 
     case HTTP_EVENT_ERROR:
+        // Send an error when the backend response is rejected.
+        proxyAbortRequest(req);
         break;
 
     case HTTP_EVENT_STATE:
@@ -7749,6 +8185,13 @@ static void proxyClientIncoming(HttpQueue *q, HttpPacket *packet)
         } else {
             httpFinalizeOutput(proxyStream);
         }
+    } else if (req->upgrade == PROXY_UPGRADE_REFUSED) {
+        return;
+
+    } else if (req->upgrade == PROXY_UPGRADE_PENDING) {
+        mprAddItem(req->held, packet);
+        httpSuspendQueue(q);
+
     } else {
         httpPutPacket(proxyStream->writeq, packet);
         /*
@@ -7882,23 +8325,23 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
     assert(stream);
     assert(proxyStream);
 
-    httpLog(proxyStream->trace, "rx.proxy", "result", "msg:Received headers from proxy");
+    httpLogStream(proxyStream, "rx.proxy", "result", "msg:Received headers from proxy");
 
+    /*
+        Hop-by-hop fields describe the backend connection, not the response. Upgrade is kept for a 101.
+        Keep Connection: Close.
+     */
     for (ITERATE_KEYS(proxyStream->rx->headers, kp)) {
+        if (httpIsHopByHopHeader(kp->key) &&
+            !(scaselessmatch(kp->key, "Upgrade") && proxyStream->rx->status == HTTP_CODE_SWITCHING)) {
+            continue;
+        }
         httpSetHeaderString(stream, kp->key, kp->data);
     }
-    /*
-        Remove Connection: Keep-Alive. Keep Connection: Close.
-     */
-    if ((hval = httpGetTxHeader(stream, "Connection")) != 0) {
-        httpRemoveHeader(stream, "Connection");
-        if (scaselesscontains(hval, "Close")) {
-            httpSetHeaderString(stream, "Connection", "Close");
-        }
+    if ((hval = mprLookupKey(proxyStream->rx->headers, "Connection")) != 0 && scaselesscontains(hval, "Close")) {
+        httpSetHeaderString(stream, "Connection", "Close");
     }
-    httpRemoveHeader(stream, "Keep-Alive");
     httpRemoveHeader(stream, "Content-Length");
-    httpRemoveHeader(stream, "Transfer-Encoding");
     httpSetHeaderString(stream, "X-Proxied", "true");
 
     /*
@@ -7959,6 +8402,8 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
         httpSetHeaderString(stream, "Location", location);
     }
     httpSetStatus(stream, proxyStream->rx->status);
+    resolveUpgrade(proxyStream->writeq->queueData, proxyStream->rx->status == HTTP_CODE_SWITCHING);
+
     if (proxyStream->rx->status == HTTP_CODE_SWITCHING) {
         proxyStream->rx->remainingContent = HTTP_UNLIMITED;
         stream->keepAliveCount = 0;
@@ -7970,34 +8415,88 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
 }
 
 
+/* Forward held client bytes only after a 101 response. Otherwise discard them and close after the response. */
+static void resolveUpgrade(ProxyRequest *req, bool switched)
+{
+    HttpPacket *packet;
+    HttpStream *stream;
+    int        next;
+
+    if (!req || req->upgrade != PROXY_UPGRADE_PENDING) {
+        return;
+    }
+    stream = req->stream;
+    if (switched) {
+        req->upgrade = PROXY_UPGRADE_SWITCHED;
+        for (ITERATE_ITEMS(req->held, packet, next)) {
+            httpPutPacket(req->proxyStream->writeq, packet);
+        }
+    } else {
+        req->upgrade = PROXY_UPGRADE_REFUSED;
+        stream->upgraded = 0;
+        stream->keepAliveCount = 0;
+        stream->rx->remainingContent = 0;
+        httpFinalizeInput(stream);
+        httpFinalizeOutput(req->proxyStream);
+    }
+    req->held = 0;
+    httpResumeQueue(stream->readq, 0);
+}
+
+
 /*
     Transfer request headers from the client to the proxy
  */
 static void transferClientHeaders(HttpStream *stream, HttpStream *proxyStream)
 {
-    MprKey   *kp;
-    HttpHost *host;
-    cchar    *hval;
+    MprKey    *kp;
+    HttpHost  *host;
+    HttpRoute *route;
+    cchar     *hval;
+    bool      authenticated;
 
     assert(stream);
     assert(proxyStream);
 
     host = stream->host;
+    route = stream->rx->route;
 
+    /*
+        A credential Appweb has consumed to authenticate this route is not passed on. Hop-by-hop fields describe
+        the client connection. Upgrade and Connection: Upgrade are kept for WebSockets.
+     */
+    authenticated = route->auth && route->auth->type;
     for (ITERATE_KEYS(stream->rx->headers, kp)) {
+        if ((httpIsHopByHopHeader(kp->key) && !scaselessmatch(kp->key, "Upgrade")) ||
+            (authenticated && (scaselessmatch(kp->key, "Authorization") || scaselessmatch(kp->key, "Cookie")))) {
+            continue;
+        }
         httpSetHeaderString(proxyStream, kp->key, kp->data);
     }
-    /*
-        Keep Connection: Upgrade
-     */
-    if ((hval = httpGetTxHeader(proxyStream, "Connection")) != 0) {
-        httpRemoveHeader(proxyStream, "Connection");
-        if (scaselesscontains(hval, "Upgrade")) {
-            httpSetHeaderString(proxyStream, "Connection", "Upgrade");
-        }
+    if ((hval = mprLookupKey(stream->rx->headers, "Connection")) != 0 && scaselesscontains(hval, "Upgrade")) {
+        httpSetHeaderString(proxyStream, "Connection", "Upgrade");
+    }
+    if (authenticated) {
+        forwardCookies(proxyStream, mprLookupKey(stream->rx->headers, "Cookie"),
+                       route->cookie ? route->cookie : HTTP_SESSION_COOKIE);
     }
     httpRemoveHeader(proxyStream, "Content-Length");
-    httpRemoveHeader(proxyStream, "Transfer-Encoding");
+
+    /*
+        Replace client-supplied forwarding headers. Append the peer to X-Forwarded-For; only the last hop is
+        trustworthy.
+     */
+    httpRemoveHeader(proxyStream, "Forwarded");
+    httpRemoveHeader(proxyStream, "X-Canonical");
+    httpRemoveHeader(proxyStream, "X-Forwarded-Host");
+    httpRemoveHeader(proxyStream, "X-Hostname");
+    if ((hval = httpGetTxHeader(proxyStream, "X-Forwarded-For")) != 0) {
+        httpSetHeader(proxyStream, "X-Forwarded-For", "%s, %s", hval, stream->net->ip);
+    } else {
+        httpSetHeaderString(proxyStream, "X-Forwarded-For", stream->net->ip);
+    }
+    httpSetHeaderString(proxyStream, "X-Forwarded-Proto", stream->secure ? "https" : "http");
+    httpSetHeaderString(proxyStream, "X-Real-IP", stream->net->ip);
     httpSetHeaderString(proxyStream, "X-Client", stream->net->ip);
     httpSetHeaderString(stream, "X-Proxied", "true");
 
@@ -8006,6 +8505,32 @@ static void transferClientHeaders(HttpStream *stream, HttpStream *proxyStream)
                             httpUriToString(stream->rx->route->canonical, HTTP_COMPLETE_URI));
     } else if (host->hostname) {
         httpSetHeaderString(proxyStream, "X-Hostname", host->hostname);
+    }
+}
+
+static void forwardCookies(HttpStream *proxyStream, cchar *cookies, cchar *name)
+{
+    MprBuf *buf;
+    char   *cookie, *tok;
+    ssize  len;
+
+    if (!cookies) {
+        return;
+    }
+    buf = mprCreateBuf(0, 0);
+    len = slen(name);
+    for (cookie = stok(sclone(cookies), ";", &tok); cookie; cookie = stok(NULL, ";", &tok)) {
+        cookie = strim(cookie, " \t", MPR_TRIM_BOTH);
+        if (*cookie == '\0' || (sncmp(cookie, name, len) == 0 && cookie[len] == '=')) {
+            continue;
+        }
+        if (mprGetBufLength(buf) > 0) {
+            mprPutStringToBuf(buf, "; ");
+        }
+        mprPutStringToBuf(buf, cookie);
+    }
+    if (mprGetBufLength(buf) > 0) {
+        httpSetHeaderString(proxyStream, "Cookie", mprBufToString(buf));
     }
 }
 
@@ -8105,6 +8630,9 @@ static ProxyApp *getProxyApp(Proxy *proxy, HttpStream *stream)
                 bestApp = 0;
                 bestCount = MAXINT;
                 for (ITERATE_ITEMS(proxy->apps, app, next)) {
+                    if (app->destroy || app->destroyed) {
+                        continue;
+                    }
                     count = mprGetListLength(app->requests);
                     if (count < proxy->multiplex) {
                         if (count < bestCount) {
@@ -8223,12 +8751,15 @@ static ProxyApp *startProxyApp(Proxy *proxy, HttpStream *stream)
 {
     ProxyApp *app;
     cchar    **argv, *command;
-    int      i;
+    int      execErrno;
 
     app = allocProxyApp(proxy);
 
     if (proxy->launch) {
-        mprMakeArgv(proxy->launch, &argv, 0);
+        if (mprMakeArgv(proxy->launch, &argv, 0) < 1) {
+            mprLog("error proxy", 0, "Empty ProxyConnect launch command for %s", proxy->name);
+            return NULL;
+        }
         command = argv[0];
 
         httpLog(app->trace, "proxy", "context", "msg:Start Proxy app, command:%s", command);
@@ -8236,25 +8767,19 @@ static ProxyApp *startProxyApp(Proxy *proxy, HttpStream *stream)
         if (!app->signal) {
             app->signal = mprAddSignalHandler(SIGCHLD, proxyDeath, app, NULL, MPR_SIGNAL_BEFORE);
         }
-        if ((app->pid = fork()) < 0) {
-            fprintf(stderr, "Fork failed for Proxy");
-            return NULL;
-
-        } else if (app->pid == 0) {
-            /*
-                CHILD: When debugging, keep stdout/stderr open so printf/fprintf from the Proxy app will show in the
-                   console.
-             */
-            for (i = PROXY_DEBUG ? 3 : 1; i < 128; i++) {
-                close(i);
-            }
-            if (execve(command, (char**) argv, environ) < 0) {
-                printf("Cannot exec proxy app: %s\n", command);
+        if ((app->pid = maLaunchProgram(command, argv, (cchar**) environ, -1, PROXY_DEBUG, &execErrno)) < 0) {
+            app->pid = 0;
+            mprRemoveSignalHandler(app->signal);
+            app->signal = 0;
+            if (execErrno) {
+                mprLog("error proxy", 0, "Cannot execute proxy program \"%s\": %s. Check the ProxyConnect "
+                       "launch path exists and is executable.", command, strerror(execErrno));
+            } else {
+                mprLog("error proxy", 0, "Cannot start proxy program \"%s\"", command);
             }
             return NULL;
-        } else {
-            httpLog(app->trace, "proxy", "context", "msg:Proxy started, command:%s, pid:%d", command, app->pid);
         }
+        httpLog(app->trace, "proxy", "context", "msg:Proxy started, command:%s, pid:%d", command, app->pid);
     }
     return app;
 }
@@ -8275,7 +8800,7 @@ static void proxyDeath(ProxyApp *app, MprSignal *sp)
     proxy = app->proxy;
 
     lock(proxy);
-    if (app->pid && waitpid(app->pid, &status, WNOHANG) == app->pid) {
+    if (app->pid > 0 && waitpid(app->pid, &status, WNOHANG) == app->pid) {
         httpLog(app->trace, "proxy", WEXITSTATUS(status) == 0 ? "context" : "error",
                 "msg:Proxy exited, pid:%d, status:%d", app->pid, WEXITSTATUS(status));
         if (app->signal) {
@@ -8317,12 +8842,18 @@ static void proxyAbortRequest(ProxyRequest *req)
 {
     HttpStream *stream;
 
+    if (mprLookupItem(req->app->requests, req) < 0) {
+        //  Closed before a reap event ran, so the stream may now serve another request
+        return;
+    }
     stream = req->stream;
     if (stream->state <= HTTP_STATE_BEGIN || stream->rx->route == NULL) {
         // Request already complete and stream has been recycled (prepared for next request)
         return;
     }
-    httpError(stream, HTTP_CLOSE | HTTP_CODE_INTERNAL_SERVER_ERROR, "Proxy comms error");
+    httpError(stream, HTTP_CLOSE | HTTP_CODE_BAD_GATEWAY, "Proxy comms error");
+    // Send now because proxy events do not service the client network.
+    httpServiceNet(stream->net);
 }
 
 
@@ -8367,7 +8898,7 @@ static HttpStream *proxyCreateStream(ProxyRequest *req)
     HttpStream *proxyStream, *stream;
     HttpRx     *rx;
     Proxy      *proxy;
-    cchar      *prefix, *uri;
+    cchar      *path;
 
     stream = req->stream;
     rx = stream->rx;
@@ -8391,9 +8922,11 @@ static HttpStream *proxyCreateStream(ProxyRequest *req)
     proxyStream->writeq->queueData = proxyStream->readq->queueData = req;
     proxyStream->rx->route = stream->http->clientRoute;
 
-    prefix = rx->route->prefix;
-    uri = (prefix && sstarts(rx->uri, prefix)) ? &rx->uri[slen(prefix)] : rx->uri;
-    proxyStream->tx->parsedUri = httpCreateUri(uri, 0);
+    /*
+        Forward the authorized, normalized path. Re-encode URI delimiters, including ? and #.
+     */
+    path = sreplace(sreplace(mprUriEncode(rx->pathInfo, MPR_ENCODE_URI), "?", "%3F"), "#", "%23");
+    proxyStream->tx->parsedUri = httpCreateUri(path, 0);
     proxyStream->tx->parsedUri->query = rx->parsedUri->query;
     proxyStream->tx->method = stream->rx->method;
     proxyStream->limits->inactivityTimeout = proxy->proxyTimeout;
@@ -8407,6 +8940,7 @@ static void manageProxyRequest(ProxyRequest *req, int flags)
 {
     if (flags & MPR_MANAGE_MARK) {
         mprMark(req->app);
+        mprMark(req->held);
         mprMark(req->proxy);
         mprMark(req->proxyNet);
         mprMark(req->proxyStream);
@@ -8614,7 +9148,7 @@ static void proxyInfo(void *ignored, MprSignal *sp)
 #endif /* ME_COM_PROXY */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
@@ -8645,7 +9179,9 @@ static void test_close(HttpQueue *q)
 
 static void test_incoming(HttpQueue *q, HttpPacket *packet)
 {
-    // httpFinalizeInput(q->stream);
+    if (packet->flags & HTTP_PACKET_END) {
+        httpFinalizeInput(q->stream);
+    }
 }
 
 static void test_ready(HttpQueue *q)
@@ -8670,7 +9206,7 @@ PUBLIC int httpTestInit(Http *http, MprModule *module)
 #endif
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
@@ -8771,10 +9307,10 @@ static void uploadReportAction(HttpStream *stream)
     httpSetHeaderString(stream, "Content-Type", "text/plain");
 
     for (ITERATE_ITEMS(stream->rx->files, file, index)) {
-        httpWrite(stream->writeq, "FILE %d name=%s client=%s size=%zd type=%s\n",
+        httpWrite(stream->writeq, "FILE %d name=%s client=%s size=%lld type=%s\n",
                   index, file->name ? file->name : "",
                   file->clientFilename ? file->clientFilename : "",
-                  file->size, file->contentType ? file->contentType : "");
+                  (int64) file->size, file->contentType ? file->contentType : "");
     }
     if ((params = httpGetParams(stream)) != 0) {
         for (ITERATE_JSON(params, param, index)) {
@@ -8782,6 +9318,22 @@ static void uploadReportAction(HttpStream *stream)
         }
     }
     httpWrite(stream->writeq, "FILES %d\n", stream->rx->files ? mprGetListLength(stream->rx->files) : 0);
+    httpFinalize(stream);
+}
+
+
+/*
+    Read the parameter name from a header so the test does not depend on parameter parsing.
+ */
+static void paramAction(HttpStream *stream)
+{
+    cchar *name, *value;
+
+    httpSetStatus(stream, 200);
+    httpSetHeaderString(stream, "Content-Type", "text/plain");
+    name = httpGetHeader(stream, "x-param");
+    value = name ? httpGetParam(stream, name, 0) : 0;
+    httpWrite(stream->writeq, "VALUE=%s\n", value ? value : "(null)");
     httpFinalize(stream);
 }
 
@@ -8908,6 +9460,64 @@ static void notifierLeaksAction(HttpStream *stream)
 
 
 /*
+    Complete requests from an OS thread via httpCreateEvent. Allocate work outside the collector;
+    foreignPending detects missed cleanup, including after client disconnects.
+ */
+typedef struct ForeignWork {
+    uint64      seqno;
+    int         delay;
+} ForeignWork;
+
+static volatile int foreignPending;
+
+static void foreignComplete(HttpStream *stream, void *work)
+{
+    free(work);
+    mprAtomicAdd(&foreignPending, -1);
+    if (stream) {
+        httpSetStatus(stream, 200);
+        httpSetHeaderString(stream, "Content-Type", "text/plain");
+        httpWrite(stream->writeq, "FOREIGN %lld\n", (int64) stream->seqno);
+        httpFinalize(stream);
+    }
+}
+
+static void *foreignThread(ForeignWork *work)
+{
+    if (work->delay > 0) {
+        mprNap(work->delay);
+    }
+    if (httpCreateEvent(work->seqno, foreignComplete, work) < 0) {
+        free(work);
+        mprAtomicAdd(&foreignPending, -1);
+    }
+    return 0;
+}
+
+static void foreignAction(HttpStream *stream)
+{
+    ForeignWork *work;
+
+    work = malloc(sizeof(ForeignWork));
+    work->seqno = stream->seqno;
+    work->delay = (int) min(stoi(httpGetParam(stream, "delay", "0")), 5000);
+    mprAtomicAdd(&foreignPending, 1);
+    if (mprStartOsThread("foreign", foreignThread, work, NULL) < 0) {
+        free(work);
+        mprAtomicAdd(&foreignPending, -1);
+        httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot start foreign thread");
+    }
+}
+
+static void foreignPendingAction(HttpStream *stream)
+{
+    httpSetStatus(stream, 200);
+    httpSetHeaderString(stream, "Content-Type", "text/plain");
+    httpWrite(stream->writeq, "PENDING %d\n", foreignPending);
+    httpFinalize(stream);
+}
+
+/*
     Module initialization - called from config.c maLoadModules()
     Registers action callbacks via httpDefineAction
  */
@@ -8930,17 +9540,20 @@ PUBLIC int httpTestBenchInit(Http *http, MprModule *module)
      */
     httpDefineAction("/action/stream", streamAction);
     httpDefineAction("/action/upload", uploadReportAction);
+    httpDefineAction("/action/param", paramAction);
     httpDefineAction("/wsecho", testBenchWs);
     httpDefineAction("/wslimit", testBenchWs);
     httpDefineAction("/action/notifier-probe", notifierProbeAction);
     httpDefineAction("/action/notifier-leaks", notifierLeaksAction);
+    httpDefineAction("/action/foreign", foreignAction);
+    httpDefineAction("/action/foreign-pending", foreignPendingAction);
     return 0;
 }
 
 #endif // ME_COM_TEST || ME_BENCHMARK
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
@@ -9056,7 +9669,7 @@ PUBLIC int httpTestWebSocketsInit(Http *http, MprModule *module)
 #endif
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
