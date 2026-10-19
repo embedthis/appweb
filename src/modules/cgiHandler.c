@@ -20,26 +20,25 @@ typedef struct Cgi {
     HttpQueue *writeq;                  /**< Queue to write to the CGI */
     HttpQueue *readq;                   /**< Queue to read from the CGI */
     HttpPacket *headers;                /**< CGI response headers */
-    char *location;                     /**< Redirection location */
+    cchar *location;                    /**< Redirection location */
     MprOff declaredLength;              /**< Content-Length declared by the CGI, or negative if none */
     MprOff bodyBytes;                   /**< Body bytes forwarded from the CGI to the client */
     int seenHeader;                     /**< Parsed response header from CGI */
+    int deferStart;                     /**< Start the CGI once a body of undeclared length is received */
 } Cgi;
 
 /*********************************** Forwards *********************************/
 
 static void browserToCgiService(HttpQueue *q);
-static void buildArgs(HttpStream *stream, int *argcp, cchar ***argvp);
+static int buildArgs(HttpStream *stream, int *argcp, cchar ***argvp);
 static void cgiCallback(MprCmd *cmd, int channel, void *data);
 static void checkCgiLength(Cgi *cgi);
 static void cgiToBrowserData(HttpQueue *q, HttpPacket *packet);
+static int copyInherited(cchar **envv, int index);
 static int copyInner(HttpStream *stream, cchar **envv, int index, cchar *key, cchar *value, cchar *prefix);
 static int copyParams(HttpStream *stream, cchar **envv, int index, MprJson *params, cchar *prefix);
 static int copyVars(HttpStream *stream, cchar **envv, int index, MprHash *vars, cchar *prefix);
-static char *getCgiToken(MprBuf *buf, cchar *delim);
 static void manageCgi(Cgi *cgi, int flags);
-static bool parseFirstCgiResponse(Cgi *cgi, HttpPacket *packet);
-static bool parseCgiHeaders(Cgi *cgi, HttpPacket *packet);
 static void readFromCgi(Cgi *cgi, int channel);
 
 #if ME_DEBUG
@@ -57,6 +56,17 @@ static void checkCompletion(HttpQueue *q, MprEvent *event);
 static void waitForCgi(Cgi *cgi, MprEvent *event);
 #endif
 
+/*
+    Allowlisted environment variables inherited by CGI programs.
+ */
+static cchar *inheritEnv[] = {
+    "PATH", "TZ", "LANG", "LC_ALL",
+#if ME_WIN_LIKE
+    "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "TEMP", "TMP",
+#endif
+    0
+};
+
 /************************************* Code ***********************************/
 /*
     Open the handler for a new request
@@ -70,7 +80,7 @@ static int openCgi(HttpQueue *q)
     stream = q->stream;
     if ((nproc = (int) httpMonitorEvent(stream, HTTP_COUNTER_ACTIVE_PROCESSES, 1)) > stream->limits->processMax) {
         httpMonitorEvent(q->stream, HTTP_COUNTER_ACTIVE_PROCESSES, -1);
-        httpLog(stream->trace, "cgi.limit.error", "error",
+        httpLogStream(stream, "cgi.limit.error", "error",
                 "msg=\"Too many concurrent processes\", activeProcesses=%d, maxProcesses=%d",
                 nproc - 1, stream->limits->processMax);
         httpError(stream, HTTP_CODE_SERVICE_UNAVAILABLE, "Server overloaded");
@@ -78,10 +88,15 @@ static int openCgi(HttpQueue *q)
     }
     if ((cgi = mprAllocObj(Cgi, manageCgi)) == 0) {
         /* Normal mem handler recovery */
+        httpMonitorEvent(stream, HTTP_COUNTER_ACTIVE_PROCESSES, -1);
         return MPR_ERR_MEMORY;
     }
     httpTrimExtraPath(stream);
     httpMapFile(stream);
+    if (stream->tx->filename == 0) {
+        httpMonitorEvent(stream, HTTP_COUNTER_ACTIVE_PROCESSES, -1);
+        return MPR_ERR_CANT_OPEN;
+    }
     q->queueData = q->pair->queueData = cgi;
     cgi->stream = stream;
     cgi->declaredLength = -1;
@@ -149,6 +164,13 @@ static void startCgi(HttpQueue *q)
     tx = stream->tx;
 
     /*
+        Receive undeclared-length bodies fully before starting CGI so CONTENT_LENGTH has the decoded size.
+     */
+    if (rx->length < 0 && !rx->eof) {
+        cgi->deferStart = 1;
+        return;
+    }
+    /*
         The command uses the stream dispatcher. This serializes all I/O for both the stream and the CGI gateway.
      */
     if ((cmd = mprCreateCmd(stream->dispatcher)) == 0) {
@@ -161,15 +183,18 @@ static void startCgi(HttpQueue *q)
         cmd->forkData = stream->http->forkData;
     }
     argc = 1;                                   /* argv[0] == programName */
-    buildArgs(stream, &argc, &argv);
+    if (buildArgs(stream, &argc, &argv) < 0) {
+        /* httpError already called */
+        return;
+    }
     fileName = argv[0];
     baseName = mprGetPathBase(fileName);
 
     /*
-        nph prefix means non-parsed-header. Don't parse the CGI output for a CGI header
+        Parse nph output as CGI under HTTP/2, which cannot forward raw HTTP/1 headers.
      */
-    if (strncmp(baseName, "nph-", 4) == 0 ||
-        (strlen(baseName) > 4 && strcmp(&baseName[strlen(baseName) - 4], "-nph") == 0)) {
+    if ((strncmp(baseName, "nph-", 4) == 0 ||
+        (strlen(baseName) > 4 && strcmp(&baseName[strlen(baseName) - 4], "-nph") == 0)) && stream->net->protocol < 2) {
         /* Pretend we've seen the header for Non-parsed Header CGI programs */
         cgi->seenHeader = 1;
         tx->flags |= HTTP_TX_USE_OWN_HEADERS;
@@ -178,12 +203,19 @@ static void startCgi(HttpQueue *q)
         Build environment variables
      */
     httpCreateCGIParams(stream);
-    varCount = mprGetHashLength(rx->headers) + mprGetHashLength(rx->svars) + mprGetJsonLength(rx->params);
+    varCount = mprGetHashLength(rx->headers) + mprGetHashLength(rx->svars) + mprGetJsonLength(rx->params) +
+        (int) (sizeof(inheritEnv) / sizeof(inheritEnv[0])) + 1;
     if ((envv = mprAlloc((varCount + 1) * sizeof(char*))) != 0) {
         //  OPTIONAL
         count = copyParams(stream, envv, 0, rx->params, route->envPrefix);
         count = copyVars(stream, envv, count, rx->svars, "");
         count = copyVars(stream, envv, count, rx->headers, "HTTP_");
+        if (tx->ext) {
+            // PHP CGI requires REDIRECT_STATUS.
+            envv[count++] = sclone("REDIRECT_STATUS=200");
+            envv[count] = 0;
+        }
+        count = copyInherited(envv, count);
         assert(count <= varCount);
     }
 #if !VXWORKS
@@ -198,7 +230,9 @@ static void startCgi(HttpQueue *q)
         httpError(stream, HTTP_CODE_NOT_FOUND, "Route check failed for CGI: %s, URI %s", fileName, rx->uri);
         return;
     }
-    if (mprStartCmd(cmd, argc, argv, envv, MPR_CMD_IN | MPR_CMD_OUT | MPR_CMD_ERR) < 0) {
+    // A new process group lets shutdown stop the script and its children.
+    if (mprStartCmd(cmd, argc, argv, envv,
+                    MPR_CMD_IN | MPR_CMD_OUT | MPR_CMD_ERR | MPR_CMD_NEW_SESSION | MPR_CMD_EXACT_ENV) < 0) {
         httpError(stream, HTTP_CODE_NOT_FOUND, "Cannot run CGI process: %s, URI %s", fileName, rx->uri);
         return;
     }
@@ -261,6 +295,12 @@ static void browserToCgiData(HttpQueue *q, HttpPacket *packet)
     }
     httpPutForService(cgi->writeq, packet, HTTP_SCHEDULE_QUEUE);
 
+    if (cgi->deferStart && (packet->flags & HTTP_PACKET_END) && !stream->error) {
+        cgi->deferStart = 0;
+        startCgi(q);
+        httpServiceQueue(cgi->writeq);
+    }
+
     /*
         Body packets are passed to this routine directly, so stream->readq->count never rises and the generic
         room test upstream always finds space no matter how far behind the gateway is. Suspend the read queue
@@ -297,8 +337,12 @@ static void browserToCgiService(HttpQueue *q)
     stream = cgi->stream;
 
     for (packet = httpGetPacket(q); packet; packet = httpGetPacket(q)) {
+        if (packet->flags & HTTP_PACKET_END) {
+            /* The end packet follows upload form data; rx->eof can precede it. */
+            mprCloseCmdFd(cmd, MPR_CMD_STDIN);
+            continue;
+        }
         if ((buf = packet->content) == 0) {
-            /* End packet */
             continue;
         }
         if (cmd) {
@@ -313,7 +357,7 @@ static void browserToCgiService(HttpQueue *q)
                     httpSuspendQueue(q);
                     break;
                 }
-                httpLog(stream->trace, "cgi.error", "error", "msg=\"Cannot write to CGI gateway\", errno=%d",
+                httpLogStream(stream, "cgi.error", "error", "msg=\"Cannot write to CGI gateway\", errno=%d",
                         mprGetOsError());
                 mprCloseCmdFd(cmd, MPR_CMD_STDIN);
                 httpDiscardQueueData(q, 1);
@@ -332,8 +376,6 @@ static void browserToCgiService(HttpQueue *q)
         if (q->count > 0) {
             /* Wait for writable event so cgiCallback can recall this routine */
             mprEnableCmdEvents(cmd, MPR_CMD_STDIN);
-        } else if (stream->rx->eof) {
-            mprCloseCmdFd(cmd, MPR_CMD_STDIN);
         } else {
             mprDisableCmdEvents(cmd, MPR_CMD_STDIN);
         }
@@ -366,6 +408,8 @@ static void cgiToBrowserService(HttpQueue *q)
     assert(q == stream->writeq);
     cmd = cgi->cmd;
     if (cmd == 0) {
+
+        httpDefaultService(q);
         return;
     }
     /*
@@ -422,7 +466,7 @@ static void cgiCallback(MprCmd *cmd, int channel, void *data)
         break;
     }
     if (cgi->location) {
-        httpRedirect(stream, HTTP_CODE_MOVED_TEMPORARILY, cgi->location);
+        httpRedirectUri(stream, HTTP_CODE_MOVED_TEMPORARILY, cgi->location);
     }
     if (cmd->complete || cgi->location) {
         cgi->location = 0;
@@ -461,7 +505,8 @@ static void readFromCgi(Cgi *cgi, int channel)
         mprCloseCmdFd(cmd, channel);
     }
     while (mprGetCmdFd(cmd, channel) >= 0 && !tx->finalized && writeq->count < writeq->max) {
-        if ((packet = cgi->headers) != 0) {
+        // A partly read header block belongs to stdout; stderr always reads into a packet of its own
+        if (channel == MPR_CMD_STDOUT && (packet = cgi->headers) != 0) {
             if (mprGetBufSpace(packet->content) < ME_BUFSIZE && mprGrowBuf(packet->content, ME_BUFSIZE) < 0) {
                 break;
             }
@@ -482,6 +527,13 @@ static void readFromCgi(Cgi *cgi, int channel)
         } else if (nbytes == 0) {
             mprCloseCmdFd(cmd, channel);
             if (channel == MPR_CMD_STDOUT) {
+                if (!cgi->seenHeader) {
+                    /*
+                        RFC 3875 requires a header field and blank line; incomplete output is a failed response.
+                     */
+                    httpError(stream, HTTP_CODE_BAD_GATEWAY, "CGI program ended without a response header");
+                    break;
+                }
                 checkCgiLength(cgi);
                 httpFinalizeOutput(stream);
             }
@@ -492,14 +544,16 @@ static void readFromCgi(Cgi *cgi, int channel)
             mprAdjustBufEnd(packet->content, nbytes);
         }
         if (channel == MPR_CMD_STDERR) {
-            httpLog(stream->trace, "cgi.error", "error", "msg:CGI failed, uri:%s, details: %s",
+            /*
+                Log stderr without exposing diagnostics to clients.
+             */
+            httpLogStream(stream, "cgi.error", "error", "msg:CGI stderr, uri:%s, details: %s",
                     stream->rx->uri, mprBufToString(packet->content));
-            httpSetContentType(stream, "text/plain");
-            httpSetStatus(stream, HTTP_CODE_SERVICE_UNAVAILABLE);
-            cgi->seenHeader = 1;
+            continue;
         }
         if (!cgi->seenHeader) {
-            if (!parseCgiHeaders(cgi, packet)) {
+            if (!maParseCgiResponse(stream, packet->content, "CGI", mprGetCmdFd(cgi->cmd, MPR_CMD_STDOUT) < 0,
+                    &cgi->location, &cgi->declaredLength)) {
                 cgi->headers = packet;
                 return;
             }
@@ -537,183 +591,23 @@ static void checkCgiLength(Cgi *cgi)
     if (stream->error || stream->tx->finalizedOutput || cgi->location) {
         return;
     }
-    httpLog(stream->trace, "cgi.error", "error", "msg:CGI Content-Length mismatch, declared:%lld, sent:%lld",
+    httpLogStream(stream, "cgi.error", "error", "msg:CGI Content-Length mismatch, declared:%lld, sent:%lld",
             cgi->declaredLength, cgi->bodyBytes);
     httpError(stream, HTTP_CLOSE | HTTP_CODE_BAD_GATEWAY, "CGI response length mismatch");
 }
 
 
 /*
-    Parse the CGI output headers. Sample CGI program output:
-        Content-type: text/html
-
-        <html.....
- */
-static bool parseCgiHeaders(Cgi *cgi, HttpPacket *packet)
-{
-    HttpStream *stream;
-    MprBuf     *buf;
-    char       *endHeaders, *headers, *key, *value;
-    int64      length;
-    ssize      blen;
-    int        len, status;
-
-    stream = cgi->stream;
-    value = 0;
-    buf = packet->content;
-    headers = mprGetBufStart(buf);
-    blen = mprGetBufLength(buf);
-
-    /*
-        Split the headers from the body. Add null to ensure we can search for line terminators.
-     */
-    len = 0;
-    if ((endHeaders = sncontains(headers, "\r\n\r\n", blen)) == NULL) {
-        if ((endHeaders = sncontains(headers, "\n\n", blen)) == NULL) {
-            if (mprGetCmdFd(cgi->cmd, MPR_CMD_STDOUT) >= 0 && strlen(headers) < ME_MAX_HEADERS) {
-                /* Not EOF and less than max headers and have not yet seen an end of headers delimiter */
-                return 0;
-            }
-        }
-        len = 2;
-    } else {
-        len = 4;
-    }
-    if (endHeaders) {
-        if (endHeaders > buf->end) {
-            assert(endHeaders <= buf->end);
-            return 0;
-        }
-    }
-    if (endHeaders) {
-        endHeaders[len - 1] = '\0';
-        endHeaders += len;
-    }
-    /*
-        Want to be tolerant of CGI programs that omit the status line.
-     */
-    if (strncmp((char*) buf->start, "HTTP/1.", 7) == 0) {
-        if (!parseFirstCgiResponse(cgi, packet)) {
-            /* httpError already called */
-            return 0;
-        }
-    }
-    if (endHeaders && strchr(mprGetBufStart(buf), ':')) {
-        while (mprGetBufLength(buf) > 0 && buf->start[0] && (buf->start[0] != '\r' && buf->start[0] != '\n')) {
-            if ((key = getCgiToken(buf, ":")) == 0) {
-                key = "Bad Header";
-            }
-            value = getCgiToken(buf, "\n");
-            while (isspace((uchar) * value)) {
-                value++;
-            }
-            len = (int) strlen(value);
-            while (len > 0 && (value[len - 1] == '\r' || value[len - 1] == '\n')) {
-                value[len - 1] = '\0';
-                len--;
-            }
-            /*
-                An embedded CR or LF would split the response header block for a downstream client, cache or proxy,
-                so fail the request rather than sanitize it. A CGI emitting a control character here is malfunctioning
-                or compromised.
-             */
-            if (schr(value, '\r') || schr(value, '\n')) {
-                httpError(stream, HTTP_CODE_BAD_GATEWAY, "CGI response header contains a control character");
-                return 0;
-            }
-            if (scaselesscmp(key, "location") == 0) {
-                cgi->location = value;
-
-            } else if (scaselesscmp(key, "status") == 0) {
-                /*
-                    A 1xx is not a final status. It makes the response body-less while the CGI is still
-                    writing a body, so only a final status can be relayed to the client.
-                 */
-                if ((status = httpParseStatus(value)) < HTTP_CODE_OK) {
-                    httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad CGI status: %s", value);
-                    return 0;
-                }
-                httpSetStatus(stream, status);
-
-            } else if (scaselesscmp(key, "content-type") == 0) {
-                if (stream->tx->charSet && !scaselesscontains(value, "charset")) {
-                    httpSetHeader(stream, "Content-Type", "%s; charset=%s", value, stream->tx->charSet);
-                } else {
-                    httpSetHeaderString(stream, "Content-Type", value);
-                }
-
-            } else if (scaselesscmp(key, "transfer-encoding") == 0) {
-                /*
-                    A message must not carry both Content-Length and Transfer-Encoding
-                 */
-                httpError(stream, HTTP_CODE_BAD_GATEWAY,
-                          "CGI response declares an unsupported Transfer-Encoding");
-                return 0;
-
-            } else if (scaselesscmp(key, "content-length") == 0) {
-                if (httpParseDigits(value, &length) < 0) {
-                    httpError(stream, HTTP_CODE_BAD_GATEWAY, "Bad CGI Content-Length: %s", value);
-                    return 0;
-                }
-                cgi->declaredLength = (MprOff) length;
-                httpSetContentLength(stream, cgi->declaredLength);
-                httpSetChunkSize(stream, 0);
-
-            } else {
-                /*
-                    Now pass all other headers back to the client
-                 */
-                key = ssplit(key, ":\r\n\t ", NULL);
-                httpSetHeaderString(stream, key, value);
-            }
-        }
-        buf->start = endHeaders;
-    }
-    return 1;
-}
-
-
-/*
-    Parse the CGI output first line
- */
-static bool parseFirstCgiResponse(Cgi *cgi, HttpPacket *packet)
-{
-    MprBuf *buf;
-    char   *protocol, *status, *msg;
-
-    buf = packet->content;
-    protocol = getCgiToken(buf, " ");
-    if (protocol == 0 || protocol[0] == '\0') {
-        httpError(cgi->stream, HTTP_CODE_BAD_GATEWAY, "Bad CGI HTTP protocol response");
-        return 0;
-    }
-    if (strncmp(protocol, "HTTP/1.", 7) != 0) {
-        httpError(cgi->stream, HTTP_CODE_BAD_GATEWAY, "Unsupported CGI protocol");
-        return 0;
-    }
-    status = getCgiToken(buf, " ");
-    if (status == 0 || *status == '\0') {
-        httpError(cgi->stream, HTTP_CODE_BAD_GATEWAY, "Bad CGI header response");
-        return 0;
-    }
-    msg = getCgiToken(buf, "\n");
-    mprNop(msg);
-    mprDebug("http cgi", 4, "CGI response status: %s %s %s", protocol, status, msg);
-    return 1;
-}
-
-
-/*
     Build the command arguments. NOTE: argv is untrusted input.
  */
-static void buildArgs(HttpStream *stream, int *argcp, cchar ***argvp)
+static int buildArgs(HttpStream *stream, int *argcp, cchar ***argvp)
 {
     HttpRx *rx;
     HttpTx *tx;
     cchar  *actionProgram, *cp, *fileName, *mimeType, *query;
-    char   **argv, *tok;
+    char   **argv, *arg, *tok;
     ssize  len;
-    int    argc, argind, i;
+    int    argc, argind, i, terms;
 
     rx = stream->rx;
     tx = stream->tx;
@@ -736,18 +630,13 @@ static void buildArgs(HttpStream *stream, int *argcp, cchar ***argvp)
         if (actionProgram != 0) {
             argc++;
         }
-        /*
-            This is an Apache compatible hack for PHP 5.3
-         */
-        mprAddKey(rx->headers, "REDIRECT_STATUS", itos(HTTP_CODE_MOVED_TEMPORARILY));
     }
     /*
-        Count the args for ISINDEX queries. Only valid if there is not a "=" in the query.
-        If this is so, then we must not have these args in the query env also?
+        Count slots for the end-of-options marker and each + separated ISINDEX term.
      */
     query = (char*) rx->parsedUri->query;
     if (query && !schr(query, '=')) {
-        argc++;
+        argc += 2;
         for (cp = query; *cp; cp++) {
             if (*cp == '+') {
                 argc++;
@@ -770,49 +659,42 @@ static void buildArgs(HttpStream *stream, int *argcp, cchar ***argvp)
         FUTURE - should query vars be set in the env?
      */
     if (query) {
+        terms = 0;
         cp = stok(sclone(query), "+", &tok);
         while (cp) {
-            argv[argind++] = mprEscapeCmd(mprUriDecode(cp), 0);
+            arg = mprUriDecode(cp);
+            /*
+                Reject decoded = and leading - to prevent data or options from entering ISINDEX argv.
+             */
+            if (schr(arg, '=')) {
+                httpError(stream, HTTP_CODE_BAD_REQUEST, "Bad ISINDEX query for CGI: %s", rx->uri);
+                return MPR_ERR_BAD_ARGS;
+            }
+            if (*arg == '-') {
+                httpError(stream, HTTP_CODE_BAD_REQUEST, "ISINDEX argument may not start with '-': %s",
+                    rx->uri);
+                return MPR_ERR_BAD_ARGS;
+            }
+            if (terms++ == 0) {
+                /*
+                    Add the POSIX end-of-options marker before the first search term.
+                 */
+                argv[argind++] = sclone("--");
+            }
+            argv[argind++] = mprEscapeCmd(arg, 0);
             cp = stok(NULL, "+", &tok);
         }
     }
     assert(argind <= argc);
     argv[argind] = 0;
-    *argcp = argc;
+    *argcp = argind;
     *argvp = (cchar**) argv;
 
     mprDebug("http cgi", 5, "CGI: command:");
     for (i = 0; i < argind; i++) {
         mprDebug("http cgi", 5, "   argv[%d] = %s", i, argv[i]);
     }
-}
-
-
-/*
-    Get the next input token. The content buffer is advanced to the next token. This routine always returns a
-    non-zero token. The empty string means the delimiter was not found.
- */
-static char *getCgiToken(MprBuf *buf, cchar *delim)
-{
-    char  *token, *nextToken;
-    ssize len;
-
-    len = mprGetBufLength(buf);
-    if (len == 0) {
-        return "";
-    }
-    token = mprGetBufStart(buf);
-    nextToken = sncontains(mprGetBufStart(buf), delim, len);
-    if (nextToken) {
-        *nextToken = '\0';
-        len = (int) strlen(delim);
-        nextToken += len;
-        buf->start = nextToken;
-
-    } else {
-        buf->start = mprGetBufEnd(buf);
-    }
-    return token;
+    return 0;
 }
 
 
@@ -826,9 +708,9 @@ static void traceCGIData(MprCmd *cmd, char *src, ssize size)
     int  index, i;
 
     if (mprGetLogLevel() >= 5) {
-        mprDebug("http cgi", 5, "CGI: process wrote (leading %zd bytes) => \n", min(sizeof(dest), size));
+        mprDebug("http cgi", 5, "CGI: process wrote (leading %zd bytes) => \n", min((ssize) sizeof(dest), size));
         for (index = 0; index < size; ) {
-            for (i = 0; i < (sizeof(dest) - 1) && index < size; i++) {
+            for (i = 0; i < (int) sizeof(dest) - 1 && index < size; i++) {
                 dest[i] = src[index];
                 index++;
             }
@@ -838,6 +720,20 @@ static void traceCGIData(MprCmd *cmd, char *src, ssize size)
     }
 }
 #endif
+
+
+static int copyInherited(cchar **envv, int index)
+{
+    cchar **name, *value;
+
+    for (name = inheritEnv; *name; name++) {
+        if ((value = getenv(*name)) != 0) {
+            envv[index++] = sfmt("%s=%s", *name, value);
+        }
+    }
+    envv[index] = 0;
+    return index;
+}
 
 
 /*
@@ -862,7 +758,7 @@ static int copyInner(HttpStream *stream, cchar **envv, int index, cchar *key, cc
         being the httpoxy case.
      */
     if (httpIsCgiVarBlocked(name)) {
-        httpLog(stream->trace, "cgi.env.filter", "detail",
+        httpLogStream(stream, "cgi.env.filter", "detail",
                 "msg:Dropped unsafe CGI environment variable, var:%s", name);
         return 0;
     }
@@ -883,9 +779,16 @@ static int copyVars(HttpStream *stream, cchar **envv, int index, MprHash *vars, 
     MprKey *kp;
 
     for (ITERATE_KEYS(vars, kp)) {
-        if (kp->data) {
-            index += copyInner(stream, envv, index, kp->key, kp->data, prefix);
+        if (!kp->data) {
+            continue;
         }
+        /*
+            Exclude hop-by-hop headers and underscore names that alias hyphenated environment variables.
+         */
+        if (vars == stream->rx->headers && (httpIsHopByHopHeader(kp->key) || httpIsCgiHeaderBlocked(kp->key))) {
+            continue;
+        }
+        index += copyInner(stream, envv, index, kp->key, kp->data, prefix);
     }
     envv[index] = 0;
     return index;
@@ -905,30 +808,6 @@ static int copyParams(HttpStream *stream, cchar **envv, int index, MprJson *para
     }
     envv[index] = 0;
     return index;
-}
-
-
-static int cgiEscapeDirective(MaState *state, cchar *key, cchar *value)
-{
-    bool on;
-
-    if (!maTokenize(state, value, "%B", &on)) {
-        return MPR_ERR_BAD_SYNTAX;
-    }
-    httpSetRouteEnvEscape(state->route, on);
-    return 0;
-}
-
-
-static int cgiPrefixDirective(MaState *state, cchar *key, cchar *value)
-{
-    cchar *prefix;
-
-    if (!maTokenize(state, value, "%S", &prefix)) {
-        return MPR_ERR_BAD_SYNTAX;
-    }
-    httpSetRouteEnvPrefix(state->route, prefix);
-    return 0;
 }
 
 
@@ -955,19 +834,13 @@ PUBLIC int httpCgiInit(Http *http, MprModule *module)
     http->cgiConnector = connector;
     connector->outgoingService = browserToCgiService;
     connector->incoming = cgiToBrowserData;
-
-    /*
-        Add configuration file directives
-     */
-    maAddDirective("CgiEscape", cgiEscapeDirective);
-    maAddDirective("CgiPrefix", cgiPrefixDirective);
     return 0;
 }
 
 #endif /* ME_COM_CGI */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

@@ -81,7 +81,7 @@ typedef int ssize_t;
 #define MAX_ARGV            64
 
 static char *argvList[MAX_ARGV];
-static int      getArgv(int *argc, char ***argv, int originalArgc, char **originalArgv);
+static int      getArgv(int *argc, char ***argv);
 static int    hasError;
 static int    nonParsedHeader;
 static int    numPostKeys;
@@ -98,11 +98,32 @@ static char   *queryBuf;
 static size_t queryLen;
 static char   **queryKeys;
 static char   *responseMsg;
+static int    raw;
 static int    timeout;
+
+/*
+    Raw responses selected by -r N for parser tests.
+ */
+static char *rawResponses[] = {
+    "",
+    "HTTP/1.1 500 Internal Error\r\nContent-Type: text/plain\r\n\r\nBODY",
+    "ABCDEFGH\r\n\r\nIJKLMNOP",
+    "HTTP/1.1 999 Bad\r\nContent-Type: text/plain\r\n\r\nBODY",
+    "HTTP/1.1 404\r\nContent-Type: text/plain\r\n\r\nGONE",
+    "BIN\001:\002DATA\r\n\r\nMORE",
+};
+#define RAW_RESPONSES ((int) (sizeof(rawResponses) / sizeof(char*)))
 
 /***************************** Forward Declarations ***************************/
 
-static void     error(char *fmt, ...);
+//  This program does not include osdep.h, so it declares its own format checking attribute
+#if defined(__GNUC__) || defined(__clang__)
+    #define PRINTF_ATTRIBUTE(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
+#else
+    #define PRINTF_ATTRIBUTE(a1, a2)
+#endif
+
+static void     error(char *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
 static void     descape(char *src);
 static char     hex2Char(char *s);
 static int      getVars(char ***cgiKeys, char *buf, size_t len);
@@ -130,6 +151,7 @@ int main(int argc, char **argv, char **envp)
     outputArgs = outputQuery = outputEnv = outputPost = 0;
     outputLines = outputHeaderLines = responseStatus = 0;
     outputLocation = 0;
+    raw = 0;
     nonParsedHeader = 0;
     responseMsg = 0;
     hasError = 0;
@@ -150,10 +172,13 @@ int main(int argc, char **argv, char **envp)
     if (strstr(argv[0], "nph-") != 0) {
         nonParsedHeader++;
     }
-    if (getArgv(&argc, &argv, originalArgc, originalArgv) < 0) {
+    if (getArgv(&argc, &argv) < 0) {
         error("Cannot read CGI input");
     }
     for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--") == 0) {
+            break;
+        }
         if (argv[i][0] != '-') {
             continue;
         }
@@ -181,6 +206,14 @@ int main(int argc, char **argv, char **envp)
                 } else {
                     outputHeaderLines = atoi(argv[i]);
                     nonParsedHeader++;
+                }
+                break;
+
+            case 'r':
+                if (++i >= argc) {
+                    err = __LINE__;
+                } else {
+                    raw = atoi(argv[i]);
                 }
                 break;
 
@@ -231,7 +264,7 @@ int main(int argc, char **argv, char **envp)
     }
     if (err) {
         fprintf(stderr, "usage: cgiProgram -aenp [-b bytes] [-h lines]\n"
-                "\t[-l location] [-s status] [-t timeout]\n"
+                "\t[-l location] [-r raw] [-s status] [-t timeout]\n"
                 "\tor set the HTTP_SWITCHES environment variable\n");
         fprintf(stderr, "Error at cgiProgram:%d\n", __LINE__);
         exit(255);
@@ -257,6 +290,11 @@ int main(int argc, char **argv, char **envp)
         exit(2);
     }
 
+    if (raw > 0 && raw < RAW_RESPONSES) {
+        fwrite(rawResponses[raw], 1, strlen(rawResponses[raw]), stdout);
+        fflush(stdout);
+        return 0;
+    }
     if (nonParsedHeader) {
         if (responseStatus == 0) {
             printf("HTTP/1.0 200 OK\r\n");
@@ -332,7 +370,7 @@ int main(int argc, char **argv, char **envp)
 /*
     If there is a HTTP_SWITCHES argument in the query string, examine that instead of the original argv
  */
-static int getArgv(int *pargc, char ***pargv, int originalArgc, char **originalArgv)
+static int getArgv(int *pargc, char ***pargv)
 {
     static char sbuf[1024];
     char        *switches, *next;
@@ -455,7 +493,7 @@ static void printPost(char *buf, size_t len)
         if (len < (50 * 1000)) {
             printf("<H2>Post Data %d bytes found (data below)</H2>\r\n", (int) len);
             fflush(stdout);
-            if (write(1, buf, (int) len) != len) {
+            if (write(1, buf, (int) len) != (ssize_t) len) {
             }
         } else {
             printf("<H2>Post Data %d bytes found</H2>\r\n", (int) len);
@@ -674,7 +712,7 @@ int _exit()
 #endif /* VXWORKS */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

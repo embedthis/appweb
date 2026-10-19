@@ -21,7 +21,9 @@ static void test_close(HttpQueue *q)
 
 static void test_incoming(HttpQueue *q, HttpPacket *packet)
 {
-    // httpFinalizeInput(q->stream);
+    if (packet->flags & HTTP_PACKET_END) {
+        httpFinalizeInput(q->stream);
+    }
 }
 
 static void test_ready(HttpQueue *q)
@@ -46,7 +48,7 @@ PUBLIC int httpTestInit(Http *http, MprModule *module)
 #endif
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

@@ -16,6 +16,8 @@
             -p                  Ouput the post data
             -q                  Ouput the query data
             -s status           Output "status" header
+            -w msecs            With -x, keep running for "msecs" after answering, answering nothing more, then exit
+            -x                  Exit after answering this request
             default             Output args, env and query
 
         Alternatively, pass the arguments as an environment variable HTTP_SWITCHES="-a -e -q"
@@ -58,6 +60,7 @@ typedef struct State {
     int splitHeaders;
     int outputTransferEncoding;
     int outputLines, outputHeaderLines, responseStatus;
+    int raw;
     char *outputLocation;
     char *outputContentLength;
     char *postBuf;
@@ -69,16 +72,95 @@ typedef struct State {
     FCGX_Request *request;
     char *errorMsg;
     int timeout;
+    int exitAfter;
+    int exitDelay;
 } State;
 
 static pthread_mutex_t accept_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/*
+    Set while an app delays its exit (-x -w): like a single process app shutting down, it answers nothing more
+ */
+static volatile int exiting;
+
+/*
+    Raw responses selected by -r N for parser tests.
+ */
+static char *rawResponses[] = {
+    "",
+    "HTTP/1.1 500 Internal Error\r\nContent-Type: text/plain\r\n\r\nBODY",
+    "ABCDEFGH\r\n\r\nIJKLMNOP",
+    "HTTP/1.1 999 Bad\r\nContent-Type: text/plain\r\n\r\nBODY",
+    "HTTP/1.1 404\r\nContent-Type: text/plain\r\n\r\nGONE",
+    "BIN\001:\002DATA\r\n\r\nMORE",
+};
+#define RAW_RESPONSES ((int) (sizeof(rawResponses) / sizeof(char*)))
+
+/*
+    Split headers or binary output across FAST_STDOUT records.
+ */
+#define RAW_SPLIT_HEADER    6
+#define RAW_SPLIT_BINARY    7
+
+/*
+    "-r 8" writes a FAST_STDOUT record carrying another request's id before its own response
+ */
+#define RAW_WRONG_ID        8
+
+/*
+    -r 9 and above emit whitespace before the colon and an undersized Content-Length.
+ */
+#define RAW_BAD_FRAMING     9
+static char *badFramingResponses[] = {
+    "Content-Type: text/plain\r\nContent-Length : 5\r\n\r\n"
+        "AAAAAHTTP/1.1 200 OK\r\nContent-Length: 9\r\n\r\nINJECTED\n",
+    "Content-Type: text/plain\r\nContent-Length\t: 5\r\n\r\n"
+        "AAAAAHTTP/1.1 200 OK\r\nContent-Length: 9\r\n\r\nINJECTED\n",
+    "Content-Type: text/plain\r\ncontent-length :5\r\n\r\n"
+        "AAAAAHTTP/1.1 200 OK\r\nContent-Length: 9\r\n\r\nINJECTED\n",
+    "Content-Type: text/plain\r\nTransfer-Encoding : chunked\r\n\r\nSHORT",
+};
+#define RAW_BAD_FRAMING_COUNT ((int) (sizeof(badFramingResponses) / sizeof(char*)))
+
+
+/*
+    Write a record addressed to another request.
+ */
+static void writeWrongIdRecord(FCGX_Request *request)
+{
+    const char    *content = "Content-Type: text/plain\r\n\r\nOTHER";
+    unsigned char header[8];
+    int           id, len;
+
+    id = request->requestId + 1;
+    len = (int) strlen(content);
+    header[0] = 1;
+    header[1] = 6;
+    header[2] = (unsigned char) (id >> 8);
+    header[3] = (unsigned char) (id & 0xFF);
+    header[4] = (unsigned char) (len >> 8);
+    header[5] = (unsigned char) (len & 0xFF);
+    header[6] = 0;
+    header[7] = 0;
+    if (write(request->ipcFd, header, sizeof(header)) < 0 || write(request->ipcFd, content, (size_t) len) < 0) {
+        perror("write");
+    }
+}
+
 
 static int  originalArgc;
 static char **originalArgv;
 
 /***************************** Forward Declarations ***************************/
 
-static void     error(State *state, char *fmt, ...);
+//  This program does not include osdep.h, so it declares its own format checking attribute
+#if defined(__GNUC__) || defined(__clang__)
+    #define PRINTF_ATTRIBUTE(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
+#else
+    #define PRINTF_ATTRIBUTE(a1, a2)
+#endif
+
+static void     error(State *state, char *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 static void     descape(char *src);
 static int      getArgv(State *state, int *argc, char ***argv, int originalArgc, char **originalArgv);
 static int      getVars(State *state, char ***cgiKeys, char *buf, size_t len);
@@ -111,7 +193,7 @@ int main(int argc, char **argv, char **envp)
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-?") == 0) {
             fprintf(stderr,
-                    "usage: fastProgram -acefnpT [-b bytes] [-h lines] [-l location] [-s status] [-t timeout] [endpoint]\n");
+                    "usage: fastProgram -acefnpTx [-b bytes] [-h lines] [-l location] [-r raw] [-s status] [-t timeout] [endpoint]\n");
             exit(2);
         } else if (argv[i][0] != '-') {
             close(0);
@@ -129,7 +211,7 @@ int main(int argc, char **argv, char **envp)
 static void *worker(State *state)
 {
     FCGX_Request request;
-    char         *method;
+    char         *method, *response;
     int          l, i, rc;
 
     FCGX_InitRequest(&request, 0, 0);
@@ -148,6 +230,9 @@ static void *worker(State *state)
             }
             error(state, "Cannot accept a new connection errno :%d\n", errno);
             break;
+        }
+        while (exiting) {
+            pause();
         }
 
         if (parseArgs(state) < 0) {
@@ -171,6 +256,40 @@ static void *worker(State *state)
         }
         if (state->delay) {
             sleep(state->delay);
+        }
+        if (state->raw > 0 && state->raw < RAW_RESPONSES) {
+            FCGX_PutStr(rawResponses[state->raw], (int) strlen(rawResponses[state->raw]), request.out);
+            FCGX_Finish_r(&request);
+            continue;
+        }
+        if (state->raw == RAW_SPLIT_HEADER) {
+            FCGX_PutStr("Content-Typ", (int) strlen("Content-Typ"), request.out);
+            FCGX_FFlush(request.out);
+            FCGX_PutStr("e: text/plain\r\n\r\nBODY", (int) strlen("e: text/plain\r\n\r\nBODY"), request.out);
+            FCGX_Finish_r(&request);
+            continue;
+        }
+        if (state->raw == RAW_WRONG_ID) {
+            writeWrongIdRecord(&request);
+            FCGX_PutStr("Content-Type: text/plain\r\n\r\nOWN", (int) strlen("Content-Type: text/plain\r\n\r\nOWN"),
+                        request.out);
+            FCGX_Finish_r(&request);
+            continue;
+        }
+        if (state->raw >= RAW_BAD_FRAMING && state->raw < RAW_BAD_FRAMING + RAW_BAD_FRAMING_COUNT) {
+            response = badFramingResponses[state->raw - RAW_BAD_FRAMING];
+            FCGX_PutStr(response, (int) strlen(response), request.out);
+            FCGX_Finish_r(&request);
+            continue;
+        }
+        if (state->raw == RAW_SPLIT_BINARY) {
+            FCGX_PutStr("AB\0CD", 5, request.out);
+            FCGX_FFlush(request.out);
+            FCGX_PutStr("EF\0GH", 5, request.out);
+            FCGX_FFlush(request.out);
+            FCGX_PutStr("IJ", 2, request.out);
+            FCGX_Finish_r(&request);
+            continue;
         }
 #if KEEP
         if (nonParsedHeader) {
@@ -253,6 +372,13 @@ static void *worker(State *state)
             FCGX_FPrintF(request.out, "</BODY></HTML>\r\n");
         }
         FCGX_Finish_r(&request);
+        if (state->exitAfter) {
+            if (state->exitDelay > 0) {
+                exiting = 1;
+                usleep((useconds_t) state->exitDelay * 1000);
+            }
+            exit(0);
+        }
     }
     return NULL;
 }
@@ -345,6 +471,14 @@ static int parseArgs(State *state)
                 state->outputQuery++;
                 break;
 
+            case 'r':
+                if (++i >= argc) {
+                    err = __LINE__;
+                } else {
+                    state->raw = atoi(argv[i]);
+                }
+                break;
+
             case 's':
                 if (++i >= argc) {
                     err = __LINE__;
@@ -359,6 +493,18 @@ static int parseArgs(State *state)
                 } else {
                     state->timeout = atoi(argv[i]);
                 }
+                break;
+
+            case 'w':
+                if (++i >= argc) {
+                    err = __LINE__;
+                } else {
+                    state->exitDelay = atoi(argv[i]);
+                }
+                break;
+
+            case 'x':
+                state->exitAfter = 1;
                 break;
 
             default:
@@ -621,7 +767,7 @@ static int getVars(State *state, char ***cgiKeys, char *buf, size_t buflen)
     /*
         Crack the input into name/value pairs
      */
-    if (keyCount > (SIZE_MAX / (2 * sizeof(char**)))) {
+    if ((size_t) keyCount > (SIZE_MAX / (2 * sizeof(char**)))) {
         error(state, "Too many form parameters: %d", keyCount);
         if (buflen > 0) {
             free(newbuf);
@@ -739,7 +885,7 @@ static int waitForData(int fd, int timeout)
 #endif
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

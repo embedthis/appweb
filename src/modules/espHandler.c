@@ -87,7 +87,7 @@ PUBLIC int httpEspInit(Http *http, MprModule *module)
 #endif /* ME_COM_ESP */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

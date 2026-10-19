@@ -1,7 +1,7 @@
 /*
     authpass.c -- Authorization password management.
 
-    authpass [--cipher md5|blowfish] [--file filename] [--password password] realm user roles...
+    authpass [--cipher md5|blowfish] [--file filename] [--password password] [--rounds count] realm user roles...
 
     This file provides facilities for creating passwords. It supports the MD5 or Blowfish ciphers.
  */
@@ -19,7 +19,7 @@ static cchar *programName;
 /********************************* Forwards ***********************************/
 
 static char *getPassword(void);
-static void printUsage(cchar *programName);
+static void printUsage(void);
 
 #if ME_WIN_LIKE || VXWORKS
 static char *getpass(char *prompt);
@@ -33,7 +33,8 @@ PUBLIC int main(int argc, char *argv[])
     HttpRoute *route;
     HttpAuth  *auth;
     char      *password, *authFile, *username, *encodedPassword, *realm, *cp, *roles, *cipher;
-    int       i, errflg, nextArg;
+    int64     value;
+    int       i, errflg, nextArg, rounds;
 
     mprCreate(argc, argv, 0);
     programName = mprGetAppName();
@@ -42,6 +43,7 @@ PUBLIC int main(int argc, char *argv[])
     username = 0;
     errflg = 0;
     password = 0;
+    rounds = 0;
     cipher = "blowfish";
 
     for (i = 1; i < argc && !errflg; i++) {
@@ -71,6 +73,14 @@ PUBLIC int main(int argc, char *argv[])
                     break;
                 }
 
+            } else if (smatch(cp, "rounds")) {
+                if (++i == argc || !snumber(argv[i]) || (value = stoi(argv[i])) <= 0 || value > MAXINT) {
+                    errflg++;
+                } else {
+                    rounds = (int) value;
+                    break;
+                }
+
             } else if (smatch(cp, "password") || smatch(cp, "p")) {
                 if (++i == argc) {
                     errflg++;
@@ -90,7 +100,7 @@ PUBLIC int main(int argc, char *argv[])
         errflg++;
     }
     if (errflg) {
-        printUsage(programName);
+        printUsage();
         exit(2);
     }
     realm = argv[nextArg++];
@@ -122,12 +132,8 @@ PUBLIC int main(int argc, char *argv[])
     if (smatch(cipher, "md5")) {
         encodedPassword = mprGetMD5(sfmt("%s:%s:%s", username, realm, password));
     } else {
-        /*
-            Blowfish (BF2). Hash the user and realm with the password so a stolen hash cannot be
-            reused for another account or realm. BF2 digests the whole string first, so the added
-            user and realm text does not crowd out the password.
-         */
-        encodedPassword = mprMakePassword(sfmt("%s:%s:%s", username, realm, password), 16, 128);
+        /* BF2 binds the full password, user and realm before hashing. Zero rounds selects the library default. */
+        encodedPassword = mprMakePassword(sfmt("%s:%s:%s", username, realm, password), 16, rounds);
     }
     /*
         mprMakePassword returns 0 when the salt fails or the input exceeds the password limit.
@@ -216,19 +222,22 @@ static char *getpass(char *prompt)
 
 #endif /* ME_WIN_LIKE */
 
-static void printUsage(cchar *programName)
+static void printUsage(void)
 {
-    mprEprintf("usage: %s [--cipher cipher] [--file path] [--password password] realm user roles...\n"
+    mprEprintf("usage: %s [--cipher cipher] [--file path] [--password password] [--rounds count] "
+               "realm user roles...\n"
                "Options:\n"
                "    --cipher md5|blowfish Select the encryption cipher. Defaults to blowfish\n"
                "    --file filename       Modify the password file\n"
                "    --password password   Use the specified password\n"
+               "    --rounds count        Blowfish hashing rounds. More rounds slow every login and every\n"
+               "                          password guess. Defaults to the build's ME_MPR_BF_ROUNDS\n"
                "\n", programName);
 }
 
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

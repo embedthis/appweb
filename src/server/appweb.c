@@ -25,6 +25,9 @@
 /********************************* Includes ***********************************/
 
 #include    "appweb.h"
+#if ME_WIN_LIKE
+    #include    <aclapi.h>
+#endif
 
 /*
     Rather than customizing this file, add your local main code here
@@ -70,10 +73,9 @@ static AppwebApp *app;
 
 /***************************** Forward Declarations ***************************/
 
-static int changeRoot(cchar *jail);
 static int checkEnvironment(cchar *program);
 static int findConfigFile(void);
-static void manageApp(AppwebApp *app, int flags);
+static void manageApp(AppwebApp *ap, int flags);
 static int createEndpoints(int argc, char **argv);
 static int loadModules(void);
 static void usageError(void);
@@ -86,7 +88,8 @@ static void usageError(void);
     static void traceHandler(void *ignored, MprSignal *sp);
     static int  unixSecurityChecks(cchar *program, cchar *home);
 #elif ME_WIN_LIKE
-    static int writePort();
+    static int  writePort();
+    static void windowsSecurityChecks(cchar *program);
 #endif
 
 /*
@@ -174,7 +177,8 @@ MAIN(appweb, int argc, char **argv, char **envp)
                 mprLog("error appweb", 0, "Cannot change directory to %s", app->home);
                 exit(4);
             }
-            app->home = sclone(".");
+            //  The default route was created before the chdir, so give it the new directory as an absolute path
+            app->home = mprGetCurrentPath();
             httpSetRouteHome(httpGetDefaultRoute(0), app->home);
 
         } else if (smatch(argp, "--log") || smatch(argp, "-l")) {
@@ -235,12 +239,10 @@ MAIN(appweb, int argc, char **argv, char **envp)
 
         } else if (smatch(argp, "-?") || scontains(argp, "-help")) {
             usageError();
-            exit(5);
 
         } else if (*argp == '-') {
             mprLog("error appweb", 0, "Unknown switch \"%s\"", argp);
             usageError();
-            exit(5);
         }
     }
     if (logSpec) {
@@ -260,7 +262,7 @@ MAIN(appweb, int argc, char **argv, char **envp)
     if (argc == argind && findConfigFile() < 0) {
         exit(7);
     }
-    if (jail && changeRoot(jail) < 0) {
+    if (jail && maChangeRoot(jail) < 0) {
         exit(8);
     }
     if (loadModules() < 0) {
@@ -268,6 +270,14 @@ MAIN(appweb, int argc, char **argv, char **envp)
     }
     if (createEndpoints(argc - argind, &argv[argind]) < 0) {
         return MPR_ERR_CANT_INITIALIZE;
+    }
+#if ME_WIN_LIKE
+    windowsSecurityChecks(argv[0]);
+#endif
+    // Root can leave a chroot, so a jail entered by --chroot or the Chroot directive requires dropping root
+    if (maIsChrooted() && HTTP->uid == 0) {
+        mprLog("error appweb", 0, "Chroot requires a UserAccount other than root");
+        exit(8);
     }
     httpSetInfoLevel(0);
     if (httpStartEndpoints() < 0) {
@@ -311,42 +321,16 @@ MAIN(appweb, int argc, char **argv, char **envp)
 }
 
 
-static void manageApp(AppwebApp *app, int flags)
+static void manageApp(AppwebApp *ap, int flags)
 {
     if (flags & MPR_MANAGE_MARK) {
-        mprMark(app->traceToggle);
-        mprMark(app->statusCheck);
-        mprMark(app->documents);
-        mprMark(app->configFile);
-        mprMark(app->pathVar);
-        mprMark(app->home);
+        mprMark(ap->traceToggle);
+        mprMark(ap->statusCheck);
+        mprMark(ap->documents);
+        mprMark(ap->configFile);
+        mprMark(ap->pathVar);
+        mprMark(ap->home);
     }
-}
-
-
-/*
-    Move into a chroot jail
- */
-static int changeRoot(cchar *jail)
-{
-#if ME_UNIX_LIKE
-    if (chdir(app->home) < 0) {
-        mprLog("error appweb", 0, "Cannot change directory to %s", app->home);
-        return MPR_ERR_CANT_INITIALIZE;
-    }
-    if (chroot(jail) < 0) {
-        if (errno == EPERM) {
-            mprLog("error appweb", 0, "Must be super user to use the --chroot option");
-        } else {
-            mprLog("error appweb", 0, "Cannot change change root directory to %s, errno %d", jail, errno);
-        }
-        return MPR_ERR_CANT_INITIALIZE;
-    } else {
-        mprLog("info appweb", 2, "Chroot to: \"%s\"", jail);
-        httpSetJail(jail);
-    }
-#endif
-    return 0;
 }
 
 
@@ -396,12 +380,10 @@ static int createEndpoints(int argc, char **argv)
 
 /*
     If ME_CONFIG_FILE is defined, use that as the base name for appweb.conf. Otherwise, use
-    "programName.conf". Search order is:
+    "programName.conf". Each location is searched for BASE.json then BASE.conf before the next:
 
-        "."/BASE
-        ME_SERVER_ROOT/BASE
-        EXE/../BASE
-        EXE/../appweb.conf
+        Server home (--home, else ME_SERVER_ROOT, which defaults to the current directory)
+        EXE/..
  */
 static int findConfigFile(void)
 {
@@ -419,35 +401,31 @@ static int findConfigFile(void)
     app->configFile = name;
 #else
     {
-        cchar   *base, **ext, *path;
+        cchar   *base, **ext, *path, *dirs[3];
         cchar   *extensions[] = { "json", "conf", 0 };
-        for (ext = extensions; *ext; ext++) {
-            base = mprReplacePathExt(name, *ext);
-            path = base;
-            if (mprPathExists(path, R_OK)) {
-                app->configFile = path;
-                break;
-            }
-            path = mprJoinPath(app->home, base);
-            if (mprPathExists(path, R_OK)) {
-                app->configFile = path;
-                break;
-            }
-            path = mprJoinPath(mprGetPathParent(mprGetAppDir()), base);
-            if (mprPathExists(path, R_OK)) {
-                app->configFile = path;
-                break;
-            }
-            path = mprJoinPath(mprGetPathParent(mprGetAppDir()), base);
-            if (mprPathExists(path, R_OK)) {
-                app->configFile = path;
-                break;
+        int     i;
+
+        /*
+            Search the current directory only when it is the server home.
+         */
+        dirs[0] = app->home;
+        dirs[1] = mprGetPathParent(mprGetAppDir());
+        dirs[2] = 0;
+        for (i = 0; dirs[i] && !app->configFile; i++) {
+            for (ext = extensions; *ext; ext++) {
+                base = mprReplacePathExt(mprGetPathBase(name), *ext);
+                path = mprJoinPath(dirs[i], base);
+                if (mprPathExists(path, R_OK)) {
+                    app->configFile = path;
+                    break;
+                }
             }
         }
         if (!app->configFile) {
             mprError("Cannot find config file %s", name);
             return MPR_ERR_CANT_OPEN;
         }
+        mprLog("info appweb", 1, "Using config file: %s", app->configFile);
     }
 #endif
     return 0;
@@ -562,15 +540,21 @@ static void statusCheck(void *ignored, MprSignal *sp)
  */
 static int unixSecurityChecks(cchar *program, cchar *home)
 {
+    int             rc;
 #if !ME_ROM
     struct stat     sbuf;
+#endif
 
+    rc = 0;
+#if !ME_ROM
     if (((stat(home, &sbuf)) != 0) || !(S_ISDIR(sbuf.st_mode))) {
         mprLog("error appweb", 0, "Cannot access directory: %s", home);
         return MPR_ERR_BAD_STATE;
     }
+    // Report all errors before refusing startup.
     if ((sbuf.st_mode & S_IWOTH) || (sbuf.st_mode & S_IWGRP)) {
-        mprLog("error appweb", 0, "Security risk %s is writeable by others", home);
+        mprLog("error appweb", 0, "Security risk, %s is writeable by others", home);
+        rc = MPR_ERR_BAD_STATE;
     }
 
     /*
@@ -583,16 +567,19 @@ static int unixSecurityChecks(cchar *program, cchar *home)
         }
         if ((sbuf.st_mode & S_IWOTH) || (sbuf.st_mode & S_IWGRP)) {
             mprLog("error appweb", 0, "Security risk, %s is writeable by others", program);
+            rc = MPR_ERR_BAD_STATE;
         }
         if (sbuf.st_mode & S_ISUID) {
             mprLog("error appweb", 0, "Security risk, %s is setuid", program);
+            rc = MPR_ERR_BAD_STATE;
         }
         if (sbuf.st_mode & S_ISGID) {
             mprLog("error appweb", 0, "Security risk, %s is setgid", program);
+            rc = MPR_ERR_BAD_STATE;
         }
     }
 #endif /* !ME_ROM */
-    return 0;
+    return rc;
 }
 #endif /* ME_UNIX_LIKE */
 
@@ -612,7 +599,9 @@ static int writePort()
         return MPR_ERR_CANT_ACCESS;
     }
     path = mprJoinPath(mprGetAppDir(), ".port.log");
-    if ((fd = open(path, O_CREAT | O_WRONLY | O_TRUNC, 0666)) < 0) {
+    //  Create a new file rather than write through whatever is already at this name
+    unlink(path);
+    if ((fd = open(path, O_CREAT | O_EXCL | O_WRONLY, 0644)) < 0) {
         mprLog("error appweb", 0, "Could not create port file %s", path);
         return MPR_ERR_CANT_CREATE;
     }
@@ -622,22 +611,106 @@ static int writePort()
     numBuf[len++] = '\n';
     if (write(fd, numBuf, len) != len) {
         mprLog("error appweb", 0, "Write to file %s failed", path);
+        close(fd);
         return MPR_ERR_CANT_WRITE;
     }
     close(fd);
     return 0;
 }
+
+
+/* Check whether unprivileged Windows accounts can replace the service program or directory. */
+static bool writableByUsers(cchar *path)
+{
+    PSECURITY_DESCRIPTOR    sd;
+    ACL                     *dacl;
+    ACCESS_ALLOWED_ACE      *ace;
+    SID_IDENTIFIER_AUTHORITY world = SECURITY_WORLD_SID_AUTHORITY, nt = SECURITY_NT_AUTHORITY;
+    PSID                    sids[3];
+    DWORD                   writeMask;
+    bool                    writable;
+    int                     i, j;
+
+    if (GetNamedSecurityInfoA(path, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &dacl, NULL, &sd) != 0) {
+        return 0;
+    }
+    if (dacl == NULL) {
+        //  A null DACL grants everyone full access
+        LocalFree(sd);
+        return 1;
+    }
+    AllocateAndInitializeSid(&world, 1, SECURITY_WORLD_RID, 0, 0, 0, 0, 0, 0, 0, &sids[0]);
+    AllocateAndInitializeSid(&nt, 1, SECURITY_AUTHENTICATED_USER_RID, 0, 0, 0, 0, 0, 0, 0, &sids[1]);
+    AllocateAndInitializeSid(&nt, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_USERS, 0, 0, 0, 0, 0, 0, &sids[2]);
+    //  On a directory, write and append data add entries, and FILE_DELETE_CHILD removes them
+    writeMask = FILE_WRITE_DATA | FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES | FILE_DELETE_CHILD | WRITE_DAC |
+        WRITE_OWNER | DELETE | GENERIC_WRITE | GENERIC_ALL;
+    writable = 0;
+    for (i = 0; i < (int) dacl->AceCount && !writable; i++) {
+        if (!GetAce(dacl, i, (void**) &ace) || ace->Header.AceType != ACCESS_ALLOWED_ACE_TYPE ||
+            (ace->Header.AceFlags & INHERIT_ONLY_ACE) || !(ace->Mask & writeMask)) {
+            continue;
+        }
+        for (j = 0; j < 3; j++) {
+            if (EqualSid((PSID) &ace->SidStart, sids[j])) {
+                writable = 1;
+                break;
+            }
+        }
+    }
+    for (j = 0; j < 3; j++) {
+        FreeSid(sids[j]);
+    }
+    LocalFree(sd);
+    return writable;
+}
+
+
+/*
+    After configuration, warn about writable executable, configuration, home, and module paths.
+ */
+static void windowsSecurityChecks(cchar *program)
+{
+    MprList *paths;
+    cchar   *home, *path;
+    char    *dir, *search, *tok;
+    int     next;
+
+    paths = mprCreateList(0, 0);
+    mprAddItem(paths, mprGetAppDir());
+    if (program && mprIsPathAbs(program)) {
+        mprAddItem(paths, program);
+    }
+    if (app->configFile) {
+        mprAddItem(paths, mprGetAbsPath(app->configFile));
+    }
+    home = httpGetDefaultRoute(0)->home;
+    mprAddItem(paths, mprGetAbsPath(home ? home : app->home));
+    search = sclone(mprGetModuleSearchPath());
+    for (dir = stok(search, MPR_SEARCH_SEP, &tok); dir; dir = stok(tok, MPR_SEARCH_SEP, &tok)) {
+        mprAddItem(paths, mprGetAbsPath(dir));
+    }
+    //  Check each distinct path once: the program directory is often also the module directory
+    for (ITERATE_ITEMS(paths, path, next)) {
+        if (mprLookupStringItem(paths, path) == next - 1 && writableByUsers(path)) {
+            mprLog("error appweb", 0, "Security risk, %s is writable by non-administrators", path);
+        }
+    }
+}
 #endif /* ME_WIN_LIKE */
 
 #if VXWORKS
 /*
-    VxWorks link resolution
+    VxWorks modules share these symbols: _exit terminates the caller; _cleanup flushes stdio.
  */
-PUBLIC int _cleanup() {
-    return 0;
+PUBLIC void _cleanup(void)
+{
+    fflush(NULL);
 }
-PUBLIC int _exit() {
-    return 0;
+
+PUBLIC void _exit(int status)
+{
+    taskDelete(taskIdSelf());
 }
 
 /*
@@ -662,7 +735,7 @@ double  __dummy_appweb_floating_point_resolution(double a, double b, int64 c, in
 #endif
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

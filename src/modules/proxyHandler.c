@@ -110,7 +110,14 @@ typedef struct ProxyRequest {
     HttpNet *proxyNet;                      // Network to the proxy backend
     HttpStream *proxyStream;                // Stream to the proxy backend for the current request
     HttpTrace *trace;                       // Default tracing configuration
+    MprList *held;                          // Client bytes held until the backend accepts an upgrade
+    int upgrade;                            // PROXY_UPGRADE_* state of a client upgrade request
 } ProxyRequest;
+
+#define PROXY_UPGRADE_NONE     0
+#define PROXY_UPGRADE_PENDING  1            // Upgrade requested, the backend has not answered
+#define PROXY_UPGRADE_SWITCHED 2
+#define PROXY_UPGRADE_REFUSED  3            // The backend did not switch, further client bytes are discarded
 
 /*
     List of proxies
@@ -153,6 +160,9 @@ static void proxyStreamOutgoing(HttpQueue *q);
 static ProxyApp *startProxyApp(Proxy *proxy, HttpStream *stream);
 static void proxyMaintenance(Proxy *proxy);
 static void releaseAppNetworks(ProxyApp *app);
+static void releaseProxyApp(Proxy *proxy, ProxyApp *app);
+static void forwardCookies(HttpStream *proxyStream, cchar *cookies, cchar *name);
+static void resolveUpgrade(ProxyRequest *req, bool switched);
 static void transferClientHeaders(HttpStream *stream, HttpStream *proxyStream);
 static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream);
 
@@ -269,6 +279,7 @@ static int proxyOpenRequest(HttpQueue *q)
     if ((proxyNet = getProxyNetwork(app, stream->dispatcher)) == 0) {
         httpError(stream, HTTP_CODE_SERVICE_UNAVAILABLE, "Cannot allocate network for proxy %s",
                   stream->rx->route->pattern);
+        releaseProxyApp(proxy, app);
         return MPR_ERR_CANT_OPEN;
     }
     proxyNet->trace = proxy->trace;
@@ -280,6 +291,7 @@ static int proxyOpenRequest(HttpQueue *q)
         httpError(stream, HTTP_CODE_SERVICE_UNAVAILABLE, "Cannot allocate proxy request for proxy %s",
                   stream->rx->route->pattern);
         httpDestroyNet(proxyNet);
+        releaseProxyApp(proxy, app);
         return MPR_ERR_CANT_OPEN;
     }
     q->queueData = q->pair->queueData = req;
@@ -293,20 +305,24 @@ static int proxyOpenRequest(HttpQueue *q)
 
 /*
     Release a proxy app and request when the request completes. This closes the connection to the Proxy app.
-    It will destroy the Proxy app on errors or if the number of requests exceeds the maxRequests limit.
  */
 static void proxyCloseRequest(HttpQueue *q)
 {
-    Proxy        *proxy;
     ProxyRequest *req;
-    ProxyApp     *app;
-    cchar        *msg;
 
     req = q->queueData;
-    proxy = req->proxy;
-    app = req->app;
+    mprRemoveItem(req->app->requests, req);
+    releaseProxyApp(req->proxy, req->app);
+}
 
-    mprRemoveItem(app->requests, req);
+
+/*
+    Release the app even after a failed open; the pipeline closes only successful opens. Retire failed, exhausted or
+    exited apps; otherwise return them to the idle list.
+ */
+static void releaseProxyApp(Proxy *proxy, ProxyApp *app)
+{
+    cchar *msg;
 
     lock(proxy);
     if (--app->inUse <= 0) {
@@ -323,7 +339,7 @@ static void proxyCloseRequest(HttpQueue *q)
                 killProxyApp(app);
             }
         }
-        if (app->destroy) {
+        if (app->destroy || app->destroyed) {
             closeAppNetworks(app);
         } else {
             app->lastActive = mprGetTicks();
@@ -355,6 +371,9 @@ static void proxyStartRequest(HttpQueue *q)
         req->proxyStream->upgraded = 1;
         rx->eof = 0;
         rx->remainingContent = HTTP_UNLIMITED;
+        //  Client bytes after the request headers belong to the tunnel only once the backend answers 101
+        req->upgrade = PROXY_UPGRADE_PENDING;
+        req->held = mprCreateList(0, 0);
     }
 }
 
@@ -546,7 +565,7 @@ static void proxyBackNotifier(HttpStream *proxyStream, int event, int arg)
         break;
 
     case HTTP_EVENT_DONE:
-        httpLog(proxyStream->trace, "tx.proxy", "result", "msg:Request complete");
+        httpLogStream(proxyStream, "tx.proxy", "result", "msg:Request complete");
         if (proxyStream->error) {
             proxyAbortRequest(req);
         }
@@ -561,6 +580,8 @@ static void proxyBackNotifier(HttpStream *proxyStream, int event, int arg)
         break;
 
     case HTTP_EVENT_ERROR:
+        // Send an error when the backend response is rejected.
+        proxyAbortRequest(req);
         break;
 
     case HTTP_EVENT_STATE:
@@ -656,6 +677,13 @@ static void proxyClientIncoming(HttpQueue *q, HttpPacket *packet)
         } else {
             httpFinalizeOutput(proxyStream);
         }
+    } else if (req->upgrade == PROXY_UPGRADE_REFUSED) {
+        return;
+
+    } else if (req->upgrade == PROXY_UPGRADE_PENDING) {
+        mprAddItem(req->held, packet);
+        httpSuspendQueue(q);
+
     } else {
         httpPutPacket(proxyStream->writeq, packet);
         /*
@@ -789,23 +817,23 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
     assert(stream);
     assert(proxyStream);
 
-    httpLog(proxyStream->trace, "rx.proxy", "result", "msg:Received headers from proxy");
+    httpLogStream(proxyStream, "rx.proxy", "result", "msg:Received headers from proxy");
 
+    /*
+        Hop-by-hop fields describe the backend connection, not the response. Upgrade is kept for a 101.
+        Keep Connection: Close.
+     */
     for (ITERATE_KEYS(proxyStream->rx->headers, kp)) {
+        if (httpIsHopByHopHeader(kp->key) &&
+            !(scaselessmatch(kp->key, "Upgrade") && proxyStream->rx->status == HTTP_CODE_SWITCHING)) {
+            continue;
+        }
         httpSetHeaderString(stream, kp->key, kp->data);
     }
-    /*
-        Remove Connection: Keep-Alive. Keep Connection: Close.
-     */
-    if ((hval = httpGetTxHeader(stream, "Connection")) != 0) {
-        httpRemoveHeader(stream, "Connection");
-        if (scaselesscontains(hval, "Close")) {
-            httpSetHeaderString(stream, "Connection", "Close");
-        }
+    if ((hval = mprLookupKey(proxyStream->rx->headers, "Connection")) != 0 && scaselesscontains(hval, "Close")) {
+        httpSetHeaderString(stream, "Connection", "Close");
     }
-    httpRemoveHeader(stream, "Keep-Alive");
     httpRemoveHeader(stream, "Content-Length");
-    httpRemoveHeader(stream, "Transfer-Encoding");
     httpSetHeaderString(stream, "X-Proxied", "true");
 
     /*
@@ -866,6 +894,8 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
         httpSetHeaderString(stream, "Location", location);
     }
     httpSetStatus(stream, proxyStream->rx->status);
+    resolveUpgrade(proxyStream->writeq->queueData, proxyStream->rx->status == HTTP_CODE_SWITCHING);
+
     if (proxyStream->rx->status == HTTP_CODE_SWITCHING) {
         proxyStream->rx->remainingContent = HTTP_UNLIMITED;
         stream->keepAliveCount = 0;
@@ -877,34 +907,88 @@ static void transferProxyHeaders(HttpStream *proxyStream, HttpStream *stream)
 }
 
 
+/* Forward held client bytes only after a 101 response. Otherwise discard them and close after the response. */
+static void resolveUpgrade(ProxyRequest *req, bool switched)
+{
+    HttpPacket *packet;
+    HttpStream *stream;
+    int        next;
+
+    if (!req || req->upgrade != PROXY_UPGRADE_PENDING) {
+        return;
+    }
+    stream = req->stream;
+    if (switched) {
+        req->upgrade = PROXY_UPGRADE_SWITCHED;
+        for (ITERATE_ITEMS(req->held, packet, next)) {
+            httpPutPacket(req->proxyStream->writeq, packet);
+        }
+    } else {
+        req->upgrade = PROXY_UPGRADE_REFUSED;
+        stream->upgraded = 0;
+        stream->keepAliveCount = 0;
+        stream->rx->remainingContent = 0;
+        httpFinalizeInput(stream);
+        httpFinalizeOutput(req->proxyStream);
+    }
+    req->held = 0;
+    httpResumeQueue(stream->readq, 0);
+}
+
+
 /*
     Transfer request headers from the client to the proxy
  */
 static void transferClientHeaders(HttpStream *stream, HttpStream *proxyStream)
 {
-    MprKey   *kp;
-    HttpHost *host;
-    cchar    *hval;
+    MprKey    *kp;
+    HttpHost  *host;
+    HttpRoute *route;
+    cchar     *hval;
+    bool      authenticated;
 
     assert(stream);
     assert(proxyStream);
 
     host = stream->host;
+    route = stream->rx->route;
 
+    /*
+        A credential Appweb has consumed to authenticate this route is not passed on. Hop-by-hop fields describe
+        the client connection. Upgrade and Connection: Upgrade are kept for WebSockets.
+     */
+    authenticated = route->auth && route->auth->type;
     for (ITERATE_KEYS(stream->rx->headers, kp)) {
+        if ((httpIsHopByHopHeader(kp->key) && !scaselessmatch(kp->key, "Upgrade")) ||
+            (authenticated && (scaselessmatch(kp->key, "Authorization") || scaselessmatch(kp->key, "Cookie")))) {
+            continue;
+        }
         httpSetHeaderString(proxyStream, kp->key, kp->data);
     }
-    /*
-        Keep Connection: Upgrade
-     */
-    if ((hval = httpGetTxHeader(proxyStream, "Connection")) != 0) {
-        httpRemoveHeader(proxyStream, "Connection");
-        if (scaselesscontains(hval, "Upgrade")) {
-            httpSetHeaderString(proxyStream, "Connection", "Upgrade");
-        }
+    if ((hval = mprLookupKey(stream->rx->headers, "Connection")) != 0 && scaselesscontains(hval, "Upgrade")) {
+        httpSetHeaderString(proxyStream, "Connection", "Upgrade");
+    }
+    if (authenticated) {
+        forwardCookies(proxyStream, mprLookupKey(stream->rx->headers, "Cookie"),
+                       route->cookie ? route->cookie : HTTP_SESSION_COOKIE);
     }
     httpRemoveHeader(proxyStream, "Content-Length");
-    httpRemoveHeader(proxyStream, "Transfer-Encoding");
+
+    /*
+        Replace client-supplied forwarding headers. Append the peer to X-Forwarded-For; only the last hop is
+        trustworthy.
+     */
+    httpRemoveHeader(proxyStream, "Forwarded");
+    httpRemoveHeader(proxyStream, "X-Canonical");
+    httpRemoveHeader(proxyStream, "X-Forwarded-Host");
+    httpRemoveHeader(proxyStream, "X-Hostname");
+    if ((hval = httpGetTxHeader(proxyStream, "X-Forwarded-For")) != 0) {
+        httpSetHeader(proxyStream, "X-Forwarded-For", "%s, %s", hval, stream->net->ip);
+    } else {
+        httpSetHeaderString(proxyStream, "X-Forwarded-For", stream->net->ip);
+    }
+    httpSetHeaderString(proxyStream, "X-Forwarded-Proto", stream->secure ? "https" : "http");
+    httpSetHeaderString(proxyStream, "X-Real-IP", stream->net->ip);
     httpSetHeaderString(proxyStream, "X-Client", stream->net->ip);
     httpSetHeaderString(stream, "X-Proxied", "true");
 
@@ -913,6 +997,32 @@ static void transferClientHeaders(HttpStream *stream, HttpStream *proxyStream)
                             httpUriToString(stream->rx->route->canonical, HTTP_COMPLETE_URI));
     } else if (host->hostname) {
         httpSetHeaderString(proxyStream, "X-Hostname", host->hostname);
+    }
+}
+
+static void forwardCookies(HttpStream *proxyStream, cchar *cookies, cchar *name)
+{
+    MprBuf *buf;
+    char   *cookie, *tok;
+    ssize  len;
+
+    if (!cookies) {
+        return;
+    }
+    buf = mprCreateBuf(0, 0);
+    len = slen(name);
+    for (cookie = stok(sclone(cookies), ";", &tok); cookie; cookie = stok(NULL, ";", &tok)) {
+        cookie = strim(cookie, " \t", MPR_TRIM_BOTH);
+        if (*cookie == '\0' || (sncmp(cookie, name, len) == 0 && cookie[len] == '=')) {
+            continue;
+        }
+        if (mprGetBufLength(buf) > 0) {
+            mprPutStringToBuf(buf, "; ");
+        }
+        mprPutStringToBuf(buf, cookie);
+    }
+    if (mprGetBufLength(buf) > 0) {
+        httpSetHeaderString(proxyStream, "Cookie", mprBufToString(buf));
     }
 }
 
@@ -1012,6 +1122,9 @@ static ProxyApp *getProxyApp(Proxy *proxy, HttpStream *stream)
                 bestApp = 0;
                 bestCount = MAXINT;
                 for (ITERATE_ITEMS(proxy->apps, app, next)) {
+                    if (app->destroy || app->destroyed) {
+                        continue;
+                    }
                     count = mprGetListLength(app->requests);
                     if (count < proxy->multiplex) {
                         if (count < bestCount) {
@@ -1130,12 +1243,15 @@ static ProxyApp *startProxyApp(Proxy *proxy, HttpStream *stream)
 {
     ProxyApp *app;
     cchar    **argv, *command;
-    int      i;
+    int      execErrno;
 
     app = allocProxyApp(proxy);
 
     if (proxy->launch) {
-        mprMakeArgv(proxy->launch, &argv, 0);
+        if (mprMakeArgv(proxy->launch, &argv, 0) < 1) {
+            mprLog("error proxy", 0, "Empty ProxyConnect launch command for %s", proxy->name);
+            return NULL;
+        }
         command = argv[0];
 
         httpLog(app->trace, "proxy", "context", "msg:Start Proxy app, command:%s", command);
@@ -1143,25 +1259,19 @@ static ProxyApp *startProxyApp(Proxy *proxy, HttpStream *stream)
         if (!app->signal) {
             app->signal = mprAddSignalHandler(SIGCHLD, proxyDeath, app, NULL, MPR_SIGNAL_BEFORE);
         }
-        if ((app->pid = fork()) < 0) {
-            fprintf(stderr, "Fork failed for Proxy");
-            return NULL;
-
-        } else if (app->pid == 0) {
-            /*
-                CHILD: When debugging, keep stdout/stderr open so printf/fprintf from the Proxy app will show in the
-                   console.
-             */
-            for (i = PROXY_DEBUG ? 3 : 1; i < 128; i++) {
-                close(i);
-            }
-            if (execve(command, (char**) argv, environ) < 0) {
-                printf("Cannot exec proxy app: %s\n", command);
+        if ((app->pid = maLaunchProgram(command, argv, (cchar**) environ, -1, PROXY_DEBUG, &execErrno)) < 0) {
+            app->pid = 0;
+            mprRemoveSignalHandler(app->signal);
+            app->signal = 0;
+            if (execErrno) {
+                mprLog("error proxy", 0, "Cannot execute proxy program \"%s\": %s. Check the ProxyConnect "
+                       "launch path exists and is executable.", command, strerror(execErrno));
+            } else {
+                mprLog("error proxy", 0, "Cannot start proxy program \"%s\"", command);
             }
             return NULL;
-        } else {
-            httpLog(app->trace, "proxy", "context", "msg:Proxy started, command:%s, pid:%d", command, app->pid);
         }
+        httpLog(app->trace, "proxy", "context", "msg:Proxy started, command:%s, pid:%d", command, app->pid);
     }
     return app;
 }
@@ -1182,7 +1292,7 @@ static void proxyDeath(ProxyApp *app, MprSignal *sp)
     proxy = app->proxy;
 
     lock(proxy);
-    if (app->pid && waitpid(app->pid, &status, WNOHANG) == app->pid) {
+    if (app->pid > 0 && waitpid(app->pid, &status, WNOHANG) == app->pid) {
         httpLog(app->trace, "proxy", WEXITSTATUS(status) == 0 ? "context" : "error",
                 "msg:Proxy exited, pid:%d, status:%d", app->pid, WEXITSTATUS(status));
         if (app->signal) {
@@ -1224,12 +1334,18 @@ static void proxyAbortRequest(ProxyRequest *req)
 {
     HttpStream *stream;
 
+    if (mprLookupItem(req->app->requests, req) < 0) {
+        //  Closed before a reap event ran, so the stream may now serve another request
+        return;
+    }
     stream = req->stream;
     if (stream->state <= HTTP_STATE_BEGIN || stream->rx->route == NULL) {
         // Request already complete and stream has been recycled (prepared for next request)
         return;
     }
-    httpError(stream, HTTP_CLOSE | HTTP_CODE_INTERNAL_SERVER_ERROR, "Proxy comms error");
+    httpError(stream, HTTP_CLOSE | HTTP_CODE_BAD_GATEWAY, "Proxy comms error");
+    // Send now because proxy events do not service the client network.
+    httpServiceNet(stream->net);
 }
 
 
@@ -1274,7 +1390,7 @@ static HttpStream *proxyCreateStream(ProxyRequest *req)
     HttpStream *proxyStream, *stream;
     HttpRx     *rx;
     Proxy      *proxy;
-    cchar      *prefix, *uri;
+    cchar      *path;
 
     stream = req->stream;
     rx = stream->rx;
@@ -1298,9 +1414,11 @@ static HttpStream *proxyCreateStream(ProxyRequest *req)
     proxyStream->writeq->queueData = proxyStream->readq->queueData = req;
     proxyStream->rx->route = stream->http->clientRoute;
 
-    prefix = rx->route->prefix;
-    uri = (prefix && sstarts(rx->uri, prefix)) ? &rx->uri[slen(prefix)] : rx->uri;
-    proxyStream->tx->parsedUri = httpCreateUri(uri, 0);
+    /*
+        Forward the authorized, normalized path. Re-encode URI delimiters, including ? and #.
+     */
+    path = sreplace(sreplace(mprUriEncode(rx->pathInfo, MPR_ENCODE_URI), "?", "%3F"), "#", "%23");
+    proxyStream->tx->parsedUri = httpCreateUri(path, 0);
     proxyStream->tx->parsedUri->query = rx->parsedUri->query;
     proxyStream->tx->method = stream->rx->method;
     proxyStream->limits->inactivityTimeout = proxy->proxyTimeout;
@@ -1314,6 +1432,7 @@ static void manageProxyRequest(ProxyRequest *req, int flags)
 {
     if (flags & MPR_MANAGE_MARK) {
         mprMark(req->app);
+        mprMark(req->held);
         mprMark(req->proxy);
         mprMark(req->proxyNet);
         mprMark(req->proxyStream);
@@ -1521,7 +1640,7 @@ static void proxyInfo(void *ignored, MprSignal *sp)
 #endif /* ME_COM_PROXY */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

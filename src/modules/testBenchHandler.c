@@ -92,10 +92,10 @@ static void uploadReportAction(HttpStream *stream)
     httpSetHeaderString(stream, "Content-Type", "text/plain");
 
     for (ITERATE_ITEMS(stream->rx->files, file, index)) {
-        httpWrite(stream->writeq, "FILE %d name=%s client=%s size=%zd type=%s\n",
+        httpWrite(stream->writeq, "FILE %d name=%s client=%s size=%lld type=%s\n",
                   index, file->name ? file->name : "",
                   file->clientFilename ? file->clientFilename : "",
-                  file->size, file->contentType ? file->contentType : "");
+                  (int64) file->size, file->contentType ? file->contentType : "");
     }
     if ((params = httpGetParams(stream)) != 0) {
         for (ITERATE_JSON(params, param, index)) {
@@ -103,6 +103,22 @@ static void uploadReportAction(HttpStream *stream)
         }
     }
     httpWrite(stream->writeq, "FILES %d\n", stream->rx->files ? mprGetListLength(stream->rx->files) : 0);
+    httpFinalize(stream);
+}
+
+
+/*
+    Read the parameter name from a header so the test does not depend on parameter parsing.
+ */
+static void paramAction(HttpStream *stream)
+{
+    cchar *name, *value;
+
+    httpSetStatus(stream, 200);
+    httpSetHeaderString(stream, "Content-Type", "text/plain");
+    name = httpGetHeader(stream, "x-param");
+    value = name ? httpGetParam(stream, name, 0) : 0;
+    httpWrite(stream->writeq, "VALUE=%s\n", value ? value : "(null)");
     httpFinalize(stream);
 }
 
@@ -229,6 +245,64 @@ static void notifierLeaksAction(HttpStream *stream)
 
 
 /*
+    Complete requests from an OS thread via httpCreateEvent. Allocate work outside the collector;
+    foreignPending detects missed cleanup, including after client disconnects.
+ */
+typedef struct ForeignWork {
+    uint64      seqno;
+    int         delay;
+} ForeignWork;
+
+static volatile int foreignPending;
+
+static void foreignComplete(HttpStream *stream, void *work)
+{
+    free(work);
+    mprAtomicAdd(&foreignPending, -1);
+    if (stream) {
+        httpSetStatus(stream, 200);
+        httpSetHeaderString(stream, "Content-Type", "text/plain");
+        httpWrite(stream->writeq, "FOREIGN %lld\n", (int64) stream->seqno);
+        httpFinalize(stream);
+    }
+}
+
+static void *foreignThread(ForeignWork *work)
+{
+    if (work->delay > 0) {
+        mprNap(work->delay);
+    }
+    if (httpCreateEvent(work->seqno, foreignComplete, work) < 0) {
+        free(work);
+        mprAtomicAdd(&foreignPending, -1);
+    }
+    return 0;
+}
+
+static void foreignAction(HttpStream *stream)
+{
+    ForeignWork *work;
+
+    work = malloc(sizeof(ForeignWork));
+    work->seqno = stream->seqno;
+    work->delay = (int) min(stoi(httpGetParam(stream, "delay", "0")), 5000);
+    mprAtomicAdd(&foreignPending, 1);
+    if (mprStartOsThread("foreign", foreignThread, work, NULL) < 0) {
+        free(work);
+        mprAtomicAdd(&foreignPending, -1);
+        httpError(stream, HTTP_CODE_INTERNAL_SERVER_ERROR, "Cannot start foreign thread");
+    }
+}
+
+static void foreignPendingAction(HttpStream *stream)
+{
+    httpSetStatus(stream, 200);
+    httpSetHeaderString(stream, "Content-Type", "text/plain");
+    httpWrite(stream->writeq, "PENDING %d\n", foreignPending);
+    httpFinalize(stream);
+}
+
+/*
     Module initialization - called from config.c maLoadModules()
     Registers action callbacks via httpDefineAction
  */
@@ -251,17 +325,20 @@ PUBLIC int httpTestBenchInit(Http *http, MprModule *module)
      */
     httpDefineAction("/action/stream", streamAction);
     httpDefineAction("/action/upload", uploadReportAction);
+    httpDefineAction("/action/param", paramAction);
     httpDefineAction("/wsecho", testBenchWs);
     httpDefineAction("/wslimit", testBenchWs);
     httpDefineAction("/action/notifier-probe", notifierProbeAction);
     httpDefineAction("/action/notifier-leaks", notifierLeaksAction);
+    httpDefineAction("/action/foreign", foreignAction);
+    httpDefineAction("/action/foreign-pending", foreignPendingAction);
     return 0;
 }
 
 #endif // ME_COM_TEST || ME_BENCHMARK
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

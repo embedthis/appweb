@@ -134,30 +134,17 @@ extern "C" {
 #endif
 
 /*
-    ME_COM_SSL: Enable SSL/TLS secure communications support.
-    When enabled, includes SSL/TLS encryption capabilities for HTTPS connections.
-    Requires either OpenSSL or MbedTLS cryptographic library.
- */
-#ifndef ME_COM_SSL
-    #define ME_COM_SSL 0                /**< Enable SSL/TLS secure communications */
-#endif
-
-/*
-    ME_COM_TEST: Enable test handler module for development and testing.
-    When enabled, includes the test handler which provides debugging
-    and testing utilities. Should be disabled in production builds.
+    ME_COM_TEST: Enable test handlers only in the test build configuration.
  */
 #ifndef ME_COM_TEST
-    #define ME_COM_TEST 1               /**< Enable test handler module */
+    #define ME_COM_TEST 0               /**< Enable test handler module */
 #endif
 
 /*
-    ME_COM_TEST_WEBSOCKETS: Enable WebSocket test functionality.
-    When enabled, includes WebSocket testing capabilities in the test handler.
-    Used for development and testing WebSocket protocol support.
+    ME_COM_TEST_WEBSOCKETS: Enable the WebSocket test handler only in test builds.
  */
 #ifndef ME_COM_TEST_WEBSOCKETS
-    #define ME_COM_TEST_WEBSOCKETS 1    /**< Enable WebSocket test functionality */
+    #define ME_COM_TEST_WEBSOCKETS 0    /**< Enable WebSocket test functionality */
 #endif
 
 /******************************************************************************/
@@ -203,6 +190,7 @@ typedef struct MaState {
     char *data;                         /**< Config data (managed) */
     int lineNumber;                     /**< Current line number */
     int enabled;                        /**< True if the current block is enabled */
+    int conditional;                    /**< True if this state was opened by an if directive */
     int flags;                          /**< Parsing flags */
     struct MaState *prev;               /**< Previous (inherited) state */
     struct MaState *top;                /**< Top level state */
@@ -234,6 +222,24 @@ typedef int (MaDirective)(MaState *state, cchar *key, cchar *value);
 PUBLIC void maAddDirective(cchar *directive, MaDirective proc);
 
 /**
+    Change the root directory of the process
+    @description Calls chroot() and then changes to the new root, so the working directory stays inside the jail.
+        This is the single entry point for both the --chroot option and the Chroot directive. Root can leave a
+        chroot, so a server that has changed root must not continue to serve as root (see #maIsChrooted).
+    @param dir Directory to make the new root
+    @return Zero if successful, otherwise a negative MPR error code.
+    @stability Internal
+ */
+PUBLIC int maChangeRoot(cchar *dir);
+
+/**
+    Test if the process has changed its root directory
+    @return True if #maChangeRoot has succeeded.
+    @stability Internal
+ */
+PUBLIC bool maIsChrooted(void);
+
+/**
     Configure a web server
     @description This will configure a web server based on either a configuration file or using the supplied
         IP address and port. Parameters provided will override corresponding values in the configuration file.
@@ -260,6 +266,25 @@ PUBLIC int maConfigureServer(cchar *configFile, cchar *home, cchar *documents, c
     @stability Stable
  */
 PUBLIC char *maGetNextArg(char *s, char **tok);
+
+#if ME_UNIX_LIKE && (ME_COM_FAST || ME_COM_PROXY)
+/**
+    Launch a backend program
+    @description Fork and exec a program for the FastCGI or proxy handler and wait until the exec has either
+        succeeded or failed. The child closes all descriptors above stdio. If the exec fails, the child exits
+        without returning into the caller and is reaped before this call returns. Otherwise the caller is
+        responsible for reaping the child.
+    @param command Path of the program to execute
+    @param argv NULL terminated argument vector, argv[0] being the program name
+    @param envp NULL terminated environment vector. May be NULL for an empty environment.
+    @param stdinFd Descriptor to give the child as its standard input. Set to -1 to inherit the server's.
+    @param keepStdio True to keep the server's standard output and error open in the child for debugging
+    @param execErrno Set to the errno of a failed exec, otherwise zero
+    @return The child process ID. Otherwise a negative MPR error code, with execErrno set if the exec failed.
+    @stability Internal
+ */
+PUBLIC int maLaunchProgram(cchar *command, cchar **argv, cchar **envp, int stdinFd, bool keepStdio, int *execErrno);
+#endif
 
 /**
     Load an appweb module
@@ -384,6 +409,26 @@ PUBLIC int maRunWebServer(cchar *configFile);
     @stability Internal
  */
 PUBLIC int maWriteAuthFile(HttpAuth *auth, char *path);
+
+#if ME_COM_CGI || ME_COM_FAST
+/**
+    Parse the response headers of a CGI or FastCGI program
+    @description Parse an optional HTTP status line and header block from the start of the program's output and
+        apply them to the response. Output that begins with neither is body only and is left untouched. On success,
+        the buffer start is advanced past the headers.
+    @param stream Stream receiving the response
+    @param buf Buffer holding the program's output
+    @param label Gateway name used in error messages
+    @param eof True if the program has finished writing, so an unterminated header block is complete
+    @param location Set to the Location header value. If NULL, a Location header redirects immediately.
+    @param declaredLength Set to the Content-Length header value
+    @return True if the headers were parsed or there are none. False if more output is needed or the response is
+        invalid, in which case stream->error is set.
+    @stability Internal
+ */
+PUBLIC bool maParseCgiResponse(HttpStream *stream, MprBuf *buf, cchar *label, bool eof, cchar **location,
+                               MprOff *declaredLength);
+#endif
 
 /*
     Internal module initialization functions
@@ -511,7 +556,7 @@ PUBLIC int maTraceLogDirective(MaState *state, HttpTrace *trace, cchar *key, cch
 #endif /* _h_APPWEB */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

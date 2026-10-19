@@ -465,6 +465,7 @@ static void shutdownAppweb()
 static int getAppwebPort()
 {
     char    *path, portBuf[32];
+    ssize   nbytes;
     int     fd;
 
     path = ".port.log";
@@ -472,12 +473,13 @@ static int getAppwebPort()
         mprLog("error", 0, "Could not read port file %s", path);
         return -1;
     }
-    if (read(fd, portBuf, sizeof(portBuf)) < 0) {
+    if ((nbytes = read(fd, portBuf, sizeof(portBuf) - 1)) < 0) {
         mprLog("error", 0, "Read from port file %s failed", path);
         close(fd);
         return 80;
     }
     close(fd);
+    portBuf[nbytes] = '\0';
     return atoi(portBuf);
 }
 
@@ -657,7 +659,7 @@ static uint queryService()
 #endif /* WIN */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

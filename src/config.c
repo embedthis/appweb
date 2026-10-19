@@ -11,12 +11,13 @@
 /********************************** Locals *************************************/
 
 static MprHash *directives;
+static bool    chrooted;
 
 /***************************** Forward Declarations ****************************/
 
 static int addCondition(MaState *state, cchar *name, cchar *condition, int flags);
 static int addUpdate(MaState *state, cchar *name, cchar *details, int flags);
-static bool conditionalDefinition(MaState *state, cchar *key);
+static int conditionalDefinition(MaState *state, cchar *key);
 static int configError(MaState *state, cchar *key);
 static MaState *createState(void);
 static char *getDirective(char *line, char **valuep);
@@ -207,10 +208,14 @@ PUBLIC int maParseFile(MaState *state, cchar *path)
 static int parseFileInner(MaState *state, cchar *path)
 {
     MaDirective *directive;
+    MaState     *floor;
     char        *tok, *key, *line, *value;
 
     assert(state);
     assert(path && *path);
+
+    // A closing directive may not pop below the state this file was opened with
+    floor = state;
 
     if (openConfig(state, path) < 0) {
         return MPR_ERR_CANT_OPEN;
@@ -226,14 +231,10 @@ static int parseFileInner(MaState *state, cchar *path)
         }
         if (!state->enabled) {
             /*
-                Skip the directives in a disabled block, but never the <if> and </if> that delimit a
-                nested one. </if> always pops a state, so skipping the open without skipping the close
-                pops the enclosing block instead. The parser then continues with the wrong state: the
-                directives after the block attach to a route that has already been finalized, and the
-                rest of the file is silently discarded, including any authorization it defines. A
-                nested <if> still evaluates to disabled here, because maPushState inherits enabled.
+                Process conditional directives even in disabled blocks to keep the state stack balanced.
              */
-            if (sncaselesscmp(key, "<if", 3) != 0 && sncaselesscmp(key, "</if", 4) != 0) {
+            if (sncaselesscmp(key, "<if", 3) != 0 && sncaselesscmp(key, "</if", 4) != 0 &&
+                sncaselesscmp(key, "<else", 5) != 0) {
                 continue;
             }
         }
@@ -249,14 +250,22 @@ static int parseFileInner(MaState *state, cchar *path)
                    state->key, state->lineNumber, state->filename);
             return MPR_ERR_BAD_SYNTAX;
         }
+        if (state->top->current == floor->prev) {
+            mprLog("error appweb config", 0, "Too many closing blocks. At line %d in %s", state->lineNumber,
+                   state->filename);
+            return MPR_ERR_BAD_SYNTAX;
+        }
         state = state->top->current;
     }
     /* EOF */
     if (state->prev && state->file == state->prev->file) {
+        //  An unclosed block is never finalized, so the route and the authentication it configures would be dropped
         mprLog("error appweb config", 0, "Unclosed directives in %s", state->filename);
         while (state->prev && state->file == state->prev->file) {
             state = state->prev;
         }
+        mprCloseFile(state->file);
+        return MPR_ERR_BAD_SYNTAX;
     }
     mprCloseFile(state->file);
     return 0;
@@ -420,7 +429,7 @@ static int addTypeDirective(MaState *state, cchar *key, cchar *value)
     if (!maTokenize(state, value, "%S %S", &mimeType, &ext)) {
         return MPR_ERR_BAD_SYNTAX;
     }
-    mprAddMime(state->route->mimeTypes, mimeType, ext);
+    mprAddMime(state->route->mimeTypes, ext, mimeType);
     return 0;
 }
 
@@ -508,6 +517,13 @@ static int authTypeDirective(MaState *state, cchar *key, cchar *value)
     if (httpSetAuthType(state->auth, type, details) < 0) {
         return MPR_ERR_BAD_SYNTAX;
     }
+#if !ME_COM_SSL
+    if (smatch(type, "basic") || smatch(type, "form")) {
+        mprLog("warn appweb config", 0,
+               "AuthType %s sends passwords in clear text and this build has no TLS. At line %d in %s",
+               type, state->lineNumber, state->filename);
+    }
+#endif
     if (!smatch(type, "none")) {
         if (realm) {
             httpSetAuthRealm(state->auth, strim(realm, "\"'", MPR_TRIM_BOTH));
@@ -592,6 +608,7 @@ static int autoFinalize(MaState *state, cchar *key, cchar *value)
  */
 static int cacheDirective(MaState *state, cchar *key, cchar *value)
 {
+#if ME_HTTP_CACHE
     MprTicks lifespan, clientLifespan, serverLifespan;
     char     *option, *ovalue, *tok;
     char     *methods, *extensions, *types, *uris;
@@ -650,11 +667,13 @@ static int cacheDirective(MaState *state, cchar *key, cchar *value)
     if (lifespan > 0 && !uris && !extensions && !types && !methods) {
         state->route->lifespan = lifespan;
     } else {
-#if ME_HTTP_CACHE
         httpAddCache(state->route, methods, uris, extensions, types, clientLifespan, serverLifespan, flags);
-#endif
     }
     return 0;
+#else
+    mprLog("error appweb config", 0, "Cache directive not built in binary");
+    return MPR_ERR_BAD_SYNTAX;
+#endif
 }
 
 
@@ -664,6 +683,70 @@ static int cacheDirective(MaState *state, cchar *key, cchar *value)
 static int canonicalNameDirective(MaState *state, cchar *key, cchar *value)
 {
     return httpSetRouteCanonicalName(state->route, value);
+}
+
+
+/*
+    CgiEscape on|off
+    Escape shell metacharacters in CGI and FastCGI environment variables
+ */
+static int cgiEscapeDirective(MaState *state, cchar *key, cchar *value)
+{
+    bool on;
+
+    if (!maTokenize(state, value, "%B", &on)) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    httpSetRouteEnvEscape(state->route, on);
+    return 0;
+}
+
+
+/*
+    CgiPrefix prefix
+    Prefix for the CGI and FastCGI environment variables made from request parameters
+ */
+static int cgiPrefixDirective(MaState *state, cchar *key, cchar *value)
+{
+    cchar *prefix;
+
+    if (!maTokenize(state, value, "%S", &prefix)) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    httpSetRouteEnvPrefix(state->route, prefix);
+    return 0;
+}
+
+
+PUBLIC int maChangeRoot(cchar *dir)
+{
+#if ME_UNIX_LIKE
+    if (chroot(dir) < 0) {
+        if (errno == EPERM) {
+            mprLog("error appweb", 0, "Must be super user to use chroot");
+        } else {
+            mprLog("error appweb", 0, "Cannot change root directory to %s, errno %d", dir, errno);
+        }
+        return MPR_ERR_CANT_ACCESS;
+    }
+    //  Keep the working directory inside the jail
+    if (chdir("/") < 0) {
+        mprLog("error appweb", 0, "Cannot change directory to the root of %s, errno %d", dir, errno);
+        return MPR_ERR_CANT_ACCESS;
+    }
+    chrooted = 1;
+    mprLog("info appweb", 2, "Chroot to: \"%s\"", dir);
+    return 0;
+#else
+    mprLog("error appweb", 0, "Chroot is not supported on this operating system");
+    return MPR_ERR_BAD_STATE;
+#endif
+}
+
+
+PUBLIC bool maIsChrooted(void)
+{
+    return chrooted;
 }
 
 
@@ -692,12 +775,7 @@ static int chrootDirective(MaState *state, cchar *key, cchar *value)
         /* Not running a web server */
         mprLog("info appweb config", 2, "Change directory to: \"%s\"", home);
     } else {
-        if (chroot(home) < 0) {
-            if (errno == EPERM) {
-                mprLog("error appweb config", 0, "Must be super user to use chroot");
-            } else {
-                mprLog("error appweb config", 0, "Cannot change change root directory to %s, errno %d", home, errno);
-            }
+        if (maChangeRoot(home) < 0) {
             return MPR_ERR_BAD_SYNTAX;
         }
         /*
@@ -712,8 +790,6 @@ static int chrootDirective(MaState *state, cchar *key, cchar *value)
                 kp->data = mprGetAbsPath(mprGetRelPath(kp->data, oldConfigDir));
             }
         }
-        httpSetJail(home);
-        mprLog("info appweb config", 2, "Chroot to: \"%s\"", home);
     }
     return 0;
 #else
@@ -728,6 +804,11 @@ static int chrootDirective(MaState *state, cchar *key, cchar *value)
  */
 static int closeDirective(MaState *state, cchar *key, cchar *value)
 {
+    if (state->prev == 0) {
+        mprLog("error appweb config", 0, "Too many closing blocks. At line %d in %s", state->lineNumber,
+               state->filename);
+        return MPR_ERR_BAD_SYNTAX;
+    }
     /*
         The order of route finalization will be from the inside. Route finalization causes the route to be added
         to the enclosing host. This ensures that nested routes are defined BEFORE outer/enclosing routes.
@@ -737,6 +818,22 @@ static int closeDirective(MaState *state, cchar *key, cchar *value)
     }
     maPopState(state);
     return 0;
+}
+
+
+/*
+    CoreDumps on|off
+
+    Off by default: a core file holds TLS private keys, session ids and credentials
+ */
+static int coreDumpsDirective(MaState *state, cchar *key, cchar *value)
+{
+    bool on;
+
+    if (!maTokenize(state, value, "%B", &on)) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    return mprSetCoreDumps(on) < 0 ? MPR_ERR_BAD_STATE : 0;
 }
 
 
@@ -923,7 +1020,12 @@ static int documentsDirective(MaState *state, cchar *key, cchar *value)
  */
 static int elseDirective(MaState *state, cchar *key, cchar *value)
 {
-    state->enabled = !state->enabled;
+    if (!state->conditional) {
+        mprLog("error appweb config", 0, "<else> without <if>. At line %d in %s", state->lineNumber, state->filename);
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    // The else branch runs only when the if branch did not and the enclosing block is itself enabled
+    state->enabled = state->prev->enabled && !state->enabled;
     return 0;
 }
 
@@ -1059,6 +1161,23 @@ static int followSymlinksDirective(MaState *state, cchar *key, cchar *value)
 
 
 /*
+    ServeSensitiveFiles on|off
+
+    Off by default: version control, backup and editor files are answered as missing
+ */
+static int serveSensitiveFilesDirective(MaState *state, cchar *key, cchar *value)
+{
+    bool on;
+
+    if (!maTokenize(state, value, "%B", &on)) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    httpSetRouteServeSensitive(state->route, on);
+    return 0;
+}
+
+
+/*
     GroupAccount groupName
  */
 static int groupAccountDirective(MaState *state, cchar *key, cchar *value)
@@ -1126,6 +1245,22 @@ static int http2Directive(MaState *state, cchar *key, cchar *value)
         return MPR_ERR_BAD_SYNTAX;
     }
     httpEnableHttp2(on);
+    return 0;
+}
+
+
+/*
+    Http2Cleartext [on|off]
+    Accept prior-knowledge HTTP/2 (h2c) on plaintext listeners. Off by default: HTTP/2 is then offered only over TLS.
+ */
+static int http2CleartextDirective(MaState *state, cchar *key, cchar *value)
+{
+    bool on;
+
+    if (!maTokenize(state, value, "%B", &on)) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    httpEnableHttp2Cleartext(on);
     return 0;
 }
 
@@ -1237,9 +1372,15 @@ static int indexOptionsDirective(MaState *state, cchar *key, cchar *value)
  */
 static int ifDirective(MaState *state, cchar *key, cchar *value)
 {
+    int cond;
+
     state = maPushState(state);
+    state->conditional = 1;
     if (state->enabled) {
-        state->enabled = conditionalDefinition(state, value);
+        if ((cond = conditionalDefinition(state, value)) < 0) {
+            return MPR_ERR_BAD_SYNTAX;
+        }
+        state->enabled = cond;
     }
     return 0;
 }
@@ -1312,6 +1453,9 @@ static int limitChunkDirective(MaState *state, cchar *key, cchar *value)
  */
 static int limitClientsDirective(MaState *state, cchar *key, cchar *value)
 {
+    if (httpCheckDefense(key) < 0) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
     httpGraduateLimits(state->route, 0);
     state->route->limits->clientMax = httpGetInt(value);
     return 0;
@@ -1334,6 +1478,9 @@ static int limitConnectionsDirective(MaState *state, cchar *key, cchar *value)
  */
 static int limitConnectionsPerClientDirective(MaState *state, cchar *key, cchar *value)
 {
+    if (httpCheckDefense(key) < 0) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
     httpGraduateLimits(state->route, 0);
     state->route->limits->connectionsPerClientMax = httpGetInt(value);
     return 0;
@@ -1361,8 +1508,13 @@ static int limitFrameDirective(MaState *state, cchar *key, cchar *value)
 
     httpGraduateLimits(state->route, 0);
     size = httpGetInt(value);
-    if (size > (1024 * 1024)) {
-        size = (1024 * 1024);
+    // RFC 9113 4.2: SETTINGS_MAX_FRAME_SIZE lies between 16K and 16M - 1
+    if (size < HTTP2_MIN_FRAME_SIZE) {
+        mprLog("error appweb config", 0, "LimitFrame must be at least %d", HTTP2_MIN_FRAME_SIZE);
+        return MPR_ERR_BAD_ARGS;
+    }
+    if (size > HTTP2_MAX_FRAME_SIZE) {
+        size = HTTP2_MAX_FRAME_SIZE;
     }
     state->route->limits->frameSize = size;
     return 0;
@@ -1404,6 +1556,9 @@ static int limitMemoryDirective(MaState *state, cchar *key, cchar *value)
  */
 static int limitProcessesDirective(MaState *state, cchar *key, cchar *value)
 {
+    if (httpCheckDefense(key) < 0) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
     httpGraduateLimits(state->route, 0);
     state->route->limits->processMax = httpGetInt(value);
     return 0;
@@ -1415,6 +1570,9 @@ static int limitProcessesDirective(MaState *state, cchar *key, cchar *value)
  */
 static int limitRequestsPerClientDirective(MaState *state, cchar *key, cchar *value)
 {
+    if (httpCheckDefense(key) < 0) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
     httpGraduateLimits(state->route, 0);
     state->route->limits->requestsPerClientMax = httpGetInt(value);
     return 0;
@@ -1533,6 +1691,28 @@ static int limitUploadDirective(MaState *state, cchar *key, cchar *value)
 {
     httpGraduateLimits(state->route, 0);
     state->route->limits->uploadSize = httpGetNumber(value);
+    return 0;
+}
+
+
+/*
+    LimitRanges count
+ */
+static int limitRangesDirective(MaState *state, cchar *key, cchar *value)
+{
+    httpGraduateLimits(state->route, 0);
+    state->route->limits->rangesMax = httpGetInt(value);
+    return 0;
+}
+
+
+/*
+    LimitUploadParts count
+ */
+static int limitUploadPartsDirective(MaState *state, cchar *key, cchar *value)
+{
+    httpGraduateLimits(state->route, 0);
+    state->route->limits->uploadParts = httpGetInt(value);
     return 0;
 }
 
@@ -1996,7 +2176,9 @@ static int paramDirective(MaState *state, cchar *key, cchar *value)
     if (!maTokenize(state, value, "?! %S %*", &not, &field, &value)) {
         return MPR_ERR_BAD_SYNTAX;
     }
-    httpAddRouteParam(state->route, field, value, not ? HTTP_ROUTE_NOT : 0);
+    if (httpAddRouteParam(state->route, field, value, not ? HTTP_ROUTE_NOT : 0) < 0) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
     return 0;
 }
 
@@ -2024,7 +2206,12 @@ static int redirectDirective(MaState *state, cchar *key, cchar *value)
     int       status;
 
     status = 0;
+    code = 0;
     if (smatch(value, "secure")) {
+#if !ME_COM_SSL
+        mprLog("error appweb config", 0, "Redirect secure requires TLS, which is not included in this build");
+        return MPR_ERR_BAD_STATE;
+#endif
         uri = "/";
         path = "https://";
 
@@ -2132,10 +2319,10 @@ static int requireDirective(MaState *state, cchar *key, cchar *value)
         if (age) {
             if (domains) {
                 /* Negative age signifies subdomains */
-                age = sjoin("-1", age, NULL);
+                age = sjoin("-", age, NULL);
             }
         }
-        addCondition(state, "secure", age, HTTP_ROUTE_STRICT_TLS);
+        addCondition(state, "secure", age, HTTP_ROUTE_STRICT_TLS | HTTP_ROUTE_REQUIRE_SECURE);
 
     } else if (scaselesscmp(type, "user") == 0) {
         httpSetAuthPermittedUsers(state->auth, rest);
@@ -2243,7 +2430,9 @@ static int routeDirective(MaState *state, cchar *key, cchar *value)
         }
         pattern = httpExpandRouteVars(state->route, pattern);
         state->route = httpCreateInheritedRoute(state->route);
-        httpSetRoutePattern(state->route, pattern, not ? HTTP_ROUTE_NOT : 0);
+        if (httpSetRoutePattern(state->route, pattern, not ? HTTP_ROUTE_NOT : 0) < 0) {
+            return MPR_ERR_BAD_SYNTAX;
+        }
         httpSetRouteHost(state->route, state->host);
         /* Routes are added when the route block is closed (see closeDirective) */
         state->auth = state->route->auth;
@@ -2265,7 +2454,9 @@ static int requestHeaderDirective(MaState *state, cchar *key, cchar *value)
     if (!maTokenize(state, value, "?! %S %*", &not, &header, &value)) {
         return MPR_ERR_BAD_SYNTAX;
     }
-    httpAddRouteRequestHeaderCheck(state->route, header, value, not ? HTTP_ROUTE_NOT : 0);
+    if (httpAddRouteRequestHeaderCheck(state->route, header, value, not ? HTTP_ROUTE_NOT : 0) < 0) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
     return 0;
 }
 
@@ -2595,7 +2786,13 @@ static int sslCertificateKeyFileDirective(MaState *state, cchar *key, cchar *val
 
 static int sslCipherSuiteDirective(MaState *state, cchar *key, cchar *value)
 {
+    cchar *cipher;
+
     checkSsl(state);
+    if ((cipher = mprGetSslInsecureCipher(value)) != 0) {
+        mprLog("error appweb config", 0, "Insecure cipher \"%s\" is not permitted", cipher);
+        return MPR_ERR_BAD_SYNTAX;
+    }
     mprAddSslCiphers(state->route->ssl, value);
     return 0;
 }
@@ -3150,6 +3347,16 @@ static int uploadAutoDeleteDirective(MaState *state, cchar *key, cchar *value)
 
 
 #if ME_HTTP_WEB_SOCKETS
+/*
+    WebSocketsOrigin origin[,origin...]|*
+ */
+static int webSocketsOriginDirective(MaState *state, cchar *key, cchar *value)
+{
+    httpSetRouteWebSocketsOrigin(state->route, value);
+    return 0;
+}
+
+
 static int webSocketsProtocolDirective(MaState *state, cchar *key, cchar *value)
 {
     state->route->webSocketsProtocol = sclone(value);
@@ -3165,7 +3372,36 @@ static int webSocketsPingDirective(MaState *state, cchar *key, cchar *value)
 #endif
 
 
-static bool conditionalDefinition(MaState *state, cchar *key)
+/*
+    Recognized platform, CPU, and profile names for conditional blocks.
+ */
+static cchar *platformNames[] = {
+    "aix", "bsdi", "cygwin", "ecos", "freebsd", "freertos", "hpux", "linux", "macosx", "msdos", "netbsd",
+    "netware", "openbsd", "os2", "qnx", "solaris", "tidsp", "vms", "vxworks", "windows",
+    "alpha", "arm", "arm64", "ia64", "mips", "mips64", "ppc", "ppc64", "riscv", "riscv64", "sh", "sparc",
+    "x64", "x86", "xtensa",
+    "debug", "dev", "prod", "release", "ME_DEBUG",
+    0
+};
+
+
+static bool isPlatformName(cchar *key)
+{
+    cchar **cp;
+
+    for (cp = platformNames; *cp; cp++) {
+        if (scaselessmatch(key, *cp)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+/*
+    Return 1 or 0 for known conditions; reject unknown names with MPR_ERR_BAD_SYNTAX.
+ */
+static int conditionalDefinition(MaState *state, cchar *key)
 {
     cchar *arch, *os, *platform, *profile;
     int   result, not;
@@ -3264,11 +3500,17 @@ static bool conditionalDefinition(MaState *state, cchar *key)
         } else if (scaselessmatch(key, "HTTP2")) {
             result = ME_HTTP_HTTP2;
         } else if (scaselessmatch(key, "PAM")) {
-            result = ME_HTTP_PAM;
+            //  The guard the PAM auth store is compiled under
+            result = ME_COMPILER_HAS_PAM && ME_HTTP_PAM;
         } else if (scaselessmatch(key, "UPLOAD")) {
             result = ME_HTTP_UPLOAD;
         } else if (scaselessmatch(key, "WEB_SOCKETS")) {
             result = ME_HTTP_WEB_SOCKETS;
+
+        } else if (!isPlatformName(key)) {
+            mprLog("error appweb config", 0, "Unknown condition \"%s\". At line %d in %s", key,
+                   state->lineNumber, state->filename);
+            return MPR_ERR_BAD_SYNTAX;
         }
     }
     return (not) ? !result : result;
@@ -3388,8 +3630,9 @@ PUBLIC MaState *maPushState(MaState *prev)
 PUBLIC MaState *maPopState(MaState *state)
 {
     if (state->prev == 0) {
-        mprLog("error appweb config", 0, "Too many closing blocks.\nAt line %d in %s\n\n", state->lineNumber,
+        mprLog("error appweb config", 0, "Too many closing blocks. At line %d in %s", state->lineNumber,
                state->filename);
+        return state;
     }
     state->prev->lineNumber = state->lineNumber;
     state = state->prev;
@@ -3573,9 +3816,12 @@ static int parseInit(void)
     maAddDirective("AutoFinalize", autoFinalize);
     maAddDirective("Cache", cacheDirective);
     maAddDirective("CanonicalName", canonicalNameDirective);
+    maAddDirective("CgiEscape", cgiEscapeDirective);
+    maAddDirective("CgiPrefix", cgiPrefixDirective);
     maAddDirective("CharSet", charSetDirective);
     maAddDirective("Chroot", chrootDirective);
     maAddDirective("Condition", conditionDirective);
+    maAddDirective("CoreDumps", coreDumpsDirective);
     maAddDirective("CrossOrigin", crossOriginDirective);
     maAddDirective("DefaultLanguage", defaultLanguageDirective);
     maAddDirective("Deny", denyDirective);
@@ -3592,6 +3838,7 @@ static int parseInit(void)
     maAddDirective("Header", headerDirective);
     maAddDirective("Home", homeDirective);
     maAddDirective("Http2", http2Directive);
+    maAddDirective("Http2Cleartext", http2CleartextDirective);
     maAddDirective("<If", ifDirective);
     maAddDirective("</If", closeDirective);
     maAddDirective("IgnoreEncodingErrors", ignoreEncodingErrorsDirective);
@@ -3620,6 +3867,8 @@ static int parseInit(void)
     maAddDirective("LimitStreams", limitStreamsDirective);
     maAddDirective("LimitUri", limitUriDirective);
     maAddDirective("LimitUpload", limitUploadDirective);
+    maAddDirective("LimitRanges", limitRangesDirective);
+    maAddDirective("LimitUploadParts", limitUploadPartsDirective);
     maAddDirective("LimitWindow", limitWindowDirective);
     maAddDirective("LimitWorkers", limitWorkersDirective);
     maAddDirective("Listen", listenDirective);
@@ -3652,6 +3901,7 @@ static int parseInit(void)
     maAddDirective("ServerName", serverNameDirective);
     maAddDirective("SessionCookie", sessionCookieDirective);
     maAddDirective("SessionTimeout", sessionTimeoutDirective);
+    maAddDirective("ServeSensitiveFiles", serveSensitiveFilesDirective);
     maAddDirective("Set", setDirective);
     maAddDirective("SetConnector", setConnectorDirective);
     maAddDirective("SetHandler", setHandlerDirective);
@@ -3702,6 +3952,7 @@ static int parseInit(void)
     maAddDirective("LimitWebSocketsMessage", limitWebSocketsMessageDirective);
     maAddDirective("LimitWebSocketsFrame", limitWebSocketsFrameDirective);
     maAddDirective("LimitWebSocketsPacket", limitWebSocketsPacketDirective);
+    maAddDirective("WebSocketsOrigin", webSocketsOriginDirective);
     maAddDirective("WebSocketsProtocol", webSocketsProtocolDirective);
     maAddDirective("WebSocketsPing", webSocketsPingDirective);
 #endif
@@ -3747,7 +3998,7 @@ PUBLIC int maLoadModule(cchar *name, cchar *libname)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
