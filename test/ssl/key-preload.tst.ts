@@ -6,7 +6,7 @@
 import {tskip, ttrue} from '@embedthis/testme'
 import {copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs'
 import {resolve} from 'node:path'
-import {BIN, TESTDIR, withServer} from '../security/server'
+import {BIN, TESTDIR, spawnServer, withServer} from '../security/server'
 import {cert, get} from './tls'
 
 const PORT = 4605
@@ -47,7 +47,7 @@ if (!existsSync(BIN)) {
         `SSLCertificateKeyFile "${KEYS}/invalid.key"`,
         ``,
     ].join('\n'))
-    let server = Bun.spawn([BIN, '--config', conf], {stdout: 'ignore', stderr: 'ignore'})
+    let server = spawnServer(['--config', conf], {stderr: 'ignore'})
     let exited = await Promise.race([server.exited.then(() => true), Bun.sleep(5000).then(() => false)])
     if (!exited) {
         server.kill('SIGKILL')

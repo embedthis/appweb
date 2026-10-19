@@ -6,9 +6,8 @@ import {teq, tskip, ttrue} from '@embedthis/testme'
 import {chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs'
 import net from 'node:net'
 import {resolve} from 'node:path'
+import {BIN, TESTDIR, spawnServer} from './server'
 
-const TESTDIR = resolve(import.meta.dir, '..')
-const BIN = resolve(TESTDIR, '../build/bin/appweb')
 const PORT = 4516
 const HOST = `127.0.0.1:${PORT}`
 const WORK = resolve(TESTDIR, 'tmp/http2-rejected-handler')
@@ -178,7 +177,7 @@ if (!existsSync(BIN)) {
         ``,
     ].join('\n'))
 
-    let server = Bun.spawn([BIN, '--config', CONF], {stdout: 'ignore', stderr: 'pipe'})
+    let server = spawnServer(['--config', CONF])
     try {
         if (!await waitForServer()) {
             server.kill('SIGKILL')

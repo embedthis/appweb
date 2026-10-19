@@ -7,7 +7,7 @@ TESTDIR="$(cd "$(dirname "$0")/.." && pwd)"
 . "${TESTDIR}/utils/testenv.sh"
 
 BIN="$(tmAppweb "${TESTDIR}/../build/bin")"
-PORT=4517
+PORT=4542
 WORK="${TESTDIR}/tmp/pattern-reject"
 
 NATIVE_TESTDIR="$(tmNative "${TESTDIR}")"

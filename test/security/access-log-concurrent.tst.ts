@@ -7,7 +7,7 @@ import {readFileSync} from 'node:fs'
 import {resolve} from 'node:path'
 import {withServer, workDir} from './server'
 
-const PORT = 4564
+const PORT = 4547
 const NAME = 'access-log-concurrent'
 const COUNT = 200
 const WAVE = 10

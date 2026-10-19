@@ -6,7 +6,7 @@ import {ttrue} from '@embedthis/testme'
 import net from 'node:net'
 import {withServer} from './server'
 
-const PORT = 4531
+const PORT = 4545
 const CGI = '/cgiProgram.cgi?switches=-e%20-p'
 const LIMIT = 4
 

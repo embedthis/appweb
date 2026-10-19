@@ -7,39 +7,30 @@
  */
 
 import {ttrue, tskip} from '@embedthis/testme'
-import {existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs'
+import {existsSync} from 'node:fs'
 import net from 'node:net'
-import {resolve} from 'node:path'
+import {BIN, withServer} from './server'
 
-const TESTDIR = resolve(import.meta.dir, '..')
-const BIN = resolve(TESTDIR, '../build/bin/appweb')
-const PORT = 4515
+const PORT = 4533
 const HOST = `127.0.0.1:${PORT}`
-const WORK = resolve(TESTDIR, 'tmp/active-request-limit')
-const CONF = resolve(WORK, 'appweb.conf')
 
-async function waitForServer(): Promise<boolean> {
-    for (let i = 0; i < 40; i++) {
-        try {
-            let response = await fetch(`http://${HOST}/index.html`, {signal: AbortSignal.timeout(500)})
-            if (response.status > 0) {
-                return true
-            }
-        } catch {
-        }
-        await Bun.sleep(250)
-    }
-    return false
+interface Holder {
+    socket: net.Socket
+    //  Set when the server answered or closed the holder: it was refused rather than held
+    lost: boolean
 }
 
-async function openPartialRequest(): Promise<net.Socket> {
+async function openPartialRequest(): Promise<Holder> {
     return await new Promise((resolvePromise, reject) => {
         let socket = net.connect(PORT, '127.0.0.1')
+        let holder: Holder = {socket, lost: false}
+        socket.on('data', () => holder.lost = true)
+        socket.on('close', () => holder.lost = true)
         socket.on('connect', () => {
             //  Resolve once the bytes are away, so what the caller waits on next is the server
             //  counting the request rather than this side sending it
             socket.write(`POST /index.html HTTP/1.1\r\nHost: ${HOST}\r\nContent-Length: 10\r\n\r\n12345`,
-                         () => resolvePromise(socket))
+                         () => resolvePromise(holder))
         })
         socket.on('error', reject)
     })
@@ -71,73 +62,44 @@ async function request(): Promise<string> {
 if (!existsSync(BIN)) {
     tskip(`Skip test -- appweb is not built at ${BIN}`)
 } else {
-    rmSync(WORK, {recursive: true, force: true})
-    mkdirSync(WORK, {recursive: true})
-    writeFileSync(CONF, [
-        `ErrorLog ${WORK}/error.log level=4`,
-        `TraceLog ${WORK}/trace.log level=2`,
-        `Listen 127.0.0.1:${PORT}`,
-        `Documents ${TESTDIR}/web`,
-        `AddHandler fileHandler html txt ""`,
-        `LimitRequestsPerClient 1`,
-        `RequestParseTimeout 10secs`,
-        `RequestTimeout 10secs`,
-        ``,
-    ].join('\n'))
-
-    let server = Bun.spawn([BIN, '--config', CONF], {stdout: 'ignore', stderr: 'pipe'})
-    let holder: net.Socket | null = null
-    try {
-        if (!await waitForServer()) {
-            server.kill('SIGKILL')
-            let error = ''
-            if (server.stderr) {
-                error = await new Response(server.stderr).text()
-            }
-            console.log('server did not start: ' + error)
-            for (let log of [resolve(WORK, 'error.log'), resolve(WORK, 'trace.log')]) {
-                if (existsSync(log)) {
-                    console.log(log + ':\n' + readFileSync(log, 'utf8'))
+    let limits = ['LimitRequestsPerClient 1', 'RequestParseTimeout 10secs', 'RequestTimeout 10secs']
+    await withServer('active-request-limit', PORT, limits, async () => {
+        let holder: Holder | null = await openPartialRequest()
+        try {
+            /*
+                The holder counts as an active request once the server has parsed its headers, which is
+                after the write above returns -- so a second request issued immediately can arrive first.
+                It is then either served and gone before the counter reaches the limit, or counted first,
+                in which case the holder is the request refused. Poll until the server reflects the holder,
+                replacing a holder that was refused; a limit that never engages still fails here.
+             */
+            let refused = ''
+            for (let i = 0; i < 20 && !refused.includes('503 Service Unavailable'); i++) {
+                if (holder.lost) {
+                    holder.socket.destroy()
+                    holder = await openPartialRequest()
+                }
+                refused = await request()
+                if (!refused.includes('503 Service Unavailable')) {
+                    await Bun.sleep(100)
                 }
             }
-            ttrue(false)
-        }
-
-        holder = await openPartialRequest()
-
-        /*
-            The holder counts as an active request once the server has parsed its headers, which is
-            after the write above returns -- so a second request issued immediately can arrive first,
-            be served and be gone before the counter ever reaches the limit. That is a race in the
-            test, not the behaviour under test, and it is what failed on Linux CI with a 200. Poll
-            until the server reflects the holder; a limit that never engages still fails here.
-         */
-        let refused = ''
-        for (let i = 0; i < 20 && !refused.includes('503 Service Unavailable'); i++) {
-            refused = await request()
             if (!refused.includes('503 Service Unavailable')) {
-                await Bun.sleep(100)
+                console.log('Expected concurrent request to be refused, got:\n' + refused)
             }
-        }
-        if (!refused.includes('503 Service Unavailable')) {
-            console.log('Expected concurrent request to be refused, got:\n' + refused)
-        }
-        ttrue(refused.includes('503 Service Unavailable'))
+            ttrue(refused.includes('503 Service Unavailable'))
 
-        holder.destroy()
-        holder = null
-        await Bun.sleep(500)
+            holder.socket.destroy()
+            holder = null
+            await Bun.sleep(500)
 
-        let recovered = await request()
-        if (!recovered.includes('200 OK')) {
-            console.log('Expected request to recover after holder closed, got:\n' + recovered)
+            let recovered = await request()
+            if (!recovered.includes('200 OK')) {
+                console.log('Expected request to recover after holder closed, got:\n' + recovered)
+            }
+            ttrue(recovered.includes('200 OK'))
+        } finally {
+            holder?.socket.destroy()
         }
-        ttrue(recovered.includes('200 OK'))
-
-    } finally {
-        holder?.destroy()
-        server.kill('SIGKILL')
-        await Bun.sleep(100)
-        rmSync(WORK, {recursive: true, force: true})
-    }
+    })
 }

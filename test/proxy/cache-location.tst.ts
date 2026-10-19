@@ -5,9 +5,8 @@
 import {teq, tskip, ttrue} from '@embedthis/testme'
 import {existsSync, mkdirSync, rmSync, writeFileSync} from 'node:fs'
 import {resolve} from 'node:path'
+import {BIN, TESTDIR, spawnServer} from '../security/server'
 
-const TESTDIR = resolve(import.meta.dir, '..')
-const BIN = resolve(TESTDIR, '../build/bin/appweb')
 const PORT = 4517
 const BACKEND = 9996
 const WORK = resolve(TESTDIR, 'tmp/cache-location')
@@ -90,7 +89,7 @@ if (!existsSync(BIN)) {
     mkdirSync(WORK, {recursive: true})
 
     //  ---- No CanonicalName: the shipped default, and the vulnerable shape ----
-    let server = Bun.spawn([BIN, '--config', writeConf(null)], {stdout: 'ignore', stderr: 'ignore'})
+    let server = spawnServer(['--config', writeConf(null)], {stderr: 'ignore'})
     let backend = serveBackend()
     try {
         if (!await waitForServer()) {
@@ -136,7 +135,7 @@ if (!existsSync(BIN)) {
     }
 
     //  ---- CanonicalName set: unchanged behaviour, and still not the client's Host ----
-    server = Bun.spawn([BIN, '--config', writeConf(CANONICAL)], {stdout: 'ignore', stderr: 'ignore'})
+    server = spawnServer(['--config', writeConf(CANONICAL)], {stderr: 'ignore'})
     backend = serveBackend()
     try {
         if (!await waitForServer()) {

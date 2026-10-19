@@ -110,6 +110,32 @@ export async function waitForServer(port: number): Promise<boolean> {
     return false
 }
 
+let servers = new Set<ReturnType<typeof Bun.spawn>>()
+let hooked = false
+
+/*
+    Start an Appweb with "args" that cannot outlive this test process.
+
+    A failing ttrue() calls process.exit(1), which skips every pending finally, so a kill placed there never runs
+    and the server is left holding its port for whichever test uses that port next. Exit hooks do run on
+    process.exit, so the kill is registered there as well. The runner stops a test that times out with SIGTERM,
+    which by default ends the process without running exit hooks, so the signals are turned into an exit. The hooks
+    are registered once and kill every server still running, so a test may start as many as it needs.
+ */
+export function spawnServer(args: string[], options: {cwd?: string, env?: Record<string, string | undefined>,
+        stdout?: 'pipe' | 'ignore', stderr?: 'pipe' | 'ignore'} = {}) {
+    let server = Bun.spawn([BIN, ...args], {stdout: 'ignore', stderr: 'pipe', ...options})
+    if (!hooked) {
+        hooked = true
+        process.on('exit', () => servers.forEach(child => child.kill('SIGKILL')))
+        process.on('SIGTERM', () => process.exit(143))
+        process.on('SIGINT', () => process.exit(130))
+    }
+    servers.add(server)
+    server.exited.then(() => servers.delete(server))
+    return server
+}
+
 /*
     Run "test" against a private server on "port" configured with the "extra" directives. The work directory is
     test/tmp/<name> and is removed on the way in and the way out, so a run never sees a previous run's files.
@@ -138,7 +164,7 @@ export async function withServer(name: string, port: number, extra: string[], te
         ``,
     ].join('\n'))
 
-    let server = Bun.spawn([BIN, '--config', conf], {stdout: 'ignore', stderr: 'pipe'})
+    let server = spawnServer(['--config', conf])
     try {
         if (!await waitForServer(port)) {
             server.kill('SIGKILL')

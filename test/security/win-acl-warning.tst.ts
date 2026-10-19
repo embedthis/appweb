@@ -5,14 +5,14 @@
 import {tskip, ttrue} from '@embedthis/testme'
 import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
-import {join, resolve} from 'node:path'
+import {join} from 'node:path'
+import {spawnServer} from './server'
 
 if (process.platform != 'win32') {
     tskip('the startup ACL check is Windows only')
     process.exit(0)
 }
 
-const BIN = resolve(import.meta.dir, '../../build/bin')
 const PORT = 4510
 const USERS = '*S-1-5-32-545'
 
@@ -23,8 +23,7 @@ function icacls(...args: string[]) {
 
 
 async function startupLog(dir: string, conf: string): Promise<string> {
-    let proc = Bun.spawn([join(BIN, 'appweb.exe'), '--log', 'stdout:0', '--home', dir, '--config', conf],
-        {stdout: 'pipe', stderr: 'pipe'})
+    let proc = spawnServer(['--log', 'stdout:0', '--home', dir, '--config', conf], {stdout: 'pipe'})
     let output = ''
     let reader = proc.stdout.getReader()
     let deadline = Date.now() + 10000

@@ -5,7 +5,7 @@
 import {ttrue} from '@embedthis/testme'
 import {mkdirSync, rmSync, writeFileSync} from 'node:fs'
 import {resolve} from 'node:path'
-import {BIN, TESTDIR, waitForPortFree, waitForServer, workDir} from '../security/server'
+import {BIN, TESTDIR, spawnServer, waitForPortFree, waitForServer, workDir} from '../security/server'
 
 const PORT = 4527
 const REALM = 'example.com'
@@ -31,7 +31,7 @@ async function load(name: string, http: object): Promise<string | null> {
         },
     }, null, 4))
 
-    let server = Bun.spawn([BIN, '--config', conf], {stdout: 'ignore', stderr: 'pipe'})
+    let server = spawnServer(['--config', conf])
     try {
         let timer = setTimeout(() => {
             killed = true
@@ -92,7 +92,7 @@ writeFileSync(conf, JSON.stringify({
     },
 }, null, 4))
 
-let server = Bun.spawn([BIN, '--config', conf], {stdout: 'ignore', stderr: 'pipe'})
+let server = spawnServer(['--config', conf])
 try {
     ttrue(await waitForServer(PORT), 'the accepted JSON configuration must start')
     let response = await fetch(`http://127.0.0.1:${PORT}/private/index.html`, {signal: AbortSignal.timeout(5000)})

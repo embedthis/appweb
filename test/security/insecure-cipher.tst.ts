@@ -5,7 +5,7 @@
 import {teq, tskip, ttrue} from '@embedthis/testme'
 import {existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs'
 import {resolve} from 'node:path'
-import {BIN, TESTDIR, withServer, workDir} from './server'
+import {BIN, TESTDIR, spawnServer, withServer, workDir} from './server'
 
 const PORT = 4580
 const SECURE = 4581
@@ -32,7 +32,7 @@ async function refused(ciphers: string): Promise<void> {
         ...secure(ciphers),
         ``,
     ].join('\n'))
-    let server = Bun.spawn([BIN, '--config', conf], {stdout: 'ignore', stderr: 'ignore'})
+    let server = spawnServer(['--config', conf], {stderr: 'ignore'})
     let status = await Promise.race([server.exited, Bun.sleep(10000).then(() => 'running')])
     if (status == 'running') {
         server.kill('SIGKILL')

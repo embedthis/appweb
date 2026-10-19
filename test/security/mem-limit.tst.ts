@@ -20,10 +20,10 @@ import {teq, ttrue} from '@embedthis/testme'
 import {existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs'
 import net from 'node:net'
 import {resolve} from 'node:path'
-import {BIN, TESTDIR, removeDir, workDir} from './server'
+import {BIN, TESTDIR, removeDir, spawnServer, workDir} from './server'
 
 const OVER_PORT = 4589
-const UNDER_PORT = 4524
+const UNDER_PORT = 4543
 
 /*
     Set the limit below one 256 KiB MPR region so both resident-size and sanitizer heap measurements exceed it at
@@ -146,7 +146,7 @@ async function withLimit(name: string, port: number, limit: string, test: (serve
         ``,
     ].join('\n'))
 
-    let server = Bun.spawn([BIN, '--config', conf], {stdout: 'ignore', stderr: 'ignore'})
+    let server = spawnServer(['--config', conf], {stderr: 'ignore'})
     try {
         if (!await listening(port)) {
             console.log(`${name}: server never listened on ${port}`)

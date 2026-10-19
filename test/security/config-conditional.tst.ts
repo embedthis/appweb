@@ -5,7 +5,7 @@
 import {teq, tskip, ttrue} from '@embedthis/testme'
 import {existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs'
 import {resolve} from 'node:path'
-import {BIN, TESTDIR, withServer, workDir} from './server'
+import {BIN, TESTDIR, spawnServer, withServer, workDir} from './server'
 
 const PORT = 4529
 
@@ -93,7 +93,7 @@ if (!existsSync(BIN)) {
         mkdirSync(work, {recursive: true})
         let conf = resolve(work, 'appweb.conf')
         writeFileSync(conf, [`ErrorLog ${work}/error.log level=4`, `Listen 127.0.0.1:${PORT}`, ...lines, ''].join('\n'))
-        let server = Bun.spawn([BIN, '--config', conf], {stdout: 'pipe', stderr: 'pipe'})
+        let server = spawnServer(['--config', conf], {stdout: 'pipe'})
         let exited = await Promise.race([server.exited, Bun.sleep(5000).then(() => 'timeout')])
         if (exited == 'timeout') {
             server.kill('SIGKILL')

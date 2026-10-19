@@ -8,7 +8,7 @@ set -u
 TESTDIR="$(cd "$(dirname "$0")/.." && pwd)"
 . "${TESTDIR}/utils/testenv.sh"
 BIN="$(tmAppweb "${TESTDIR}/../build/bin")"
-PORT=4504
+PORT=4539
 HOST="127.0.0.1:${PORT}"
 WORK="${TESTDIR}/tmp/debugger-privilege-warning"
 CONF="${WORK}/appweb.conf"

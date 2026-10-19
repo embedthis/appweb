@@ -68,7 +68,7 @@ stop_server() {
     SERVER=""
 }
 
-COMMON_PORT=4502
+COMMON_PORT=4536
 COMMON_CONF="${WORK}/common.conf"
 COMMON_ACCESS="${WORK}/access.log"
 COMMON_ERROR="${WORK}/common-error.log"
@@ -102,7 +102,7 @@ grep -q 'trace-test' "${COMMON_ACCESS}" || fail "common access line lacks reques
 stop_server
 pass "common formatter emitted one access line and survived"
 
-INJECT_PORT=4503
+INJECT_PORT=4537
 INJECT_CONF="${WORK}/inject.conf"
 INJECT_TRACE="${WORK}/inject-trace.log"
 INJECT_ERROR="${WORK}/inject-error.log"
@@ -181,7 +181,7 @@ BAD_OUT="${WORK}/bad-format.out"
 cat > "${BAD_CONF}" <<CONF
 ErrorLog ${NATIVE_WORK}/bad-format-error.log level=4
 TraceLog ${NATIVE_WORK}/bad-access.log level=4 formatter=common format="%h %u %r %>s %b %{User-Agent}"
-Listen 4525
+Listen 4538
 Documents ${NATIVE_TESTDIR}/web
 CONF
 

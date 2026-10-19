@@ -6,7 +6,7 @@
 import {teq, tskip, ttrue} from '@embedthis/testme'
 import {cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs'
 import {resolve} from 'node:path'
-import {BIN, TESTDIR, removeDir, waitForPortFree, waitForServer, workDir} from './server'
+import {BIN, TESTDIR, removeDir, spawnServer, waitForPortFree, waitForServer, workDir} from './server'
 
 const TOP = resolve(TESTDIR, '..')
 const MARKER = 'SHIPPED-CONFIG-SCRIPT-SOURCE'
@@ -55,7 +55,7 @@ async function check(conf: string, invert: boolean, port: number, sslPort: numbe
 
     ttrue(await waitForPortFree(port))
     let path = prepare(name, conf, port, sslPort, invert)
-    let server = Bun.spawn([BIN, '--config', path, '--home', work], {stdout: 'ignore', stderr: 'pipe'})
+    let server = spawnServer(['--config', path, '--home', work])
     try {
         let started = await waitForServer(port)
         if (!started) {

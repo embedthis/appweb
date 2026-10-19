@@ -5,7 +5,7 @@
 import {tskip, ttrue} from '@embedthis/testme'
 import {chmodSync, existsSync, mkdirSync, rmSync, writeFileSync} from 'node:fs'
 import {resolve} from 'node:path'
-import {BIN, TESTDIR} from './server'
+import {BIN, TESTDIR, spawnServer} from './server'
 
 const PORT = 4584
 const HOME = resolve(TESTDIR, 'tmp/unsafe-home')
@@ -21,7 +21,7 @@ if (!existsSync(BIN)) {
         writeFileSync(resolve(HOME, 'appweb.conf'), `Listen 127.0.0.1:${PORT}\nDocuments ${TESTDIR}/web\n`)
         chmodSync(HOME, 0o777)
 
-        let server = Bun.spawn([BIN, '--home', HOME, '--config', 'appweb.conf'], {stdout: 'pipe', stderr: 'pipe'})
+        let server = spawnServer(['--home', HOME, '--config', 'appweb.conf'], {stdout: 'pipe'})
         let status = await Promise.race([server.exited, Bun.sleep(10000).then(() => 'running')])
         if (status == 'running') {
             server.kill('SIGKILL')

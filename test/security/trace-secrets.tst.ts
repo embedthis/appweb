@@ -7,7 +7,7 @@ import {existsSync, readFileSync} from 'node:fs'
 import {resolve} from 'node:path'
 import {BIN, withServer, workDir} from './server'
 
-const PORT = 4570
+const PORT = 4548
 const NAME = 'trace-secrets'
 const SECRET = 'Basic ' + btoa('ralph:trace-secret-password')
 

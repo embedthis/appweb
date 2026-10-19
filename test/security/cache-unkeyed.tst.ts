@@ -5,7 +5,7 @@ import {existsSync, readFileSync} from 'node:fs'
 import {resolve} from 'node:path'
 import {BIN, TESTDIR, withServer, workDir} from './server'
 
-const PORT = 4602
+const PORT = 4546
 const NAME = 'cache-unkeyed'
 
 function warned(log: string, route: string): boolean {

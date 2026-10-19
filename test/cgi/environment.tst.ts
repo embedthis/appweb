@@ -5,7 +5,7 @@
 import {ttrue} from '@embedthis/testme'
 import {mkdirSync, rmSync, writeFileSync} from 'node:fs'
 import {resolve} from 'node:path'
-import {BIN, TESTDIR, waitForServer} from '../security/server'
+import {BIN, TESTDIR, spawnServer, waitForServer} from '../security/server'
 import {exchange} from '../security/wire'
 
 const PORT = 4593
@@ -21,8 +21,8 @@ writeFileSync(resolve(WORK, 'appweb.conf'), [
     ``,
 ].join('\n'))
 
-let server = Bun.spawn([BIN, '--config', resolve(WORK, 'appweb.conf')], {
-    stdout: 'ignore', stderr: 'ignore', env: {...process.env, APPWEB_TEST_SECRET: 'leakme'},
+let server = spawnServer(['--config', resolve(WORK, 'appweb.conf')], {
+    stderr: 'ignore', env: {...process.env, APPWEB_TEST_SECRET: 'leakme'},
 })
 try {
     ttrue(await waitForServer(PORT))

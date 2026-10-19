@@ -6,7 +6,7 @@ import {teq, tskip, ttrue} from '@embedthis/testme'
 import {existsSync, mkdirSync, readdirSync, readlinkSync, rmSync, writeFileSync} from 'node:fs'
 import net from 'node:net'
 import {resolve} from 'node:path'
-import {BIN, TESTDIR, waitForServer, workDir} from './server'
+import {BIN, TESTDIR, spawnServer, waitForServer, workDir} from './server'
 
 const PORT = 4535
 
@@ -80,7 +80,7 @@ if (!existsSync(BIN)) {
         '</Route>',
         '',
     ].join('\n'))
-    let server = Bun.spawn([BIN, '--config', conf], {stdout: 'ignore', stderr: 'ignore'})
+    let server = spawnServer(['--config', conf], {stderr: 'ignore'})
     try {
         ttrue(await waitForServer(PORT))
         for (let i = 0; i < 3; i++) {

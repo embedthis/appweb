@@ -75,7 +75,7 @@ echo "realpath-ok" > "${deep}/index.html"
 ln -s "${deep}" /work/tmp/realpath/docs-link
 cat > /tmp/realpath.conf <<CONF
 ErrorLog /tmp/realpath.log level=2
-Listen 127.0.0.1:4505
+Listen 127.0.0.1:4540
 Documents /work/tmp/realpath/docs-link
 AddHandler fileHandler html ""
 DirectoryIndex index.html
@@ -83,10 +83,10 @@ CONF
 /work/build/bin/appweb --config /tmp/realpath.conf >/tmp/realpath.out 2>&1 &
 pid=$!
 for i in $(seq 1 40); do
-    curl -fsS -o /dev/null http://127.0.0.1:4505/index.html 2>/dev/null && break
+    curl -fsS -o /dev/null http://127.0.0.1:4540/index.html 2>/dev/null && break
     sleep 0.25
 done
-curl -fsS http://127.0.0.1:4505/index.html >/tmp/realpath.body 2>/tmp/realpath.curl || {
+curl -fsS http://127.0.0.1:4540/index.html >/tmp/realpath.body 2>/tmp/realpath.curl || {
     echo "REALPATH STARTUP FAILED"
     cat /tmp/realpath.out /tmp/realpath.log /tmp/realpath.curl 2>/dev/null
     kill ${pid} 2>/dev/null || true

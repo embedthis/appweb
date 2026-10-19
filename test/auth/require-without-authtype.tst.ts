@@ -5,9 +5,9 @@
 import {ttrue} from '@embedthis/testme'
 import {mkdirSync, rmSync, writeFileSync} from 'node:fs'
 import {resolve} from 'node:path'
-import {BIN, TESTDIR, removeDir, withServer, workDir} from '../security/server'
+import {BIN, TESTDIR, removeDir, spawnServer, withServer, workDir} from '../security/server'
 
-const PORT = 4526
+const PORT = 4544
 const REALM = 'example.com'
 
 /*
@@ -31,7 +31,7 @@ async function reject(name: string, directives: string[]): Promise<string | null
     ].join('\n'))
 
     let killed = false
-    let server = Bun.spawn([BIN, '--config', conf], {stdout: 'ignore', stderr: 'pipe'})
+    let server = spawnServer(['--config', conf])
     try {
         let timer = setTimeout(() => {
             killed = true

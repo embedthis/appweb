@@ -8,7 +8,7 @@
 import {teq, ttrue} from '@embedthis/testme'
 import {copyFileSync, mkdirSync, rmSync, writeFileSync} from 'node:fs'
 import {resolve} from 'node:path'
-import {BIN, TESTDIR, removeDir, waitForPortFree, waitForServer, workDir} from './server'
+import {BIN, TESTDIR, removeDir, spawnServer, waitForPortFree, waitForServer, workDir} from './server'
 
 const PORT = 4519
 const SSL_PORT = 4528
@@ -33,7 +33,7 @@ writeFileSync(conf, [
 
 ttrue(await waitForPortFree(PORT))
 ttrue(await waitForPortFree(SSL_PORT))
-let server = Bun.spawn([BIN, '--home', work, '--config', conf], {cwd: import.meta.dir, stdout: 'ignore', stderr: 'pipe'})
+let server = spawnServer(['--home', work, '--config', conf], {cwd: import.meta.dir})
 try {
     let started = await waitForServer(PORT)
     if (!started) {

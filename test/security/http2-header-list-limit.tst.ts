@@ -140,14 +140,14 @@ if (!existsSync(BIN)) {
         teq(tooMany.goaway, PROTOCOL_ERROR)
     })
 
-    await withServer('http2-header-size', 4516, ['LimitRequestHeader 384'], async () => {
-        let control = await sendRequest(4516, 'a=b', 2)
+    await withServer('http2-header-size', 4541, ['LimitRequestHeader 384'], async () => {
+        let control = await sendRequest(4541, 'a=b', 2)
         if (control.goaway != 0) {
             console.log('small decoded list expected no GOAWAY but got ' + JSON.stringify(control))
         }
         teq(control.goaway, 0)
 
-        let tooLarge = await sendRequest(4516, '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef', 2)
+        let tooLarge = await sendRequest(4541, '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef', 2)
         if (tooLarge.goaway != PROTOCOL_ERROR) {
             console.log('decoded list size expected PROTOCOL_ERROR but got ' + JSON.stringify(tooLarge))
         }
