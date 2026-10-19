@@ -124,7 +124,7 @@ static int binToC(MprList *files, cchar *mount, cchar *strip)
         Open each input file and compile
      */
     for (next = 0; (filename = mprGetNextItem(files, &next)) != 0; ) {
-        if (stat(filename, &sbuf) == 0 && sbuf.st_mode & S_IFDIR) {
+        if (stat(filename, &sbuf) == 0 && S_ISDIR(sbuf.st_mode)) {
             continue;
         } 
         if ((fd = open(filename, O_RDONLY | O_BINARY, 0666)) < 0) {
@@ -164,7 +164,7 @@ static int binToC(MprList *files, cchar *mount, cchar *strip)
 #if ME_WIN_LIKE
         name = sreplace(name, "\\", "\\\\");
 #endif
-        if (stat(filename, &sbuf) == 0 && sbuf.st_mode & S_IFDIR) {
+        if (stat(filename, &sbuf) == 0 && S_ISDIR(sbuf.st_mode)) {
             mprPrintf("    { \"%s\", 0, 0, 0 },\n", name);
             continue;
         }
@@ -180,7 +180,7 @@ static int binToC(MprList *files, cchar *mount, cchar *strip)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

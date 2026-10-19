@@ -11,6 +11,8 @@ These are the files this module installs, as a flat directory. In a consuming pr
 installed into `certs/`; in this repository they are generated into `dist/`, which is what is
 published.
 
+`pak sync` replaces the published files (`roots.crt`, `roots-min.crt`, `aws.crt`, `openssl.conf`, the `*.ans` files, `Makefile`, `README.md` and `CLAUDE.md`) on every sync, so a product always carries the current trust store. It never replaces the keys and certificates (`ca`, `self`, `test`, `ec`): a product that already has them keeps its own.
+
 | File | Purpose |
 |------|---------|
 | `ca.crt` / `ca.key` | Test Certificate Authority (signs test.crt) |
@@ -18,15 +20,13 @@ published.
 | `test.crt` / `test.key` | CA-signed test server certificate |
 | `ec.crt` / `ec.key` | Elliptic Curve (prime256v1) certificate |
 | `aws.crt` | AWS IoT root CA certificate |
+| `roots.crt` | Mozilla root CA bundle, refreshed with `make roots` and verified against its published checksum |
 | `roots-min.crt` | Minimal root CA bundle |
 | `openssl.conf` | OpenSSL CA configuration with certificate extensions |
 | `*.ans` | Answer files providing non-interactive input to OpenSSL prompts |
 | `Makefile` | Regenerates the certificates |
 
 Default: 2048-bit RSA keys, 3650-day validity (10 years).
-
-`make roots` additionally downloads the full Mozilla root CA bundle as `roots.crt`. It is not
-published with the module because of its size.
 
 ## Building
 

@@ -70,10 +70,17 @@ show-certs:
 	openssl x509 -in $(DIST)/self.crt -noout -text
 	openssl x509 -in $(DIST)/ec.crt -noout -text
 
+#
+#   Refresh the Mozilla root CA bundle. It is a production trust store for platforms without their own, so it is
+#   committed in src/ and verified against the checksum curl.se publishes beside it.
+#
 roots:
 	@echo "      [Run] Download Mozilla root CA bundle"
-	mkdir -p $(DIST)
-	curl -s -o $(DIST)/roots.crt https://curl.se/ca/cacert.pem
+	curl -sSfL -o $(SRC)/roots.crt.new https://curl.se/ca/cacert.pem
+	curl -sSfL -o $(SRC)/roots.crt.sha256 https://curl.se/ca/cacert.pem.sha256
+	test "$$(shasum -a 256 $(SRC)/roots.crt.new | cut -d' ' -f1)" = "$$(cut -d' ' -f1 $(SRC)/roots.crt.sha256)"
+	mv $(SRC)/roots.crt.new $(SRC)/roots.crt
+	rm -f $(SRC)/roots.crt.sha256
 
 clean:
 	@echo "      [Run] clean"
@@ -91,7 +98,7 @@ help:
 	@echo '  ec-cert             Generate EC certificate (ec.crt, ec.key)' >&2
 	@echo '  cert-request        Generate CSR for external CA (server.csr, server.key)' >&2
 	@echo '  show-certs          Display all certificate details' >&2
-	@echo '  roots               Download Mozilla root CA bundle' >&2
+	@echo '  roots               Refresh src/roots.crt from the Mozilla bundle' >&2
 	@echo '  package             Copy source files to dist/' >&2
 	@echo '  publish             Build, package and publish as a pak' >&2
 	@echo '  cache               Alias for publish' >&2

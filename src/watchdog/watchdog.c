@@ -82,7 +82,7 @@ static int  writePid(int pid);
 PUBLIC int main(int argc, char *argv[])
 {
     char    *argp, *value;
-    int     err, nextArg, flags;
+    int     err, nextArg, flags, status;
 
     flags = 0;
 
@@ -270,8 +270,9 @@ PUBLIC int main(int argc, char *argv[])
             }
         }
     }
+    status = mprGetExitStatus();
     mprDestroy();
-    return 0;
+    return status;
 }
 
 
@@ -305,6 +306,8 @@ static void setAppDefaults(void)
 
     if (mprPathExists("/var/run", X_OK) && getuid() == 0) {
         app->pidDir = sclone("/var/run");
+    } else if (mprPathExists("/run", X_OK) && getuid() == 0) {
+        app->pidDir = sclone("/run");
     } else if (mprPathExists("/tmp", X_OK)) {
         app->pidDir = sclone("/tmp");
     } else if (mprPathExists("/Temp", X_OK)) {
@@ -705,17 +708,25 @@ static void killService(void)
  */
 static int readPid(void)
 {
-    char    pbuf[32];
-    int     pid, fd;
+    struct stat info;
+    char        pbuf[32];
+    ssize       len;
+    int         fd;
 
-    if ((fd = open(app->pidPath, O_RDONLY, 0666)) < 0) {
+    if ((fd = open(app->pidPath, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)) < 0) {
         return -1;
     }
-    if (read(fd, pbuf, sizeof(pid)) <= 0) {
+    if (fstat(fd, &info) < 0 || !S_ISREG(info.st_mode) || info.st_uid != geteuid() ||
+            (info.st_mode & (S_IWGRP | S_IWOTH))) {
         close(fd);
         return -1;
     }
+    len = read(fd, pbuf, sizeof(pbuf) - 1);
     close(fd);
+    if (len <= 0) {
+        return -1;
+    }
+    pbuf[len] = '\0';
     return (int) stoi(pbuf);
 }
 
@@ -740,7 +751,8 @@ static int writePid(int pid)
     ssize   len;
     int     fd;
 
-    if ((fd = open(app->pidPath, O_CREAT | O_RDWR | O_TRUNC, 0666)) < 0) {
+    unlink(app->pidPath);
+    if ((fd = open(app->pidPath, O_CREAT | O_EXCL | O_WRONLY | O_NOFOLLOW | O_CLOEXEC, 0644)) < 0) {
         mprLog("error watchdog", 0, "Could not create pid file %s", app->pidPath);
         return MPR_ERR_CANT_CREATE;
     }
@@ -748,6 +760,7 @@ static int writePid(int pid)
     len = slen(pbuf);
     if (write(fd, pbuf, len) != len) {
         mprLog("error watchdog", 0, "Write to file %s failed", app->pidPath);
+        close(fd);
         return MPR_ERR_CANT_WRITE;
     }
     close(fd);
@@ -775,6 +788,7 @@ typedef struct App {
     int          restartCount;       /* Service restart count */
     int          restartWarned;      /* Has user been notified */
     char         *company;           /* One word company name (lower case) */
+    char         *serviceAccount;    /* Account the service runs as. Null for LocalSystem */
     char         *serviceArgs;       /* Args to pass to service */
     cchar        *serviceHome;       /* Service home */
     cchar        *serviceName;       /* Service name */
@@ -846,7 +860,17 @@ int APIENTRY WinMain(HINSTANCE inst, HINSTANCE junk, char *args, int junk2)
         if (*argp != '-' || strcmp(argp, "--") == 0) {
             break;
         }
-        if (strcmp(argp, "--args") == 0) {
+        if (strcmp(argp, "--account") == 0) {
+            /*
+                Account the installed service runs as, such as "NT SERVICE\\Appweb" or "NT AUTHORITY\\LocalService"
+             */
+            if (nextArg >= argc) {
+                err++;
+            } else {
+                app->serviceAccount = sclone(argv[++nextArg]);
+            }
+
+        } else if (strcmp(argp, "--args") == 0) {
             /*
                 Args to pass to service when it starts
              */
@@ -924,6 +948,7 @@ int APIENTRY WinMain(HINSTANCE inst, HINSTANCE junk, char *args, int junk2)
             mprEprintf("Bad command line: %s\n"
                 "  Usage: %s [options] [program args]\n"
                 "  Switches:\n"
+                "    --account name       # Account the installed service runs as (default LocalSystem)\n"
                 "    --args               # Args to pass to service\n"
                 "    --continue           # Continue on errors\n"
                 "    --console            # Display the service console\n"
@@ -964,7 +989,7 @@ int APIENTRY WinMain(HINSTANCE inst, HINSTANCE junk, char *args, int junk2)
         }
     }
     mprDestroy();
-    return 0;
+    return status;
 }
 
 
@@ -973,6 +998,7 @@ static void manageApp(void *ptr, int flags)
     if (flags & MPR_MANAGE_MARK) {
         mprMark(app->logSpec);
         mprMark(app->company);
+        mprMark(app->serviceAccount);
         mprMark(app->serviceArgs);
         mprMark(app->serviceHome);
         mprMark(app->serviceName);
@@ -1083,7 +1109,7 @@ static void run(void)
     PROCESS_INFORMATION procInfo;
     STARTUPINFO         startInfo;
     MprTicks            mark;
-    ulong               status;
+    DWORD               status;
     char                *path, *cmd, *key;
     int                 createFlags;
 
@@ -1156,18 +1182,18 @@ static void run(void)
         WaitForSingleObject(app->heartBeatEvent, app->heartBeatPeriod);
 
         if (app->servicePid) {
-            if (GetExitCodeProcess(app->servicePid, (ulong*) &status)) {
+            if (GetExitCodeProcess(app->servicePid, &status)) {
                 if (status != STILL_ACTIVE) {
                     CloseHandle(app->servicePid);
                     app->servicePid = 0;
+                    mprLog("info watchdog", 1, "%s has exited with status %d", app->serviceProgram, (int) status);
+                    mprLog("info watchdog", 1, "%s will be restarted in 10 seconds", app->serviceProgram);
                 }
             } else {
                 CloseHandle(app->servicePid);
                 app->servicePid = 0;
             }
         }
-        mprLog("info watchdog", 1, "%s has exited with status %d", app->serviceProgram, status);
-        mprLog("info watchdog", 1, "%s will be restarted in 10 seconds", app->serviceProgram);
     }
 }
 
@@ -1273,7 +1299,8 @@ static void WINAPI serviceCallback(ulong cmd)
 static bool installService(void)
 {
     SC_HANDLE   svc, mgr;
-    char        cmd[ME_MAX_FNAME], key[ME_MAX_FNAME];
+    cchar       *path;
+    char        key[ME_MAX_FNAME];
     int         serviceType;
 
     mgr = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
@@ -1290,9 +1317,17 @@ static bool installService(void)
         if (app->createConsole) {
             serviceType |= SERVICE_INTERACTIVE_PROCESS;
         }
-        GetModuleFileName(0, cmd, sizeof(cmd));
+        if ((path = mprGetAppPath()) == 0) {
+            mprLog("error watchdog", 0, "Cannot get the program path");
+            CloseServiceHandle(mgr);
+            return 0;
+        }
+        /*
+            Quote the path. The service manager splits an unquoted path at spaces and tries each prefix as a program.
+            A virtual or built-in service account takes no password.
+         */
         svc = CreateService(mgr, app->serviceName, app->serviceTitle, SERVICE_ALL_ACCESS, serviceType, SERVICE_DISABLED,
-            SERVICE_ERROR_NORMAL, cmd, NULL, NULL, "", NULL, NULL);
+            SERVICE_ERROR_NORMAL, sfmt("\"%s\"", mprGetNativePath(path)), NULL, NULL, "", app->serviceAccount, NULL);
         if (! svc) {
             mprLog("error watchdog", 0, "Cannot create service: 0x%x == %d", GetLastError(), GetLastError());
             CloseServiceHandle(mgr);
@@ -1307,7 +1342,7 @@ static bool installService(void)
      */
     fmt(key, sizeof(key), "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services");
     if (mprWriteRegistry(key, NULL, app->serviceName) < 0) {
-        mprLog("error watchdog", 0, "Cannot write %s key to registry");
+        mprLog("error watchdog", 0, "Cannot write %s key to registry", key);
         return 0;
     }
     fmt(key, sizeof(key), "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\%s", app->serviceName);
@@ -1595,7 +1630,7 @@ PUBLIC void stubManager(void) {
 #endif /* ME_WIN_LIKE */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
