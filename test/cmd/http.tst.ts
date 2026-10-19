@@ -84,6 +84,14 @@ await run("--user 'joshua:pass1' /auth/basic/basic.html")
 // Test basic authentication with separate user and password options
 await run("--user joshua --password pass1 /auth/basic/basic.html")
 
+
+data = await run("--auth digest --user 'joshua:pass1' /auth/digest/digest.html")
+ttrue(data?.contains('Digest - Access for all'))
+
+// A wrong password is refused after one challenge rather than retried
+data = await run("--auth digest --user 'joshua:wrong' /auth/digest/digest.html")
+ttrue(data?.startsWith('Bad status'))
+
 // Test POST with form data. The /post route echoes parsed parameters (see appweb.conf)
 data = await run("--form 'name=John+Smith&address=300+Park+Avenue' /post")
 ttrue(data?.contains('name=[John Smith]'))
@@ -120,18 +128,7 @@ data = await run("--upload " + files2 + " /upload/cgiProgram.cgi")
 ttrue(new Path("../web/tmp/http.tst.ts").exists)
 
 /*
-    Test upload carrying additional form fields.
-
-    The "+" survives. It is a literal in the part body, not an encoded space: --form does not decode
-    its argument before packing it into a multipart part, so the part named "address" carries the
-    bytes "300+Park+Avenue". The upload filter replays those fields to CGI as a urlencoded body and
-    now percent-encodes them (10148), so "+" arrives as "%2B" and the CGI decodes it back to "+".
-
-    This assertion used to read "300 Park Avenue" and that was the defect, not the expectation.
-    Before 10148 the filter wrote the raw bytes into a grammar where "+" means space, so appweb's own
-    parameter table held "300+Park+Avenue" while the CGI parsed "300 Park Avenue" -- two parsers, two
-    answers, same request. Do not "restore" the decoded spelling: it can only come back by
-    reintroducing that split. The non-multipart path below is where "+" legitimately decodes.
+    Multipart field + is literal. Replaying fields to CGI must encode it as %2B, unlike form-urlencoded input.
  */
 let files3 = new Path(".").files().join(" ")
 data = await run("--upload --form 'name=John+Smith&address=300+Park+Avenue' " + files3 +

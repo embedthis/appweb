@@ -1,16 +1,5 @@
 /*
     secure.tst.ts - HTTPS request handling
-
-    Covers secure-connection detection, reading over TLS, query strings and POST over TLS.
-
-    Was gated on thas('ME_SSL'), a flag the harness exports nowhere, so the body skipped
-    silently (10061) -- the same defect as 10047, which retired the identical gate from ssl/.
-    Removing that gate exposed a second one underneath: the Ejscript Http client is built
-    without TLS, so `if (!Config.SSL)` took the other arm and the file still passed while
-    asserting nothing. Driving curl through ssl/tls.ts is how the ssl/ group solved this.
-
-    The test server uses a self-signed certificate, so verification is off. ssl/cert.tst.ts
-    covers verification itself, which is a different subject.
  */
 
 import {teq, ttrue, tget} from '@embedthis/testme'

@@ -1,15 +1,5 @@
 /*
     missing.tst.ts - Automatic extension addition for an extensionless request
-
-    The /route/missing-ext route rewrites an extensionless request onto "$1.php" and runs it
-    through FastCGI. Its pattern is a negative lookahead -- a genuine regular expression -- so
-    appweb.conf gates the whole route on <if PCRE2>. Appweb ships no regex engine, so in a
-    default build the route does not exist and the request must fall through to a 404.
-
-    Previously gated on `thas('ME_FAST') && Config.OS == 'macosx'`, a flag the harness exports
-    nowhere, so the file skipped silently on every platform (10061). The real conditions are
-    PCRE2 and a PHP backend, and neither is a flag the test can read -- so the route is probed
-    and the branch taken from what the server actually does.
  */
 
 import {teq, tinfo, tskip, ttrue, tget} from '@embedthis/testme'

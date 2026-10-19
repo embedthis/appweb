@@ -1,20 +1,5 @@
 /*
     post.tst.ts - Stress test a large POST to the static file handler
-
-    The file handler does not want the body, so this asserts that a large one is consumed and
-    discarded without stalling the request: the document is still served, in full, with a 200.
-
-    Three separate faults kept this from running (10069). The buffer loops were
-    `for (let i in 64)`, which iterates a Number's properties and so never executed, leaving an
-    empty buffer. The write loop ran after `finalize()` rather than before it, so `http.status`
-    was read while the request was still pending and threw. And the calls were not awaited, so the
-    file finished before either had completed. The idiom below -- connect, write, finalize, then
-    read status -- is the one cgi/big-post and fast/big-post use.
-
-    The CGI case lives in post-cgi.tst.ts rather than here. Both in one file hangs on the second
-    request: the Ejscript HTTP client does not recover its connection after a large streaming POST
-    whose response arrives before the body is fully written. Appweb serves the same pair over one
-    connection in 240ms, so the split is around a client limitation, not a server one.
  */
 
 import {tdepth, tget, ttrue} from '@embedthis/testme'

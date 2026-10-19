@@ -1,9 +1,5 @@
 /*
     cache-cookie.tst.ts - Proxy Set-Cookie must not be replayed from the shared response cache
-
-    Issue 10093. A proxied backend can write Set-Cookie directly into tx->headers before the cache
-    filter snapshots response headers. The server-side cache must filter it while still caching the
-    response body.
  */
 
 import {ttrue, tget} from '@embedthis/testme'

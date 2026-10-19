@@ -1,11 +1,5 @@
 /*
     read.tst.ts - Response reading
-
-    Covers reading a response into a ByteArray in chunks, and reading it as lines.
-
-    The ByteArray case was previously gated on thas('ME_EJS') against a big.ejs endpoint that is
-    neither built nor served, so it never ran (10061). Retargeted at web/100K.txt, which prep.sh
-    generates at a known size.
  */
 
 import {teq, ttrue, tget} from '@embedthis/testme'

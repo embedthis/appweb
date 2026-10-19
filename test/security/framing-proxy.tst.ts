@@ -1,18 +1,4 @@
-/*
-    framing-proxy.tst.ts - Transfer-Encoding framing ratchet for responses
-
-    The HTTP/1 header parser is shared: it frames server requests and client responses through the same code.
-    security/framing.tst.ts covers the request side. This covers the response side, where Appweb is the
-    client -- a proxy reading a response from a backend it does not control.
-
-    A backend that frames a response ambiguously must never have that response relayed downstream, or the
-    proxy becomes the desync it was supposed to prevent. The test serves hostile responses from a backend of
-    its own and asserts the body never reaches the downstream client.
-
-    Note: a rejected response currently leaves the downstream request hanging rather than answering 502, so
-    these cases are asserted by timeout. The body not being relayed is the property that matters here; the
-    missing error response is tracked separately.
- */
+/* A hostile backend response must reach the client as a defined outcome */
 
 import {tget, tskip, ttrue} from '@embedthis/testme'
 import {Config, Uri} from '@embedthis/ejscript'
@@ -33,11 +19,14 @@ const PROXY = `http://${HTTP.host}:${HTTP.port}/badproxy/x`
 const BACKEND = 9997
 const BODY = 'HELLO'
 
-/*
-    Serve one canned response from a backend on the port the badproxy route connects to, then make a request
-    through the proxy. Returns the downstream status and body, or null if the proxy never answered.
- */
-async function throughProxy(reply: string, timeout: number): Promise<{status: number, body: string} | null> {
+
+interface Result {
+    status: number
+    headers: Headers
+    body: string
+}
+
+async function throughProxy(reply: string, timeout: number): Promise<Result | null> {
     let server = Bun.listen({
         hostname: '127.0.0.1',
         port: BACKEND,
@@ -48,10 +37,9 @@ async function throughProxy(reply: string, timeout: number): Promise<{status: nu
         },
     })
     try {
-        let response = await fetch(PROXY, {signal: AbortSignal.timeout(timeout)})
-        return {status: response.status, body: await response.text()}
+        let response = await fetch(PROXY, {redirect: 'manual', signal: AbortSignal.timeout(timeout)})
+        return {status: response.status, headers: response.headers, body: await response.text()}
     } catch {
-        //  The proxy rejected the response and never answered
         return null
     } finally {
         server.stop(true)
@@ -62,25 +50,27 @@ async function throughProxy(reply: string, timeout: number): Promise<{status: nu
 /*
     A well framed response must be relayed intact.
  */
-async function relayed(name: string, reply: string): Promise<void> {
+async function relayed(name: string, reply: string, status = 200): Promise<Result | null> {
     let result = await throughProxy(reply, 10000)
-    if (result == null || result.status != 200 || !result.body.includes(BODY)) {
+    if (result == null || result.status != status || !result.body.includes(BODY)) {
         console.log(name + ' expected the body to be relayed but got: ' + JSON.stringify(result))
     }
-    ttrue(result != null && result.status == 200 && result.body.includes(BODY))
+    ttrue(result != null && result.status == status && result.body.includes(BODY))
+    return result
 }
 
-/*
-    An ambiguously framed response must not be relayed. Either the proxy answers with an error, or it does
-    not answer at all -- but the backend body must never reach the downstream client.
- */
-async function notRelayed(name: string, reply: string): Promise<void> {
+async function notRelayed(name: string, reply: string): Promise<Result | null> {
     let result = await throughProxy(reply, 2000)
-    if (result != null && result.body.includes(BODY)) {
-        console.log(name + ' relayed a mis-framed body: ' + JSON.stringify(result))
+    if (result == null || result.status != 502 || result.body.includes(BODY)) {
+        console.log(name + ' expected a prompt 502 without the body but got: ' + JSON.stringify(result))
     }
+    ttrue(result != null && result.status == 502)
     ttrue(result == null || !result.body.includes(BODY))
-    ttrue(result == null || result.status != 200)
+    return result
+}
+
+function withStatus(line: string, headers = ''): string {
+    return `${line}\r\nContent-Length: 5\r\n${headers}\r\n${BODY}`
 }
 
 //  Controls: a correctly framed response is relayed, by either framing rule
@@ -106,3 +96,32 @@ await notRelayed('response duplicate TE',
 //  Coding names are case insensitive on the response side too, and the proxy still works after the rejections
 await relayed('response TE Chunked',
     `HTTP/1.1 200 OK\r\nTransfer-Encoding: Chunked\r\n\r\n5\r\n${BODY}\r\n0\r\n\r\n`)
+
+
+let result = await notRelayed('header value with bare CR', withStatus('HTTP/1.1 200 OK', 'X-Test: aaa\rbbb\r\n'))
+ttrue(result == null || result.headers.get('X-Test') == null)
+
+//  Unlike a CGI header, a CR before the CRLF is not trimmed: it is still a bare CR (RFC 9112 2.2)
+result = await notRelayed('header value with trailing CR', withStatus('HTTP/1.1 200 OK', 'X-Test: aaa\r\r\n'))
+ttrue(result == null || result.headers.get('X-Test') == null)
+
+
+result = await relayed('CRLF in header value', withStatus('HTTP/1.1 200 OK', 'X-Test: a\r\nX-Injected: 1\r\n'))
+ttrue(result != null && result.headers.get('X-Test') == 'a' && result.headers.get('X-Injected') == '1')
+
+for (const code of [404, 503, 599]) {
+    await relayed(`status ${code}`, withStatus(`HTTP/1.1 ${code} Reason`), code)
+}
+
+//  The reason phrase is optional (RFC 9112 4), so an empty one is relayed
+await relayed('status with empty reason', withStatus('HTTP/1.1 201 '), 201)
+
+for (const bad of ['999', '0', '-1', '99', '600', 'abc', '2147483648', '2000', '20', '200x']) {
+    await notRelayed(`status "${bad}"`, withStatus(`HTTP/1.1 ${bad} Reason`))
+}
+
+
+result = await relayed('off-host Location', withStatus('HTTP/1.1 302 Found', 'Location: http://elsewhere.example/x\r\n'), 302)
+ttrue(result != null && result.headers.get('Location') == 'http://elsewhere.example/x')
+
+await relayed('final control', withStatus('HTTP/1.1 200 OK'))

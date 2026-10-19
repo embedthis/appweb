@@ -1,33 +1,5 @@
 /*
     valgrind.tst - Valgrind memory-leak test on Linux
-
-    Starts the server under valgrind's memcheck tool, drives it with static and CGI requests,
-    shuts it down gracefully so the report covers a clean exit, and fails if memcheck reports
-    leaked memory or errors. Runs at test depth 4+ on Linux with valgrind installed.
-
-    This test had never executed on any machine before 2026-08-10 (10344). It carried four
-    defects, each fatal to its purpose on its own:
-
-      1. It drove the server with `Cmd.locate('http')` -- the `http` client this repository does
-         not build and the source archive does not ship (10192). Cmd.locate returned null and the
-         test threw a TypeError 28ms in, before valgrind was ever invoked.
-      2. It passed --suppressions=../../../build/bin/mpr.supp, a path nothing ever produced.
-         Valgrind treats a missing suppressions file as FATAL and refuses to start.
-      3. Its only assertion was `cmd.status == 0` on the valgrind process. Without
-         --error-exitcode, valgrind exits with the CHILD's status, so a clean appweb shutdown
-         returned 0 no matter what memcheck found. Even had it run, it could not have failed on
-         a leak.
-      4. Its appweb.conf was written for Appweb 4/5 -- `DocumentRoot`, `LoadModulePath
-         ../../../out/bin`, <if CGI_MODULE|EJS_MODULE|ESP_MODULE|PHP_MODULE>. Appweb rejected it on
-         the first directive and exited 237 before binding a port, so even a fixed harness measured
-         a server that never ran: 27 allocations, 0 leaks, a clean bill of health for nothing.
-
-    All four are fixed here. Requests go through the Http class this file already imported for
-    its readiness probe, so nothing external is needed; the suppressions file is committed beside
-    this test; and the leak verdict now comes from parsing valgrind's own LEAK SUMMARY rather than
-    from an exit status that cannot carry it.
-
-    TODO - Re-enable PHP tests when PHP shutdown is leak-free
  */
 
 import {tdepth, teq, tinfo, tskip, ttrue} from '@embedthis/testme'
@@ -63,9 +35,7 @@ if (Config.OS == 'linux' && tdepth() >= 4 && valgrind) {
                 " --suppressions='" + SUPP + "' --log-file='" + LOG + "' " + appweb
 
     /*
-        Issue count requests to path and return how many did not answer 200. Uses the Http class
-        rather than an external client so this test depends on nothing the repo does not build --
-        that dependency is what stopped it running at all (10344, 10192).
+        Use the built Http client; return the number of requests not answered with 200.
      */
     async function fetch(path: string, count: number): Promise<number> {
         let bad = 0
@@ -114,13 +84,7 @@ if (Config.OS == 'linux' && tdepth() >= 4 && valgrind) {
     teq(bad, 0, "static requests that did not answer 200")
 
     /*
-        Exercise the CGI path too, so the leak check covers a request that forks a child and
-        pipes its output. web/cgiProgram.cgi is staged by prep.sh as a compiled binary.
-
-        Previously this and two sibling blocks were behind thas('ME_CGI'), thas('ME_EJS') and
-        `false && thas('ME_PHP')` -- flags the harness exports nowhere, so none of them ran and
-        the leak check only ever saw static files (10061). The EJS and PHP blocks are deleted
-        rather than revived: neither is part of Appweb and neither document is served.
+        Include CGI requests to exercise child-process and pipe cleanup.
      */
     bad = await fetch("/cgiProgram.cgi", 1)
     teq(bad, 0, "CGI requests that did not answer 200")

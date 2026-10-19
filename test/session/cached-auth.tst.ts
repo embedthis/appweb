@@ -1,17 +1,5 @@
 /*
     cached-auth.tst - A session established under one auth scheme must not satisfy another
-
-    httpAuthenticate short-circuits on a session that already names a user: it reads
-    HTTP_SESSION_USERNAME and authenticates the request without consulting the route's AuthType. A
-    session minted on a Basic route therefore reaches a Digest route, and vice versa, because the
-    cached read never asks which scheme the route actually requires.
-
-    Ported from GoAhead test/session/cached-auth.tst.ts (issue 10060). The cross-scheme assertions
-    are the automated guard for issue 10019.
-
-    The first half - that the cookie alone authenticates a later request to the SAME route - is
-    correct and intended behaviour, and is asserted so a fix for 10019 cannot regress it by disabling
-    session caching outright.
  */
 
 import {ttrue, tget} from '@embedthis/testme'
@@ -55,12 +43,7 @@ r = await req(DIGEST)
 ttrue(r.status == '401')
 
 /*
-    The cross-scheme assertions (issue 10019).
-
-    A session minted on the Basic route must not by itself satisfy a route configured for Digest.
-    The route asked for a specific authentication scheme; a cached username is not evidence that the
-    client ever satisfied it. These are expected to FAIL until 10019 is fixed - see the note at the
-    end of this file.
+    A Basic session must not satisfy a Digest route without Digest credentials.
  */
 r = await req(DIGEST, {cookie: basicCookie})
 ttrue(r.status == '401')

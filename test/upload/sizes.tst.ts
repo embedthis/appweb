@@ -26,7 +26,7 @@ import {BOUNDARY, CGI_UPLOAD, buildBody, closingBoundaryOffset, payload, sendBod
 
 const KEEP = resolve(import.meta.dir, '..', 'tmp', 'keep')
 const ACTION_UPLOAD = '/action/upload'
-const LIMIT_UPLOAD = '/upload-limit/cgiProgram.cgi?-e'
+const LIMIT_UPLOAD = '/upload-limit/cgiProgram.cgi?SWITCHES=-e'
 const FILE_UPLOAD = '/upload-file/index.html'
 
 function staged(): string[] {
@@ -123,7 +123,7 @@ ttrue(closing > 0)
     have to be remembered and kept in step.
  */
 function normalize(text: string): string {
-    return text.replace(/appweb-\d+-\d+-\d+\.tmp/g, 'TMPFILE')
+    return text.replace(/appweb-[0-9a-f]+\.tmp/g, 'TMPFILE')
                .replace(/^Date: .*$/gm, 'Date: DATE')
 }
 
@@ -146,18 +146,7 @@ teq(dribbled.status, 200)
 ttrue(dribbled.text.includes('client=straddle.dat size=' + STRADDLE_SIZE))
 ttrue(dribbled.text.includes('PARAM field=straddle'))
 
-/*
-    SR-12: LimitUpload.
 
-    Under the cap is accepted, over it is refused, and -- the half that matters -- the oversized file
-    does not survive. writeToFile() compares the running total before each write, so a file at the
-    cap has been written and one over it has not; the refusal must not leave the excess on disk.
-
-    The refusal path here is httpLimitError with HTTP_CLOSE, which unlike the bad-request refusals in
-    boundary.tst.ts does reach the client: a real 413, and the connection closes. That contrast is
-    the evidence in #10367 that the missing flag is what breaks the others, so it is asserted rather
-    than assumed.
- */
 let under = await upload(LIMIT_UPLOAD, [
     {name: 'myfile', filename: 'under.dat', contentType: 'text/plain', value: payload(1024)},
 ], {marker: '</HTML>'})
@@ -173,18 +162,7 @@ ttrue(over.closed)
 teq(staged().length, before.length)
 
 /*
-    LimitUpload is enforced twice over, and the second one is easy to miss.
-
-    writeToFile() bounds a single file: "file->size + len > limits->uploadSize". Read alone, that
-    says the cap is per file and a request carrying many files under it should be accepted. It is
-    not -- tailFilter.c also compares the cumulative body count against the same limit
-    ("rx->upload && count >= limits->uploadSize"), which is the cap #10313 added. So LimitUpload
-    bounds the request as well as the file, and the request-level comparison is against the whole
-    body including part headers and boundaries, not just file content.
-
-    Both halves are asserted. Two 512-byte parts fit under 2K with their overhead and are accepted;
-    two 1000-byte parts are each well under the per-file cap and are refused, which can only be the
-    cumulative check.
+    Test both per-file and cumulative upload limits, including multipart overhead.
  */
 let twoSmall = await upload(LIMIT_UPLOAD, [
     {name: 'first', filename: 'a.dat', contentType: 'text/plain', value: payload(512)},

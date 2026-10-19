@@ -44,7 +44,7 @@ function parts(name: string) {
 }
 
 //  cgiHandler -- the one path the suite already had, kept here so the matrix is complete in one file
-let cgi = await upload('/upload/cgiProgram.cgi?-e+-p', parts('cgi.dat'), {marker: '</HTML>'})
+let cgi = await upload('/upload/cgiProgram.cgi?SWITCHES=-e+-p', parts('cgi.dat'), {marker: '</HTML>'})
 teq(cgi.status, 200)
 ttrue(cgi.text.includes('CGI_FILE_1_CLIENT_FILENAME=cgi.dat'))
 ttrue(cgi.text.includes('CGI_FILE_1_SIZE=' + BODY.length))
@@ -107,7 +107,7 @@ if (!HAS_FAST) {
 if (!HAS_PROXY) {
     tskip('proxyHandler case skipped: ' + NO_PROXY)
 } else {
-    let proxy = await upload('/proxy/upload/cgiProgram.cgi?-e+-p', parts('proxy.dat'), {marker: '</HTML>'})
+    let proxy = await upload('/proxy/upload/cgiProgram.cgi?SWITCHES=-e+-p', parts('proxy.dat'), {marker: '</HTML>'})
     teq(proxy.status, 200)
     ttrue(proxy.text.includes('CGI_FILE_1_CLIENT_FILENAME=proxy.dat'))
     ttrue(proxy.text.includes('CGI_FILE_1_SIZE=' + BODY.length))

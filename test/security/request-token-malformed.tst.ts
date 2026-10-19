@@ -1,8 +1,5 @@
 /*
     request-token-malformed.tst - Malformed request token expansion must not crash or spin
-
-    A reflected Origin header on a CrossOrigin route reaches httpExpandVars. Unterminated
-    or namespace-less ${...} sequences must be emitted literally and must complete.
  */
 
 import {tget, ttrue} from '@embedthis/testme'
@@ -44,5 +41,5 @@ await check('${a.b')
 await check('${a:b')
 await check('$')
 await check('${}')
-await check('${request:uri}', PATH)
+await check('${request:uri}')
 await check('https://ok.example')

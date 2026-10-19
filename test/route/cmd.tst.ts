@@ -12,7 +12,7 @@ let http: Http = new Http
 //  Test route command execution (not supported on VxWorks or Windows)
 if (Config.OS != 'VXWORKS' && Config.OS != 'WIN') {
     let path = new Path('../route-update-cmd.tmp')
-    path.remove()
+    await path.remove()
     ttrue(!path.exists)
 
     //  Execute route command that creates a file
@@ -23,6 +23,6 @@ if (Config.OS != 'VXWORKS' && Config.OS != 'WIN') {
     ttrue(http.status == 200)
     ttrue(http.response == 'UPDATED')
     ttrue(path.exists)
-    ttrue(path.remove())
+    ttrue(await path.remove())
     http.close()
 }

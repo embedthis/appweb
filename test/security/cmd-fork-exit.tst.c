@@ -1,23 +1,5 @@
 /*
     cmd-fork-exit.tst.c - A failed chdir in the forked child must _exit(), never return
-
-    The POSIX child branch of MPR's startProcess() handled a chdir() failure with "return" instead of
-    "_exit()". The forked child unwound back through mprStartCmd() into the caller's code and on into
-    the MPR event loop, as a complete second copy of the server -- holding a duplicate of every
-    descriptor the parent had, because the failure fires before the fd handling and before the
-    closeFiles fork callback. Two processes then accept on the same listening socket (10153).
-
-    The response is unchanged whether or not the clone escapes, so a status-code assertion cannot see
-    this. What is observable is that a second process exists, so that is what this test detects.
-
-    The detector is a pipe opened before the call. If the clone escapes, it reaches the line after
-    mprStartCmd() with a different pid, writes a byte and _exit()s -- both because that byte is the
-    evidence, and so that a failing run does not leave a second copy of the test binary running the
-    rest of the suite's assertions. The write cannot be lost: the chdir failure precedes every fd
-    close in the child branch, which is precisely why the escaped clone is dangerous.
-
-    The trigger is a directory that does not exist. It reaches the same chdir() < 0 branch as an
-    unsearchable one and does so deterministically, with no dependence on the uid the suite runs as.
  */
 
 /********************************* Includes ***********************************/

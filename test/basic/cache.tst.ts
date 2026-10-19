@@ -1,18 +1,5 @@
 /*
     cache.tst - A response generated for an authenticated request must not be marked shareable
-
-    A route carrying `Cache client=...` marked every 200 response `Cache-Control: public` with no
-    `Vary`, whether or not the request was authenticated. The shipped production configuration
-    applies such a directive to .html at global scope, so this reached any authenticated HTML page:
-    a proxy or CDN could store one user's response and serve it to another.
-
-    Issue 10014. An authenticated response is now `private` and varies on Authorization; an
-    anonymous one is still `public`, so ordinary static content stays shareable.
-
-    The assertion is made on the second request. cacheAtClient() only adds a header when none is
-    present, and the first authenticated request already carries `Cache-Control: no-cache=set-cookie`
-    from establishing the session, so the first request never exercised the path either way. Every
-    subsequent request on that session does, which is the common case.
  */
 
 import {ttrue, tget} from '@embedthis/testme'

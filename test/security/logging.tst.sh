@@ -23,7 +23,8 @@
 set -u
 
 TESTDIR="$(cd "$(dirname "$0")/.." && pwd)"
-BIN="${TESTDIR}/../build/bin/appweb"
+. "${TESTDIR}/utils/testenv.sh"
+BIN="$(tmAppweb "${TESTDIR}/../build/bin")"
 PORT=4500
 HOST="127.0.0.1:${PORT}"
 
@@ -31,12 +32,15 @@ WORK="${TESTDIR}/tmp/logging"
 CONF="${WORK}/logging.conf"
 TRACE="${WORK}/trace.log"
 ERRORS="${WORK}/error.log"
+NATIVE_TESTDIR="$(tmNative "${TESTDIR}")"
+NATIVE_WORK="$(tmNative "${WORK}")"
 
 #   base64 of joshua:pass1 -- what Basic actually puts on the wire
 BASIC='am9zaHVhOnBhc3Mx'
 COOKIE='sentinel=SECRETCOOKIEVALUE'
 
-fail() { echo "FAIL: $*"; cleanup; exit 1; }
+#   Exit non-zero and let the EXIT trap run cleanup. Calling cleanup here exits with the echo's status (0).
+fail() { echo "FAIL: $*"; exit 1; }
 pass() { echo "PASS: $*"; }
 
 SERVER=""
@@ -83,11 +87,11 @@ mkdir -p "${WORK}"
 #   to include.
 #
 cat > "${CONF}" <<CONF
-ErrorLog                ${ERRORS} level=4
-TraceLog                ${TRACE} level=3 formatter=pretty
+ErrorLog                ${NATIVE_WORK}/error.log level=4
+TraceLog                ${NATIVE_WORK}/trace.log level=3 formatter=pretty
 
 Listen                  ${PORT}
-Documents               ${TESTDIR}/web
+Documents               ${NATIVE_TESTDIR}/web
 LimitWorkers            2
 
 AddHandler              fileHandler html txt ""
@@ -97,7 +101,7 @@ User                    joshua 2fd6e47ff9bb70c0465fd2f5c8e5305e user
 
 <Route ^/traced/>
     Prefix              /traced
-    Documents           ${TESTDIR}/web
+    Documents           ${NATIVE_TESTDIR}/web
     Trace               debug=1 error=1 request=1 result=2 headers=3 context=4 packet=5 detail=6 content=10K
     AuthType            basic example.com
     Require             user joshua
@@ -105,7 +109,7 @@ User                    joshua 2fd6e47ff9bb70c0465fd2f5c8e5305e user
 
 <Route ^/tracedigest/>
     Prefix              /tracedigest
-    Documents           ${TESTDIR}/web
+    Documents           ${NATIVE_TESTDIR}/web
     Trace               debug=1 error=1 request=1 result=2 headers=3 context=4 packet=5 detail=6 content=10K
     AuthType            digest example.com
     Require             user joshua
@@ -165,20 +169,12 @@ done
 grep -q '/traced/index.html' "${TRACE}" || fail "the trace log does not contain the request"
 pass "the trace log recorded the requests"
 
-#
-#   10131. Each of the three is written to disk today. When 10131 is fixed each of these becomes
-#   its negation, and the header *name* should still appear -- so the trace continues to show the
-#   header was present without disclosing its value.
-#
-grep -q "${BASIC}" "${TRACE}" || fail "expected the Basic credential in the log (10131)"
-echo "10131: the Basic credential is in the trace log; it is base64, so it is the password"
-
-grep -q 'response=' "${TRACE}" || fail "expected the Digest response in the log (10131)"
-echo "10131: the Digest response is in the trace log, replayable for the life of the nonce"
-
-grep -q 'SECRETCOOKIEVALUE' "${TRACE}" || fail "expected the session cookie in the log (10131)"
-echo "10131: the session cookie value is in the trace log"
-pass "the three leaks of 10131 are present and pinned"
+#   Header tracing redacts credentials and cookie values while retaining header names.
+grep -q "${BASIC}" "${TRACE}" && fail "the Basic credential is in the trace log"
+grep -q 'response=' "${TRACE}" && fail "the Digest response is in the trace log"
+grep -q 'SECRETCOOKIEVALUE' "${TRACE}" && fail "the session cookie is in the trace log"
+grep -qi 'authorization: \[redacted\]' "${TRACE}" || fail "the trace no longer shows the Authorization header was present"
+pass "header tracing redacts the credential, the Digest response and the cookie"
 
 #
 #   The property that must hold whatever else does: the password is never written in the clear.
@@ -200,7 +196,7 @@ pass "no credential material reached the error log"
 exit 0
 
 #
-#   Copyright (c) Embedthis Software. All Rights Reserved.
+#   Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
 #   This software is distributed under a commercial license. Consult the LICENSE.md
 #   distributed with this software for full details and copyrights.
 #

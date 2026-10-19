@@ -1,12 +1,5 @@
 /*
     vars.tst - Session variable lifecycle via the sessionTest action
-
-    Order matters here: the read comes FIRST and must not establish a session. Reading a session
-    variable does not create one - a write is what establishes it. GoAhead's equivalent test once
-    asserted that the opening cookie-less GET was answered with a Set-Cookie, and that assertion was
-    itself the defect: any unauthenticated request could mint server state. Do not restore it.
-
-    Ported from GoAhead test/session/form.tst.ts (issue 10060).
  */
 
 import {ttrue, tget} from '@embedthis/testme'

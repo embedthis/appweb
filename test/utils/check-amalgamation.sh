@@ -3,7 +3,7 @@
 #   check-amalgamation.sh - Verify the amalgamated sources match their pak sources
 #
 #   src/http/httpLib.c and src/mpr/mprLib.c are generated from paks/http/dist and paks/mpr/dist by
-#   "make cache" and "pak sync". Nothing verified they still matched (10070). The upstream suites
+#   "make cache" and "pak sync". Nothing verified they still matched. The upstream suites
 #   test the upstream sources, and Appweb's suite does not run them, so a dropped or mangled hunk
 #   would be caught only by whatever functional coverage happens to touch the damaged code.
 #
@@ -55,6 +55,12 @@ check paks/http/dist/http.c     src/http/http.c
 check paks/mpr/dist/mprLib.c    src/mpr/mprLib.c
 check paks/mpr/dist/mpr.h       src/mpr/mpr.h
 check paks/osdep/dist/osdep.h   src/osdep/osdep.h
+check paks/watchdog/dist/watchdog.c src/watchdog/watchdog.c
+
+#   The shipped API reference for each vendored header comes from the pak that owns the header
+check paks/http/doc/api/http.html   doc/api/http.html
+check paks/mpr/doc/api/mpr.html     doc/api/mpr.html
+check paks/osdep/doc/api/osdep.html doc/api/osdep.html
 
 #   A run that checked nothing must not report success
 if [ "$checked" -eq 0 ]; then

@@ -1,19 +1,5 @@
 /*
     rotate.tst - The session id must rotate at the Basic/Digest privilege transition
-
-    httpLogin stores the authenticated username in session storage. It must establish a NEW session
-    first: a client arriving with a live, server-issued id would otherwise have the victim's identity
-    written into the session it chose. That is session fixation, and unlike the form-login path it is
-    reachable on every Basic and Digest route.
-
-    Ported from GoAhead test/session/rotate.tst.ts (issue 10060). This is the automated guard for
-    issue 10018, whose rotation behaviour was previously verified only by hand.
-
-    The distinction that makes this a real guard rather than a placebo: the id planted here is a
-    GENUINE, LIVE, server-issued id obtained pre-auth from the sessionTest action. GoAhead's earlier
-    regression test planted a FABRICATED id and passed even against the vulnerable build, because an
-    id the server never issued was never going to be adopted in the first place. Do not simplify this
-    to a made-up cookie value.
  */
 
 import {ttrue, tget} from '@embedthis/testme'

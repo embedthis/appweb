@@ -12,9 +12,7 @@ const HTTP = new Uri(tget('TM_HTTP') || '127.0.0.1:4100')
 let sizes = [1, 2, 4, 8, 12, 16, 24, 32, 40, 64]
 let count = sizes[tdepth()] * 20
 
-//  Only run at higher depths. The gate was `!thas('ME_CGI') && tdepth() > 3` -- inverted, and
-//  reading a flag the harness exports nowhere, so !NaN made it accidentally true. CGI is always
-//  built in the test configuration, so depth is the only real condition (10061).
+
 if (tdepth() > 3) {
     //  Verify server is responsive before test
     http = new Http

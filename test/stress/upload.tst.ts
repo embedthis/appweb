@@ -1,20 +1,5 @@
 /*
     upload.tst.ts - Stress test file uploads
-
-    Verifies that a large multipart upload arrives complete: the CGI behind the upload filter must
-    report the same byte count that was sent, and the original client filename.
-
-    Previously gated on thas('ME_EJS') against an upload.ejs endpoint. Ejscript is not part of
-    Appweb and no .ejs document is served, so this never ran (10061). Retargeted at
-    /upload/cgiProgram.cgi, which carries the uploadFilter.
-
-    It then failed on its first statement: `f` and `size` were assigned without being declared,
-    which is a ReferenceError in module scope, so nothing was uploaded and every run left a partial
-    .tdat behind. The `for (let i in ...)` loops iterated a Number's properties and never ran. And
-    it compared the sent file against `web/tmp/<basename>`, which never exists: the filter stages
-    to a generated `tmp/appweb-<pid>-<n>-N.tmp` and `UploadAutoDelete on` removes it once the
-    request completes. The size the CGI reports is what survives the request, so that is what is
-    asserted (10069).
  */
 
 import {tdepth, tget, ttrue} from '@embedthis/testme'

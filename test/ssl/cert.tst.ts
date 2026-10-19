@@ -1,17 +1,5 @@
 /*
     cert.tst - Server certificate verification, SNI selection and client certificates
-
-    Verifies:
-    - a CA-issued server certificate validates against its CA
-    - verification actually rejects: the same endpoint fails against an unrelated CA, and the
-      self-signed virtual host fails against the real CA
-    - SNI selects between two virtual hosts sharing one port, each with a different certificate
-    - a client certificate is required where the endpoint demands one
-
-    The negative cases are the point. The previous revision of this file asserted only that four
-    endpoints returned 200, which a server that skipped verification entirely would also satisfy --
-    and it never ran at all, because it gated on the Ejscript client having TLS compiled in. See
-    issue 10047.
  */
 
 import {ttrue, tget} from '@embedthis/testme'

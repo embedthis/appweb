@@ -1,13 +1,5 @@
 /*
     stream.tst.ts - Incremental reading of a large response
-
-    Reads a response in slices rather than in one call, so the body must survive being
-    reassembled across read boundaries that do not line up with packet or chunk boundaries.
-
-    Was previously gated on thas('ME_EJS') against a big.ejs endpoint. Ejscript is not part of
-    Appweb, the flag is exported by nothing, and no .ejs document is served -- so the file
-    skipped silently (10061). Retargeted at web/100K.txt, which prep.sh generates: 2050 lines
-    of 49 digits followed by a terminating "END OF DOCUMENT" line, 102516 bytes in all.
  */
 
 import {teq, ttrue, tget} from '@embedthis/testme'

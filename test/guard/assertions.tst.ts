@@ -1,17 +1,5 @@
 /*
     assertions.tst.ts - No test file may pass while asserting nothing
-
-    A .tst.ts file that executes no assertion and never calls tskip() reports PASS, and in the
-    summary line that is indistinguishable from coverage. basic/dir.tst.ts and
-    stress/hugeForm.tst.ts were exactly that: every assertion commented out, ttrue imported and
-    never called, PASS in 30ms (10062). Four regress files were the same shape with the
-    assertions never written rather than commented out (10063).
-
-    The check is static, not dynamic, for the same reason the gate guard is: an absent assertion
-    produces no runtime signal. A file that asserts nothing simply passes.
-
-    Delegation is handled -- six files in the suite assert entirely through shared helpers
-    (./raw, ./cgi, ./fast) and are among the best tests here. See scan-assertions.sh.
  */
 
 import {teq, tinfo, ttrue} from '@embedthis/testme'

@@ -1,23 +1,5 @@
 /*
     json-require-without-authtype.tst.ts - The JSON configuration must refuse an unenforceable requirement
-
-    This is 10102 in the other parser. auth.require.users and auth.require.roles record the requirement on
-    the route's auth object; the thing that reads it when a request arrives is the "auth" route condition,
-    and only auth.type installs one. A route carrying a requirement with no auth.type anywhere in its
-    ancestry parsed cleanly, started cleanly, and served every client (10356).
-
-    The .conf fix did not reach it: that check lived in Appweb's own config.c, and maParseConfig sends a
-    .json config to httpLoadConfig upstream instead. Both parsers now call httpCheckAuthorization, so there
-    is one rule and one implementation -- test/auth/require-without-authtype.tst.ts covers the directive
-    half and this covers the JSON half.
-
-    "users: '*'" is the case that forced the requirement onto HttpAuth.flags: httpSetAuthAnyValidUser
-    clears permittedUsers and stores nothing else, so before HTTP_AUTH_REQUIRED there was no way to tell a
-    route that requires any valid user from a route that requires nothing.
-
-    "roles: 'admin'" written as a scalar is asserted too. Iterating a JSON string yields no children, so
-    the scalar form was discarded at parse rather than merely unenforced -- a requirement the parser throws
-    away cannot be reported by the check either.
  */
 
 import {ttrue} from '@embedthis/testme'
@@ -29,22 +11,8 @@ const PORT = 4527
 const REALM = 'example.com'
 
 /*
-    Run appweb on a JSON configuration and return the diagnostic it exited with, or null if the
-    configuration was accepted. Being killed after five seconds is not a rejection -- a server that started
-    perfectly well must not be read as one.
-
-    Two things this has to get right, and it got both wrong before (10385).
-
-    Every call binds the same port, and each rejected configuration is parsed by a server that has already
-    created its listening endpoint. Killing that server and starting the next one immediately races the
-    release of the socket: kill() returns when the signal is delivered, not when the port is free. So wait
-    for the port before spawning.
-
-    And a server that cannot bind exits non-zero with a diagnostic, exactly like a server that refused the
-    configuration -- so the caller read "address already in use" as "the configuration was rejected". That
-    is a false pass on four of the six assertions here and a false failure on the other two, in a test whose
-    subject is a configuration that silently serves every client. Refuse to answer rather than answer
-    wrongly: a startup failure that is not about the configuration fails the test where it happens.
+    Return configuration rejection diagnostics or NULL on successful startup. Wait for port release
+    between runs; unrelated startup failures and timeouts must not count as configuration rejection.
  */
 async function load(name: string, http: object): Promise<string | null> {
     let work = workDir(name)

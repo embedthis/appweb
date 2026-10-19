@@ -1,21 +1,5 @@
 /*
     require-without-authtype.tst.ts - A Require nothing enforces must not start the server
-
-    Require ability|role|user|valid-user records the requirement on the route's auth object, but the thing
-    that reads it at request time is the "auth" route condition -- and only AuthType installs that. So a
-    route carrying a Require with no AuthType anywhere in its ancestry parsed without error, started
-    without a warning, and then served every client. The configuration reads as protected and is not, and
-    nothing in the config, the logs or the startup output distinguished it from a route that is (10102).
-
-    Appweb now fails closed: the configuration is rejected and the server does not start, naming the route.
-
-    The check runs once the whole configuration has been parsed, not at the Require directive, because
-    AuthType may legally follow Require in the same block and may sit in an enclosing block that has not
-    been read yet. Both orderings are asserted here, along with an AuthType inherited from an ancestor
-    route -- a check that understood only the immediate block would reject all three.
-
-    "Require secure" is not an authorization requirement. It installs its own condition and needs no
-    AuthType, so it must keep starting.
  */
 
 import {ttrue} from '@embedthis/testme'

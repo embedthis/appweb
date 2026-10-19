@@ -1,16 +1,5 @@
 /*
     condition.tst - Route conditions on client certificate fields
-
-    The /ssl-match route on the client-certificate endpoint carries
-
-        Condition match ${ssl:CLIENT_S_CN} "localhost|example.com"
-
-    so reaching it requires both a client certificate and a subject common name the condition
-    accepts. This exercises the alternation-of-literals path in the native pattern matcher as well
-    as the TLS variable plumbing.
-
-    Rewritten off the Ejscript client, which has no TLS compiled in and so never ran this -- the
-    previous revision reported PASS having asserted nothing. See issue 10047.
  */
 
 import {ttrue, tget} from '@embedthis/testme'

@@ -1,11 +1,5 @@
 /*
     lifecycle.tst - Session lifecycle for form authentication
-
-    Covers the states a session moves through: absent, established by login, honoured on a protected
-    route, and destroyed by logout. The last one is the assertion that matters most -- a logout that
-    leaves the session usable is the defect this exists to catch.
-
-    There was no session test directory at all before this (issue 10041).
  */
 
 import {ttrue, tget} from '@embedthis/testme'
@@ -31,8 +25,12 @@ ttrue(sessionCookie(r.headers) != '')
 r = await req(PROTECTED, {jar: cookies})
 ttrue(r.status == '200')
 
-//  Logout is accepted
+//  Logout is accepted, by POST only so a cross-site link cannot log the user out
 r = await req(LOGOUT, {jar: cookies})
+ttrue(r.status != '302')
+r = await req(PROTECTED, {jar: cookies})
+ttrue(r.status == '200')
+r = await req(LOGOUT, {jar: cookies, post: 'logout=1'})
 ttrue(r.status == '302')
 
 //  ... and the session no longer grants access

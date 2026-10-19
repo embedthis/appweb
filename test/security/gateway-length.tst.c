@@ -169,6 +169,20 @@ static void checkRefused(cchar *uri, cchar *what)
 }
 
 
+
+static void checkMalformed(cchar *uri, cchar *what)
+{
+    cchar *r;
+
+    r = probe(uri);
+    tcontains(r, "502 Bad Gateway", "%s must be refused", what);
+    ttrue(scontains(r, "INJECTED") == 0, "%s must not forward the program output", what);
+    ttrue(scontains(r, "AAAAA") == 0, "%s must not forward the program body", what);
+    tcontains(r, "ALIVE", "%s must not cost the connection", what);
+    teqi(responses(r), 2, "%s must yield exactly one response per request", what);
+}
+
+
 int main(int argc, char **argv)
 {
     cchar *r;
@@ -197,6 +211,12 @@ int main(int argc, char **argv)
     checkRefused(HDRTEST "?cl-bad", "a non numeric CGI Content-Length");
     checkRefused(HDRTEST "?cl-huge", "an overflowing CGI Content-Length");
 
+    /* Reject whitespace before a framing-header colon; it must not bypass length or Transfer-Encoding checks. */
+    checkMalformed(HDRTEST "?cl-space", "a CGI Content-Length with a space before the colon");
+    checkMalformed(HDRTEST "?cl-tab", "a CGI Content-Length with a tab before the colon");
+    checkMalformed(HDRTEST "?cl-lower-space", "a lower case CGI content-length with a space before the colon");
+    checkMalformed(HDRTEST "?te-space", "a CGI Transfer-Encoding with a space before the colon");
+
 #if ME_UNIX_LIKE
     /*
         The FastCGI parser is a copy of the CGI one and carried the same defect, so it needs its own
@@ -209,6 +229,14 @@ int main(int argc, char **argv)
     checkMismatch("/fast-bin/fastProgram?SWITCHES=-b%201%20-L%209999", "FastCGI declaring more than it writes");
     checkMismatch("/fast-bin/fastProgram?SWITCHES=-b%201%20-L%202", "FastCGI declaring less than it writes");
     checkRefused("/fast-bin/fastProgram?SWITCHES=-b%201%20-L%205abc", "a non numeric FastCGI Content-Length");
+
+    //  fastProgram "-r 9" to "-r 12" are the four malformed spellings above
+    checkMalformed("/fast-bin/fastProgram?SWITCHES=-r%209", "a FastCGI Content-Length with a space before the colon");
+    checkMalformed("/fast-bin/fastProgram?SWITCHES=-r%2010", "a FastCGI Content-Length with a tab before the colon");
+    checkMalformed("/fast-bin/fastProgram?SWITCHES=-r%2011",
+                   "a lower case FastCGI content-length with a space before the colon");
+    checkMalformed("/fast-bin/fastProgram?SWITCHES=-r%2012",
+                   "a FastCGI Transfer-Encoding with a space before the colon");
 #endif
 
     mprDestroy();
@@ -216,7 +244,7 @@ int main(int argc, char **argv)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

@@ -1,9 +1,5 @@
 /*
     xsrf.tst - Route XSRF enforcement
-
-    A route configured with XSRF must mint a token on safe requests and reject state-changing
-    requests unless the client returns the current session token in X-XSRF-TOKEN or -xsrf-.
-    This is the automated guard for issue 10137.
  */
 
 import {ttrue, tget} from '@embedthis/testme'
@@ -28,6 +24,7 @@ ttrue(r.status == '200')
 ttrue(r.body.contains('Number null'))
 let cookie = sessionCookie(r.headers)
 let token = xsrfToken(r.headers)
+ttrue(!/domain=/i.test(r.headers), 'session and XSRF cookies are host-only')
 ttrue(cookie != '')
 ttrue(token != '')
 ttrue(/^[Ss]et-[Cc]ookie:\s*XSRF-TOKEN=/m.test(r.headers))

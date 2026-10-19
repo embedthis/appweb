@@ -1,23 +1,5 @@
 /*
     http2-rejected-handler.tst.ts - A rejected HTTP/2 request must not run the handler
-
-    When a header block is refused mid-parse, Appweb sends GOAWAY and writes no response. It also used
-    to route the stream and run the real handler anyway, because stream->error was never set on that
-    path: sendReset only reaches httpError after a successful setState, and a rejection inside
-    addHeaderToSet has usually driven the stream terminal already through sendGoAway's own cleanup.
-    httpRouteRequest substitutes the pass handler only when stream->error is set, so the request went
-    to fileHandler -- or to CGI, FastCGI or the reverse proxy in a real configuration.
-
-    The client saw nothing, which is why the existing tests could not see this. http2-authority.tst.ts
-    and http2-header-list-limit.tst.ts assert wire behaviour, and the wire behaviour was correct all
-    along: GOAWAY, no HEADERS, no DATA. What was wrong was internal, so this test observes a side
-    effect the handler leaves behind rather than the response. A CGI program that appends to a file is
-    the cheapest such witness, and it is also the case that matters -- an attacker spawning processes
-    on a server that has already refused the request. Issue 10342.
-
-    Three of the rejection branches also failed to return 0, so they reported success to parseHeader
-    and never reached the guard at all: a duplicate :scheme, a connection header, and a te header whose
-    value is not "trailers". Those are covered here alongside the two that did.
  */
 
 import {teq, tskip, ttrue} from '@embedthis/testme'
@@ -187,6 +169,7 @@ if (!existsSync(BIN)) {
     writeFileSync(CONF, [
         `ErrorLog ${WORK}/error.log level=0`,
         `Http2 on`,
+        `Http2Cleartext on`,
         `Listen 127.0.0.1:${PORT}`,
         `Documents ${TESTDIR}/web`,
         `LimitWorkers 2`,

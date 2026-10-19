@@ -1,7 +1,5 @@
 /*
-    args.tst.ts - Test CGI program command line argument handling
-    Verifies that query parameters are correctly split and passed as CGI arguments
-    Note: Arguments are split at '+' characters and shell-encoded
+    args.tst.ts - Check + separated CGI arguments after the end-of-options marker.
  */
 
 import {ttrue, tget} from '@embedthis/testme'
@@ -29,12 +27,32 @@ http.get(HTTP + '/cgiProgram.cgi/extra/path?a+b+c')
 await http.finalize()
 match(http, 'QUERY_STRING', 'a+b+c')
 ttrue(keyword(http, 'ARG[0]').contains('cgiProgram'))
-match(http, 'ARG.1.', 'a')
-match(http, 'ARG.2.', 'b')
-match(http, 'ARG.3.', 'c')
+match(http, 'ARG.1.', '--')
+match(http, 'ARG.2.', 'a')
+match(http, 'ARG.3.', 'b')
+match(http, 'ARG.4.', 'c')
 
 //  Test with URL-encoded query variables
 http.get(HTTP + '/cgi-bin/cgiProgram?var1=a+a&var2=b%20b&var3=c')
 await http.finalize()
 match(http, 'QUERY_STRING', 'var1=a+a&var2=b%20b&var3=c')
 http.close()
+
+//  Delimiters do not become trailing empty argv entries when the allocation count exceeds the tokens.
+for (const [query, args] of [
+    ['a++b', ['a', 'b']], ['+a', ['a']], ['a+', ['a']],
+    ['a+b', ['a', 'b']], ['+++', []],
+] as [string, string[]][]) {
+    http.get(HTTP + '/cgi-bin/cgiProgram?' + query)
+    await http.finalize()
+    let argind = 1
+    if (args.length) {
+        match(http, 'ARG.1.', '--')
+        argind = 2
+    }
+    for (let i = 0; i < args.length; i++) {
+        match(http, 'ARG.' + (argind + i) + '.', args[i])
+    }
+    ttrue(!http.response.contains('ARG[' + (argind + args.length) + ']'))
+    http.close()
+}

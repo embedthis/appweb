@@ -20,8 +20,17 @@ await http.finalize()
 ttrue(keyword(http, "ARG[0]").contains("fastProgram"))
 http.close()
 
-// Test query string with multiple variables and URL encoding
-// Note: args are split at '+' characters and are then shell character encoded
+//  A reused FastCGI process must never inherit command-line arguments from any request's query.
+for (const query of ['a++b', '+a', 'a+', 'a+b']) {
+    http.get(HTTP + '/fast-bin/fastProgram?' + query)
+    await http.finalize()
+    match(http, 'QUERY_STRING', query)
+    ttrue(!http.response.contains('ARG[1]'))
+    http.close()
+}
+
+//  Query variables stay in the request environment, separate from the reused process's argv.
+//  URL encoding and '+' separators are preserved in QUERY_STRING.
 http.get(HTTP + "/fast-bin/fastProgram?var1=a+a&var2=b%20b&var3=c")
 
 await http.finalize()

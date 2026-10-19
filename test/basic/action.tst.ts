@@ -1,16 +1,5 @@
 /*
     action.tst.ts - The action handler
-
-    test/appweb.conf configures <Route ^/action/> with SetHandler actionHandler, and no test
-    referenced /action/ (10065). http/src/actionHandler.c maps a URI onto a C function registered
-    with httpDefineAction().
-
-    The positive path is already covered, indirectly but genuinely: form authentication registers
-    its login and logout endpoints as actions (http/src/auth.c:484), so auth/form.tst.ts drives
-    actionHandler end to end every run. What was missing is the negative side -- what the handler
-    does with a URI that names no registered action, which is the case an attacker supplies.
-
-    Registering an action here would mean changing C under src/, which this feature does not do.
  */
 
 import {teq, ttrue, tget} from '@embedthis/testme'

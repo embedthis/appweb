@@ -11,7 +11,7 @@
 #   failing to find one is reported by the test rather than by a mystery 500.
 #
 #   cgi.force_redirect defaults on and makes php-cgi refuse to run unless the server sets
-#   REDIRECT_STATUS. Appweb does not, and the correct answer for a server that invokes the binary
-#   directly (rather than exposing it as a document) is to turn the check off.
+#   REDIRECT_STATUS. Appweb sets it for an Action-mapped script; the check is also turned off here
+#   because this wrapper invokes the binary directly rather than exposing it as a document.
 #
 exec php-cgi -d cgi.force_redirect=0 "$@"

@@ -1,16 +1,5 @@
 /*
     gates.tst.ts - No test may be gated on a flag the harness does not export
-
-    thas(key) is tget(key) - 0. When the harness exports no such key, tget returns undefined,
-    undefined - 0 is NaN, and NaN is falsy -- indistinguishable from a deliberate false. Every
-    block behind such a gate is skipped while the file still reports PASS.
-
-    That is how ME_EJS, ME_SSL, ME_FAST, ME_PHP and ME_CGI hid sixteen dead blocks across
-    thirteen files (10061), and how ME_SSL alone silenced the whole ssl/ group before it
-    (10047). Twice is a pattern, so this guard exists to make the third time a failure.
-
-    It reads sources rather than results: a dead gate produces no runtime signal at all, which
-    is precisely the problem.
  */
 
 import {teq, tinfo, ttrue} from '@embedthis/testme'

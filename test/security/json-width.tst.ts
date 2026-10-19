@@ -1,21 +1,5 @@
 /*
     json-width.tst.ts - JSON element count is bounded on every pre-auth entry to the parser
-
-    Depth was bounded first (see json-depth.tst.ts, issue 10146) and width was not. A flat array is
-    one level deep and can hold as many elements as the byte budget allows. rxFormCount does not
-    reach them: it counts immediate children of the parameter table, so a whole tree folded under one
-    top-level key contributes exactly one. Issue 10312.
-
-    What that cost was not the memory the finding predicted. Each element becomes a node on one
-    sibling chain, and the collector marks such a chain by recursing once per link, so a long enough
-    chain exhausts the marking thread's stack. Measured before the fix: a 40KB body -- far under
-    rxBodySize -- killed the server with SIGBUS, "Thread stack size exceeded due to excessive
-    recursion". Unauthenticated, one request, default configuration. The parse happens in
-    processReady before routeRequest, so no route configuration is involved either. The collector
-    defect itself is issue 10348; this bounds what the HTTP layer will build.
-
-    ME_MAX_JSON_NODES now bounds it during the parse, so an oversized document is refused rather
-    than built and then fatal to collect.
  */
 
 import {teq, ttrue, tget} from '@embedthis/testme'
@@ -90,7 +74,7 @@ http.close()
     content type, and from the query string, which is parsed earlier still. Both entries must be
     bounded, matching how json-depth.tst.ts covers them for depth.
  */
-http = await post('/post', array(WIDE) + '_encoded_json_', 'application/x-www-form-urlencoded')
+http = await post('/post', '_encoded_json_=' + array(WIDE), 'application/x-www-form-urlencoded')
 teq(http.status, 400)
 http.close()
 
@@ -101,7 +85,7 @@ http.close()
     it -- pinning 400 here would be pinning LimitUri's value, not this fix.
  */
 http = new Http
-http.get(HTTP + '/post?' + array(WIDE) + '_encoded_json_')
+http.get(HTTP + '/post?_encoded_json_=' + array(WIDE))
 await http.finalize()
 ttrue(http.status == 400 || http.status == 413)
 http.close()

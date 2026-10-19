@@ -313,7 +313,7 @@ Uploads through the proxy are covered by `upload/handlers.tst.ts`, and proxied f
 **Purpose**: Regression testing for fixed bugs
 
 **Tests**:
-- `01000-chunk.tst.ts` - Issue #1000: Chunking bug
+- `01000-chunk.tst.ts` - Chunking bug
 - `bad-path.tst.ts` - Invalid path handling
 - `connect.tst.ts` - Connection issues
 - `headers.tst.ts` - Header parsing bugs
@@ -420,7 +420,7 @@ against a server with backpressure removed.
 cannot write a frame header at all.
 
 **After editing `wsclient.h`, run `rm -rf test/ws/.testme`** -- TestMe keys its compile cache on the
-`.tst.c` alone, so a header change silently reruns the previous binary (testme #10003).
+`.tst.c` alone, so a header change silently reruns the previous binary (filed against TestMe).
 
 **Routes**: `^/ws/` and `^/ws-limit/` (fixed-document handler), `^/wsecho$` and `^/wslimit$` (echo)
 

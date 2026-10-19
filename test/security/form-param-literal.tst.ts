@@ -9,8 +9,8 @@ import {ttrue} from '@embedthis/testme'
 
 import {HOST, send} from './raw'
 
-const CGI = '/cgiProgram.cgi?-e+-p'
-const UPLOAD_CGI = '/upload/cgiProgram.cgi?-e+-p'
+const CGI = '/cgiProgram.cgi?SWITCHES=-e+-p'
+const UPLOAD_CGI = '/upload/cgiProgram.cgi?SWITCHES=-e+-p'
 
 function check(response: string, text: string): void {
     if (!response.includes(text)) {
@@ -102,9 +102,9 @@ body = await post(CGI, 'application/x-www-form-urlencoded',
 check(body, 'CGI_A=1')
 check(body, 'CGI_B=2')
 check(body, 'CGI_C=3')
-check(body, 'CGI_A.B=first second')
+check(body, 'CGI_A.B=second')
 check(body, 'CGI_*=attack')
 check(body, 'PVAR a.b=second')
 check(body, 'PVAR *=attack')
-reject(body, 'CGI_A.B=second')
+reject(body, 'CGI_A.B=first')
 reject(body, 'CGI_=empty-name')

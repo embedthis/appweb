@@ -1,8 +1,5 @@
 /*
     windows-shell-fallback.tst.ts - Windows CGI must not promote extensionless batch targets to cmd.exe
-
-    Issue 10155: /cgi-bin/name where only name.bat exists used to run through cmd.exe /Q /C. That
-    made ISINDEX query arguments live cmd.exe syntax because CGI escapes them with POSIX backslashes.
  */
 
 import {tget, tskip, ttrue} from '@embedthis/testme'
@@ -31,7 +28,7 @@ if (Config.OS != 'windows') {
     const base = resolve(import.meta.dir, '..')
     const cgiBin = `${base}/cgi-bin`
     const webTmp = `${base}/web/tmp`
-    const name = `issue-10155-${App.pid}`
+    const name = `shell-fallback-${App.pid}`
     const batch = `${cgiBin}/${name}.bat`
     const extensionless = `${cgiBin}/${name}`
     const batchSentinel = `${webTmp}/${name}-batch.txt`

@@ -1,23 +1,6 @@
 /*
     frames.tst.c - WebSocket handshake and frame-length ratchet
 
-    test/appweb.conf configures <Route ^/ws/> with the webSocketFilter and testWebSocketsHandler, and
-    no test targeted it (10065). The only WebSocket tests in the suite reached that handler through
-    the proxy backend in proxy.conf, so the upgrade and framing paths on the primary endpoint were
-    unexercised. http/src/webSockFilter.c is 1,243 lines.
-
-    Native rather than TypeScript because the subject is bytes on the wire. The Ejscript client cannot
-    write a binary frame -- a frame header carries octets above 0x7f, which the shim UTF-8 encodes and
-    thereby corrupts -- and never delivers onmessage, which is why proxy/websockets-1.tst.ts asserts
-    only open and close.
-
-    The socket helpers this used to carry are now in wsclient.h, shared with close.tst.c,
-    control.tst.c, message.tst.c and flow.tst.c. Nothing about the assertions below changed in the
-    move, which is the only way to know the extraction was faithful.
-
-    src/modules/testWebSocketsHandler.c replies to any inbound message with a fixed document of digit
-    lines terminated by "END OF DOCUMENT", so the reply is a known quantity.
-
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
@@ -191,7 +174,7 @@ int main(int argc, char **argv)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

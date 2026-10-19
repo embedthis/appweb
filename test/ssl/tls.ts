@@ -1,24 +1,5 @@
 /*
     tls.ts - TLS request helpers for the ssl test group
-
-    The Ejscript Http client is built without TLS (Config.SSL is false), so it cannot exercise any of
-    this. Tests that gated on it reported PASS while asserting nothing, which is indistinguishable
-    from coverage in the summary line -- see issue 10047.
-
-    get() drives openssl s_client, the same way ssl/revoke.tst.ts drives utils/tls-probe.sh.
-
-    It used to drive curl, and could not run on Windows at all. Every curl on a Windows machine is
-    built against Schannel -- the one Git for Windows ships and the one in System32 both -- and
-    Schannel validates only against the Windows certificate store: it ignores --cacert, so
-    "curl --cacert ca.crt https://localhost:4443/" fails with exit 60 before a client certificate is
-    even in the picture, and it cannot import a PEM client certificate at all. Since every assertion
-    in this group either verifies the server against the test CA or presents a client certificate, the
-    whole group failed for a reason that had nothing to do with the server. openssl is present on all
-    three platforms, takes PEM directly, and revoke.tst.ts already proved the approach here.
-
-    Every helper returns a status string rather than throwing, so a test distinguishes "the server
-    refused this handshake" from "the command failed", and a refusal is asserted rather than inferred
-    from an exception.
  */
 
 import {Cmd, Path} from '@embedthis/ejscript'
@@ -123,14 +104,8 @@ async function sclient(url: string, opts: any, feed: string): Promise<string> {
     }
     if (opts.ca) {
         /*
-            -verify_return_error is what makes a verification failure end the handshake. Without it
-            s_client prints the error and carries on to make the request, so every negative assertion
-            in this group would read as a success -- the exact shape of failure issue 10047 is about.
-
-            No -verify_hostname. The assertions here turn on which CA issued the certificate and on
-            SNI selection, not on name matching, and the test certificate is CN=localhost with no
-            subjectAltName -- so requiring a name match would make the group depend on each OpenSSL
-            version's policy for falling back to CN, and buy no assertion.
+            -verify_return_error makes certificate failures fatal. Omit hostname checks: these tests exercise
+            CA trust and SNI selection, and the fixture has CN only.
          */
         args.push('-CAfile', opts.ca, '-verify_return_error', '-verify', '9')
     }

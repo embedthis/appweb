@@ -1,13 +1,5 @@
 /*
     cache-cookie.tst - Application cookies must not be replayed from the shared response cache
-
-    Issue 10093. This covers the ordinary httpSetCookie path as a control for the proxy-specific
-    Set-Cookie regression: session cookies are appended after the cache filter snapshots headers,
-    so the cached response body may replay but the session cookie must not.
-
-    The URL is this test's alone. Only the request that primes the server cache carries the cookie,
-    so sharing a cached path with cache-poison.tst.ts made this test pass or fail on which of the two
-    the runner reached first -- and discovery order is whatever order the file system returns.
  */
 
 import {ttrue, tget} from '@embedthis/testme'

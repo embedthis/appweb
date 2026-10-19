@@ -1,21 +1,5 @@
 /*
     groups.tst.ts - Every configuration group must run, or be listed here with a reason
-
-    The runner splits the suite across a group per testme.json5, and the summary line counts what
-    ran while saying nothing about what did not. A run that executed 78 of 137 tests and one that
-    executed all of them both print PASSED. That is how a group setup failure came to drop 46
-    tests without anyone noticing, and how stress/ came to be disabled for long enough that three
-    of its files rotted (10069).
-
-    This guard makes the set of non-running groups an assertion. A group that stops running fails
-    the suite until someone records why -- which is the whole difference between a decision and a
-    drift. It works in both directions: stress/ runs again as of 10069, and had its entry been left
-    here the guard would have failed it as a stale record rather than let the note rot in place.
-
-    It cannot detect the third case, a group whose setup fails at run time: the runner aborts the
-    remaining groups and this file may not execute at all. Changing that needs a change to TestMe,
-    which this feature does not make. What it does cover is the two cases that are decisions
-    someone took in a config file, which is where stress/ and bench/ both are.
  */
 
 import {teq, tinfo, ttrue} from '@embedthis/testme'

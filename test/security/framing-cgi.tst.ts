@@ -1,21 +1,5 @@
 /*
     framing-cgi.tst.ts - CGI and FastCGI must not forward a backend Transfer-Encoding
-
-    #10003 hardened the shared HTTP/1 parser to reject any message declaring both Content-Length and
-    Transfer-Encoding, and that transitively protected the reverse-proxy leg, whose backend response
-    goes through the same client stack (framing-proxy.tst.ts). CGI and FastCGI each have their own
-    hand-rolled response header parser and inherited none of it.
-
-    Neither transport carries a chunk envelope: a CGI program writes to stdout and a FastCGI app
-    writes records, and Appweb owns whatever framing reaches the client. So a backend's
-    Transfer-Encoding is only ever a claim about a body it hands over flat. Forwarding it as an
-    ordinary header, while the content-length branch had already forced chunkSize to zero, made
-    Appweb *construct* a response carrying both headers with a raw, never-chunk-encoded body -- the
-    RFC 9112 6.1 conflict #10003 exists to prevent, manufactured here rather than relayed. A client or
-    cache following 9112 6.3 precedence frames the response by the Transfer-Encoding and desyncs from
-    where Appweb believes it ends. Issue 10308.
-
-    The response must be refused before any header is committed, whichever order the two arrive in.
  */
 
 import {ttrue, teq, tget} from '@embedthis/testme'

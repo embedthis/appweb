@@ -1,32 +1,5 @@
 /*
     win-quoting.tst.ts - The Windows command-line encoder must keep its argv boundaries
-
-    Windows has no exec(argv). prepWinCommand serializes cmd->argv into the single command line
-    CreateProcess takes, and the child's C runtime parses it back. The two must implement the same
-    rule or the token grid the caller built and the one the child sees diverge, which is attacker
-    data crossing an argument boundary: 10318, CWE-88.
-
-    The rule is that a backslash is literal unless it precedes a quote, so a run of N backslashes must
-    be emitted as 2N+1 before a literal quote and as 2N before the closing quote. The encoder used to
-    escape only the literal quotes, and its guard against double-escaping -- do not escape a quote that
-    already has a backslash before it -- was the inverse of the rule. An argument ending in an odd
-    backslash run came out as "arg\", whose trailing \" the parser reads as an escaped quote: the
-    argument never closes and swallows the ones that follow.
-
-    Separately, mprEscapeCmd decided what to escape from charMatch alone. That table is generated, and
-    one array serves every platform, so it carries the output of mprEncodeGenerate's POSIX branch --
-    which means the two characters its ME_WIN_LIKE branch names, '%' and '\r', were escaped nowhere.
-    '%' is cmd.exe's variable expansion trigger, in a string escaped because it may reach cmd.exe.
-
-    Both fixes live in MPR and arrive here through the amalgamation, which is how 10155's fix was
-    silently reverted twice: it had been written into the generated file and never upstream, so a
-    clean re-import dropped it (10297). test/guard/amalgamation.tst.ts cannot catch that -- it proves
-    the vendored files agree with their pak sources, and during a reversion they agree. Only presence
-    catches it, so this guard reads the shipped amalgamation, the file that goes to a customer.
-
-    test/security/win-cmd-quoting.tst.c is the functional half and runs the round trip through
-    CommandLineToArgvW and a real child process. It runs on Windows only, and no host here builds
-    Windows, so this guard is what holds on every other platform.
  */
 
 import {ttrue} from '@embedthis/testme'
@@ -48,7 +21,7 @@ ttrue(prep.length > 0, 'prepWinCommand is not defined in the shipped mprLib.c')
     correct implementation needs to look at the character before the cursor.
  */
 ttrue(!/cp\[-1\]/.test(prep),
-      "prepWinCommand looks behind at cp[-1] again -- that is the pre-10318 encoder, which escapes " +
+      "prepWinCommand looks behind at cp[-1] again -- that is the earlier encoder, which escapes " +
       'a literal quote only when no backslash precedes it and leaves an argument ending in an odd ' +
       'backslash run unterminated')
 
@@ -100,8 +73,15 @@ ttrue(predicate.length > 0,
 ttrue(/ME_WIN_LIKE/.test(predicate),
       'shellEscape is not platform-aware -- the characters it adds are Windows ones and must not be ' +
       'escaped on POSIX, where they are ordinary')
-for (let ch of ["'%'", "'\\r'"]) {
-    ttrue(predicate.contains(ch),
-          'shellEscape does not name ' + ch + ' -- mprEncodeGenerate\'s ME_WIN_LIKE branch has always ' +
-          'listed it, and this predicate is the only place that listing now takes effect')
-}
+ttrue(predicate.contains("'%'"),
+      'shellEscape does not name \'%\' -- mprEncodeGenerate\'s ME_WIN_LIKE branch has always listed it, and ' +
+      'this predicate is the only place that listing now takes effect')
+
+/*
+    Check both platform tables for carriage-return escaping.
+ */
+let generate = definition(source, /PUBLIC\s+void\s+mprEncodeGenerate\s*\(/g)
+ttrue(generate.length > 0, 'mprEncodeGenerate is not defined in the shipped mprLib.c')
+ttrue((generate.match(/\{\}\$\\\\\\n\\r/g) || []).length == 2,
+      'mprEncodeGenerate must list \\r beside \\n in both its shell character sets, so a regenerated ' +
+      'table escapes a carriage return on every platform')

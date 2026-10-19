@@ -1,8 +1,5 @@
 /*
     http2-authority.tst.ts - HTTP/2 authority and Host agreement
-
-    HTTP/2 maps :authority into the same host header used for virtual host routing. A request carrying
-    duplicates or a disagreeing Host field must fail before the last value can choose the vhost.
  */
 
 import {teq, tskip, ttrue} from '@embedthis/testme'
@@ -110,6 +107,26 @@ async function sendH2(block: Buffer): Promise<H2Result> {
     })
 }
 
+async function http1(request: string): Promise<string> {
+    return await new Promise((resolvePromise, reject) => {
+        let socket = net.connect(PORT, '127.0.0.1')
+        let reply = ''
+        let timer = setTimeout(() => {
+            socket.destroy()
+            resolvePromise(reply)
+        }, 2000)
+        socket.on('connect', () => socket.write(request))
+        socket.on('data', chunk => {
+            reply += chunk.toString()
+        })
+        socket.on('end', () => {
+            clearTimeout(timer)
+            resolvePromise(reply)
+        })
+        socket.on('error', reject)
+    })
+}
+
 async function waitForServer(): Promise<boolean> {
     for (let i = 0; i < 40; i++) {
         try {
@@ -152,6 +169,7 @@ if (!existsSync(BIN)) {
         `ErrorLog ${WORK}/error.log level=4`,
         `TraceLog ${WORK}/trace.log level=2`,
         `Http2 on`,
+        `Http2Cleartext on`,
         `Listen 127.0.0.1:${PORT}`,
         `Documents ${TESTDIR}/web`,
         `AddHandler fileHandler html txt ""`,
@@ -203,6 +221,18 @@ if (!existsSync(BIN)) {
             requestBlock('/vhost1.html', LOCALHOST, LOCALHOST), 'Welcome to Local1')
         await acceptRoute('equivalent h2 vhost selection',
             requestBlock('/vhost2.html', HOST, null), 'Welcome to Local2')
+
+        await acceptRoute('mixed-case :authority and Host agree',
+            requestBlock('/vhost1.html', `LocalHost:${PORT}`, LOCALHOST), 'Welcome to Local1')
+        await acceptRoute('upper-case :authority selects the vhost',
+            requestBlock('/vhost1.html', `LOCALHOST:${PORT}`, null), 'Welcome to Local1')
+        await rejectProtocol('different hosts still conflict',
+            requestBlock('/vhost1.html', `LOCALHOST:${PORT}`, `other.example:${PORT}`))
+        let reply = await http1(`GET /vhost1.html HTTP/1.1\r\nHost: LOCALHOST:${PORT}\r\nConnection: close\r\n\r\n`)
+        if (!reply.includes('Welcome to Local1')) {
+            console.log('HTTP/1 upper-case Host did not select the vhost:\n' + reply)
+        }
+        ttrue(reply.includes('Welcome to Local1'))
     } finally {
         server.kill('SIGKILL')
         rmSync(WORK, {recursive: true, force: true})

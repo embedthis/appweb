@@ -1,16 +1,5 @@
 /*
     bad-path.tst.ts - Malformed request target
-
-    A request line carrying a non-HTTP URI scheme, a non-HTTP version, or no target at all must
-    not be routed. This shape reaches Appweb from SIP scanners probing for a proxy.
-
-    The test previously wrote the request, read the response into a ByteArray and discarded it,
-    so the only regression it could detect was a crash -- a wrong status, a routed request, or a
-    second response on the connection all passed silently (10063).
-
-    The three cases below are refused three different ways. That is asserted as it stands rather
-    than normalised, because the property that matters is that none of them reaches a handler,
-    and pinning the current shape is what makes a change to it visible.
  */
 
 import {teq, ttrue} from '@embedthis/testme'

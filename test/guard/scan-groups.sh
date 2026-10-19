@@ -5,8 +5,7 @@
 #   The runner splits the suite across a group per testme.json5. A group can be absent from a run
 #   for three quite different reasons -- disabled outright, marked manual, or its setup failed --
 #   and the summary line reports none of them: it counts what ran and says nothing about what did
-#   not. A run that executed 78 of 137 tests and one that executed all of them both print PASSED
-#   (10069).
+#   not. A run that executed 78 of 137 tests and one that executed all of them both print PASSED.
 #
 #   Emits one line per group: "<dir> <enabled|manual|disabled>".
 #

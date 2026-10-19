@@ -1,16 +1,5 @@
 /*
     query.tst.ts - Native query string parsing
-
-    Query parameters are parsed by http/src/var.c and exposed as ${param:...}. The /post
-    route writes them straight back, so this observes the parser the whole server uses rather
-    than the CGI environment, which cgi/query.tst.ts covers separately.
-
-    Was previously gated on thas('ME_EJS') against a form.ejs endpoint. Ejscript is not part of
-    Appweb, the flag is exported by nothing, and no .ejs document is served -- so the whole file
-    skipped silently and query-string parsing had no coverage at all (10061).
-
-    Note: "Target write" HTML-escapes its expansion, so a reflected "&" arrives as "&amp;".
-    That is a reflected-XSS defence and is asserted deliberately below, not worked around.
  */
 
 import {teq, tget} from '@embedthis/testme'

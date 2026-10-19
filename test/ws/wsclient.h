@@ -1,30 +1,6 @@
 /*
     wsclient.h - A raw WebSocket client for the frame-level tests
 
-    These tests must control the exact bytes of a frame, so they drive an MPR socket rather than a
-    client library. The Ejscript shim cannot do it at all: a frame header carries octets above 0x7f
-    and the shim UTF-8 encodes them, corrupting the header before it reaches the wire.
-
-    Header-resident because TestMe compiles each .tst.c as a standalone translation unit. There is no
-    link step that could pick up a shared .c, so shared C between tests has to be static functions in
-    a header. Everything here is static and unused ones cost nothing.
-
-    ONE RULE FOR CALLERS: allocate test buffers with malloc, never mprAlloc.
-
-    MPR's collector does not scan the C stack, and both mprReadSocket and mprWriteSocket yield to it.
-    An mprAlloc'd buffer referenced only by a local variable is therefore eligible for collection
-    while a socket call is reading into or writing out of it. The failure is not a null dereference
-    but heap corruption discovered later: the run segfaults inside sweeperThread after every assertion
-    has already passed, and the overwritten block header holds bytes of whatever the test was moving.
-    frames.tst.c was doing exactly this with a 64KB payload.
-
-    AFTER EDITING THIS HEADER, RUN "rm -rf test/ws/.testme".
-
-    TestMe keys its compile cache on the .tst.c alone, so a change here does not trigger a rebuild and
-    the previous binary is silently reused -- a green run that did not test the code. Verified by
-    appending "#error" to this file and watching frames.tst.c pass. Filed as testme #10003; delete
-    this paragraph when that is fixed.
-
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
@@ -416,7 +392,7 @@ static int wsCloseStatus(uchar *buf, ssize len)
 #endif /* _h_WSCLIENT */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

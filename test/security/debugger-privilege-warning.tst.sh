@@ -6,15 +6,18 @@
 set -u
 
 TESTDIR="$(cd "$(dirname "$0")/.." && pwd)"
-BIN="${TESTDIR}/../build/bin/appweb"
+. "${TESTDIR}/utils/testenv.sh"
+BIN="$(tmAppweb "${TESTDIR}/../build/bin")"
 PORT=4504
 HOST="127.0.0.1:${PORT}"
 WORK="${TESTDIR}/tmp/debugger-privilege-warning"
 CONF="${WORK}/appweb.conf"
 ERRORS="${WORK}/error.log"
+NATIVE_TESTDIR="$(tmNative "${TESTDIR}")"
+NATIVE_WORK="$(tmNative "${WORK}")"
 SERVER=""
 
-fail() { echo "FAIL: $*"; cleanup; exit 1; }
+fail() { echo "FAIL: $*"; exit 1; }
 pass() { echo "PASS: $*"; }
 
 cleanup() {
@@ -36,9 +39,9 @@ rm -rf "${WORK}"
 mkdir -p "${WORK}"
 
 cat > "${CONF}" <<CONF
-ErrorLog ${ERRORS} level=4
+ErrorLog ${NATIVE_WORK}/error.log level=4
 Listen ${PORT}
-Documents ${TESTDIR}/web
+Documents ${NATIVE_TESTDIR}/web
 AddHandler fileHandler html txt ""
 
 UserAccount nobody

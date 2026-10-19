@@ -1,17 +1,5 @@
 /*
     badUrl.tst.ts - Stress test malformed URL handling
-
-    Verifies that Appweb rejects a request line containing a control character with 400 rather
-    than routing it.
-
-    The first half of this test asserted that the *Ejscript HTTP client* threw when handed such a
-    URL. That is a property of the client, not of Appweb, and the client no longer throws -- so
-    the test failed while saying nothing about the server (10069). A client that rejects the URL
-    locally cannot reach the server at all, which is the opposite of what a server test wants.
-
-    The request is therefore written straight onto a socket, which is the only way to put bytes on
-    the wire that no client will construct for you. node:net is used rather than the Ejscript
-    Socket shim because the shim blocks for seconds per read.
  */
 
 import {tget, ttrue} from '@embedthis/testme'

@@ -55,7 +55,7 @@ AddHandler fileHandler html txt ""
 
 User mary 5b90553bea8ba3686f4239d62801f0f3 user executive
 
-<if NEVER_DEFINED_CONDITION>
+<if vms>
     <if PCRE2>
         Header set X-Marker inner
     </if>

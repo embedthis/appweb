@@ -1,20 +1,5 @@
 /*
     repeat.tst - TLS connection stability under repeated requests
-
-    Exercises both connection reuse and a fresh handshake per request, which is where a TLS session
-    or connection leak shows up. Rewritten off the Ejscript client, which has no TLS compiled in and
-    so never ran this -- the previous revision reported PASS having asserted nothing. See issue
-    10047.
-
-    The two modes are many requests over one connection versus one request per connection. The counts
-    are lower than the previous 110 and 50 because each handshake is a real one rather than a skipped
-    test, and the group already runs alongside the rest of the suite.
-
-    The reused half went through curl directly rather than through the helper, and kept a --cacert
-    that no Windows curl honours -- every curl there is built against Schannel, which validates only
-    against the Windows certificate store. It now goes through getMany, which does not verify at all:
-    what this file asserts is that a connection survives reuse and that repeated handshakes do not
-    leak, and ssl/cert.tst.ts is where verification is asserted.
  */
 
 import {ttrue, tget} from '@embedthis/testme'

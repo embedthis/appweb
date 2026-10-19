@@ -8,7 +8,7 @@
 #       FATAL: can't open suppressions file "../../../build/bin/mpr.supp"
 #
 #   and refused to start. That, plus a dependency on an `http` client this repo does not build,
-#   is why the leak test had never executed on any machine (10344).
+#   is why the leak test had never executed on any machine.
 #
 #   It lives here, beside the test that uses it and under version control, rather than in the
 #   git-ignored build/ output directory. A suppressions file is source, not a build artifact, and
@@ -17,7 +17,7 @@
 #   POLICY, and please keep to it: this file starts empty of blanket suppressions on purpose.
 #   The test has never produced a memcheck report, so nobody knows yet what it says. A suppression
 #   added before the report is read is indistinguishable from hiding a real leak, and would recreate
-#   the failure mode 10344 is about -- a check that reports success without checking.
+#   the original failure mode -- a check that reports success without checking.
 #
 #   Add an entry only when the finding under it has been read, understood and judged benign, and
 #   write down which of the two it is:
@@ -46,7 +46,7 @@
 #   Entry 1 - glibc thread-local storage for a thread that outlives the process.
 #
 #   Read and judged benign on 2026-08-10, from the first memcheck report this test has ever
-#   produced (10344):
+#   produced:
 #
 #       272 bytes in 1 blocks are possibly lost in loss record 1 of 1
 #          at calloc (vgpreload_memcheck-arm64-linux.so)

@@ -122,11 +122,10 @@ int main(int argc, char **argv)
         "6", "6;ext=1", "6;ext=1;ext2=2", "000000006", "06", 0
     };
 
-    /*
-        Not 1*HEXDIG followed by ";" or CRLF. "0x5" and "5junk" were both accepted before the fix.
-     */
+    /* Reject non-hex sizes, trailing junk and bare CR line endings. */
     static cchar *malformed[] = {
-        "0x5", "0X5", "5junk", "5 ", "5:1", "5=1", "5\tx", " 5", "-5", "+5", "5.0", 0
+        "0x5", "0X5", "5junk", "5 ", "5:1", "5=1", "5\tx", " 5", "-5", "+5", "5.0",
+        "6\rX", "6;a\rb", "0\rx", 0
     };
 
     /*
@@ -174,7 +173,7 @@ int main(int argc, char **argv)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

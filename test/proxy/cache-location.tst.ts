@@ -1,31 +1,5 @@
 /*
     cache-location.tst.ts - A proxied Location must not be built from the client's Host, nor replayed
-
-    Issue 10329, and the same unkeyed-cache mechanism as its sibling cache-cookie.tst.ts (#10093).
-
-    transferProxyHeaders rewrites a backend's relative Location so it carries the route prefix --
-    without that, "/x" sends the client back outside the proxy. To absolutise it, it used
-    rx->parsedUri when the route had no CanonicalName, and that URI's host is the client's own Host
-    header, checked for character class and nothing else. So the client chose the domain it was
-    redirected to. makeCacheKey has no Host component and the cache admits any 2xx, so one
-    unauthenticated request carrying "Host: attacker.example" stored that answer for everyone who
-    asked for the same path afterwards.
-
-    Two independent fixes, both asserted here: the Location is relative when no CanonicalName is set,
-    so nothing client-supplied reaches it; and Location is on the cached-header deny-list, so a cache
-    hit cannot replay one at all.
-
-    Three traps, all of them hit while measuring this. Any one of them makes a test that passes
-    without exercising the defect:
-
-      - The route must use AddHandler, not SetHandler. SetHandler disables the caching handler
-        outright, so nothing is cached and the replay never happens.
-      - The backend cannot be a CGI script. parseCgiHeaders turns any Location into httpRedirect, so
-        a script emitting "Status: 201" plus Location yields a 302 -- and 3xx is excluded from the
-        cache. The 2xx-with-Location shape has to come off the wire, which is why this serves a
-        canned response from a raw socket.
-      - The server must have no CanonicalName in scope. The shared test/appweb.conf sets one
-        globally, which takes the safe branch and hides all of this, so this test runs its own.
  */
 
 import {teq, tskip, ttrue} from '@embedthis/testme'
@@ -41,12 +15,10 @@ const ATTACKER = 'attacker.example'
 const CANONICAL = 'canonical.example'
 
 /*
-    A genuine 201 with a relative Location. 201 Created is the ordinary REST answer to a resource
-    creation and sits squarely inside the 2xx range the cache accepts, which is what makes this
-    reachable where a 3xx redirect is not.
+    Use 200 because the server cache excludes redirect statuses.
  */
 const REPLY = [
-    'HTTP/1.1 201 Created',
+    'HTTP/1.1 200 OK',
     'Location: /created-resource',
     'Content-Type: text/plain',
     'Content-Length: 7',
@@ -130,7 +102,7 @@ if (!existsSync(BIN)) {
 
         //  One unauthenticated request asserting a Host the server has never heard of
         let primed = await get(path, ATTACKER)
-        ttrue(/^HTTP\/[\d.]+ 201/m.test(primed))
+        ttrue(/^HTTP\/[\d.]+ 200/m.test(primed))
         ttrue(!new RegExp(ATTACKER, 'i').test(primed))
 
         /*
@@ -141,19 +113,20 @@ if (!existsSync(BIN)) {
         ttrue(/^Location:\s*\/cached-proxy\/created-resource\s*$/mi.test(primed))
 
         /*
-            Stop the backend before the second request. A cache miss then cannot be answered at all,
-            so a successful second response proves it came from the cache rather than from a fresh
-            proxy call -- which is the mechanism this finding is about.
+            Stop the backend so only cached responses can succeed.
          */
         backend.stop(true)
         await Bun.sleep(250)
 
-        let replayed = await get(path, `127.0.0.1:${PORT}`)
-        ttrue(/^HTTP\/[\d.]+ 201/m.test(replayed))
-        ttrue(replayed.includes('created'))
-        ttrue(!new RegExp(ATTACKER, 'i').test(replayed))
+        //  The cache is keyed on the request host: another host never sees this entry
+        let other = await get(path, `127.0.0.1:${PORT}`)
+        ttrue(!/^HTTP\/[\d.]+ 200/m.test(other))
+        ttrue(!new RegExp(ATTACKER, 'i').test(other))
 
-        //  The cached copy carries no Location at all, the same treatment Set-Cookie already gets
+
+        let replayed = await get(path, ATTACKER)
+        ttrue(/^HTTP\/[\d.]+ 200/m.test(replayed))
+        ttrue(replayed.includes('created'))
         ttrue(!/^Location:/mi.test(replayed))
 
     } finally {
@@ -173,7 +146,7 @@ if (!existsSync(BIN)) {
         let path = '/cached-proxy/canon/' + Date.now()
         let primed = await get(path, ATTACKER)
 
-        teq(/^HTTP\/[\d.]+ 201/m.test(primed), true)
+        teq(/^HTTP\/[\d.]+ 200/m.test(primed), true)
         ttrue(!new RegExp(ATTACKER, 'i').test(primed))
 
         //  Absolute, and built from the configured name rather than anything the client sent

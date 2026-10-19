@@ -69,14 +69,14 @@ await reject('Duplicate mixed case Content-Length',
     '400 Bad Request')
 
 /*
-    Cookie is the exception. A repeated Cookie field is legitimate, so it keeps its duplicates in the header
-    hash and the request must still be served rather than rejected.
-    Note: only the first of the two reaches the CGI environment. That is a separate pre-existing defect in how
-    duplicate keys are copied to the child, so this asserts acceptance only and does not pin the CGI value.
+    Repeated Cookie fields join with semicolons into one CGI HTTP_COOKIE value.
  */
-await accept('Duplicate Cookie is accepted',
+await accept('Duplicate Cookie is accepted and joined for the CGI environment',
     `GET ${CGI} HTTP/1.1\r\nHost: ${HOST}\r\nCookie: first=one\r\nCookie: second=two\r\n\r\n`,
-    '200 OK')
+    'HTTP_COOKIE=first=one; second=two')
+await accept('A single Cookie is unchanged',
+    `GET ${CGI} HTTP/1.1\r\nHost: ${HOST}\r\nCookie: only=one\r\n\r\n`,
+    'HTTP_COOKIE=only=one<')
 
 //  A field that may legitimately repeat is untouched
 await accept('Repeated Accept-Encoding',

@@ -1,16 +1,5 @@
 /*
     bigUrl.tst.ts - Stress test URL length limits
-
-    Verifies that a URL within LimitUri is served and one beyond it is rejected by the server
-    rather than truncated or accepted.
-
-    This asserted the wrong side of the exchange and never reached the server with an oversized
-    URL at all (10069). It built the query with `query += + 'key' + i + ...`; the stray unary plus
-    makes `+'key'` NaN, so every field was named "NaN" and the string never grew near the limit.
-    The loops were `for (let i in 200)`, which iterates the properties of a Number -- there are
-    none -- so the body never ran either. It then asserted that the *client* threw, which is a
-    property of the Ejscript HTTP client, not of Appweb. What matters here is the status the
-    server returns, so that is what is asserted now.
  */
 
 import {tget, ttrue} from '@embedthis/testme'

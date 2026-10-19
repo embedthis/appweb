@@ -11,7 +11,7 @@ const CAN_RUN_TOUCH = Config.OS != 'VXWORKS' && Config.OS != 'WIN'
 let http: Http = new Http
 let path = new Path('../route-update-auth-cmd.tmp')
 if (CAN_RUN_TOUCH) {
-    path.remove()
+    await path.remove()
     ttrue(!path.exists)
 }
 
@@ -33,6 +33,6 @@ ttrue(http.status == 200)
 ttrue(http.response == 'authorized:en')
 if (CAN_RUN_TOUCH) {
     ttrue(path.exists)
-    ttrue(path.remove())
+    ttrue(await path.remove())
 }
 http.close()

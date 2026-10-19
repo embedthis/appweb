@@ -1,10 +1,5 @@
 /*
-    Test HTTP request handling with various whitespace variations
-
-    This test verifies that the server correctly handles HTTP requests with:
-    - Leading whitespace before the method
-    - Multiple spaces after the method
-    - Multiple spaces after the URI
+    whitespace.tst.ts - White space around the request line tokens
  */
 
 import {ttrue, tget} from '@embedthis/testme'
@@ -12,40 +7,23 @@ import {ByteArray, Socket, Uri} from '@embedthis/ejscript'
 
 const HTTP = new Uri(tget('TM_HTTP') || "127.0.0.1:4100")
 
-let s
-let count = 0
-let n
+async function request(line: string): Promise<string> {
+    let s = new Socket
+    let response = new ByteArray
+    let n
+    s.connect(HTTP.address)
+    await s.write(line + "\r\n\r\n")
+    for (; (n = await s.read(response, -1)) != null; ) { }
+    s.close()
+    return response.toString()
+}
 
-// Test leading whitespace before method
-s = new Socket
-s.connect(HTTP.address)
-count += await s.write(" GET /index.html HTTP/1.0\r\n\r\n")
-ttrue(count > 0)
-let response = new ByteArray
-for (count = 0; (n = await s.read(response, -1)) != null; count += n) { }
-ttrue(response.toString().contains('200 OK'))
-ttrue(response.toString().contains('Hello /index'))
-s.close()
+let text = await request("GET /index.html HTTP/1.0")
+ttrue(text.contains('200 OK'))
+ttrue(text.contains('Hello /index'))
 
-// Test multiple spaces after method
-s = new Socket
-s.connect(HTTP.address)
-count += await s.write("GET         /index.html HTTP/1.0\r\n\r\n")
-ttrue(count > 0)
-response = new ByteArray
-for (count = 0; (n = await s.read(response, -1)) != null; count += n) { }
-ttrue(response.toString().contains('200 OK'))
-ttrue(response.toString().contains('Hello /index'))
-s.close()
-
-// Test multiple spaces after URI
-s = new Socket
-s.connect(HTTP.address)
-count += await s.write("GET /index.html      HTTP/1.0\r\n\r\n")
-ttrue(count > 0)
-response = new ByteArray
-for (count = 0; (n = await s.read(response, -1)) != null; count += n) { }
-ttrue(response.toString().contains('200 OK'))
-ttrue(response.toString().contains('Hello /index'))
-s.close()
-
+for (let line of [" GET /index.html HTTP/1.0", "GET         /index.html HTTP/1.0", "GET /index.html      HTTP/1.0"]) {
+    text = await request(line)
+    ttrue(text.contains('400 Bad Request'), line)
+    ttrue(!text.contains('Hello /index'))
+}

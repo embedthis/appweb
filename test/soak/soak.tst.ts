@@ -199,7 +199,7 @@ if (!pid) {
         let results = [
             await get('/index.html'),
             await get('/100K.txt'),
-            await get('/cgiProgram.cgi?-e'),
+            await get('/cgiProgram.cgi?SWITCHES=-e'),
             await get('/fast-bin/fastProgram?SWITCHES=-e'),
             await get('/proxy/index.html'),
             await postUpload(),
@@ -270,6 +270,6 @@ if (!pid) {
         client would still satisfy every growth bound above -- the counters would simply stop moving.
      */
     ttrue(await get('/index.html'), 'the server must still answer after the soak')
-    ttrue(await get('/cgiProgram.cgi?-e'), 'CGI must still run after the soak')
+    ttrue(await get('/cgiProgram.cgi?SWITCHES=-e'), 'CGI must still run after the soak')
     ttrue(await websocket(), 'a WebSocket must still open and echo after the soak')
 }

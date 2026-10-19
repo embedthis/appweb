@@ -1,14 +1,5 @@
 /*
     json-depth.tst.ts - JSON nesting depth is bounded on every pre-auth entry to the parser
-
-    mprJsonParser is recursive descent and recurses on the opening brace or bracket, before any
-    matching close is required. A run of open brackets alone therefore drove it as deep as the
-    input was long, and the only limits in the product are byte counts a deep document satisfies
-    easily. The parse happens in processReady before routeRequest, so no auth is required.
-
-    ME_MAX_JSON_DEPTH now bounds it, and a rejected document must produce a 400 rather than be
-    silently treated as "no parameters" -- otherwise a request the parser refused is
-    indistinguishable from one that carried none. See issue 10146.
  */
 
 import {teq, ttrue, tget} from '@embedthis/testme'
@@ -59,22 +50,19 @@ http.close()
     content type at all. That branch discarded the parse result entirely, so a rejected document
     would have been reported as success with no parameters.
  */
-http = await post('/post', brackets(DEEP) + '_encoded_json_', 'application/x-www-form-urlencoded')
+http = await post('/post', '_encoded_json_=' + brackets(DEEP), 'application/x-www-form-urlencoded')
 teq(http.status, 400)
 http.close()
 
-http = await post('/post', brackets(HUGE) + '_encoded_json_', 'application/x-www-form-urlencoded')
+http = await post('/post', '_encoded_json_=' + brackets(HUGE), 'application/x-www-form-urlencoded')
 teq(http.status, 400)
 http.close()
 
 /*
-    And from the query string, which is parsed even earlier -- in processParsed, before the body
-    has arrived. The marker is a substring test over the whole buffer, so trailing it after the
-    brackets is enough to select the JSON grammar. See #10150 for that trigger, which is why the
-    marker cannot be written here as the leading "_encoded_json_=" name it was meant to be.
+    Also check the leading query parameter, parsed before the body arrives.
  */
 http = new Http
-http.get(HTTP + '/post?' + brackets(DEEP) + '_encoded_json_')
+http.get(HTTP + '/post?_encoded_json_=' + brackets(DEEP))
 await http.finalize()
 teq(http.status, 400)
 http.close()

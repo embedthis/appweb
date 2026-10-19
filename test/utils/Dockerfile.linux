@@ -25,13 +25,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 #
-#   TestMe runs under bun. The install script places it in /root/.bun/bin.
+#   TestMe runs under bun. The install script places it in /root/.bun/bin. bin/test-linux.sh passes the
+#   version bun.lock resolves, so the runner matches the testme module the tests import.
 #
 ENV BUN_INSTALL=/root/.bun
 ENV PATH=/root/.bun/bin:$PATH
 
 RUN curl -fsSL https://bun.sh/install | bash
 
-RUN bun install -g --trust @embedthis/testme
+ARG TESTME_VERSION
+RUN bun install -g --trust @embedthis/testme@${TESTME_VERSION}
 
 WORKDIR /work

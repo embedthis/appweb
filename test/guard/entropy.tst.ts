@@ -1,24 +1,5 @@
 /*
     entropy.tst.ts - Every platform's mprGetRandomBytes must draw on a system CSPRNG or fail
-
-    mprGetRandomBytes has one contract: it returns cryptographically strong bytes or it fails. The
-    callers are the server secret that keys the Digest nonce, the session id, the CSRF token and the
-    WebSocket masking key -- values a caller cannot tell apart from random once substituted.
-
-    The VxWorks implementation broke that contract for the life of the product and nothing noticed
-    (10088). It filled the buffer from rand(), seeded once by mprCreate() from time(NULL) at one
-    second resolution, and returned success unconditionally. Capturing one Digest challenge and
-    enumerating the boot second recovered the secret. The fail-closed work that preceded it (10023)
-    hardened the Unix and Windows paths and left this one satisfying the contract trivially.
-
-    No host in this suite builds VxWorks, and none builds Windows either, so no functional test can
-    ever reach two of the three implementations. That is what this guard is for: it reads the
-    shipped amalgamation, which is the source that actually goes to a customer.
-
-    Comments are stripped before matching. Appweb's multi-line comment style carries no leading "*"
-    on continuation lines, and this file's own subject matter means the prose around each
-    implementation names rand() and every source below -- so any line-oriented filter would read
-    the explanation as the code.
  */
 
 import {teq, tinfo, ttrue} from '@embedthis/testme'
@@ -48,13 +29,27 @@ let source = stripComments(await read(SRC))
 //  The amalgamation must have been read, or every check below is vacuous
 ttrue(source.length > 0)
 
+/*
+    Include static helpers when checking entropy source use.
+ */
+function helpers(text: string): string {
+    let result = ''
+    for (let name of new Set([...text.matchAll(/\b([A-Za-z_]\w*)\s*\(/g)].map(m => m[1]))) {
+        let def = new RegExp('static\\s+[\\w\\s*]+?\\b' + name + '\\s*\\([^;{]*\\)\\s*\\{').exec(source)
+        if (def) {
+            result += body(source, def.index)
+        }
+    }
+    return result
+}
+
 let bodies: string[] = []
 let re = /PUBLIC\s+int\s+mprGetRandomBytes\s*\(/g
 let m
 while ((m = re.exec(source)) != null) {
     let text = body(source, m.index)
     ttrue(text.length > 0, 'mprGetRandomBytes definition at offset ' + m.index + ' has no matching body')
-    bodies.push(text)
+    bodies.push(text + helpers(text))
 }
 
 /*

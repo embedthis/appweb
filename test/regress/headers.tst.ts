@@ -56,11 +56,7 @@ Content-Disposition^[[41m^[[2J^[[33^[[u^[[s^[[Kinline\r\n\r\n`)
     }
 
     /*
-        The server survived the soak and still answers. Without this the test could only ever
-        detect a crash, and a server left wedged or refusing connections passed silently (10063).
-
-        Driven through the raw helper rather than the loop's own socket: after thousands of
-        connect/close cycles the shim's socket state is not reliably reusable.
+        Verify responsiveness on a fresh socket after the soak.
      */
     s.close()
     let final = await send(`GET /index.html HTTP/1.1\r\nHost: ${ip}\r\nConnection: close\r\n\r\n`,

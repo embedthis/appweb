@@ -129,6 +129,7 @@ export async function withServer(name: string, port: number, extra: string[], te
         `ErrorLog ${work}/error.log level=4`,
         `TraceLog ${work}/trace.log level=2`,
         `Http2 on`,
+        `Http2Cleartext on`,
         `Listen 127.0.0.1:${port}`,
         `Documents ${TESTDIR}/web`,
         `AddHandler fileHandler html txt ""`,

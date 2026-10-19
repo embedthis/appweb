@@ -165,27 +165,12 @@ int main(int argc, char **argv)
     wsCloseSocket(sp);
 
     /*
-        RFC 6455 5.1: every client-to-server frame must be masked. The server currently accepts an
-        unmasked one, which is #10099 -- open, filed before this feature, and asserted here as it
-        behaves rather than as it should.
-
-        WHEN #10099 IS FIXED this must become:
-
-            teqi(closeStatusOf(sp, frame, WS_MAX_RESPONSE), WS_STATUS_PROTOCOL_ERROR,
-                 "an unmasked client frame must be refused");
-
-        The reason it matters is not pedantry about the specification. Masking exists so that a client
-        cannot choose the literal bytes an intermediary sees on the wire; accepting unmasked frames
-        hands that choice back, which is the cache-poisoning attack masking was introduced to prevent.
+        RFC 6455 requires masking on all client frames.
      */
     sp = wsOpen(WS_ECHO_PATH);
     wsWriteFrame(sp, WS_MSG_TEXT, 1, 0, 0, WS_LEN_AUTO, 0, "unmasked", 8);
-    len = wsRead(sp, frame, WS_MAX_RESPONSE);
-    ttrue(len > 0, "an unmasked client frame must be answered somehow");
-    if (wsOpcode(frame, len) == WS_MSG_CLOSE) {
-        tinfo("an unmasked client frame is now refused: #10099 is fixed, tighten this assertion");
-    }
-    teqi(wsOpcode(frame, len), WS_MSG_TEXT, "an unmasked client frame is currently accepted (#10099)");
+    teqi(closeStatusOf(sp, frame, WS_MAX_RESPONSE), WS_STATUS_PROTOCOL_ERROR,
+         "an unmasked client frame must be refused");
     wsCloseSocket(sp);
 
     /*
@@ -216,20 +201,8 @@ int main(int argc, char **argv)
     wsCloseSocket(sp);
 
     /*
-        The same total, sent as three fragments each under the cap. The limit is named for the
-        message, so it must bound the message: 6144 bytes against a 4096 cap is refused.
-
-        This is #10370 and it did not hold until that was fixed. The cap was compared against the
-        length of the frame being assembled, and that counter restarts at every frame, so a client
-        could deliver a message of any size by splitting it -- with no other bound, because a
-        WebSocket session is not a request body and LimitRequestBody does not apply.
-
-        Scanned for rather than read as the first frame, and that is not laxity. This route sets
-        LimitWebSocketsPacket 1K, so the handler is handed each 1K packet as it is reassembled and has
-        echoed part of the message before the third frame is refused: the stream reads data, data,
-        data, close. Requiring the close to be first here would fail against a correct server. What is
-        asserted instead is that the refusal arrives AND that the message never completed -- the
-        server must not have echoed all 6144 bytes.
+        Fragments must respect the total message limit. Earlier packets may be echoed before rejection,
+        so require a close and an incomplete echo rather than requiring close as the first frame.
      */
     sp = wsOpen(WS_LIMIT_PATH);
     wsWriteFrame(sp, WS_MSG_BINARY, 0, 0, 1, WS_LEN_AUTO, 0, big, 2048);
@@ -247,11 +220,7 @@ int main(int argc, char **argv)
     ttrue(len < 6144, "the over-limit message must be refused before all of it is echoed back");
     wsCloseSocket(sp);
 
-    /*
-        Fragments totalling UNDER the cap must be accepted, and must go on being accepted after
-        #10370 is fixed. Without this the fix could be made by refusing all fragmentation, which
-        would pass the assertion above and break every client that fragments.
-     */
+
     sp = wsOpen(WS_LIMIT_PATH);
     wsWriteFrame(sp, WS_MSG_BINARY, 0, 0, 1, WS_LEN_AUTO, 0, big, 1024);
     wsWriteFrame(sp, WS_MSG_CONT, 1, 0, 1, WS_LEN_AUTO, 0, big, 1024);
@@ -273,7 +242,7 @@ int main(int argc, char **argv)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

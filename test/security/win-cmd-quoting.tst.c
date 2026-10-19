@@ -201,10 +201,16 @@ int main(int argc, char **argv)
     checkRoundTrip(args, 3, "argument that is a single quote");
 
     /*
-        7. mprEscapeCmd's character table was generated from mprEncodeGenerate's POSIX branch, so the
-           two characters the ME_WIN_LIKE branch adds -- % and \r -- are unset on every platform,
-           Windows builds included. % is cmd.exe's variable-expansion trigger, and this string is
-           escaped precisely because it may reach cmd.exe.
+        Quote empty arguments so the child retains their position.
+     */
+    args[0] = HELPER;
+    args[1] = "";
+    args[2] = "TAIL";
+    args[3] = 0;
+    checkRoundTrip(args, 3, "empty argument");
+
+    /*
+        Escape % and carriage return for commands that may reach cmd.exe.
      */
     escaped = mprEscapeCmd("%PATH%", 0);
     tinfo("mprEscapeCmd(\"%%PATH%%\") = %s", escaped);

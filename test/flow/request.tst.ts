@@ -27,9 +27,9 @@ const BODY_SIZE = 24 * 1024
 const PIECE = 300
 const DELAY = 2
 
-const CGI = '/cgiProgram.cgi?-p'
+const CGI = '/cgiProgram.cgi?SWITCHES=-p'
 const FAST = '/fast-bin/fastProgram?SWITCHES=-p'
-const PROXY = '/proxy/cgiProgram.cgi?-p'
+const PROXY = '/proxy/cgiProgram.cgi?SWITCHES=-p'
 const ACTION_UPLOAD = '/action/upload'
 
 /*

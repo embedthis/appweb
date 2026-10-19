@@ -1,16 +1,5 @@
 /*
     websockets.tst.ts - A standard client can open and close on the primary endpoint
-
-    test/appweb.conf configures <Route ^/ws/> with the webSocketFilter and testWebSocketsHandler,
-    and no test targeted it (10065) -- the existing WebSocket tests reach that handler through
-    the proxy backend in proxy.conf instead.
-
-    This file covers only what the Ejscript client can reach: that a conventional client library
-    completes the upgrade against the primary endpoint and closes cleanly. Everything about the
-    bytes -- the accept token, the reply frame header, the payload, and the negative handshake
-    cases -- is in frames.tst.c beside this file, because the shim cannot write a binary frame
-    (a frame header carries octets above 0x7f, which it UTF-8 encodes and thereby corrupts) and
-    never delivers onmessage.
  */
 
 import {teq, ttrue, tget} from '@embedthis/testme'

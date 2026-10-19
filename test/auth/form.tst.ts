@@ -1,22 +1,5 @@
 /*
-    form.tst.ts - Form-based authentication
-
-    Covers the form-auth round trip: an unauthenticated request redirects to the login page,
-    valid credentials establish a session, the session admits the protected resource, and
-    logout retires it so the resource redirects again.
-
-    The whole body was previously behind `thas('ME_SSL') && false` -- dead twice over: the flag
-    is exported by nowhere, and the `&& false` disabled it regardless (10061).
-
-    The ME_SSL intent was sound. The /auth/form routes are configured secure and answer a plain
-    HTTP request with a 301 to https://, so the flow only completes over TLS. The Ejscript Http
-    client is built without TLS (Config.SSL is false), so this drives curl through ssl/tls.ts --
-    the same helper, and the same reason, as the ssl/ group after 10047.
-
-    Reviving it surfaced 10097: the redirect Location combines the https scheme with the
-    plaintext port from CanonicalName, so following it hangs. The reachable part of the flow is
-    asserted below; the Location is asserted for the defect it currently has, with the correct
-    assertion recorded and pending. Not fixed here -- this feature is test-only.
+    form.tst.ts - Check login, protected access, and logout over TLS using curl.
  */
 
 import {teq, tinfo, ttrue, tget} from '@embedthis/testme'
@@ -29,14 +12,14 @@ let r = await fetch(HTTPS + '/auth/form/index.html', {creds: 'anybody:wrong pass
 teq(r.status, '302')
 ttrue(r.headers['location'].contains('login.html'))
 
-/*
-    10097: the Location keeps the https scheme but takes host:port from CanonicalName, which
-    names the plaintext listener -- so the URL is unreachable and curl hangs on it. Asserted as
-    it currently behaves so the defect cannot regress further unnoticed. When 10097 is fixed
-    this becomes: ttrue(await fetch(r.headers['location'])).status == '200'
- */
-ttrue(r.headers['location'].startsWith('https://'))
-tinfo('10097: login redirect names the plaintext port -- ' + r.headers['location'])
+let location = r.headers['location']
+let target = new URL(location)
+if (target.protocol != 'https:' || target.port != new URL(HTTPS).port) {
+    tinfo('login redirect is not on the secure endpoint: ' + location)
+}
+teq(target.protocol, 'https:')
+teq(target.port, new URL(HTTPS).port)
+teq((await fetch(location)).status, '200')
 
 //  The login page itself is served over TLS, and carries the form that posts to the login route
 r = await fetch(HTTPS + '/auth/form/login.html')

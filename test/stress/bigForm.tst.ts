@@ -1,12 +1,5 @@
 /*
     bigForm.tst.ts - Stress test form size limits
-
-    Verifies that a form body beyond LimitRequestForm (512K in test/appweb.conf) is rejected with
-    413 rather than parsed.
-
-    The form was built with `for (let i in 30000)`, which iterates the properties of a Number and
-    so ran zero times (10069). The request that went out carried an empty form, the server had no
-    reason to reject it, and the test failed on a limit it had never actually reached.
  */
 
 import {tget, ttrue} from '@embedthis/testme'

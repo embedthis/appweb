@@ -1,27 +1,6 @@
 /*
     fuzz-request.tst.c - Protocol-level request mutation
 
-    test/sec holds in-process ASan/UBSan harnesses over the URL decoder and the chunk-size parser
-    (10042). Those take a byte string into one function. This covers the layer above: a whole
-    request -- request line, header block, framing -- mutated against the running server, so the
-    interactions *between* those parsers are exercised. 10002 (Content-Length leniency), 10003
-    (TE+CL) and 10017 (Digest quoted-pair) all live in that space rather than inside a single
-    primitive. See the correction on 10068.
-
-    The oracle is not "no crash". A crash is caught by the liveness check at the end. What is
-    asserted per case is the property a smuggling primitive violates:
-
-      - a response arrives, so no input wedges the connection holding it open having decided
-        nothing -- a slow-loris primitive whether or not anything ever crashes
-      - exactly one response line, so the mutated bytes were never framed as a second request,
-        which is CWE-444 by definition
-
-    Native rather than TypeScript: 70 socket round-trips through the Ejscript shim exceed the
-    per-test timeout, and each mutated request must go on the wire byte for byte.
-
-    Deterministic. Fixed seed, fixed seed corpus, fixed mutator order, so a failure names a
-    reproducible input rather than "it failed once". Depth scales the campaign.
-
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
@@ -38,54 +17,14 @@
 #define TAIL_WAIT    200
 
 /*
-    The held-open baseline is a set of shapes, not a count.
-
-    It used to be a count -- HELD_BASELINE * rounds, with HELD_BASELINE 16 -- and that model is
-    wrong, because the number is not a constant. Two of the mutators pick a byte position from the
-    shared generator, whose state carries across rounds, so each round mutates differently and the
-    number of positions that happen to wedge the server is a draw. The count was measured at depth
-    0, where one round gives 16, and generalised to 16 per round. It survives depth 1 by luck (32)
-    and fails at depth 2, which yields 63 rather than 64 -- reproducibly, since the campaign is
-    deterministic. Asserting that a random variable equals a constant fails for a reason that says
-    nothing about the server.
-
-    What is actually invariant is which (seed, mutator) shapes wedge it:
-
-      - mutator 3, the NUL injection, on every seed. A NUL anywhere in the request line or header
-        block wedges the server, so where the random position lands does not change the outcome.
-        Ten shapes, held in every round.
-      - seed 6, the SIP request line, under every mutator. Five more shapes, held in every round --
-        six less the one already counted above.
-
-    Fifteen shapes, every round, at every depth. Everything else held is mutator 0, the bit flip,
-    whose effect genuinely does depend on which byte it lands on; observed once at depth 0, twice at
-    depth 1, three times at depth 2, and never more than once per round.
-
-    So the gate below asserts three things: every core shape wedges in every round, nothing outside
-    the core wedges under any mutator but the bit flip, and the bit flip does not suddenly start
-    wedging far more often. That is a stronger ratchet than the count ever was -- a new wedging
-    shape now fails even when the total happens to match -- and it does not fail on a draw.
-
     FIRST_WAIT is 2000ms rather than something tighter because the classification must not depend on
     load: at 600ms one slow-but-valid response was miscounted as held.
  */
-#define MAX_SEEDS    16
 #define MUTATORS     6
-
-/*
-    True for a shape that must wedge the server in every round. When the underlying hold-open
-    defects are fixed this function returns 0 for everything and the gate becomes "nothing is held".
- */
-static int coreShape(int seed, int op)
-{
-    return (op == 3 || seed == 6) ? 1 : 0;
-}
 
 static cchar *host = "127.0.0.1";
 static int   port;
 
-//  How many rounds each (seed, mutator) shape was held open. File scope so the collector cannot reach it.
-static int   heldShape[MAX_SEEDS][MUTATORS];
 
 /*
     Park-Miller. Adequate for shuffling bytes, and reproducible in one line on every platform.
@@ -284,12 +223,9 @@ static ssize probe(cchar *request, ssize len, char *response, ssize size, int *c
         }
         if ((nbytes = mprReadSocket(sp, &response[rlen], size - 1 - rlen)) <= 0) {
             /*
-                Zero is EOF: the server closed. That distinction is the whole oracle -- refusing a
-                malformed request by closing without a response is a defensible choice this server
-                makes elsewhere too (regress/bad-path), whereas holding the connection open having
-                decided nothing is a slow-loris primitive.
+                Read EOF from socket state because mprReadSocket returns -1 for closure.
              */
-            if (nbytes == 0) {
+            if (mprIsSocketEof(sp)) {
                 *closed = 1;
             }
             break;
@@ -328,10 +264,9 @@ int main(int argc, char **argv)
 {
     char  *request, *mutated, *response;
     char  hostHeader[64];
-    char  missingAt[128], unexpectedAt[128];
+    char  heldAt[128];
     ssize len;
     int   depth, rounds, round, cases, held, doubled, refused, closed, i, op;
-    int   missing, unexpected, extra, n;
 
     static int scale[] = {1, 2, 4, 8, 16, 24, 32, 40, 48, 64};
 
@@ -340,16 +275,14 @@ int main(int argc, char **argv)
     depth = tdepth();
     rounds = scale[(depth >= 0 && depth < 10) ? depth : 0];
 
-    request = mprAlloc(MAX_REQUEST);
-    mutated = mprAlloc(MAX_REQUEST);
-    response = mprAlloc(MAX_RESPONSE);
+    //  The collector does not scan the C stack, so buffers held only in locals are not MPR memory
+    request = malloc(MAX_REQUEST);
+    mutated = malloc(MAX_REQUEST);
+    response = malloc(MAX_RESPONSE);
     fmt(hostHeader, sizeof(hostHeader), "%s:%d", host, port);
 
     cases = held = doubled = refused = 0;
-
-    //  The shape tally is indexed by seed, so a corpus that outgrows it would write past the array
-    for (i = 0; seeds[i]; i++) { }
-    ttrue(i <= MAX_SEEDS, "the seed corpus has %d entries, more than MAX_SEEDS %d", i, MAX_SEEDS);
+    heldAt[0] = '\0';
 
     for (round = 0; round < rounds; round++) {
         for (i = 0; seeds[i]; i++) {
@@ -370,22 +303,12 @@ int main(int argc, char **argv)
 
                 if (scontains(response, "HTTP/1.") == 0) {
                     /*
-                        No response. Acceptable if the server closed -- refusing a malformed
-                        request by hanging up is a choice this server makes elsewhere, and
-                        regress/bad-path.tst.ts asserts it. Holding the connection open having
-                        decided nothing is not: that is a connection slot consumed by one
-                        malformed request, against LimitConnectionsPerClient, with no counter
-                        incremented that the monitor would notice.
-
-                        Counted rather than failed on sight. The campaign finds several inputs in
-                        this class and they need individual triage; 10165 is the one confirmed and
-                        filed so far. The gate below is that the count must not grow -- which
-                        keeps the campaign's power to detect a new one without blocking on the
-                        triage of the ones already known.
+                        A malformed request may be closed without response, but must not be left open.
                      */
                     if (!closed) {
-                        held++;
-                        heldShape[i][op]++;
+                        if (held++ == 0) {
+                            fmt(heldAt, sizeof(heldAt), "seed %d mutator %d", i, op);
+                        }
                         tinfo("held open: seed %d mutator %d", i, op);
                     }
                     continue;
@@ -430,72 +353,7 @@ int main(int argc, char **argv)
          "%d of %d connections were refused: the campaign exceeded the server's connection limit "
          "and those cases never reached it", refused, cases);
 
-    /*
-        The held-open gate, over shapes rather than over the total. The reasoning is with
-        coreShape() above.
-
-        Held-open connections are gated on a recorded baseline rather than on zero because the class
-        is real and unfixed: a NUL anywhere in the request line or header block is the confirmed
-        instance, and the rest are variants awaiting individual triage. Failing on sight would block
-        this file on that triage, and a fuzzer blocked on triage of what it has already found stops
-        finding anything new. Same shape as the scoped exemption test/sec's Makefile carries for the
-        one known unfixed stoiradix overflow.
-
-        When those defects are fixed, coreShape() returns 0 for everything and this becomes
-        "nothing may be held" with no edit to the gate itself.
-     */
-    missing = unexpected = extra = 0;
-    missingAt[0] = unexpectedAt[0] = '\0';
-
-    for (i = 0; seeds[i]; i++) {
-        for (op = 0; op < MUTATORS; op++) {
-            n = heldShape[i][op];
-            if (coreShape(i, op)) {
-                /*
-                    A core shape that stops wedging is as much a finding as a new one that starts:
-                    either the server was fixed, in which case this baseline is stale and must be
-                    retightened, or the campaign stopped reaching it.
-                 */
-                if (n != rounds) {
-                    missing++;
-                    if (!missingAt[0]) {
-                        fmt(missingAt, sizeof(missingAt), "seed %d mutator %d held in %d of %d round(s)",
-                            i, op, n, rounds);
-                    }
-                }
-            } else if (n > 0) {
-                if (op == 0) {
-                    //  The bit flip picks its byte at random, so which seeds it wedges is a draw
-                    extra += n;
-                } else {
-                    unexpected++;
-                    if (!unexpectedAt[0]) {
-                        fmt(unexpectedAt, sizeof(unexpectedAt), "seed %d mutator %d held in %d of %d round(s)",
-                            i, op, n, rounds);
-                    }
-                }
-            }
-        }
-    }
-
-    teqi(missing, 0, "%d known held-open shape(s) stopped wedging the server; first: %s",
-         missing, missingAt);
-
-    teqi(unexpected, 0, "%d shape(s) wedged the server that are not known; first: %s",
-         unexpected, unexpectedAt);
-
-    /*
-        The bit flip is allowed to wedge, because where it lands is a draw -- but at most once per
-        round. Observed once at depth 0, twice at depth 1 and three times at depth 2. A jump here
-        means many more byte positions began wedging, which is a finding even though any single one
-        of them is expected.
-     */
-    ttrue(extra <= rounds,
-          "the bit-flip mutator wedged %d time(s) over %d round(s), more than one per round",
-          extra, rounds);
-
-    tinfo("held open: %d total -- %d from core shapes over %d round(s), %d from the bit flip",
-          held, held - extra, rounds, extra);
+    teqi(held, 0, "%d malformed request(s) held the connection open; first: %s", held, heldAt);
 
     /*
         The server is still serving. Without this the campaign could pass against a server that
@@ -507,12 +365,15 @@ int main(int argc, char **argv)
     probe(request, slen(request), response, MAX_RESPONSE, &closed);
     tcontains(response, "200 OK", "the server must still serve after the campaign");
 
+    free(request);
+    free(mutated);
+    free(response);
     mprDestroy();
     return 0;
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

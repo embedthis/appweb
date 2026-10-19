@@ -39,8 +39,40 @@ fi
 #
 ./prep.sh
 
-if curl -s http://localhost:4100/ >/dev/null 2>&1; then
-    echo "Appweb is already running on port 4100"
+# Use a per-run health-check file to distinguish this server from a previous one.
+READY=web/setup-ready.txt
+rm -f "${READY}"
+
+# Restart existing Appweb instances to clear test state. APPWEB_ADOPT=1 uses a manually started server.
+serving() {
+    curl -s http://localhost:4100/ >/dev/null 2>&1
+}
+if serving && [ "${APPWEB_ADOPT:-0}" != "1" ] ; then
+    for pid in $(lsof -t -iTCP:4100 -sTCP:LISTEN 2>/dev/null) ; do
+        if ps -o comm= -p "${pid}" 2>/dev/null | grep -q appweb ; then
+            echo "Stopping appweb ${pid} left on port 4100"
+            kill -TERM "${pid}" 2>/dev/null
+        fi
+    done
+    for i in $(seq 1 20) ; do
+        serving || break
+        sleep 0.5
+    done
+    for pid in $(lsof -t -iTCP:4100 -sTCP:LISTEN 2>/dev/null) ; do
+        if ps -o comm= -p "${pid}" 2>/dev/null | grep -q appweb ; then
+            kill -9 "${pid}" 2>/dev/null
+        fi
+    done
+    sleep 0.5
+    if serving ; then
+        mkdir -p tmp
+        echo "Port 4100 is held by a server this run did not start. Stop it, or set APPWEB_ADOPT=1 to use it." \
+            | tee tmp/setup-failure.txt >&2
+        exit 1
+    fi
+fi
+if serving ; then
+    echo "Using the server already running on port 4100 (APPWEB_ADOPT=1)"
     sleep 3600 &
 else
     echo "Starting Appweb"
@@ -62,6 +94,7 @@ fi
 
 PID=$!
 echo ${PID} > .pidfile
+echo "ready" > "${READY}"
 
 #
 #   SIGTERM first so appweb shuts down in an orderly way. Its shutdown releases the backend apps

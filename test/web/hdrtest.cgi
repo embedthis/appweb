@@ -46,6 +46,29 @@ cl-empty)
     printf 'Content-Type: text/plain\r\nContent-Length: 0\r\n\r\n'
     ;;
 
+cl-space)
+    # Whitespace before the colon must not bypass Content-Length validation.
+    printf 'Content-Type: text/plain\r\nContent-Length : 5\r\n\r\nAAAAA'
+    printf 'HTTP/1.1 200 OK\r\nContent-Length: 9\r\n\r\nINJECTED\n'
+    ;;
+
+cl-tab)
+    #   A tab before the colon. Otherwise as cl-space.
+    printf 'Content-Type: text/plain\r\nContent-Length\t: 5\r\n\r\nAAAAA'
+    printf 'HTTP/1.1 200 OK\r\nContent-Length: 9\r\n\r\nINJECTED\n'
+    ;;
+
+cl-lower-space)
+    #   Lower case, a space before the colon and none after it. Otherwise as cl-space.
+    printf 'Content-Type: text/plain\r\ncontent-length :5\r\n\r\nAAAAA'
+    printf 'HTTP/1.1 200 OK\r\nContent-Length: 9\r\n\r\nINJECTED\n'
+    ;;
+
+te-space)
+    #   Whitespace before the colon. Read as an ordinary header, it escaped the Transfer-Encoding refusal.
+    printf 'Content-Type: text/plain\r\nTransfer-Encoding : chunked\r\n\r\nSHORT'
+    ;;
+
 bare-cr)
     #   A CR inside the value. Not a line terminator to this handler, but is one to many other parsers.
     printf 'Content-Type: text/plain\r\nX-Test: aaa\rbbb\r\n\r\nSHORT'

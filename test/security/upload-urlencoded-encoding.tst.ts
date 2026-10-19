@@ -7,7 +7,7 @@ import {ttrue} from '@embedthis/testme'
 import {HOST, send} from './raw'
 
 const boundary = '----upload-urlencoded-boundary'
-const path = '/upload/cgiProgram.cgi?-e+-p'
+const path = '/upload/cgiProgram.cgi?SWITCHES=-e+-p'
 
 function check(response: string, text: string): void {
     if (!response.includes(text)) {

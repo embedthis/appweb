@@ -138,6 +138,7 @@ if (!existsSync(BIN)) {
         `ErrorLog ${WORK}/error.log level=4`,
         `TraceLog ${WORK}/trace.log level=2`,
         `Http2 on`,
+        `Http2Cleartext on`,
         `Listen 127.0.0.1:${PORT}`,
         `Documents ${TESTDIR}/web`,
         `AddHandler fileHandler html txt ""`,

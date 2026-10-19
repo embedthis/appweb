@@ -52,13 +52,20 @@ rsync -a --delete --delete-excluded \
     --exclude '.DS_Store' \
     --exclude 'build' \
     --exclude 'node_modules' \
+    --include '/doc/' \
+    --include '/doc/man/***' \
+    --include '/doc/api/***' \
+    --exclude '/doc/*' \
+    --include '/paks/*/doc/' \
+    --include '/paks/*/doc/api/***' \
+    --exclude '/paks/*/doc/*' \
     --exclude 'doc' \
     /src/ /work/ || exit 255
 
 cd /work || exit 255
 
-echo "       [Run] make build [linux]"
-make build || exit 255
+echo "       [Run] make build OPTIMIZE=test [linux]"
+make build OPTIMIZE=test || exit 255
 
 #
 #   Report what was actually exercised. The image is arm64 and CI's ubuntu runner is x86_64, so

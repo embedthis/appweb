@@ -286,5 +286,5 @@ When adding new benchmark tests:
 
 ## License
 
-Copyright (c) Embedthis Software. All Rights Reserved.
+Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
 This software is distributed under a commercial license.

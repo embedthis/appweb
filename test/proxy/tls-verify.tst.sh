@@ -6,7 +6,7 @@
 #   TLS, and a <ProxyConfig> block carries that connection's trust anchor, client certificate and
 #   cipher policy.
 #
-#   Two things went wrong, and only one of them was what #10317 described.
+#   Two things went wrong, and only one of them was what the original report described.
 #
 #   checkSsl() built the block's SSL object in server mode, where verifyPeer defaults off, because it
 #   had no way to know it was called from inside <ProxyConfig>. That is real and is fixed. It was not,
@@ -68,7 +68,11 @@ mkdir -p "${WORK}"
 start_backend() {
     local cert="$1"
 
-    [ -n "${BACKEND}" ] && kill -9 "${BACKEND}" 2>/dev/null
+    #   The previous backend must be gone, not merely signalled, or it still holds the port
+    if [ -n "${BACKEND}" ]; then
+        kill -9 "${BACKEND}" 2>/dev/null
+        wait "${BACKEND}" 2>/dev/null
+    fi
     cat > "${WORK}/backend.conf" <<EOF
 ErrorLog ${WORK}/backend-error.log level=0
 ListenSecure 127.0.0.1:${BACK_PORT}
@@ -114,7 +118,10 @@ ${block}"
 ${connect}"
     fi
 
-    [ -n "${FRONT}" ] && kill -9 "${FRONT}" 2>/dev/null
+    if [ -n "${FRONT}" ]; then
+        kill -9 "${FRONT}" 2>/dev/null
+        wait "${FRONT}" 2>/dev/null
+    fi
     cat > "${WORK}/front.conf" <<EOF
 ErrorLog ${WORK}/front-error.log level=0
 Listen 127.0.0.1:${FRONT_PORT}

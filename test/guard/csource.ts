@@ -1,19 +1,5 @@
 /*
     csource.ts - Read C source the way the presence guards need to read it
-
-    The guards in this directory assert that a defence is *present* in the shipped amalgamation, which
-    is a different question from the one test/guard/amalgamation.tst.ts answers. That one proves the
-    vendored files agree with their pak sources, and a fix written into the amalgamation and never
-    upstream is dropped by a clean re-import while both sides still agree (10297). Only presence
-    catches that.
-
-    Presence means reading C, so each guard needs the same three primitives: strip the comments, find a
-    function definition rather than its forward declaration, and brace-match a block. They lived
-    separately in each guard until a third needed them (10318).
-
-    Comments are stripped before matching because the prose around a defence names the very tokens
-    being asserted, so a guard that matched raw text would pass on a source file whose fix had been
-    replaced by a comment describing it.
  */
 
 import {ttrue} from '@embedthis/testme'

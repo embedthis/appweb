@@ -1,15 +1,8 @@
 /*
     conditional.tst.ts - Conditional GET and revalidation
-
-    http/src/tx.c emits an ETag on every static response, and until now no test in the tree
-    referenced ETag or If-None-Match at all (10064). The 304 path, the precedence between the
-    two validators, and their interaction with Range were entirely uncovered.
-
-    Driven over a raw socket because a 304 is defined by the absence of a body, which a client
-    library normalises away.
  */
 
-import {teq, tinfo, ttrue} from '@embedthis/testme'
+import {teq, ttrue} from '@embedthis/testme'
 import {HOST, send} from '../security/raw'
 
 const CLOSE = 'Host: ' + HOST + '\r\nConnection: close\r\n\r\n'
@@ -41,14 +34,9 @@ ttrue(etag != null)
 ttrue(lastModified != null)
 teq(base.body.length, length)
 
-/*
-    The ETag is emitted unquoted. RFC 9110 8.8.3 defines entity-tag as a quoted-string, so a
-    strict client that re-quotes it will not match. Recorded rather than asserted as correct --
-    see 10117.
- */
-if (!etag.startsWith('"') && !etag.startsWith('W/')) {
-    tinfo('10117: ETag is emitted unquoted: ' + etag)
-}
+//  RFC 9110 8.8.3: an entity-tag is a quoted string, so a strict client can re-emit it as received
+ttrue(etag.startsWith('"') && etag.endsWith('"'))
+const opaque = etag.slice(1, -1)
 
 //  A matching If-None-Match revalidates: 304, and no body
 let r = parts((await send('GET /index.html HTTP/1.1\r\nIf-None-Match: ' + etag + '\r\n' + CLOSE,
@@ -62,23 +50,27 @@ ttrue(r.head.includes('200 OK'))
 teq(r.body.length, length)
 
 /*
-    10117: RFC 9110 13.1.2 says a field value of "*" makes the condition false when the server has
-    a current representation, so a GET must answer 304. It answers 200. Pinned as-is -- when
-    10117 is fixed this becomes a 304 with an empty body.
+    RFC 9110 13.1.2: a field value of "*" makes the condition false when the server has a current
+    representation, so a GET must answer 304.
  */
 r = parts((await send('GET /index.html HTTP/1.1\r\nIf-None-Match: *\r\n' + CLOSE, 'HTTP/1.', true)).text)
-ttrue(r.head.includes('200 OK'))
-tinfo('10117: If-None-Match: * returned 200; RFC 9110 13.1.2 requires 304')
+ttrue(r.head.includes('304 Not Modified'))
+teq(r.body, '')
 
 /*
-    10117 again: the tag is emitted unquoted, so a client that re-emits it per the grammar --
-    quoted, as RFC 9110 8.8.3 requires -- never revalidates. This is the case that turns a
-    working cache into a full transfer on every request, silently.
+    Compare opaque tags across quoting, weak tags, and tag lists.
  */
-r = parts((await send('GET /index.html HTTP/1.1\r\nIf-None-Match: "' + etag + '"\r\n' + CLOSE,
-    'HTTP/1.', true)).text)
+for (let value of [opaque, 'W/' + etag, '"other", ' + etag, 'W/"x", ' + opaque]) {
+    r = parts((await send('GET /index.html HTTP/1.1\r\nIf-None-Match: ' + value + '\r\n' + CLOSE,
+        'HTTP/1.', true)).text)
+    ttrue(r.head.includes('304 Not Modified'), 'If-None-Match: ' + value)
+    teq(r.body, '')
+}
+
+r = parts((await send('GET /index.html HTTP/1.1\r\nIf-Match: ' + etag + '\r\n' + CLOSE, 'HTTP/1.', true)).text)
 ttrue(r.head.includes('200 OK'))
-tinfo('10117: a correctly quoted If-None-Match did not match the unquoted ETag')
+r = parts((await send('GET /index.html HTTP/1.1\r\nIf-Match: *\r\n' + CLOSE, 'HTTP/1.', true)).text)
+ttrue(r.head.includes('200 OK'))
 
 //  A matching If-Modified-Since revalidates
 r = parts((await send('GET /index.html HTTP/1.1\r\nIf-Modified-Since: ' + lastModified + '\r\n' + CLOSE,

@@ -5,7 +5,7 @@
 #   A file is inert when, after comments are stripped, neither it nor any local helper module it
 #   imports contains a call to a TestMe assertion or to tskip(). basic/dir.tst.ts and
 #   stress/hugeForm.tst.ts were exactly that: every assertion commented out, ttrue imported and
-#   never called, PASS in 30ms (10062).
+#   never called, PASS in 30ms.
 #
 #   Two subtleties, both learned from false positives:
 #

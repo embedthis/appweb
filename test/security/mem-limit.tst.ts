@@ -22,12 +22,14 @@ import net from 'node:net'
 import {resolve} from 'node:path'
 import {BIN, TESTDIR, removeDir, workDir} from './server'
 
-const OVER_PORT = 4523
+const OVER_PORT = 4589
 const UNDER_PORT = 4524
 
-//  Far below anything a started server occupies -- a bare server is a little under 3MB resident -- so the
-//  limit is already crossed by the time the listener opens
-const TINY = '1MB'
+/*
+    Set the limit below one 256 KiB MPR region so both resident-size and sanitizer heap measurements exceed it at
+    startup.
+ */
+const TINY = '100k'
 
 //  Far above it, so nothing about this test's server is unusual
 const AMPLE = '1GB'

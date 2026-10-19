@@ -1,11 +1,5 @@
 /*
     novel-cookie.tst - An unknown session id must not be adopted, and must not cost a session slot
-
-    A read never allocates, so an arbitrary client cannot mint server state simply by presenting a
-    novel cookie. A write does allocate, but always mints a fresh server-generated id rather than
-    adopting the client's value - the session fixation invariant.
-
-    Ported from GoAhead test/session/novel-cookie.tst.ts (issue 10060).
  */
 
 import {ttrue, tget} from '@embedthis/testme'

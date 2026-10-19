@@ -6,7 +6,7 @@
 #   returned NULL into getFastApp(), into the request path and on into the MPR event loop, as a
 #   second copy of the server. Each request that finds no free FastCGI app calls startFastApp again,
 #   so N requests produced N clones and each clone could fork more -- a remote fork bomb reachable
-#   with nothing but repeated GETs against a route whose backend binary is missing (10154).
+#   with nothing but repeated GETs against a route whose backend binary is missing.
 #
 #   The trigger is a misconfiguration operators reach by accident: a launch path that is wrong,
 #   renamed by a package upgrade, or has lost its +x bit. Here it simply does not exist.
@@ -103,13 +103,7 @@ curl -fsS -o /dev/null "http://127.0.0.1:${PORT}/index.html" 2>/dev/null || fail
 before=$(count_servers)
 [ "${before}" -ge 1 ] || fail "expected the test server to be running, found ${before}"
 
-#   Several requests: one clone per failed launch is the defect, so repetition is the amplifier
-#
-#   The request must fail as a broken gateway and say so. A missing backend binary is a 502, which is
-#   what CGI has always returned for the same condition. It used to be answered with a connection reset
-#   after the full request timeout -- curl reported 000 -- which a client cannot tell apart from a
-#   network fault or a crashed server (10296). The status is asserted exactly, so a regression back to
-#   the reset fails here rather than being read as "the request failed, as expected".
+# Repeat failed launches to expose cloned processes. Require 502 rather than reset or timeout.
 for _ in 1 2 3 4 5; do
     status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "http://127.0.0.1:${PORT}/fastmissing/app" 2>/dev/null)
     [ "${status}" = "502" ] || fail "a missing FastCGI launch program answered ${status}, expected 502"

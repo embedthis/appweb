@@ -24,8 +24,8 @@ export const PORT = parseInt(URL_.port || '80', 10)
 export const ADDRESS = URL_.hostname
 export const HOST = URL_.host
 
-//  The upload route that carries a CGI target. -e prints the environment, -p the posted body.
-export const CGI_UPLOAD = '/upload/cgiProgram.cgi?-e+-p'
+// Use SWITCHES for CGI options; ISINDEX rejects option-shaped terms.
+export const CGI_UPLOAD = '/upload/cgiProgram.cgi?SWITCHES=-e+-p'
 
 export const BOUNDARY = '----scenario-tests-boundary'
 

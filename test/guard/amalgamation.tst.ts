@@ -1,17 +1,5 @@
 /*
     amalgamation.tst.ts - The amalgamated sources must match their pak sources
-
-    src/http/httpLib.c (about 1.0 MB), src/mpr/mprLib.c (about 0.9 MB), their headers and
-    src/osdep/osdep.h are generated from the per-module dist directories under paks by
-    "make cache" and "pak sync". Nothing verified they still matched (10070). The upstream mpr and
-    http suites test the upstream sources; Appweb's suite does not run them. A dropped or mangled
-    hunk from a bad import would therefore be caught only by whatever Appweb functional coverage
-    happens to touch the damaged code -- and for osdep.h there is none, because what it gates is
-    which targets compile at all.
-
-    paks/ is gitignored, so it is absent in a fresh clone and in every git worktree. That is an
-    explicit skip with a true reason, not a silent pass -- the distinction this whole guard
-    directory exists to enforce.
  */
 
 import {teq, tinfo, tskip, ttrue} from '@embedthis/testme'
@@ -26,15 +14,7 @@ let text = parts[0]
 let exit = Number(parts[1].trim())
 
 /*
-    Files known to diverge, each with the issue that tracks it. Empty is the correct state.
-
-    It was not empty: paks/mpr/dist carried pre-fix code under the same 9.2.0 version as the
-    published pak, so #10023 and #10056 would have been reverted by an import. Cleared 2026-08-07
-    by refreshing the local pak from ~/.paks -- see #10132 for why the version number could not
-    distinguish the two.
-
-    An entry here that stops diverging fails the run, so an exemption cannot outlive its defect.
-    That is how this one was found to be stale within minutes of the fix.
+    Known package divergences. Fail when an exemption no longer applies; the normal set is empty.
  */
 const KNOWN: any = {
 }

@@ -1,27 +1,14 @@
 /*
-    action.tst.ts - The Action directive selects an interpreter for a document
-
-    Action maps a document's MIME type to the program that runs it, so a script can be served
-    without being executable and without a #! line. That is the whole point of it: the alternative
-    mechanism -- kernel shebang, or prepWinProgram on Windows -- needs the script to be mode 755 and
-    to name its own interpreter, and it works whether Action is consulted or not. Which is exactly
-    how Action came to be inert in every release without anyone noticing.
-
-    So every case here asserts BOTH halves: the interpreter ran, and the script is NOT executable.
-    Drop the mode assertion and someone chmod +x'ing a fixture would leave these passing on the
-    shebang path with Action doing nothing again.
-
-    The interpreters are probed rather than assumed, and the probe is for the mapping rather than
-    for the interpreter: python3 and php-cgi are not in the Ubuntu container image, and neither
-    mapping can run on Windows whether the interpreter is installed or not. See utils/interpreters.ts
-    for why. A missing package or a Unix-only wrapper must not read as a server defect.
+    Action must run non-executable scripts through the configured interpreter. Check the file mode to exclude
+    shebang execution. Probe each mapping for platform support; the .act fixture runs everywhere.
  */
 
 import {teq, tskip, ttrue} from '@embedthis/testme'
-import {existsSync, statSync} from 'node:fs'
+import {existsSync, readFileSync, statSync} from 'node:fs'
 import {resolve} from 'node:path'
 
 import {noInterpreter} from '../utils/interpreters'
+import {WINDOWS} from '../utils/gateways'
 
 const HTTP = 'http://127.0.0.1:4100'
 const WEB = resolve(import.meta.dir, '..', 'web')
@@ -35,6 +22,20 @@ async function body(uri: string) {
     const response = await fetch(HTTP + uri)
     teq(response.status, 200)
     return await response.text()
+}
+
+/*
+    The shebang-free .act fixture verifies that Action selected the interpreter on Windows.
+ */
+{
+    const fixture = resolve(WEB, 'action.act')
+    ttrue(!readFileSync(fixture, 'utf8').startsWith('#!'))
+    if (!WINDOWS) {
+        notExecutable(fixture)
+    }
+    const text = await body('/cgi/action.act?switches=-a')
+    ttrue(/ARG\[0\]=[^<]*cgiProgram/.test(text))
+    ttrue(/ARG\[1\]=[^<]*action\.act</.test(text))
 }
 
 //  Action application/x-perl /usr/bin/perl

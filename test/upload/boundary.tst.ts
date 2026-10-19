@@ -1,27 +1,5 @@
 /*
     boundary.tst.ts - Every documented rejection path in the upload filter
-
-    Before this file the suite sent only well-formed multipart bodies, so every refusal in
-    uploadFilter.c was unverified: a build that accepted a missing boundary, a truncated document, a
-    disposition naming a file before its field, or a client filename containing "../" would have
-    passed the whole suite.
-
-    Writing it turned up #10367, since fixed, and the shape of that defect is why this file is
-    organised the way it is. A refusal used to behave differently depending on the handler downstream
-    of the filter:
-
-        cgiHandler      no response at all, connection held open
-        fileHandler     400, connection held open
-        actionHandler   400, connection held open
-
-    Running the cases against one route only would have hidden half of that -- and did, until the
-    filename cases happened to use the file route and came back with a status the gateway cases never
-    produced. So the structural cases still run against BOTH a gateway route and a handler route, and
-    must go on doing so: the divergence was invisible from either side alone.
-
-    Each refusal is checked for two properties, not one: that it was refused, and that nothing was
-    staged. A filter that refuses the request after having already written the attacker's bytes to
-    the upload directory has not refused anything that matters.
  */
 
 import {teq, tinfo, ttrue} from '@embedthis/testme'
@@ -46,22 +24,7 @@ function staged(): number {
 }
 
 /*
-    Assert a refusal. Three properties, all of which must hold.
-
-      - A 4xx reaches the client. A class rather than a literal, because the filter answers 400 for a
-        malformed document and 413 for one over a limit, and pinning a literal would make this test
-        about the status code rather than about the refusal.
-      - The connection closes. RFC 9112 6.1: server and client have provably disagreed about the
-        message, so the connection cannot safely carry another one.
-      - Nothing was staged. A filter that answers 400 having already written the attacker's bytes to
-        the upload directory has refused nothing that matters.
-
-    All three were asserted the other way round until #10367 was fixed. Behind a gateway the client
-    received nothing at all, and on every handler the connection was held to the route's
-    InactivityTimeout -- so this file pinned status 0 and "not closed" and carried the replacement
-    assertions in this comment. They are now the assertions. The history is worth keeping because it
-    is why the structural cases below still run against both a gateway route and a handler route:
-    the two answered differently, and running against one only is what hid half the defect.
+    Require a 4xx response, connection close, and no staged files on both gateway and handler routes.
  */
 async function refused(name: string, path: string, body: string, options: any = {}): Promise<void> {
     let before = staged()
@@ -85,8 +48,7 @@ async function refused(name: string, path: string, body: string, options: any = 
     teq(staged(), before)
 }
 
-//  Refuse the same body on a gateway route and a handler route. They answered differently before
-//  #10367 was fixed, and that is exactly the divergence a single-route test would let back in.
+
 async function refusedBoth(name: string, body: string, options: any = {}): Promise<void> {
     await refused(name, CGI_UPLOAD, body, options)
     await refused(name, ACTION_UPLOAD, body, options)
@@ -275,14 +237,7 @@ ttrue(many.text.includes('CGI_FILE_3_CLIENT_FILENAME=three.dat'))
 ttrue(many.text.includes('PVAR field=plain-value'))
 
 /*
-    The refusal is prompt, which is the half of #10367 that was a resource problem rather than a
-    diagnostic one.
-
-    A refused upload used to occupy a connection slot until the route's InactivityTimeout -- two
-    minutes on ^/upload/ -- for the cost of one small write. It now closes immediately. Asserting a
-    bound on the time is what distinguishes "closed" from "closed eventually": a regression that
-    reinstated the hold would still close, once the timeout expired, and every other assertion in
-    this file would still pass.
+    Bound refusal time so closing only after InactivityTimeout cannot pass.
  */
 let mark = Date.now()
 let held = await sendBody(ACTION_UPLOAD, buildBody([{name: 'f', filename: 'a.dat', value: 'data'}]),
@@ -291,7 +246,7 @@ let elapsed = Date.now() - mark
 tinfo('a refused upload was answered and closed in ' + elapsed + 'ms')
 if (!held.closed || elapsed > 2000) {
     console.log('The refused upload took ' + elapsed + 'ms to close (closed ' + held.closed +
-        ', status ' + held.status + '). #10367 held the connection to the InactivityTimeout.')
+        ', status ' + held.status + '). The upload refusal defect held the connection to the InactivityTimeout.')
 }
 ttrue(held.closed)
 ttrue(elapsed < 2000)

@@ -34,11 +34,17 @@ function hasHeader(response: string, key: string, value: string): boolean {
     return response.includes(`${key}: ${value}\r\n`)
 }
 
+//  Vary carries a token list that also includes the default Accept-Encoding
+function varies(response: string, token: string): boolean {
+    let match = /\r\nVary: ([^\r]*)\r\n/i.exec(response)
+    return match != null && match[1].split(',').map(t => t.trim().toLowerCase()).includes(token.toLowerCase())
+}
+
 let response = await request('/cors-token', 'https://a.example')
 ttrue(response.includes('200 OK'))
 ttrue(hasHeader(response, 'Access-Control-Allow-Origin', 'https://a.example'))
 ttrue(hasHeader(response, 'Access-Control-Allow-Credentials', 'true'))
-ttrue(hasHeader(response, 'Vary', 'Origin'))
+ttrue(varies(response, 'Origin'))
 
 response = await request('/cors-token', 'https://b.example')
 ttrue(response.includes('200 OK'))
@@ -48,7 +54,7 @@ ttrue(!response.includes('Access-Control-Allow-Credentials:'))
 response = await request('/cors-client', 'https://client.example')
 ttrue(response.includes('200 OK'))
 ttrue(hasHeader(response, 'Access-Control-Allow-Origin', 'https://client.example'))
-ttrue(hasHeader(response, 'Vary', 'Origin'))
+ttrue(varies(response, 'Origin'))
 ttrue(!response.includes('Access-Control-Allow-Credentials:'))
 
 response = await request('/cors-client', null)

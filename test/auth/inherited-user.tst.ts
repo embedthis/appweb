@@ -1,20 +1,5 @@
 /*
     inherited-user.tst.ts - A route-scoped User must not rewrite the credential everywhere
-
-    A nested route may redeclare a User its parent already declared -- rotating one credential for one
-    route is the obvious reason to. GRADUATE_HASH gives the nested route its own user table, but
-    mprCloneHash is shallow, so the entries in that table were still the parent's HttpUser objects and
-    httpAddUser updated whichever object it found, in place. The nested declaration therefore rewrote
-    the parent's credential: the password the parent route declared stopped working on the parent route,
-    and the nested route's password started working there instead (10310).
-
-    Nothing warns, nothing logs, and no request to the nested route is needed -- the substitution happens
-    when the configuration is parsed.
-
-    The route requires "user ralph" rather than an ability, deliberately. The role half of that finding
-    does not reach an authorization decision: abilities are computed once, when the User directive is
-    parsed, so a later Role edit cannot change a decision made from that snapshot. Asserting on abilities
-    here would test nothing about the sharing this covers.
  */
 
 import {ttrue} from '@embedthis/testme'

@@ -139,15 +139,7 @@ grep -q '^FORGED' "${INJECT_TRACE}" && fail "raw newline forged a trace line"
 stop_server
 pass "decoded Basic username controls were escaped in trace output"
 
-#
-#   The comma is the ingredient the case above is missing. emitTraceValues splits the whole formatted
-#   message on "," and then on ":" or "=", and it used to escape only the parsed value -- the parsed
-#   key went out through a plain %s. So a bare newline lands in a value and is escaped, as above, but
-#   one comma opens a second field whose key carries the newline raw. That forged a record header a
-#   log reader cannot distinguish from a real one, from an unauthenticated request, at the lowest
-#   trace level, on the shipped default formatter. See issue 10331; #10179 established the choke point
-#   this call site was missing.
-#
+# Include a comma so malicious text reaches a formatted key, not just an escaped value.
 start_server "${INJECT_CONF}" "${INJECT_PORT}"
 payload=$(printf 'victim,\r\nFORGED (auth.login.authenticated)\r\n    message:  User authenticated' | base64 | tr -d '\n')
 code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Basic ${payload}" \
@@ -169,7 +161,7 @@ pass "a comma cannot open a second field whose key carries a raw newline"
 #   reach the request line (the parser answers 400), so the reachable carrier is a header value.
 #
 start_server "${INJECT_CONF}" "${INJECT_PORT}"
-payload=$(printf 'sa"y' | base64 | tr -d '\n')
+payload=$(printf 'sa"y:x' | base64 | tr -d '\n')
 code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Basic ${payload}" \
     "http://127.0.0.1:${INJECT_PORT}/auth/index.html")
 [ "$code" = "401" ] || fail "quote injection request returned ${code}"
@@ -180,5 +172,31 @@ done
 grep -q 'sa\\"y' "${INJECT_TRACE}" || fail "quote in a decoded Basic username was not escaped"
 stop_server
 pass "a double quote in trace output was escaped"
+
+# Reject trace qualifiers with no conversion character during configuration parsing.
+BAD_CONF="${WORK}/bad-format.conf"
+BAD_ERROR="${WORK}/bad-format-error.log"
+BAD_OUT="${WORK}/bad-format.out"
+
+cat > "${BAD_CONF}" <<CONF
+ErrorLog ${NATIVE_WORK}/bad-format-error.log level=4
+TraceLog ${NATIVE_WORK}/bad-access.log level=4 formatter=common format="%h %u %r %>s %b %{User-Agent}"
+Listen 4525
+Documents ${NATIVE_TESTDIR}/web
+CONF
+
+"${BIN}" --config "${BAD_CONF}" >"${BAD_OUT}" 2>&1 &
+SERVER=$!
+for i in $(seq 1 40); do
+    kill -0 "${SERVER}" 2>/dev/null || break
+    sleep 0.1
+done
+if kill -0 "${SERVER}" 2>/dev/null; then
+    stop_server
+    fail "server started with a malformed TraceLog format"
+fi
+SERVER=""
+cat "${BAD_ERROR}" "${BAD_OUT}" 2>/dev/null | grep -q 'Bad trace log format' || fail "malformed TraceLog format was not named"
+pass "a TraceLog format with a truncated qualifier is refused at startup"
 
 exit 0

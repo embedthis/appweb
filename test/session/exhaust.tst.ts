@@ -1,18 +1,5 @@
 /*
     exhaust.tst - A failed login must not allocate a session
-
-    If a failed login allocates, an anonymous client can fill the session table with nothing but bad
-    credentials and lock every legitimate user out of form authentication. GoAhead carried exactly
-    this defect (their issue #10040): ~512 anonymous requests exhausted the table.
-
-    Ported from GoAhead test/session/exhaust.tst.ts (issue 10060), but DELIBERATELY SCOPED.
-
-    GoAhead's version fills the session table to prove the ceiling holds. That cannot be done here:
-    test/appweb.conf sets LimitSessions 200 but LimitRequestsPerClient 100, so filling the table
-    needs more requests from one client than the request limit allows, and the monitor's
-    "Defense deny REMEDY=ban" would ban the test runner and cascade failures into every later test -
-    the same hazard that keeps test/stress disabled (issue 10043). This asserts the security
-    property, which is that failures allocate nothing, without needing the volume.
  */
 
 import {ttrue, tget} from '@embedthis/testme'
@@ -46,4 +33,4 @@ r = await req(PROTECTED, {jar: good})
 ttrue(r.status == '200')
 
 //  Release the session again so later tests are not affected
-await req(HTTPS + '/auth/form/logout', {jar: good})
+await req(HTTPS + '/auth/form/logout', {jar: good, post: 'logout=1'})

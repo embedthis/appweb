@@ -1,14 +1,5 @@
 /*
     post.tst.ts - Native POST body handling
-
-    Covers the two POST shapes on the path everything except CGI uses: a raw body, which the
-    handler must accept and account for, and an application/x-www-form-urlencoded body, whose
-    keys must reach ${param:...} through the native parser in http/src/var.c.
-
-    Was previously gated on thas('ME_EJS') against a form.ejs endpoint. Ejscript is not part of
-    Appweb, the flag is exported by nothing, and no .ejs document is served -- so the whole file
-    skipped silently and basic/ had no POST coverage at all (10061). cgi/post.tst.ts covers the
-    CGI environment path separately.
  */
 
 import {teq, tget} from '@embedthis/testme'
@@ -51,8 +42,10 @@ teq(http.response, 'name=[] address=[] data=[] a=[fromQuery] b=[fromBody] c=[] q
 http.close()
 
 //  A form-encoded body with a valueless key parses to the empty string, as in a query
-http.post(HTTP + '/post', 'a&b=y')
+http = new Http
 http.setHeader('Content-Type', 'application/x-www-form-urlencoded')
+http.post(HTTP + '/post', 'a&b=y')
 await http.finalize()
 teq(http.status, 200)
+teq(http.response, 'name=[] address=[] data=[] a=[] b=[y] c=[] q=[]')
 http.close()
