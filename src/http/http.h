@@ -151,85 +151,89 @@ struct HttpWebSocket;
     #define ME_HTTP_PORT                  80
 #endif
 #ifndef ME_HTTP_SOFTWARE
-    #define ME_HTTP_SOFTWARE              "Embedthis-http" /**< Default Http protocol name used in Http Server header */
+    #define ME_HTTP_SOFTWARE              "Embedthis-http"  /**< Default Http protocol name used in Http Server header
+                                                            */
 #endif
 #ifndef ME_HTTP_BAN_PERIOD
-    #define ME_HTTP_BAN_PERIOD            (5 * 60 * 1000)  /**< Default ban IP period */
+    #define ME_HTTP_BAN_PERIOD            (5 * 60 * 1000)   /**< Default ban IP period */
 #endif
 #ifndef ME_HTTP_DELAY_PERIOD
-    #define ME_HTTP_DELAY_PERIOD          (5 * 60 * 1000)  /**< Default delay IP period */
+    #define ME_HTTP_DELAY_PERIOD          (5 * 60 * 1000)   /**< Default delay IP period */
 #endif
 #ifndef ME_HTTP_MONITOR_PERIOD
-    #define ME_HTTP_MONITOR_PERIOD        (60 * 1000)      /**< Monitor prune period */
+    #define ME_HTTP_MONITOR_PERIOD        (60 * 1000)       /**< Monitor prune period */
 #endif
 #ifndef ME_HTTP_REMEDY_TIMEOUT
-    #define ME_HTTP_REMEDY_TIMEOUT        (60 * 1000)      /**< Default remedy command timeout */
+    #define ME_HTTP_REMEDY_TIMEOUT        (60 * 1000)       /**< Default remedy command timeout */
 #endif
 #ifndef ME_HTTP_DELAY
-    #define ME_HTTP_DELAY                 (2000)           /**< 2 second delay per request - while delay enforced */
+    #define ME_HTTP_DELAY                 (2000)            /**< 2 second delay per request - while delay enforced */
 #endif
 #ifndef ME_DIGEST_NONCE_DURATION
-    #define ME_DIGEST_NONCE_DURATION      60               /**< Lifespan in seconds for a Digest auth nonce */
+    #define ME_DIGEST_NONCE_DURATION      60                /**< Lifespan in seconds for a Digest auth nonce */
 #endif
 #ifndef ME_MAX_DIGEST_NONCES
-    #define ME_MAX_DIGEST_NONCES          1024             /**< Nonce count records held for replay detection */
+    #define ME_MAX_DIGEST_NONCES          1024              /**< Nonce count records held for replay detection */
 #endif
 #ifndef ME_MAX_URI
-    #define ME_MAX_URI                    512              /**< Reasonable URI size */
+    #define ME_MAX_URI                    512               /**< Reasonable URI size */
 #endif
 #ifndef ME_MAX_IOVEC
-    #define ME_MAX_IOVEC                  16               /**< Number of fragments in a single socket write */
+    #define ME_MAX_IOVEC                  16                /**< Number of fragments in a single socket write */
 #endif
 #ifndef ME_MAX_CLIENTS_HASH
-    #define ME_MAX_CLIENTS_HASH           131              /**< Hash table for client IP addresses */
+    #define ME_MAX_CLIENTS_HASH           131               /**< Hash table for client IP addresses */
+#endif
+#ifndef  ME_MAX_CACHE_MEM
+    #define ME_MAX_CACHE_MEM              (4 * 1024 * 1024) /**< Default memory bound for the response cache */
 #endif
 #ifndef  ME_MAX_CACHE_ITEM
-    #define ME_MAX_CACHE_ITEM             (256 * 1024)     /**< Maximum cachable item size */
+    #define ME_MAX_CACHE_ITEM             (256 * 1024)      /**< Maximum cachable item size */
 #endif
 #ifndef ME_MAX_CHUNK
-    #define ME_MAX_CHUNK                  (8 * 1024)       /**< Maximum chunk size for transfer chunk encoding */
+    #define ME_MAX_CHUNK                  (8 * 1024)        /**< Maximum chunk size for transfer chunk encoding */
 #endif
 #ifndef ME_MAX_CLIENTS
-    #define ME_MAX_CLIENTS                32               /**< Maximum unique client IP addresses */
+    #define ME_MAX_CLIENTS                32                /**< Maximum unique client IP addresses */
 #endif
 #ifndef ME_MAX_CONNECTIONS
-    #define ME_MAX_CONNECTIONS            50               /**< Maximum concurrent connections (sockets) for whole
-                                                              server */
+    #define ME_MAX_CONNECTIONS            50                /**< Maximum concurrent connections (sockets) for whole
+                                                               server */
 #endif
 #ifndef ME_MAX_CONNECTIONS_PER_CLIENT
-    #define ME_MAX_CONNECTIONS_PER_CLIENT 20               /**< Maximum concurrent connections per client (ip address)
-                                                            */
+    #define ME_MAX_CONNECTIONS_PER_CLIENT 20                /**< Maximum concurrent connections per client (ip address)
+                                                             */
 #endif
 #ifndef ME_MAX_HPACK_SIZE
-    #define ME_MAX_HPACK_SIZE             65536            /**< Maximum size of the hpack table */
+    #define ME_MAX_HPACK_SIZE             65536             /**< Maximum size of the hpack table */
 #endif
 #ifndef ME_MAX_HEADERS
-    #define ME_MAX_HEADERS                (512 * 1024)     /**< Maximum size of the headers (Chrome HTTP/2 needs this)
-                                                            */
+    #define ME_MAX_HEADERS                (512 * 1024)      /**< Maximum size of the headers (Chrome HTTP/2 needs this)
+                                                             */
 #endif
 #ifndef ME_MAX_KEEP_ALIVE
-    #define ME_MAX_KEEP_ALIVE             400              /**< Maximum requests per network */
+    #define ME_MAX_KEEP_ALIVE             400               /**< Maximum requests per network */
 #endif
 #ifndef ME_MAX_NUM_HEADERS
-    #define ME_MAX_NUM_HEADERS            64               /**< Maximum number of header lines */
+    #define ME_MAX_NUM_HEADERS            64                /**< Maximum number of header lines */
 #endif
 #ifndef ME_QUEUE_MAX_FACTOR
-    #define ME_QUEUE_MAX_FACTOR           4                /**< Queue max set to packetSize * factor */
+    #define ME_QUEUE_MAX_FACTOR           4                 /**< Queue max set to packetSize * factor */
 #endif
 #ifndef ME_MAX_PROCESSES
-    #define ME_MAX_PROCESSES              10               /**< Maximum concurrent processes */
+    #define ME_MAX_PROCESSES              10                /**< Maximum concurrent processes */
 #endif
 #ifndef ME_MAX_RX_BODY
-    #define ME_MAX_RX_BODY                (512 * 1024)     /**< Maximum incoming body size (512K) */
+    #define ME_MAX_RX_BODY                (512 * 1024)      /**< Maximum incoming body size (512K) */
 #endif
 #ifndef ME_MAX_RX_FORM
-    #define ME_MAX_RX_FORM                (512 * 1024)     /**< Maximum incoming form size (512K) */
+    #define ME_MAX_RX_FORM                (512 * 1024)      /**< Maximum incoming form size (512K) */
 #endif
 #ifndef ME_MAX_RX_FORM_COUNT
-    #define ME_MAX_RX_FORM_COUNT          512              /**< Maximum number of request parameters */
+    #define ME_MAX_RX_FORM_COUNT          512               /**< Maximum number of request parameters */
 #endif
 #ifndef ME_MAX_RX_FORM_FIELD
-    #define ME_MAX_RX_FORM_FIELD          HTTP_UNLIMITED   /**< Maximum form field size for copied to */
+    #define ME_MAX_RX_FORM_FIELD          HTTP_UNLIMITED    /**< Maximum form field size for copied to */
 #endif
 
 /*
@@ -275,6 +279,12 @@ struct HttpWebSocket;
     #endif
 #endif
 
+#ifndef HTTP_MAX_PROLOGUE
+/*
+    Bound empty-line bytes before header-size accounting begins (RFC 9112 2.2).
+ */
+    #define HTTP_MAX_PROLOGUE          16
+#endif
 #ifndef HTTP_SESSION_ID_BYTES
 /*
     Random bytes in a session identifier. This is the entire strength of the session bearer
@@ -287,6 +297,12 @@ struct HttpWebSocket;
 #endif
 #ifndef ME_MAX_UPLOAD
     #define ME_MAX_UPLOAD              HTTP_UNLIMITED    /**< Maximum file upload size */
+#endif
+#ifndef ME_MAX_RANGES
+    #define ME_MAX_RANGES              16                /**< Maximum ranges in one Range request header */
+#endif
+#ifndef ME_MAX_UPLOAD_PARTS
+    #define ME_MAX_UPLOAD_PARTS        512               /**< Maximum parts in one multipart request */
 #endif
 #ifndef ME_HTTP_UPLOAD_TIMEOUT
     #define ME_HTTP_UPLOAD_TIMEOUT     0
@@ -334,13 +350,18 @@ struct HttpWebSocket;
 
 #ifndef ME_HTTP_LOG
 /* Host, "-" username time requeset-line response-status bytes-written local-host */
-    #define ME_HTTP_LOG_FORMAT "%h %l %u %t \"%r\" %>s %b %n"
+    #define ME_HTTP_LOG_FORMAT    "%h %l %u %t \"%r\" %>s %b %n"
 #endif
 
-#define HTTP_DATE_FORMAT       "%a, %d %b %Y %T GMT"
-#define HTTP_MAX_SECRET        16                         /**< Size of secret data for auth */
-#define HTTP_SMALL_HASH_SIZE   31                         /* Small hash (less than the alphabet) */
-#define HTTP_TIMER_PERIOD      1000                       /**< HttpTimer checks ever 1 second */
+#ifndef ME_HTTP_TRACE_CONTENT
+    #define ME_HTTP_TRACE_CONTENT ME_DEBUG          /**< Packet trace includes the raw payload bytes (credentials) */
+#endif
+
+#define HTTP_DATE_FORMAT          "%a, %d %b %Y %T GMT"
+#define HTTP_MAX_METHOD           32                /**< Longest method name accepted */
+#define HTTP_MAX_SECRET           16                /**< Size of secret data for auth */
+#define HTTP_SMALL_HASH_SIZE      31                /* Small hash (less than the alphabet) */
+#define HTTP_TIMER_PERIOD         1000              /**< HttpTimer checks ever 1 second */
 
 #define HTTP_PACKET_ALIGN(x) (((x) + 0x3FF) & ~0x3FF)
 
@@ -385,6 +406,8 @@ struct HttpWebSocket;
 #define HTTP_CODE_RANGE_NOT_SATISFIABLE  416        /**< The request content range does not exist for the resource */
 #define HTTP_CODE_EXPECTATION_FAILED     417        /**< The server cannot satisfy the Expect header requirements */
 #define HTTP_CODE_IM_A_TEAPOT            418        /**< Short and stout error code (RFC 2324) */
+#define HTTP_CODE_MISDIRECTED            421        /**< The request was sent on a connection not secured for its host
+                                                    */
 #define HTTP_CODE_UNPROCESSABLE          422        /**< The request was well-formed but was unable process */
 #define HTTP_CODE_UPGRADE_REQUIRED       426        /**< The client should upgrade */
 #define HTTP_CODE_NO_RESPONSE            444        /**< The connection was closed with no response to the client */
@@ -613,6 +636,17 @@ PUBLIC int64 httpMonitorEvent(struct HttpStream *stream, int counter, int64 adj)
 PUBLIC int64 httpMonitorNetEvent(struct HttpNet *net, int counter, int64 adj);
 
 /**
+    Check that a configuration item needing the monitor can be enforced
+    @description Client, connection, request and process limits and monitors are counted by the monitor, which is
+        compiled only when ME_HTTP_DEFENSE is enabled. Without it they are refused rather than silently ignored.
+    @param name Directive or property name to report
+    @return Zero if the monitor is available, otherwise a negative MPR error code after logging the reason
+    @ingroup HttpMonitor
+    @stability Evolving
+ */
+PUBLIC int httpCheckDefense(cchar *name);
+
+/**
     Add a monitor
     @description Adds a resource monitor to track and limit specified system counters. When the counter
         exceeds the defined limit over the specified time period, the configured defenses will be invoked.
@@ -765,6 +799,8 @@ typedef struct HttpTrace {
     MprBuf *buf;                                        /**< Output buffer */
     MprFile *file;                                      /**< Trace logger file object */
     int backupCount;                                    /**< Trace logger backup count */
+    int backupCheck;                                    /**< Writes since the log size was last checked */
+    bool writeError;                                    /**< The last write to the log failed */
     int flags;                                          /**< Trace control flags (append|anew) */
     int level;                                          /**< Trace level */
     MprOff size;                                        /**< Max log size */
@@ -773,6 +809,7 @@ typedef struct HttpTrace {
     HttpTraceFormatter formatter;                       /**< Trace formatter */
     HttpTraceLogger logger;                             /**< Trace logger */
     struct HttpTrace *parent;                           /**< Parent trace */
+    cchar *source;                                      /**< Client and connection of the record being formatted */
     MprMutex *mutex;                                    /**< Multithread sync */
 } HttpTrace;
 
@@ -868,19 +905,50 @@ PUBLIC int httpGetTraceLevel(HttpTrace *trace);
     @ingroup HttpTrace
     @stability Stable
  */
-PUBLIC bool httpLog(HttpTrace *trace, cchar *event, cchar *type, cchar *fmt, ...);
+PUBLIC bool httpLog(HttpTrace *trace, cchar *event, cchar *type, cchar *fmt, ...) PRINTF_ATTRIBUTE(4, 5);
 #else
     #define httpLog(trace, event, type, ...) \
-            if (trace && trace->level > 0) { \
-                int __tlevel = PTOI(mprLookupKey(trace->events, type)); \
-                if (__tlevel > 0 && __tlevel <= trace->level) { \
-                    httpLogProc(trace, event, type, 0, __VA_ARGS__); \
+            do { \
+                if (trace && trace->level > 0) { \
+                    int __tlevel = PTOI(mprLookupKey(trace->events, type)); \
+                    if (__tlevel > 0 && __tlevel <= trace->level) { \
+                        httpLogProc(trace, event, type, 0, __VA_ARGS__); \
+                    } \
                 } \
-            } else
+            } while (0)
 #endif
 
 //  Internal
 PUBLIC void httpLogProc(HttpTrace *trace, cchar *event, cchar *type, int flags, cchar *fmt, ...) PRINTF_ATTRIBUTE(5, 6);
+
+/*
+    Log an event with client address, connection ID, and stream ID.
+ */
+#define httpLogNet(net, event, type, ...) \
+        do { \
+            if ((net)->trace && (net)->trace->level > 0) { \
+                int __tlevel = PTOI(mprLookupKey((net)->trace->events, type)); \
+                if (__tlevel > 0 && __tlevel <= (net)->trace->level) { \
+                    httpLogSourceProc((net)->trace, httpGetTraceSource(net, 0), event, type, 0, __VA_ARGS__); \
+                } \
+            } \
+        } while (0)
+
+#define httpLogStream(stream, event, type, ...) \
+        do { \
+            if ((stream)->trace && (stream)->trace->level > 0) { \
+                int __tlevel = PTOI(mprLookupKey((stream)->trace->events, type)); \
+                if (__tlevel > 0 && __tlevel <= (stream)->trace->level) { \
+                    httpLogSourceProc((stream)->trace, httpGetTraceSource((stream)->net, stream), event, type, 0, \
+                                      __VA_ARGS__); \
+                } \
+            } \
+        } while (0)
+
+//  Internal
+PUBLIC cchar *httpGetTraceSource(struct HttpNet *net, struct HttpStream *stream);
+PUBLIC void httpLogSourceProc(HttpTrace *trace, cchar *source, cchar *event, cchar *type, int flags, cchar *fmt, ...)
+PRINTF_ATTRIBUTE(6, 7);
 
 /**
     Trace a packet received from the network
@@ -1012,6 +1080,17 @@ PUBLIC void httpSetTraceLogger(HttpTrace *trace, HttpTraceLogger callback);
     @stability Stable
  */
 PUBLIC int httpSetTraceLogFile(HttpTrace *trace, cchar *path, ssize size, int backup, cchar *format, int flags);
+
+/**
+    Validate a trace log format string
+    @description A "%{name}" conversion must be closed and followed by a conversion character, and a format
+        must not end in a bare "%".
+    @param format Format string as given to #httpSetTraceLogFile
+    @return True if the format is well formed
+    @ingroup HttpTrace
+    @stability Evolving
+ */
+PUBLIC bool httpValidateTraceFormat(cchar *format);
 
 /**
     Define the trace formatter by name
@@ -1190,7 +1269,6 @@ typedef struct Http {
     cchar *platform;                        /**< Target platform os-arch-profile (lower case) */
     cchar *platformDir;                     /**< Path to platform directory containing binaries */
     cchar *user;                            /**< O/S application user name */
-    cchar *jail;                            /**< Chroot jail path */
     int uid;                                /**< User Id */
     int gid;                                /**< Group Id */
     int userChanged;                        /**< User name changed */
@@ -1198,6 +1276,7 @@ typedef struct Http {
     int staticLink;                         /**< Target platform is using a static linking */
     int startLevel;                         /**< Start endpoint trace level */
     int http2;                              /**< Enable http 2 */
+    int http2Cleartext;                     /**< Accept prior-knowledge HTTP/2 (h2c) on plaintext connections */
 
     /*
         Callbacks
@@ -1306,6 +1385,17 @@ PUBLIC void httpDestroy(void);
     @stability Stable
  */
 PUBLIC void httpEnableHttp2(int enable);
+
+/**
+    Permit prior-knowledge HTTP/2 over cleartext (h2c) at runtime.
+    @description By default HTTP/2 is offered only on TLS connections, where it is negotiated via ALPN. When enabled,
+        a plaintext connection that begins with the HTTP/2 connection preface is served as HTTP/2. Has no effect
+        unless HTTP/2 is enabled via #httpEnableHttp2.
+    @param enable Boolean. Set to 1 to accept h2c and zero to refuse it (the default).
+    @ingroup Http
+    @stability Evolving
+ */
+PUBLIC void httpEnableHttp2Cleartext(int enable);
 
 /**
     Get the http context object
@@ -1425,15 +1515,6 @@ PUBLIC void httpSetEnvCallback(HttpEnvCallback envCallback);
     @stability Stable
  */
 PUBLIC int httpSetGroupAccount(cchar *group);
-
-/**
-    Remember the Chroot jail path
-    @description Store the jail path in HTTP->jail
-    @param path Pathname to remember
-    @ingroup Http
-    @stability Internal
- */
-PUBLIC void httpSetJail(cchar *path);
 
 /**
     Set platform description
@@ -1583,17 +1664,24 @@ typedef struct HttpLimits {
     int keepAliveMax;                   /**< Maximum number of Keep-Alive requests to perform per socket */
     int packetSize;                     /**< Maximum packet size for queues and stages */
     int processMax;                     /**< Maximum number of processes (CGI) */
-    int requestMax;                     /**< Maximum number of simultaneous concurrent requests */
     MprTicks requestTimeout;            /**< Time a request can take (msec) */
     MprTicks requestParseTimeout;       /**< Time a request can take to parse the request headers (msec) */
     int requestsPerClientMax;           /**< Maximum number of requests per client (ip address) */
-    MprOff rxBodySize;                  /**< Maximum size of receive body data */
+    MprOff rxBodySize;                  /**<
+                                           Maximum received body size. Buffered form/JSON routing follows receipt; route
+                                              limits can only lower the
+                                           default read limit.
+                                         */
     int rxFormCount;                    /**< Maximum number of form/query parameters */
-    MprOff rxFormSize;                  /**< Maximum size of form data */
-    int sessionMax;                     /**< Maximum number of sessions */
+    MprOff rxFormSize;                  /**< Maximum buffered form/JSON body size. Route limits can lower but cannot
+                                           raise the default read limit. */
+    int sessionMax;                     /**< Maximum number of sessions. When full, the least recently accessed
+                                           anonymous session is evicted first */
     MprTicks sessionTimeout;            /**< Time a session can persist (msec) */
     MprOff txBodySize;                  /**< Maximum size of transmission body content */
     MprOff uploadSize;                  /**< Maximum size of an uploaded file */
+    int uploadParts;                    /**< Maximum number of parts in one multipart request */
+    int rangesMax;                      /**< Maximum number of ranges in one Range request header */
     int uriSize;                        /**< Maximum size of a uri */
 
 #if ME_HTTP_WEB_SOCKETS || DOXYGEN
@@ -1606,7 +1694,7 @@ typedef struct HttpLimits {
     MprTicks webSocketsPing;            /**< Time between pings */
 #endif
 #if ME_HTTP_HTTP2 || DOXYGEN
-    int frameSize;                      /**< HTTP/2 maximum frame size */
+    int frameSize;                      /**< HTTP/2 maximum frame size advertised and accepted */
     int hpackMax;                       /**< HTTP/2 maximum size of the hpack header table */
     int streamsMax;                     /**< HTTP/2 maximum number of streams per connection (both peer and self
                                            initiated) */
@@ -1953,16 +2041,47 @@ PUBLIC HttpUri *httpLinkUri(struct HttpStream *stream, cchar *target, MprHash *o
 PUBLIC char *httpUriToString(HttpUri *uri, int flags);
 
 /**
+    Get the origin of a URI
+    @description Return the origin (RFC 6454) as "scheme://host:port" with a lower-case host and an explicit port.
+        A missing port takes the scheme default. The ws and wss schemes map to http and https. Two URIs are the same
+        origin when their origins match.
+    @param uri A Uri object created via httpCreateUri
+    @return A newly allocated origin string, or null if the URI is not valid, has no host or is not http(s) or ws(s).
+    @ingroup HttpUri
+    @stability Evolving
+ */
+PUBLIC char *httpGetUriOrigin(HttpUri *uri);
+
+/**
     Validate a URI path as expected in a HTTP request line
     @description This expects a URI beginning with "/" and containing only valid URI characters.
     The URI is decoded, and normalized removing "../" and "." segments.
     The URI must begin with a "/" both before and after decoding and normalization.
+    The decoded path must be well-formed UTF-8 (RFC 3629) with no control characters, so overlong forms, surrogates and
+    stray or truncated sequences are rejected.
     @param uri URI to validate.
     @return A validated, normalized URI path
     @stability Stable
     @ingroup HttpUri
  */
 PUBLIC char *httpValidateUriPath(cchar *uri);
+
+/**
+    Test if a file name segment is a Windows device name or an 8.3 short name alias
+    @description Windows maps a name to a device, or to another file, under a spelling that differs from the long
+    name. The part of the segment before the first "." is the stem. Spaces between the stem and the "." or the end of
+    the segment are ignored, as Win32 path conversion strips them, so "CON .txt" names the console. The stem is
+    compared case insensitively against CON, PRN, AUX, NUL, COM1-COM9, LPT1-LPT9, the superscript digit forms of
+    COM and LPT (UTF-8), CONIN$, CONOUT$ and CLOCK$. A stem of at most 8 bytes containing "~" followed by a digit is an
+       8.3
+    short name. The test applies on all platforms.
+    @param segment A single path segment or file name. It need not be null terminated.
+    @param len Length of the segment in bytes.
+    @return True if the segment is a device name or an 8.3 short name.
+    @ingroup HttpUri
+    @stability Evolving
+ */
+PUBLIC bool httpIsWinAliasName(cchar *segment, ssize len);
 
 /**
     Test if a URI is using only valid characters
@@ -2338,9 +2457,7 @@ typedef struct HttpQueue {
     int servicing;                              /**< Currently being serviced */
     int direction;                              /**< Flow direction */
 
-#if ME_HTTP_HTTP2 || DOXYGEN
-    ssize window;                               /**< HTTP/2 flow control window size */
-#endif
+    ssize window;                               /**< HTTP/2 flow control window size (zero if HTTP/2 is compiled out) */
 } HttpQueue;
 
 /**
@@ -2758,7 +2875,51 @@ PUBLIC void httpOpenQueues(struct HttpStream *stream);
 PUBLIC void httpPairQueues(HttpQueue *q1, HttpQueue *q2);
 PUBLIC void httpRemoveChunkFilter(HttpQueue *head);
 PUBLIC void httpRemovePacket(HttpQueue *q, HttpPacket *prev, HttpPacket *packet);
+
+/**
+    Format headers for the trace log
+    @description Values of Authorization, Proxy-Authorization, Cookie, Set-Cookie and the XSRF header are
+        replaced by "[redacted]".
+    @param headers Header hash
+    @return One "name: value" line per header
+    @ingroup HttpTrace
+    @stability Evolving
+ */
 PUBLIC cchar *httpTraceHeaders(MprHash *headers);
+
+/**
+    Test if a header carries a credential or session secret that must not be traced
+    @description Matches Authorization, Proxy-Authorization, Cookie, Set-Cookie and the XSRF header, by header
+        name or by its CGI variable name (HTTP_COOKIE).
+    @param name Header or CGI variable name
+    @return True if the value must be redacted
+    @ingroup HttpTrace
+    @stability Evolving
+ */
+PUBLIC bool httpIsRedactedHeader(cchar *name);
+
+/**
+    Test if a string is an HTTP token
+    @description A token is one or more RFC 9110 tchar characters, as required of a method or header field name.
+    @param str String to test
+    @return True if str is a non-empty token
+    @ingroup HttpTx
+    @stability Evolving
+ */
+PUBLIC bool httpIsToken(cchar *str);
+
+/**
+    Test if a header is a hop-by-hop field
+    @description Hop-by-hop fields describe a single connection and must not be forwarded by a proxy or
+    stored by a cache (RFC 9110 7.6.1). These are Connection, Keep-Alive, Proxy-Authenticate,
+    Proxy-Authorization, Proxy-Connection, TE, Trailer, Transfer-Encoding and Upgrade. Fields named in a
+    Connection header are also hop-by-hop, and the caller must check those separately.
+    @param name Header field name. Matched case-insensitively.
+    @return True if the field is hop-by-hop
+    @ingroup HttpTx
+    @stability Evolving
+ */
+PUBLIC bool httpIsHopByHopHeader(cchar *name);
 PUBLIC void httpTraceQueues(struct HttpStream *stream);
 PUBLIC void httpServiceQueue(HttpQueue *q);
 
@@ -3133,6 +3294,12 @@ PUBLIC int httpOpenQueueHead(void);
 PUBLIC int httpOpenTailFilter(void);
 
 /********************************** Http2 **************************************/
+/*
+    Used by the HTTP/1 paths, so defined whether or not HTTP/2 is compiled in
+ */
+#define HTTP2_PREFACE    "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+#define HTTP_STREAM_MASK 0x7fffffff
+
 #if ME_HTTP_HTTP2 || DOXYGEN
 /*
     HTTP/2 Frame format
@@ -3176,13 +3343,11 @@ PUBLIC int httpOpenTailFilter(void);
 /*
     Misc flags and constants
  */
-#define HTTP2_PREFACE                   "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 #define HTTP2_PREFACE_SIZE              24
 #define HTTP2_ENCODE_RAW                0
 #define HTTP2_ENCODE_HUFF               0x80
 #define HTTP2_TABLE_SIZE                4096
 #define HTTP2_HEADER_OVERHEAD           32                  /**< HPACK table overhead by spec */
-#define HTTP_STREAM_MASK                0x7fffffff
 
 /*
     HTTP/2 Frame types
@@ -3271,8 +3436,10 @@ typedef struct HttpFrame {
  */
 typedef struct HttpHeaderTable {
     MprList *list;                          /**< Header list */
-    ssize size;
-    ssize max;
+    ssize size;                             /**< Current size of the entries including the per-entry overhead */
+    ssize max;                              /**< Maximum size permitted for the table */
+    ssize pendingMax;                       /**< Smallest max set since the encoder last signaled a table size update,
+                                                 or -1 if no update is pending. Used by the transmit table only. */
 } HttpHeaderTable;
 
 /*
@@ -3281,6 +3448,11 @@ typedef struct HttpHeaderTable {
 PUBLIC void httpCreatePackedHeaders(void);
 PUBLIC int httpLookupPackedHeader(HttpHeaderTable *headers, cchar *key, cchar *value, bool *withValue);
 PUBLIC MprKeyValue *httpGetPackedHeader(HttpHeaderTable *headers, int index);
+
+/*
+    Add a dynamic-table entry and return its index, or a negative error. Oversized entries clear the table and
+    return 0 (RFC 7541 4.4).
+ */
 PUBLIC int httpAddPackedHeader(HttpHeaderTable *headers, cchar *key, cchar *value);
 PUBLIC int httpSetPackedHeadersMax(HttpHeaderTable *headers, int size);
 PUBLIC ssize httpHuffEncode(cchar *src, ssize len, char *dst, uint lower);
@@ -3365,6 +3537,7 @@ typedef struct HttpNet {
     MprEvent *workerEvent;                  /**< Event for running connection via a worker thread (used by ejs) */
     MprTicks lastActivity;                  /**< Last activity on the connection */
     MprOff bytesWritten;                    /**< Total bytes written */
+    MprOff bytesTraced;                     /**< Received bytes offered to the packet trace */
     HttpNetCallback callback;               /**< Network event callback */
 
     void *context;                          /**< Embedding context (EjsRequest) */
@@ -3398,7 +3571,8 @@ typedef struct HttpNet {
     bool secure : 1;                        /**< Using https */
     bool sentGoaway : 1;                    /**< Sent goaway frame */
     bool sharedDispatcher : 1;              /**< Dispatcher is shared and should not be destroyed */
-    bool skipTrace : 1;                     /**< Omit trace from now on */
+    bool skipTrace : 1;                     /**< Omit transmit packet trace from now on */
+    bool skipRxTrace : 1;                   /**< Omit receive packet trace from now on */
     bool tracing : 1;                       /**< Network is tracing packets */
     bool worker : 1;                        /**< Use worker */
     bool writeBlocked : 1;                  /**< Transmission writing is blocked */
@@ -3548,7 +3722,7 @@ PUBLIC bool httpReadIO(HttpNet *net);
     @ingroup HttpNet
     @stability Stable
  */
-PUBLIC void httpNetError(HttpNet *net, cchar *fmt, ...);
+PUBLIC void httpNetError(HttpNet *net, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Schedule a network connection timeout event on a network
@@ -3687,7 +3861,7 @@ PUBLIC Socket httpStealSocketHandle(HttpNet *net);
 PUBLIC int httpGetNetEventMask(HttpNet *net);
 PUBLIC void httpGetUriAddress(HttpUri *uri, cchar **ip, int *port);
 PUBLIC void httpSetNetTimeout(HttpNet *net, MprTicks inactivityTimeout);
-PUBLIC void httpSendGoAway(struct HttpNet *net, int status, cchar *fmt, ...);
+PUBLIC void httpSendGoAway(struct HttpNet *net, int status, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 PUBLIC void httpBindSocket(HttpNet *net, MprSocket *sock);
 PUBLIC void httpNetClosed(HttpNet *net);
 PUBLIC void httpUsePrimary(HttpNet *net);
@@ -4111,6 +4285,19 @@ PUBLIC cchar *httpGetError(HttpStream *stream);
 PUBLIC char *httpGetExt(HttpStream *stream);
 
 /**
+    Get the extension of a script that carries extra path information
+    @description For a request whose last path segment has no extension, such as /prog.cgi/extra/path, this
+        returns the extension of the shortest leading part of the route target that ends in a dotted segment
+        and maps to an existing file under the route documents. A dotted directory is walked through, and a
+        prefix that does not exist ends the search. The route must have been selected.
+    @param stream HttpStream stream object created via #httpCreateStream
+    @return The extension without the leading period, or NULL if no leading part maps to a file.
+    @ingroup HttpStream
+    @stability Evolving
+ */
+PUBLIC char *httpGetExtraPathExt(HttpStream *stream);
+
+/**
     Get the count of Keep-Alive requests that will be used for this stream object.
     @description Http Keep-Alive means that the TCP/IP connection is preserved accross multiple requests. This
         typically means much higher performance and better response. Http Keep-Alive is enabled by default
@@ -4174,11 +4361,11 @@ PUBLIC void httpMemoryError(HttpStream *stream);
 PUBLIC void httpNotify(HttpStream *stream, int event, int arg);
 
 #define HTTP_NOTIFY(stream, event, arg) \
-        if (1) { \
+        do { \
             if (stream && stream->notifier) { \
                 httpNotify(stream, event, arg); \
             } \
-        } else
+        } while (0)
 
 /**
     Prepare a client connection for a new request.
@@ -4443,6 +4630,18 @@ PUBLIC bool httpVerifyWebSocketsHandshake(HttpStream *stream);
 
 /* Internal APIs */
 PUBLIC void httpParseMethod(HttpStream *stream);
+
+/**
+    Test if a string is an acceptable HTTP method
+    @description A method is an RFC 9110 token of at most #HTTP_MAX_METHOD characters. This is the single test applied
+        to every source of a request method: the request line, the HTTP/2 :method pseudo header, the
+        X-HTTP-Method-Override header and the -http-method- form parameter.
+    @param method Method name to test
+    @return True if method is a valid method name
+    @ingroup HttpRx
+    @stability Evolving
+ */
+PUBLIC bool httpIsValidMethod(cchar *method);
 PUBLIC void httpResetServerStream(HttpStream *stream);
 PUBLIC HttpLimits *httpSetUniqueStreamLimits(HttpStream *stream);
 PUBLIC void httpInitChunking(HttpStream *stream);
@@ -4461,6 +4660,19 @@ PUBLIC void httpServiceQueues(HttpStream *stream, int flags);
 typedef bool (*HttpVerifyUser)(HttpStream *stream, cchar *username, cchar *password);
 
 /**
+    AuthStore callback to resolve a previously authenticated user that is not in the route's user cache
+    @description Stores that do not keep their users in the route's cache (such as the system store) supply this so that
+        a session or a later authorization check can recreate the user. The returned user is owned by the caller and
+        is never added to the route's user cache.
+    @param stream HttpStream stream object
+    @param username Users login name
+    @return The user or NULL if the user is not known to the store
+    @ingroup HttpAuth
+    @stability Evolving
+ */
+typedef struct HttpUser*(*HttpLookupUser)(HttpStream *stream, cchar *username);
+
+/**
     Password backend store. Support stores are: system, file
     @ingroup HttpAuth
     @stability Stable
@@ -4469,8 +4681,9 @@ typedef bool (*HttpVerifyUser)(HttpStream *stream, cchar *username, cchar *passw
  */
 typedef struct HttpAuthStore {
     char *name;                             /**< Authentication password store name: 'system', 'file' */
-    int noSession;                          /**< Do not create a session after login */
+    int noSession;                          /**< Do not create a session after login and ignore incoming sessions */
     HttpVerifyUser verifyUser;              /**< Default user verification routine */
+    HttpLookupUser lookupUser;              /**< Optional routine to resolve a user not held in the route's cache */
 } HttpAuthStore;
 
 /**
@@ -4500,7 +4713,7 @@ PUBLIC HttpAuthStore *httpGetAuthStore(cchar *name);
     @description By default, a session and response cookie are created when a user is authenticated via #httpLogin.
     This boosts performance because subsequent requests can supply the cookie and bypass authentication for each
     subseqent request. This API permits the default behavior to be suppressed and thus no cookie or session will be
-       created.
+       created. Routes using the store also ignore any session supplied by the client.
     @param store AuthStore object created via #httpCreateAuthStore.
     @param noSession Set to true to suppress creation of sessions or cookies.
     @ingroup HttpAuth
@@ -4540,7 +4753,8 @@ PUBLIC void httpSetAuthStoreVerifyByName(cchar *storeName, HttpVerifyUser verify
  */
 #define HTTP_ALLOW_DENY      0x1            /**< Run allow checks before deny checks */
 #define HTTP_DENY_ALLOW      0x2            /**< Run deny checks before allow checks */
-#define HTTP_AUTH_NO_SESSION 0x4            /**< Do not create a session when authenticated */
+#define HTTP_AUTH_NO_SESSION 0x4            /**< Do not create a session when authenticated, and ignore incoming
+                                               sessions */
 #define HTTP_AUTH_REQUIRED   0x8            /**< An authorization requirement was configured for this route */
 
 #define HTTP_BLOW_ROUNDS     16             /***< Cipher rounds for blowfish encryption */
@@ -4656,7 +4870,7 @@ PUBLIC int httpCreateAuthType(cchar *name, HttpAskLogin askLogin, HttpParseAuth 
     @description By default, a session and response cookie are created when a user is authenticated via #httpLogin.
     This boosts performance because subsequent requests can supply the cookie and bypass authentication for each
     subseqent request. This API permits the default behavior to be suppressed and thus no cookie or session will be
-       created.
+       created. Routes with sessions suppressed also ignore any session supplied by the client.
     @param auth Auth object created via #httpCreateAuth.
     @param noSession Set to true to suppress creation of sessions or cookies.
     @ingroup HttpAuth
@@ -4716,6 +4930,20 @@ PUBLIC HttpRole *httpAddRole(HttpAuth *auth, cchar *role, cchar *abilities);
     @stability Stable
  */
 PUBLIC HttpUser *httpAddUser(HttpAuth *auth, cchar *user, cchar *password, cchar *abilities);
+
+/**
+    Create a user without adding it to the authentication database.
+    @description The user is not visible to other requests and is never stored in the auth user cache. Roles are
+        expanded to abilities using the roles defined on the auth object.
+    @param auth Auth object allocated by #httpCreateAuth.
+    @param user User name
+    @param password User password or NULL
+    @param roles Space separated list of roles or abilities. May be NULL.
+    @return The User object allocated or NULL for an error.
+    @ingroup HttpAuth
+    @stability Evolving
+ */
+PUBLIC HttpUser *httpCreateUser(HttpAuth *auth, cchar *user, cchar *password, cchar *roles);
 
 /**
     Lookup a role by name
@@ -4882,7 +5110,8 @@ PUBLIC void httpSetAuthDeny(HttpAuth *auth, cchar *ip);
     @param loginPage Web page URI for the user to enter username and password.
     @param loginService URI to use for the internal login service. To use your own login URI, set to this the empty
        string.
-    @param logoutService URI to use to log the user out. To use your won logout URI, set this to the empty string.
+    @param logoutService URI to use to log the user out. The service accepts the POST method only. To use your own
+        logout URI, set this to the empty string.
     @param loggedInPage The client is redirected to this URI once logged in. Use a "referrer:" prefix to the URI to
         redirect the user to the referring URI before the loginPage. If the referrer cannot be determined, the base
         URI is utilized.
@@ -4967,7 +5196,10 @@ PUBLIC int httpSetAuthStore(HttpAuth *auth, cchar *store);
     @param auth Auth object allocated by #httpCreateAuth.
     @param proto Protocol name to use. Select from: 'basic', 'digest', 'form' or 'none'. Set to NULL or 'none' to
        disable
-        authentication.
+        authentication. Setting 'none' also clears the required abilities, permitted users and the "authentication
+        required" state, including those inherited from an enclosing route. The order of calls is significant: a
+        requirement defined after 'none' is retained and then refused by #httpCheckAuthorization as it cannot be
+        enforced, whereas one defined before 'none' in the same route is discarded.
     @param details Extra protocol details.
     @ingroup HttpAuth
     @stability Stable
@@ -5010,6 +5242,7 @@ PUBLIC void httpInitAuth(void);
 PUBLIC bool httpInternalVerifyUser(HttpStream *stream, cchar *username, cchar *password);
 PUBLIC HttpAuthType *httpLookupAuthType(cchar *type);
 PUBLIC bool httpPamVerifyUser(HttpStream *stream, cchar *username, cchar *password);
+PUBLIC HttpUser *httpPamLookupUser(HttpStream *stream, cchar *username);
 
 /********************************** HttpLang  ********************************/
 
@@ -5121,7 +5354,9 @@ typedef struct HttpCache {
         \n\n
         Select HTTP_CACHE_RESET to first reset existing caching configuration for this route.
         \n\n
-        Select HTTP_CACHE_SERVER to define the server-side caching mode.
+        Select HTTP_CACHE_SERVER to define the server-side caching mode. Server cache entries are keyed by host: the
+        route canonical name (#httpSetRouteCanonicalName) when set, otherwise the lower-cased request host. Set a
+        canonical name or vhost ServerName so a client chosen Host header cannot multiply cache entries.
         \n\n
         Select HTTP_CACHE_UNIQUE to uniquely cache requests with different request parameters.
     @ingroup HttpCache
@@ -5210,19 +5445,20 @@ PUBLIC void httpSetStreaming(struct HttpHost *host, cchar *mime, cchar *uri, boo
     path, and run in time linear in the subject length. Only HTTP_PAT_REGEX needs a regular
     expression engine, which is optional and supplied by the deployer.
  */
-#define HTTP_PAT_LITERAL    1               /**< Literal text (may contain '.' wildcards) */
-#define HTTP_PAT_PREFIX     2               /**< Literal prefix + trailing capture: "^/x/(.*)$" */
-#define HTTP_PAT_SEGMENTS   3               /**< Literal text + whole-segment {token} captures */
-#define HTTP_PAT_ALT        4               /**< Alternation of literals (unanchored consumers) */
-#define HTTP_PAT_REGEX      5               /**< True regular expression. Requires an engine */
+#define HTTP_PAT_LITERAL     1              /**< Literal text (may contain '.' wildcards) */
+#define HTTP_PAT_PREFIX      2              /**< Literal prefix + trailing capture: "^/x/(.*)$" */
+#define HTTP_PAT_SEGMENTS    3              /**< Literal text + whole-segment {token} captures */
+#define HTTP_PAT_ALT         4              /**< Alternation of literals (unanchored consumers) */
+#define HTTP_PAT_REGEX       5              /**< True regular expression. Requires an engine */
 
 /*
     Pattern compile flags
  */
-#define HTTP_PAT_ANCHORED   0x1             /**< Match at offset 0 only (route patterns) */
-#define HTTP_PAT_END        0x2             /**< Pattern was anchored with a trailing "$" */
-#define HTTP_PAT_SLASH_SKIP 0x4             /**< PREFIX: absorb any "/" before the capture */
-#define HTTP_PAT_WILD       0x8             /**< Literals contain '.' single-character wildcards */
+#define HTTP_PAT_ANCHORED    0x1            /**< Match at offset 0 only (route patterns, or a leading "^") */
+#define HTTP_PAT_END         0x2            /**< Pattern was anchored with a trailing "$" */
+#define HTTP_PAT_SLASH_SKIP  0x4            /**< PREFIX: absorb any "/" before the capture */
+#define HTTP_PAT_WILD        0x8            /**< Literals contain '.' single-character wildcards */
+#define HTTP_PAT_SEGMENT_END 0x10           /**< PREFIX: the prefix must be followed by "/" or the end of the subject */
 
 /**
     One element of a segment pattern: a run of literal text, or a capturing token
@@ -5259,7 +5495,7 @@ typedef struct HttpPattern {
     ssize literalLen;                       /**< Length of literal */
     ssize suffixLen;                        /**< Length of suffix */
     int kind;                               /**< HTTP_PAT_* */
-    int flags;                              /**< HTTP_PAT_ANCHORED | END | SLASH_SKIP | WILD */
+    int flags;                              /**< HTTP_PAT_ANCHORED | END | SLASH_SKIP | WILD | SEGMENT_END */
     int captures;                           /**< Number of capture groups this pattern yields */
     bool caseInsensitive;                   /**< Match literals without regard to case */
 } HttpPattern;
@@ -5270,9 +5506,11 @@ typedef struct HttpPattern {
         If the pattern requires a regular expression engine and this build has none, compilation
         fails here - at config parse - rather than surprising the server at request time.
     @param pattern Pattern text to compile
-    @param flags Set HTTP_PAT_ANCHORED for route patterns which must match at offset 0. Leave clear
-        for the unanchored consumers (Condition match, Param, RequestHeader, ServerName) which
-        match a substring.
+    @param flags Set HTTP_PAT_ANCHORED for route patterns which must match at offset 0 and match URI
+        paths (folding case as the file system does). Leave clear for the unanchored consumers
+        (Condition match, Param, RequestHeader, ServerName) which match a substring of a
+        case-sensitive value. A leading "^" in the pattern anchors it for every consumer, and a
+        trailing "$" anchors the end.
     @param errMsg Optional. Set to a descriptive error message on failure.
     @param column Optional. Set to the column of a regular expression syntax error.
     @return The compiled pattern, or zero on error.
@@ -5290,11 +5528,27 @@ PUBLIC HttpPattern *httpCompilePattern(cchar *pattern, int flags, cchar **errMsg
     @param flags Set HTTP_PAT_SLASH_SKIP to absorb any "/" separators between the prefix and the
         capture. Required when the prefix does not itself end with "/", otherwise the captured
         remainder would carry a leading slash into the mapped filename.
+        Set HTTP_PAT_SEGMENT_END to require the prefix to end at a path segment boundary: the prefix must be
+        followed by "/" or the end of the URI. Otherwise a URI that continues the prefix's last segment
+        (prefix "/img", URI "/img.git/config") matches and the leftover text becomes the capture. Required
+        when the prefix does not itself end with "/". The equivalent regular expression is "^prefix(?=/|$)(?:/)*(.*)$".
     @return The compiled pattern, or zero on error.
     @ingroup HttpPattern
     @stability Evolving
  */
 PUBLIC HttpPattern *httpCreatePrefixPattern(cchar *prefix, int flags);
+
+/**
+    Copy a compiled pattern with a different case folding rule
+    @description Case folding is fixed when a regular expression is compiled, so the copy recompiles it. The
+        original pattern is not modified, so a pattern shared by several routes can be given a per-route rule.
+    @param pat Compiled pattern to copy
+    @param caseInsensitive True to match without regard to case
+    @return The new pattern, or zero on error.
+    @ingroup HttpPattern
+    @stability Evolving
+ */
+PUBLIC HttpPattern *httpClonePattern(HttpPattern *pat, bool caseInsensitive);
 
 /**
     Set an Alias or ScriptAlias route pattern from a URI prefix
@@ -5357,6 +5611,8 @@ PUBLIC void httpFreeRegex(HttpPattern *pat);
 #define HTTP_ROUTE_STRICT_COOKIE     0x400000       /**< Session cookie is SameSite=strict */
 #define HTTP_ROUTE_NONE_COOKIE       0x800000       /**< Session cookie is SameSite=none */
 #define HTTP_ROUTE_FOLLOW_SYMLINKS   0x1000000      /**< Follow symbolic links under the documents directory */
+#define HTTP_ROUTE_SERVE_SENSITIVE   0x2000000      /**< Serve version control, backup and editor files */
+#define HTTP_ROUTE_REQUIRE_SECURE    0x4000000      /**< secureCondition denies an insecure request, not the route */
 
 /*
     Route hook types
@@ -5478,6 +5734,7 @@ typedef struct HttpRoute {
 
     struct MprSsl *ssl;                     /**< SSL configuration */
     char *webSocketsProtocol;               /**< WebSockets sub-protocol */
+    cchar *webSocketsOrigin;                /**< Permitted WebSocket handshake origins. Null means same origin */
     MprTicks webSocketsPingPeriod;          /**< Time between pings (msec) */
 
 } HttpRoute;
@@ -5522,7 +5779,7 @@ typedef void (*HttpParseCallback)(struct HttpRoute *route, cchar *key, MprJson *
     @ingroup HttpRoute
     @stability Stable
  */
-PUBLIC void httpParseError(HttpRoute *route, cchar *fmt, ...);
+PUBLIC void httpParseError(HttpRoute *route, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /*
     Emit a parse warning message
@@ -5531,7 +5788,7 @@ PUBLIC void httpParseError(HttpRoute *route, cchar *fmt, ...);
     @ingroup HttpRoute
     @stability Stable
  */
-PUBLIC void httpParseWarn(HttpRoute *route, cchar *fmt, ...);
+PUBLIC void httpParseWarn(HttpRoute *route, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     General route procedure. Used by targets, conditions and updates.
@@ -5687,7 +5944,10 @@ PUBLIC void httpAddSpaGroup(HttpRoute *parent, cchar *resource);
 /**
     Add a route condition
     @description A route condition is run after matching the route pattern. For a route to be accepted, all conditions
-        must match. Route conditions are built-in rules that can be applied to routes.
+        must match. Route conditions are built-in rules that can be applied to routes. A condition that does not
+        match rejects the route and routing continues with the next route, which may be less protected. A condition
+        used as a security check must therefore deny the request (as "secure" does with HTTP_ROUTE_REQUIRE_SECURE)
+        rather than rely on rejection.
     @param route Route to modify
     @param name Condition rule to add. Supported conditions are: "auth", "missing", "directory", "exists", and "match".
         The "auth" rule is used internally to implement basic and digest authentication.
@@ -5703,9 +5963,14 @@ PUBLIC void httpAddSpaGroup(HttpRoute *parent, cchar *resource);
         \n\n
         The match directory tests a regular expression pattern against the rest of the condition arguments. The form of
         the match rule is: "match RegExp string". For example: "match https ${request.scheme}".
+        \n\n
+        The "secure" rule tests for a TLS connection. By default an insecure request does not match the route.
+        With HTTP_ROUTE_REDIRECT it is redirected to the details URI. With HTTP_ROUTE_REQUIRE_SECURE it is denied
+        with a 403 status so it cannot fall through to another route.
     @param details Condition parameters.
         See #httpSetRouteTarget for a list of the token values that can be included in the condition rule details.
-    @param flags Set to HTTP_ROUTE_NOT to negate the condition test
+    @param flags Set to HTTP_ROUTE_NOT to negate the condition test. The "secure" rule also accepts
+        HTTP_ROUTE_REDIRECT, HTTP_ROUTE_REQUIRE_SECURE and HTTP_ROUTE_STRICT_TLS.
     @return "Zero" if successful, otherwise a negative MPR error code.
     @ingroup HttpRoute
     @stability Stable
@@ -5846,10 +6111,12 @@ PUBLIC void httpAddRouteMethods(HttpRoute *route, cchar *methods);
     @param field Param field to interrogate
     @param value Header value that will match
     @param flags Set to HTTP_ROUTE_NOT to negate the query test
+    @return Zero if successful. MPR_ERR_BAD_SYNTAX if the pattern needs a regular expression engine the build does
+        not include, or is not a valid regular expression.
     @ingroup HttpRoute
     @stability Stable
  */
-PUBLIC void httpAddRouteParam(HttpRoute *route, cchar *field, cchar *value, int flags);
+PUBLIC int httpAddRouteParam(HttpRoute *route, cchar *field, cchar *value, int flags);
 
 /**
     Add a request header check
@@ -5859,10 +6126,12 @@ PUBLIC void httpAddRouteParam(HttpRoute *route, cchar *field, cchar *value, int 
     @param header Header field to interrogate
     @param value Header value that will match
     @param flags Set to HTTP_ROUTE_NOT to negate the header test
+    @return Zero if successful. MPR_ERR_BAD_SYNTAX if the pattern needs a regular expression engine the build does
+        not include, or is not a valid regular expression.
     @ingroup HttpRoute
     @stability Stable
  */
-PUBLIC void httpAddRouteRequestHeaderCheck(HttpRoute *route, cchar *header, cchar *value, int flags);
+PUBLIC int httpAddRouteRequestHeaderCheck(HttpRoute *route, cchar *header, cchar *value, int flags);
 
 /*
     Commands for httpAddRouteResponseHeader
@@ -6415,6 +6684,9 @@ PUBLIC void httpSetRouteDocuments(HttpRoute *route, cchar *path);
     @description When mapping URI query parameters and form variables to environment variables, it is
     important to prevent important system variables like SHELL, PATH and IFS being overwritten or
     corrupted. Defining a unique prefix for such parameters ensures they have their own namespace.
+    The default prefix is "CGI_". An empty prefix lets a client parameter set any environment variable that is not
+    on the deny list, including variables an interpreter or FastCGI application reads (such as PHP_VALUE), so the
+    prefix should never be empty.
     @param route Route to modify
     @param prefix Prefix to use in front of environment variables for URI and form parameters.
     @ingroup HttpRoute
@@ -6457,6 +6729,18 @@ PUBLIC void httpSetRouteFlags(HttpRoute *route, int flags);
     @stability Prototype
  */
 PUBLIC void httpSetRouteFollowSymlinks(HttpRoute *route, bool on);
+
+/**
+    Control whether version control, backup and editor files are served
+    @description These are not served by default, and are answered as missing files: a path with a .git, .svn,
+        .hg, .bzr or .env segment, or .DS_Store, or ending in "~", ".bak", ".orig", ".save", ".swp", ".swo" or
+        ".rej". Such files often reach a document root by accident and can disclose source or credentials.
+    @param route Route to modify
+    @param on Set to true to serve these files
+    @ingroup HttpRoute
+    @stability Prototype
+ */
+PUBLIC void httpSetRouteServeSensitive(HttpRoute *route, bool on);
 
 /**
     Set the handler to use for a route
@@ -6542,20 +6826,24 @@ PUBLIC void httpSetRouteCookieSame(HttpRoute *route, cchar *value);
 
 /**
     Set the route pattern
-    @description This call defines the route regular expression pattern that is used to match against the request URI.
-        The route pattern is an enhanced JavaScript-compatibile regular expression. It is enhanced by optionally
-        embedding braced tokens "{name}" in the pattern. During request URI matching, these tokens are extracted and
-        defined in the request params and are available to the request. The normal regular expression repeat syntax
-        also uses "{}". To use the traditional (uncommon) repeat syntax, back quote with "\\".
+    @description This call defines the route pattern that is used to match against the request URI.
+        Literal patterns (with "." single-character wildcards), prefixes with a trailing capture such as "^/app/(.*)$",
+        whole-segment braced tokens "{name}" and alternations of literals are matched natively. Any other regular
+        expression construct (character classes, repeats, alternation inside a pattern, lookahead, "{name=regexp}")
+        requires a build with ME_COM_PCRE2, and fails with MPR_ERR_BAD_SYNTAX without it. During request URI matching,
+        braced tokens are extracted and defined in the request params and are available to the request. The regular
+        expression repeat syntax also uses "{}". To use it with PCRE2, back quote with "\\".
         Sub-expressions and token expressions are also available in various rules as numbered tokens "$1". For example:
         the pattern "/app/(.*)(\.html)$" will permit a file target "$1.${request.Language=fr}.$2".
     @param route Route to modify
     @param pattern Route regular expression pattern
     @param flags Set to HTTP_ROUTE_NOT to negate the pattern match result
+    @return Zero if successful. MPR_ERR_BAD_SYNTAX if the pattern needs a regular expression engine the build does
+        not include, or is not a valid regular expression.
     @ingroup HttpRoute
     @stability Stable
  */
-PUBLIC void httpSetRoutePattern(HttpRoute *route, cchar *pattern, int flags);
+PUBLIC int httpSetRoutePattern(HttpRoute *route, cchar *pattern, int flags);
 
 /**
     Set the route prefix
@@ -6577,6 +6865,23 @@ PUBLIC void httpSetRoutePrefix(HttpRoute *route, cchar *prefix);
     @stability Stable
  */
 PUBLIC void httpSetRoutePreserveFrames(HttpRoute *route, bool on);
+
+/**
+    Set the origins permitted to open a WebSocket on a route
+    @description The WebSocket filter compares the Origin header of the WebSocket handshake against this list and
+        refuses a handshake from any other origin with a 403 status. A handshake without an Origin header (a
+        non-browser client) is always accepted. If the list is not set, the origin must match the request's own origin:
+        the same scheme, host and port, compared case-insensitively with default ports normalized. The setting is
+        inherited by child routes.
+    @param route Route to modify
+    @param origins Comma or space separated list of origins, such as "https://app.example.com
+       https://admin.example.com".
+        Each origin is a scheme, host and optional port with no path. Set to "*" to permit any origin. Set to null to
+        restore the same-origin default.
+    @ingroup HttpRoute
+    @stability Evolving
+ */
+PUBLIC void httpSetRouteWebSocketsOrigin(HttpRoute *route, cchar *origins);
 
 /**
     Control the renaming of uploaded filenames
@@ -6814,6 +7119,7 @@ PUBLIC char *httpExpandVars(HttpStream *stream, cchar *str);
 #define HTTP_SESSION_USERNAME "__USERNAME__"    /**< Username variable */
 #define HTTP_SESSION_IP       "__IP__"          /**< Connection IP address - prevents session hijack */
 #define HTTP_SESSION_AUTHTYPE "__AUTHTYPE__"    /**< Authentication protocol that established the session */
+#define HTTP_SESSION_AUTHID   "__AUTHID__"      /**< Realm, store and stored credential that established the session */
 
 /**
     Session state object
@@ -6828,6 +7134,7 @@ typedef struct HttpSession {
     MprTicks lifespan;                          /**< Session inactivity timeout (msecs) */
     MprHash *data;                              /**< Intermediate session data before writing to cache */
     int dirty;                                  /**< Session updated and needs saving */
+    int stored;                                 /**< Session is in the store. Write-back only updates it */
     int seqno;                                  /**< Unique sequence number */
 } HttpSession;
 
@@ -6989,8 +7296,11 @@ PUBLIC int httpSetSessionVar(HttpStream *stream, cchar *name, cchar *value);
 
 /**
     Write the session state to persistent data storage
-    @description This is called internally by the ESP handler at the completion of any processing.
+    @description This is called internally by the ESP handler at the completion of any processing. A session that was
+        loaded from the store is only updated. If it has since been destroyed, evicted or has expired, it is not
+        recreated and the write is discarded.
     @param stream Http stream object
+    @return Zero if the session was written or no longer exists, otherwise a negative error code.
     @stability Stable
     @ingroup HttpSession
     @internal
@@ -7000,6 +7310,8 @@ PUBLIC int httpWriteSession(HttpStream *stream);
 /**
     Check a security token.
     @description Check the request security token against the security token defined in the session state.
+        On success, the verified token is retained on the request so a session created later in the same request,
+        such as by a login, inherits it.
     @param stream Http stream object
     @return True if the security token matches the session held token.
     @ingroup HttpSession
@@ -7047,7 +7359,7 @@ typedef struct HttpUploadFile {
     cchar *filename;                        /**< Local (temp) name of the file */
     cchar *clientFilename;                  /**< Client side name of the file */
     cchar *contentType;                     /**< Content type */
-    ssize size;                             /**< Uploaded file size */
+    MprOff size;                            /**< Uploaded file size */
 } HttpUploadFile;
 
 /********************************** HttpRx *********************************/
@@ -7082,6 +7394,7 @@ typedef struct HttpUploadFile {
         to make the API easier to remember - APIs take a stream object rather than a rx or tx object.
     @defgroup HttpRx HttpRx
     @see HttpStream HttpRx HttpTx httpAddBodyVars httpAddParamsFromBuf httpContentNotModified
+        httpPreconditionFailed
         httpCreateCGIParams httpGetContentLength httpGetCookies httpGetParam httpGetParams httpGetHeader
         httpGetHeaderHash httpGetHeaders httpGetIntParam httpGetLanguage httpGetQueryString httpGetReadCount
            httpGetStatus
@@ -7111,11 +7424,14 @@ typedef struct HttpRx {
 
     HttpStream *stream;                     /**< HttpStream object */
     HttpRoute *route;                       /**< Route for request */
+    HttpRoute *methodGuard;                 /**< First access controlled route whose pattern matched but whose method
+                                                 set refused the request. Cleared on reroute */
     HttpSession *session;                   /**< Session for request */
     cchar *traceId;                         /**< Request trace id */
     int seqno;                              /**< Unique request sequence number */
 
     MprList *etags;                         /**< Document etag to uniquely identify the document version */
+    cchar *ifRange;                         /**< If-Range validator: an entity-tag or an HTTP-date */
     MprList *files;                         /**< List of uploaded files (HttpUploadFile objects) */
     HttpPacket *headerPacket;               /**< HTTP headers */
     MprHash *headers;                       /**< Header variables */
@@ -7139,9 +7455,9 @@ typedef struct HttpRx {
     bool inputEnded : 1;                    /**< End packet appended to input stream */
     bool json : 1;                          /**< Using a JSON body */
     bool needInputPipeline : 1;             /**< Input pipeline required to process received data */
-    bool ownParams : 1;                     /**< Do own parameter handling */
     bool renameUploads : 1;                 /**< Rename uploaded files to the client specified filename */
     bool seenHostHeader : 1;                /**< Seen a regular HTTP/2 Host header */
+    bool absoluteTarget : 1;                /**< Request target is absolute-form and supplies the authority */
     bool seenRegularHeader : 1;             /**< Seen a regular HTTP/2 header (non pseudo) */
     bool sessionProbed : 1;                 /**< Session has been resolved */
     bool streaming : 1;                     /**< Stream incoming content. Forms typically buffer and dont stream */
@@ -7161,7 +7477,7 @@ typedef struct HttpRx {
     cchar *acceptEncoding;                  /**< Accept-Encoding header */
     cchar *acceptLanguage;                  /**< Accept-Language header */
     cchar *authDetails;                     /**< Header details: authorization|www-authenticate provided by peer */
-    cchar *authType;                        /**< Type of authentication: set to basic, digest, post or a custom name */
+    cchar *authType;                        /**< Lower case scheme of the Authorization header (server requests) */
     cchar *authority;                       /**< HTTP/2 :authority pseudo header */
     cchar *cookie;                          /**< Cookie header - may contain many cookies */
     cchar *connection;                      /**< Connection header */
@@ -7258,10 +7574,30 @@ PUBLIC bool httpCheckBodySize(HttpStream *stream, ssize len);
 PUBLIC bool httpContentNotModified(HttpStream *stream);
 
 /**
+    Test if the request preconditions fail
+    @description Evaluate the If-Match, If-Unmodified-Since and (for methods other than GET and HEAD) If-None-Match
+        request headers against the current representation, per RFC 9110 13.2.2. If-Unmodified-Since is ignored
+        when If-Match is present. The caller responds with 412 (Precondition Failed) before acting on the request.
+        A matching If-None-Match or If-Modified-Since on GET and HEAD is not a failure: see #httpContentNotModified.
+    @param stream HttpStream stream object
+    @param etag Entity tag of the current representation. Null if there is no current representation.
+    @param modified Last modification time of the current representation. Zero if unknown or none.
+    @return True if a precondition fails and the request must not be performed.
+    @ingroup HttpRx
+    @stability Evolving
+ */
+PUBLIC bool httpPreconditionFailed(HttpStream *stream, cchar *etag, MprTime modified);
+
+/**
     Create CGI parameters
     @description This call creates request params corresponding to the standard CGI/1.1 environment variables.
     This is used by the CGI and PHP handlers. It may also be useful to handlers that wish to expose CGI style
-    environment variables through the form vars interface.
+    environment variables through the form vars interface. CONTENT_LENGTH is the declared Content-Length header. If the
+    body has no declared length (chunked or an HTTP/2 request without content-length), CONTENT_LENGTH is the decoded
+    body size, but only if the whole body has been received (HttpRx.eof). Callers that pass such a body to a child
+    process must receive the entire body before calling this routine, or reject the request with 411. Callers that
+    export request headers as HTTP_* variables should skip hop-by-hop headers (see #httpIsHopByHopHeader), so that
+    HTTP_TRANSFER_ENCODING is never exported for a body that has already been decoded.
     @param stream HttpStream stream object
     @ingroup HttpRx
     @stability Stable
@@ -7283,6 +7619,38 @@ PUBLIC void httpCreateCGIParams(HttpStream *stream);
     @stability Evolving
  */
 PUBLIC bool httpIsCgiVarBlocked(cchar *name);
+
+/**
+    Test if a client request header must not be exported as an HTTP_ CGI variable
+    @description A header name containing '_' is a distinct valid token to the parser, yet CGI and FastCGI
+    variable construction folds '-' to '_', so "X_Forwarded_For" and "X-Forwarded-For" would build the same
+    HTTP_X_FORWARDED_FOR variable and the attacker's underscore spelling could alias or overwrite the trusted
+    hyphen header. Headers containing '_' are therefore never exported (the nginx default). A header whose
+    HTTP_ prefixed name is rejected by httpIsCgiVarBlocked is also blocked. Handlers that build a child
+    environment from rx->headers must call this with the raw header name and skip the header if it returns true.
+    It must not be used for params or server variables, whose names legitimately contain '_'.
+    @param name Raw request header name as stored in rx->headers
+    @return True if the header must not be passed to the child process
+    @ingroup HttpRx
+    @stability Evolving
+ */
+PUBLIC bool httpIsCgiHeaderBlocked(cchar *name);
+
+/**
+    Test if a request parameter name is reserved for server synthesized upload variables
+    @description The server defines the upload variables FILE_<n>_FILENAME, FILE_<n>_CLIENT_FILENAME,
+    FILE_<n>_CONTENT_TYPE, FILE_<n>_NAME and FILE_<n>_SIZE (see httpCreateCGIParams) and the per-field variables
+    FILE_FILENAME_<field>, FILE_CLIENT_FILENAME_<field>, FILE_CONTENT_TYPE_<field> and FILE_SIZE_<field> in the
+    request params, and the upload directory variable UPLOAD_DIR. Handlers pass the params to CGI and FastCGI
+    children and applications as trusted upload metadata, so a client must not be able to supply a parameter of
+    that name. Query, form, JSON and multipart text parameters with a reserved name are discarded when the request
+    is parsed. The name is matched the way a CGI variable name is built, case insensitive with '-' folded to '_'.
+    @param name Parameter name to test
+    @return True if the name is reserved and a client supplied parameter of that name must be discarded
+    @ingroup HttpRx
+    @stability Evolving
+ */
+PUBLIC bool httpIsReservedParam(cchar *name);
 
 /**
     Test whether accepting one more request parameter would exceed the route's parameter limit
@@ -7346,9 +7714,22 @@ PUBLIC cchar *httpGetCookie(HttpStream *stream, cchar *name);
 PUBLIC cchar *httpGetCookies(HttpStream *stream);
 
 /**
+    Add a Cookie field line to the request headers
+    @description A client may send its cookies over several Cookie field lines. Each is joined, in order, with
+        "; " into the single Cookie entry of the header hash.
+    @param rx HttpRx object created via #httpCreateRx
+    @param value The field line's value
+    @ingroup HttpRx
+    @stability Evolving
+ */
+PUBLIC void httpAddCookieField(HttpRx *rx, cchar *value);
+
+/**
     Get a request param
     @description Get the value of a named request param. Request parameters are define via POST data or
-        www-urlencoded query data.
+        www-urlencoded query data. If a name is repeated, the last value wins. Form body parameters are added
+        after the query parameters, so a body value replaces a query value of the same name. The name is matched
+        literally, so a form field such as "user.email" is read by that name.
     @param stream HttpStream stream object
     @param var Name of the request param to retrieve
     @param defaultValue Default value to return if the variable is not defined. Can be null.
@@ -7480,8 +7861,9 @@ PUBLIC HttpLang *httpGetLanguage(HttpStream *stream, MprHash *spoken, cchar *def
 
 /**
     Get a path extension
+    @description This is mprGetPathExt: one definition of an extension serves routing and the file system.
     @param path File pathname to examine
-    @return The path extension sans "."
+    @return The path extension sans ".", or null if none
     @ingroup HttpRx
     @stability Stable
  */
@@ -7667,6 +8049,8 @@ PUBLIC void httpSetIntParam(HttpStream *stream, cchar *var, int value);
     Set a new HTTP method for processing
     @description This modifies the request method to alter request processing. The original method is preserved in
         the HttpRx.originalMethod field. This is only useful to do before request routing has matched a route.
+        The method is upper-cased and replaces any prior method flags. A method that fails #httpIsValidMethod is
+        rejected with a 400 error and the connection is closed, leaving the existing method unchanged.
     @param stream HttpStream stream object
     @param method New method to use.
     @ingroup HttpRx
@@ -7728,6 +8112,32 @@ PUBLIC HttpRange *httpCreateRange(HttpStream *stream, MprOff start, MprOff end);
 PUBLIC HttpRx *httpCreateRx(HttpStream *stream);
 PUBLIC void httpDestroyRx(HttpRx *rx);
 PUBLIC bool httpMatchEtag(HttpStream *stream, char *requestedEtag);
+
+/**
+    Compute the entity tag of a file
+    @description The tag is a digest of the file's inode, size and modification time. It changes when any of them
+        changes and discloses none of them. Every place that sets a file's ETag uses this, so a PUT and a later GET
+        of the same file agree.
+    @param info File information from mprGetPathInfo
+    @return An allocated tag without quotes
+    @ingroup HttpTx
+    @stability Evolving
+ */
+PUBLIC char *httpGetFileEtag(MprPath *info);
+
+/**
+    Test if the If-Range validator permits a Range request
+    @description RFC 9110 13.1.5. A missing If-Range permits the range. A strong entity-tag equal to the
+        current one, or an HTTP-date equal to the modification time, permits it; a weak tag or any other
+        value means the whole representation must be sent instead.
+    @param stream HttpStream stream object created via #httpCreateStream
+    @param etag Current entity tag of the representation, quoted or not
+    @param modified Modification time of the representation in milliseconds since the epoch
+    @return True if the Range may be applied
+    @ingroup HttpRx
+    @stability Evolving
+ */
+PUBLIC bool httpMatchIfRange(HttpStream *stream, cchar *etag, MprTime modified);
 PUBLIC bool httpMatchModified(HttpStream *stream, MprTime time);
 PUBLIC bool httpProcessCompletion(HttpStream *stream);
 PUBLIC int httpProcessState(HttpQueue *q);
@@ -7758,8 +8168,8 @@ PUBLIC void httpProcessWriteEvent(HttpStream *stream);
     httpConnect httpCreateTx httpDestroyTx httpFinalize httpFlush httpFollowRedirects httpFormatBody httpFormatError
     httpFormatErrorV httpFormatResponse httpFormatResponseBody httpFormatResponsev httpGetQueueData
     httpIsChunked httpIsComplete httpIsOutputFinalized httpNeedRetry httpOmitBody httpParseStatus httpRedirect
-    httpRemoveHeader httpSetContentLength httpSetContentType httpSetCookie httpSetHeader httpSetHeaderString
-    httpSetResponded httpSetStatus httpWait httpWriteHeaders httpWriteUploadData
+    httpRedirectUri httpRemoveHeader httpSetContentLength httpSetContentType httpSetCookie httpSetHeader
+    httpSetHeaderString httpSetResponded httpSetStatus httpWait httpWriteHeaders httpWriteUploadData
     @stability Internal
  */
 typedef struct HttpTx {
@@ -7791,6 +8201,7 @@ typedef struct HttpTx {
     MprHash *cookies;                       /**< Browser cookies */
     MprHash *headers;                       /**< Transmission headers */
     HttpCache *cache;                       /**< Cache control entry (only set if this request is being cached) */
+    MprTicks clientLifespan;                /**< Client cache lifespan for this response. Zero if not client cached. */
     MprBuf *cacheBuffer;                    /**< Response caching buffer */
     ssize cacheBufferLength;                /**< Current size of the cache buffer data */
     cchar *cachedContent;                   /**< Retrieved cached response to send */
@@ -8055,7 +8466,7 @@ PUBLIC ssize httpFormatResponse(HttpStream *stream, cchar *fmt, ...) PRINTF_ATTR
     @ingroup HttpTx
     @stability Stable
  */
-PUBLIC ssize httpFormatResponsev(HttpStream *stream, cchar *fmt, va_list args);
+PUBLIC ssize httpFormatResponsev(HttpStream *stream, cchar *fmt, va_list args) PRINTF_ATTRIBUTE(2, 0);
 
 /**
     Format a response body.
@@ -8142,14 +8553,31 @@ PUBLIC void httpOmitBody(HttpStream *stream);
 
 /**
     Redirect the client
-    @description Redirect the client to a new uri.
+    @description Redirect the client to a new uri. The uri is a link template expanded by #httpLink: route
+        variables such as ${DOCUMENTS} and ${HOME}, request parameters named in ${...}, and a leading "~" are
+        substituted. Use this only for targets written by the application or operator. A target that comes from a
+        request or a gateway (such as a CGI Location header) must use #httpRedirectUri.
     @param stream HttpStream stream object created via #httpCreateStream
     @param status Http status code to send with the response
-    @param uri New uri for the client
+    @param uri New uri template for the client
     @ingroup HttpTx
     @stability Stable
  */
 PUBLIC void httpRedirect(HttpStream *stream, int status, cchar *uri);
+
+/**
+    Redirect the client to a uri used as given
+    @description Redirect the client to a new uri without template expansion. The uri is resolved against the
+        request uri and the route canonical name, as #httpRedirect does. Use this for targets derived from a request
+        or supplied by a gateway. Bytes that may not appear in a uri are percent-encoded. If the uri still cannot be
+        parsed, such as one with an invalid port, the request fails with status 502.
+    @param stream HttpStream stream object created via #httpCreateStream
+    @param status Http status code to send with the response
+    @param uri New uri for the client
+    @ingroup HttpTx
+    @stability Evolving
+ */
+PUBLIC void httpRedirectUri(HttpStream *stream, int status, cchar *uri);
 
 /**
     Remove a header from the transmission
@@ -8200,7 +8628,9 @@ PUBLIC void httpSetContentLength(HttpStream *stream, MprOff length);
 
 /**
     Set the transmission (response) content mime type
-    @description Set the mime type Http header in the transmission
+    @description Set the mime type Http header in the transmission. If not set, the mime type is determined from the
+        document extension via the route mime types. If the extension is missing or has no mime type, the response is
+        "application/octet-stream" for a document served by the file handler and "text/html" otherwise.
     @param stream HttpStream stream object created via #httpCreateStream
     @param mimeType Mime type string
     @ingroup HttpTx
@@ -8248,7 +8678,8 @@ PUBLIC void httpSetCookie(HttpStream *stream, cchar *name, cchar *value, cchar *
 
 /**
     Remove a cookie from the client (browser)
-    This will emit a Set-Cookie response header with the value set to "" and a one second lifespan.
+    This will emit a Set-Cookie response header for the named cookie with an empty value and an expiry in the
+    past. The deletion cookie carries the httponly flag, and the secure flag when the request was over TLS.
     @param stream HttpStream stream object created via #httpCreateStream
     @param name Name of the cookie created with httpSetCookie
     @ingroup HttpTx
@@ -8279,6 +8710,20 @@ PUBLIC void httpRemoveCookie(HttpStream *stream, cchar *name);
     @stability Stable
  */
 PUBLIC bool httpSetFilename(HttpStream *stream, cchar *filename, int flags);
+
+/**
+    Test if a path names a sensitive file
+    @description Sensitive files are version control directories (.git, .svn, .hg, .bzr), dotenv and .DS_Store
+        files, and backup or editor files with a suffix such as "~", ".bak", ".orig", ".save", ".swp", ".swo"
+        and ".rej". Whole path segments are matched, so "legit.git.html" is not sensitive. The file handler
+        refuses such files unless the route enables HTTP_ROUTE_SERVE_SENSITIVE. The request path and the
+        filename below the route documents directory are both tested.
+    @param path Path to test. May be a URI path or a path relative to the documents directory.
+    @return True if any segment of the path is sensitive.
+    @ingroup HttpTx
+    @stability Evolving
+ */
+PUBLIC bool httpIsSensitivePath(cchar *path);
 
 /**
     Set the handler for this request
@@ -9316,7 +9761,7 @@ PUBLIC bool httpPumpOutput(HttpQueue *q);
 #endif /* _h_HTTP */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

@@ -43,11 +43,13 @@ typedef struct Request {
     int follow;                     /* Current follow redirect count */
     MprFile *file;                  /* Put/Upload file */
     cchar *ip;                      /* First hop IP for the request URL */
+    HttpUri *origin;                /* Parsed URL of the original (non-redirected) request */
     MprFile *outFile;
     cchar *path;                    /* Put/Upload file path */
     int port;                       /* TCP/IP port for request */
     cchar *redirect;                /* Redirect URL */
     int retries;                    /* Current retry count */
+    bool retrying;                  /* The current exchange is answered by an authentication retry */
     MprEvent *timeout;              /* Timeout event */
     ThreadData *threadData;
     int upload;                     /* Upload using multipart mime */
@@ -133,7 +135,8 @@ static HttpStream *getStream(Request *req);
 static int      initSettings(void);
 static int      initSsl(void);
 static bool     isPort(cchar *name);
-static void     manageApp(App *app, int flags);
+static bool     isSameOrigin(HttpUri *a, HttpUri *b);
+static void     manageApp(App *ap, int flags);
 static void     manageRequest(Request *req, int flags);
 static void     manageThreadData(ThreadData *data, int flags);
 static void     notifier(HttpStream *stream, int event, int arg);
@@ -210,27 +213,29 @@ MAIN(httpMain, int argc, char **argv, char **envp){
 }
 
 
-static void manageApp(App *app, int flags)
+static void manageApp(App *ap, int flags)
 {
     if (flags & MPR_MANAGE_MARK) {
-        mprMark(app->authType);
-        mprMark(app->ca);
-        mprMark(app->cert);
-        mprMark(app->ciphers);
-        mprMark(app->files);
-        mprMark(app->formData);
-        mprMark(app->bodyData);
-        mprMark(app->headers);
-        mprMark(app->http);
-        mprMark(app->key);
-        mprMark(app->host);
-        mprMark(app->outFilename);
-        mprMark(app->mutex);
-        mprMark(app->password);
-        mprMark(app->ranges);
-        mprMark(app->ssl);
-        mprMark(app->username);
-        mprMark(app->threadData);
+        mprMark(ap->authType);
+        mprMark(ap->ca);
+        mprMark(ap->cert);
+        mprMark(ap->ciphers);
+        mprMark(ap->files);
+        mprMark(ap->formData);
+        mprMark(ap->bodyData);
+        mprMark(ap->headers);
+        mprMark(ap->http);
+        mprMark(ap->ip);
+        mprMark(ap->key);
+        mprMark(ap->host);
+        mprMark(ap->outFilename);
+        mprMark(ap->mutex);
+        mprMark(ap->password);
+        mprMark(ap->ranges);
+        mprMark(ap->ssl);
+        mprMark(ap->test);
+        mprMark(ap->username);
+        mprMark(ap->threadData);
     }
 }
 
@@ -242,7 +247,7 @@ static void setDefaults()
     app->continueOnErrors = 0;
     app->showHeaders = 0;
     app->verifyIssuer = -1;
-    app->verifyPeer = 0;
+    app->verifyPeer = "require";
     app->zeroOnErrors = 0;
 
     app->authType = sclone("basic");
@@ -277,8 +282,9 @@ static int parseArgs(int argc, char **argv)
 
     setWorkers = 0;
     app->needSsl = 0;
-    logSpec = "stdout:1";
-    traceSpec = "stdout:1";
+    // Keep diagnostics off stdout, which carries the body.
+    logSpec = "stderr:1";
+    traceSpec = "stderr:1";
 
     for (nextArg = 1; nextArg < argc; nextArg++) {
         argp = argv[nextArg];
@@ -412,15 +418,11 @@ static int parseArgs(int argc, char **argv)
             if (nextArg >= argc) {
                 return showUsage();
             } else {
-                app->host = argv[++nextArg];
-                if (*app->host == ':') {
-                    app->host = &app->host[1];
+                value = argv[++nextArg];
+                if (*value == ':') {
+                    value++;
                 }
-                if (isPort(app->host)) {
-                    app->host = sfmt("http://127.0.0.1:%s", app->host);
-                } else {
-                    app->host = sclone(app->host);
-                }
+                app->host = isPort(value) ? sfmt("http://127.0.0.1:%s", value) : sclone(value);
             }
 
         } else if (smatch(argp, "--http0") || smatch(argp, "--h0")) {
@@ -489,6 +491,9 @@ static int parseArgs(int argc, char **argv)
                 app->outFilename = sclone(argv[++nextArg]);
             }
 
+        } else if (smatch(argp, "--noverify")) {
+            app->verifyPeer = 0;
+
         } else if (smatch(argp, "--noout") || smatch(argp, "-n")  ||
                    smatch(argp, "--quiet") || smatch(argp, "-q")) {
             app->noout++;
@@ -550,7 +555,7 @@ static int parseArgs(int argc, char **argv)
             }
 
         } else if (smatch(argp, "--self")) {
-            /* Undocumented. Allow self-signed certs. Users should just not set --verify */
+            /* Undocumented. Allow self-signed certs. Users should use --noverify */
             app->verifyIssuer = 0;
             app->needSsl = 1;
 
@@ -685,8 +690,8 @@ static int parseArgs(int argc, char **argv)
             break;
 
         } else if (isdigit((uchar) argp[1])) {
-            logSpec = sfmt("stdout:%d", (int) stoi(&argp[1]));
-            traceSpec = sfmt("stdout:%d", (int) stoi(&argp[1]));
+            logSpec = sfmt("stderr:%d", (int) stoi(&argp[1]));
+            traceSpec = sfmt("stderr:%d", (int) stoi(&argp[1]));
 
         } else {
             return showUsage();
@@ -703,9 +708,9 @@ static int parseArgs(int argc, char **argv)
     argv = &argv[nextArg];
     app->target = argv[argc - 1];
     if (--argc > 0) {
-        app->files = mprCreateList(0, -1);
+        app->files = mprCreateList(0, 0);
         for (i = 0; i < argc; i++) {
-            mprAddItem(app->files, argv[i]);
+            mprAddItem(app->files, sclone(argv[i]));
         }
     }
     /*
@@ -796,6 +801,8 @@ static int showUsage()
                "  --method KIND         # HTTP request method GET|OPTIONS|POST|PUT|TRACE (default GET).\n"
                "  --nofollow            # Don't automatically follow redirects.\n"
                "  --noout               # Don't output files to stdout.\n"
+               "  --noverify            # Do not validate the server certificate. Never use with --user or --password\n"
+               "                        # on an untrusted network.\n"
                "  --out file            # Send output to file.\n"
                "  --password pass       # Password for authentication.\n"
                "  --post                # Use POST method. Shortcut for --method POST.\n"
@@ -803,7 +810,7 @@ static int showUsage()
                "  --protocol PROTO      # Set HTTP protocol to HTTP/1.0, HTTP/1.1 or HTTP/2 (default HTTP/1.1).\n"
                "  --put                 # Use PUT method. Shortcut for --method PUT.\n"
                "  --range byteRanges    # Request a subset range of the document.\n"
-               "  --retries count       # Number of times to retry failing requests (default 2).\n"
+               "  --retries count       # Times to answer an authentication challenge (default 1).\n"
                "  --sequence            # Sequence requests with a custom header.\n"
                "  --showHeaders         # Output response headers.\n"
                "  --showStatus          # Output the Http response status code.\n"
@@ -813,8 +820,8 @@ static int showUsage()
                "  --timeout secs        # Request timeout period in seconds.\n"
                "  --trace file:level    # Trace to the file at the verbosity level.\n"
                "  --upload              # Use multipart mime upload.\n"
-               "  --user name           # User name for authentication.\n"
-               "  --verify              # Validate server certificates when using SSL.\n"
+               "  --user name           # User name for authentication. Sent only to the original origin.\n"
+               "  --verify              # Validate the server certificate and its issuer (default).\n"
                "  --verbose             # Verbose operation. Trace progress.\n"
                "  --window size         # Set HTTP/2 input window size (min 65535).\n"
                "  --workers count       # Set maximum worker threads.\n"
@@ -975,9 +982,6 @@ static HttpStream *getStream(Request *req)
     if (app->iterations == 1) {
         stream->limits->keepAliveMax = 0;
     }
-    if (app->username) {
-        httpSetCredentials(stream, app->username, app->password, app->authType);
-    }
     /*
         Apply chunk size override if specified on command line
      */
@@ -993,8 +997,9 @@ static void startRequest(Request *req)
     HttpNet    *net;
     HttpStream *stream;
 
-    stream = getStream(req);
-
+    if ((stream = getStream(req)) == 0) {
+        return;
+    }
     net = stream->net;
 
     if (app->singleStep) {
@@ -1004,6 +1009,15 @@ static void startRequest(Request *req)
         return;
     }
     req->redirect = 0;
+
+    //  Credentials are only ever sent to the origin they were given for
+    if (app->username) {
+        if (isSameOrigin(req->origin, req->uri)) {
+            httpSetCredentials(stream, app->username, app->password, app->authType);
+        } else {
+            httpResetCredentials(stream);
+        }
+    }
 
     prepHeaders(req);
     if (setContentLength(stream) < 0) {
@@ -1052,7 +1066,12 @@ static void notifier(HttpStream *stream, int event, int arg)
         break;
     case HTTP_EVENT_DONE:
         limit = (app->files && mprGetListLength(app->files) > 1) ? mprGetListLength(app->files) : app->iterations;
-        if (++req->count >= limit || (!app->success && !app->continueOnErrors)) {
+        if (req->retrying) {
+            req->retrying = 0;
+            ++req->count;
+            mprCreateLocalEvent(stream->dispatcher, "startRequest", 0, startRequest, req, 0);
+
+        } else if (++req->count >= limit || (!app->success && !app->continueOnErrors)) {
             finishRequest(req);
         } else {
             /*
@@ -1101,10 +1120,12 @@ static void checkRequestState(HttpStream *stream)
                 }
                 mprDebug("http", 4, "redirect %d of %d for: %s %s", req->follow, app->maxFollow, app->method, req->url);
             } else {
-                if (++req->retries >= app->maxRetries) {
+                //  An authentication challenge always earns one retry; --retries permits more
+                if (++req->retries > max(app->maxRetries, 1)) {
                     httpError(stream, HTTP_CODE_NO_RESPONSE, "Too many retries");
                     break;
                 }
+                req->retrying = 1;
                 req->follow = 0;
                 mprDebug("http", 4, "retry %d of %d for: %s %s", req->retries, app->maxRetries, app->method, req->url);
             }
@@ -1123,7 +1144,9 @@ static void checkRequestState(HttpStream *stream)
         break;
 
     case HTTP_STATE_COMPLETE:
-        processResponse(stream);
+        if (!req->retrying) {
+            processResponse(stream);
+        }
     }
 }
 
@@ -1237,8 +1260,19 @@ static int prepUri(Request *req)
         req->url = extendUrl(app->target);
     }
     req->uri = httpCreateUri(req->url, HTTP_COMPLETE_URI_PATH);
+    if (!req->redirect) {
+        req->origin = req->uri;
+    }
     httpGetUriAddress(req->uri, &req->ip, &req->port);
     return 0;
+}
+
+
+static bool isSameOrigin(HttpUri *a, HttpUri *b)
+{
+    cchar *origin;
+
+    return (origin = httpGetUriOrigin(a)) != 0 && smatch(origin, httpGetUriOrigin(b));
 }
 
 
@@ -1313,7 +1347,8 @@ static int processResponse(HttpStream *stream)
                        stream));
             return MPR_ERR_CANT_READ;
         }
-    } else if (contentLength >= 0 && bytesRead != contentLength) {
+    } else if (contentLength >= 0 && bytesRead != contentLength && status != HTTP_CODE_NO_CONTENT &&
+               status != HTTP_CODE_NOT_MODIFIED) {
         app->success = 0;
         mprLog("error http", 0, "Failed \"%s\" request for %s, content not fully received", app->method, req->url);
     }
@@ -1336,6 +1371,7 @@ static void readBody(HttpStream *stream)
     ssize   bytes;
 
     req = stream->data;
+    bytes = 0;
     while (!stream->error && (bytes = httpRead(stream, buf, sizeof(buf))) > 0) {
         if (!app->noout) {
             result = formatOutput(stream, buf, &bytes);
@@ -1411,7 +1447,7 @@ static ssize writeBody(HttpStream *stream)
                         return MPR_ERR_CANT_WRITE;
                     }
                 } else {
-                    if (httpWrite(stream->writeq, pair, len) != len) {
+                    if (httpWriteString(stream->writeq, pair) != len) {
                         return MPR_ERR_CANT_WRITE;
                     }
                 }
@@ -1493,6 +1529,7 @@ static void manageRequest(Request *req, int flags)
         mprMark(req->file);
         mprMark(req->ip);
         mprMark(req->net);
+        mprMark(req->origin);
         mprMark(req->outFile);
         mprMark(req->path);
         mprMark(req->redirect);
@@ -1604,7 +1641,8 @@ static int initSsl(void)
             mprSetSslAlpn(app->ssl, "h2");
         }
     } else {
-        mprVerifySslPeer(NULL, 0);
+        //  A redirect to https creates its SSL configuration from this default
+        mprVerifySslPeer(NULL, app->verifyPeer);
     }
 #else
     /* Suppress comp warning */
@@ -1616,8 +1654,8 @@ static int initSsl(void)
 
 static cchar *formatOutput(HttpStream *stream, cchar *buf, ssize *count)
 {
-    cchar *result;
-    int   i, c, isBinary;
+    char *result;
+    int  i, isBinary;
 
     if (app->noout) {
         return 0;
@@ -1637,16 +1675,9 @@ static cchar *formatOutput(HttpStream *stream, cchar *buf, ssize *count)
     }
     result = mprAlloc(*count * 3 + 1);
     for (i = 0; i < *count; i++) {
-        c = (uchar) buf[i];
-        if (app->printable && isBinary) {
-            fmt("%02x ", -1, &result[i * 3], c & 0xff);
-        } else {
-            fmt("%c", -1, &result[i], c & 0xff);
-        }
+        fmt(&result[i * 3], 4, "%02x ", (uchar) buf[i]);
     }
-    if (app->printable && isBinary) {
-        *count *= 3;
-    }
+    *count *= 3;
     return result;
 }
 
@@ -1731,21 +1762,21 @@ static char *getPassword()
 
 #if VXWORKS
 /*
-    VxWorks link resolution
+    VxWorks modules share these symbols: _exit terminates the caller; _cleanup flushes stdio.
  */
-PUBLIC int _cleanup()
+PUBLIC void _cleanup(void)
 {
-    return 0;
+    fflush(NULL);
 }
 
-PUBLIC int _exit()
+PUBLIC void _exit(int status)
 {
-    return 0;
+    taskDelete(taskIdSelf());
 }
 #endif
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
