@@ -102,11 +102,23 @@
 #ifndef ME_MPR_SSL_LOG_LEVEL
     #define ME_MPR_SSL_LOG_LEVEL         3
 #endif
+#ifndef ME_MPR_SSL_RENEGOTIATE
+    #define ME_MPR_SSL_RENEGOTIATE       0
+#endif
+/*
+    Limit session lifetime with a CRL because resumed sessions skip verification.
+ */
+#ifndef ME_MPR_SSL_REVOKE_TIMEOUT
+    #define ME_MPR_SSL_REVOKE_TIMEOUT    300
+#endif
 #ifndef ME_MPR_SSL_TICKET
     #define ME_MPR_SSL_TICKET            1
 #endif
 #ifndef ME_MPR_SSL_TIMEOUT
     #define ME_MPR_SSL_TIMEOUT           86400
+#endif
+#ifndef ME_MPR_HAS_ALPN
+    #define ME_MPR_HAS_ALPN              1
 #endif
 #ifndef ME_MPR_THREAD_LIMIT_BY_CORES
     #define ME_MPR_THREAD_LIMIT_BY_CORES 1
@@ -220,11 +232,30 @@ struct  MprXml;
         #define ME_MPR_DEBUG_LOGGING     0
     #endif
 #endif
+#ifndef ME_MPR_ASSERT_FATAL
+    #define ME_MPR_ASSERT_FATAL          0 /**< Abort after logging a failed assert (needs ME_MPR_DEBUG_LOGGING) */
+#endif
 #ifndef ME_MPR_TEST
     #define ME_MPR_TEST                  1
 #endif
 #ifndef ME_MPR_MAX_PASSWORD
     #define ME_MPR_MAX_PASSWORD          256 /**< Max password length */
+#endif
+#ifndef ME_MPR_BF_ROUNDS
+/* Default Blowfish rounds; tune for login latency and offline guessing cost. */
+    #define ME_MPR_BF_ROUNDS             16384
+#endif
+#ifndef ME_MPR_XML_MAX_DEPTH
+    #define ME_MPR_XML_MAX_DEPTH         128  /**< Max XML element nesting depth */
+#endif
+#ifndef ME_MPR_MAX_PRINTF_WIDTH
+    #define ME_MPR_MAX_PRINTF_WIDTH      8192 /**< Max printf field width */
+#endif
+#ifndef ME_MPR_MAX_PRINTF_PRECISION
+    #define ME_MPR_MAX_PRINTF_PRECISION  4096 /**< Max printf precision */
+#endif
+#ifndef ME_MPR_WIN_MESSAGE_PERIOD
+    #define ME_MPR_WIN_MESSAGE_PERIOD    100  /**< Max ms between window message checks when select waits (Windows) */
 #endif
 #ifndef ME_MPR_THREAD_LIMIT_BY_CORES
     #define ME_MPR_THREAD_LIMIT_BY_CORES 1
@@ -322,11 +353,15 @@ struct  MprXml;
 #define MPR_EVENT_SELECT              4     /**< traditional select() */
 #define MPR_EVENT_SELECT_PIPE         5     /**< Select with pipe for wakeup */
 
+/*
+    Windows defaults to level-triggered select. Define FD_SETSIZE before Windows headers to exceed its default 64
+    sockets. MPR_EVENT_ASYNC remains available.
+ */
 #ifndef ME_EVENT_NOTIFIER
     #if MACOSX || SOLARIS
         #define ME_EVENT_NOTIFIER     MPR_EVENT_KQUEUE
     #elif WINDOWS
-        #define ME_EVENT_NOTIFIER     MPR_EVENT_ASYNC
+        #define ME_EVENT_NOTIFIER     MPR_EVENT_SELECT
     #elif VXWORKS
         #define ME_EVENT_NOTIFIER     MPR_EVENT_SELECT
     #elif LINUX
@@ -416,6 +451,11 @@ PUBLIC char *awtom(wchar *src, ssize *len);
 
 #define MPR_STRINGIFY(s) #s
 
+#if VXWORKS && (_WRS_VXWORKS_MAJOR < 6 || (_WRS_VXWORKS_MAJOR == 6 && _WRS_VXWORKS_MINOR < 9))
+//  Task argument type introduced in VxWorks 6.9. Earlier releases pass int arguments.
+typedef int _Vx_usr_arg_t;
+#endif
+
 /*
     Convenience define to declare a main program entry point that works for Windows, VxWorks and Unix
  */
@@ -439,13 +479,13 @@ PUBLIC char *awtom(wchar *src, ssize *len);
             static int innerMain(_argc, _argv, _envp)
 #elif ME_WIN_LIKE
     #define MAIN(name, _argc, _argv, _envp)  \
-            APIENTRY WinMain(HINSTANCE inst, HINSTANCE junk, char *command, int junk2) { \
-                PUBLIC int main(); \
+            int main(int argc, char **argv, char **envp); \
+            int APIENTRY WinMain(HINSTANCE inst, HINSTANCE junk, char *command, int junk2) { \
                 char *largv[ME_MAX_ARGC]; \
                 int  largc; \
                 largc = mprParseArgs(command, &largv[1], ME_MAX_ARGC - 1); \
                 largv[0] = #name; \
-                main(largc, largv, NULL); \
+                return main(largc, largv, NULL); \
             } \
             int main(_argc, _argv, _envp)
 #else
@@ -907,15 +947,15 @@ PUBLIC void mprAtomicAdd64(volatile int64 *target, int64 value);
     #define mprAtomicStore(ptr, valptr, model) __atomic_store(ptr, valptr, model)
 #else
     #define mprAtomicLoad(ptr, ret, model) \
-            if (1) { \
+            do { \
                 mprAtomicBarrier(model); \
                 *ret = *(ptr); \
-            } else
+            } while (0)
     #define mprAtomicStore(ptr, valptr, model) \
-            if (1) { \
+            do { \
                 mprAtomicBarrier(model); \
                 *ptr = *(valptr); \
-            } else
+            } while (0)
 
 #endif
 
@@ -1159,6 +1199,13 @@ typedef struct MprFreeQueue {
 #define MPR_ALLOC_NUM_BITMAPS         ((MPR_ALLOC_NUM_QUEUES + MPR_ALLOC_BITMAP_BITS - 1) / MPR_ALLOC_BITMAP_BITS)
 
 /*
+    Defer deeper managers to the heap mark stack to bound collector stack use.
+ */
+#ifndef ME_MPR_MARK_DEPTH
+    #define ME_MPR_MARK_DEPTH         64
+#endif
+
+/*
     Pointer to MprMem and vice-versa
  */
 #define MPR_GET_PTR(bp)   ((void*) (((char*) (bp)) + sizeof(MprMem)))
@@ -1348,6 +1395,13 @@ typedef struct MprHeap {
     MprCond *gcCond;                          /**< GC sleep cond var */
     MprRegion *regions;                       /**< List of memory regions */
     struct MprThread *sweeper;                /**< GC sweeper thread */
+    MprMem **markStack;                       /**< Blocks whose children are yet to be marked */
+    uint64 collectionsAbandoned;              /**< Collections abandoned because threads did not yield */
+    uint64 collectionsStarted;                /**< Collections that have begun marking */
+    uint64 collectionsSwept;                  /**< Most recent collection whose sweep has finished */
+    int markDepth;                            /**< Current manager recursion depth while marking */
+    int markMax;                              /**< Capacity of markStack */
+    int markTop;                              /**< Count of blocks on markStack */
     int allocPolicy;                          /**< Memory allocation depletion policy */
     int regionSize;                           /**< Memory allocation region size */
     int compact;                              /**< Next GC sweep should do a full compact */
@@ -1480,6 +1534,36 @@ PUBLIC bool mprHasMemError(void);
     @stability Internal.
  */
 PUBLIC int mprIsValid(cvoid *ptr);
+
+#if ME_MPR_ALLOC_DEBUG
+#define MPR_VERIFY_MARKED 0x1               /**< mprVerifyHeap flag to also check every block in use is marked */
+
+/**
+    Verify the integrity of the heap
+    @description Walks every heap region and free queue and checks the allocator's structural invariants: block headers
+        and sizes, that block chains exactly fill each region, free queue links and counts, and the free queue bitmap.
+        Problems are logged. Only available in builds with ME_MPR_ALLOC_DEBUG. This is a testing aid: the caller must
+        ensure no other thread allocates memory or runs the garbage collector during the call, for example by running
+        it directly after mprGC(MPR_GC_COMPLETE) with all other threads parked.
+    @param flags Set to MPR_VERIFY_MARKED to also check that every block in use carries the current mark. That holds
+        directly after a complete collection.
+    @return The number of problems found. Zero if the heap is intact.
+    @ingroup MprMem
+    @stability Internal.
+ */
+PUBLIC int mprVerifyHeap(int flags);
+#endif
+
+/* ME_MPR_GC_JITTER enables allocator race points; MPR_GC_JITTER selects the percentage that pause. */
+#ifndef ME_MPR_GC_JITTER
+    #define ME_MPR_GC_JITTER 0
+#endif
+#if ME_MPR_GC_JITTER
+PUBLIC void mprRaceJitter(void);
+    #define MPR_RACE_POINT() mprRaceJitter()
+#else
+    #define MPR_RACE_POINT()
+#endif
 
 /**
     Compare two byte strings.
@@ -1874,6 +1958,7 @@ PUBLIC int mprGC(int flags);
 
 /**
     Enable or disable the garbage collector
+    @description While disabled, no collection runs: requests, including mprGC with MPR_GC_FORCE, are ignored.
     @param on Set to one to enable and zero to disable.
     @return Returns one if the collector was previously enabled. Otherwise returns zero.
     @ingroup MprMem
@@ -1885,7 +1970,8 @@ PUBLIC bool mprEnableGC(bool on);
 /**
     Hold a memory block
     @description This call will protect a memory block from freeing by the garbage collector. Call #mprRelease to
-        allow the block to be collected.
+        allow the block to be collected. Use mprAddRoot if your memory block has children or requires a manager
+        callback.
     @param ptr Any memory block
     @ingroup MprMem
     @stability Stable.
@@ -1908,6 +1994,9 @@ PUBLIC void mprHoldBlocks(cvoid *ptr, ...);
     @description This call is used to allow a memory block to be freed by the garbage collector after calling mprHold.
     You must NEVER use or access the memory block after calling mprRelease. The memory may be freed before the call
        returns, even when executing in an MPR thread.
+    \n\n
+    The call takes the global lock (#mprGlobalLock), which the collector holds while marking, so a foreign thread may
+    wait for a mark phase to finish. Do not call it while holding the lock of a list the collector marks.
     @param ptr Any memory block
     @ingroup MprMem
     @stability Stable.
@@ -1963,7 +2052,7 @@ PUBLIC void mprMark(void *ptr);
                 if (_mp->mark != MPR->heap->mark) { \
                     _mp->mark = MPR->heap->mark; \
                     if (_mp->hasManager) { \
-                        (GET_MANAGER(_mp))((void*) ptr, MPR_MANAGE_MARK); \
+                        mprMarkChildren(_mp); \
                     } \
                     HINC(marked); \
                 } \
@@ -1973,6 +2062,7 @@ PUBLIC void mprMark(void *ptr);
 /*
     Internal
  */
+PUBLIC void mprMarkChildren(MprMem *mp);
 PUBLIC int mprCreateGCService(void);
 PUBLIC void mprWakeGCService(void);
 PUBLIC void mprResumeThreads(void);
@@ -2766,7 +2856,7 @@ PUBLIC wchar *mcontains(wchar *str, cchar *pattern);
 PUBLIC wchar *mncontains(wchar *str, cchar *pattern, ssize limit);
 PUBLIC ssize mcopy(wchar *dest, ssize destMax, cchar *src);
 PUBLIC int mends(wchar *str, cchar *suffix);
-PUBLIC wchar *mfmt(cchar *fmt, ...);
+PUBLIC wchar *mfmt(cchar *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
 PUBLIC wchar *mfmtv(cchar *fmt, va_list arg);
 PUBLIC wchar *mjoin(cchar *str, ...);
 PUBLIC wchar *mjoinv(wchar *buf, va_list args);
@@ -3142,11 +3232,12 @@ PUBLIC int mprGetCharFromBuf(MprBuf *buf);
 
 /**
     Grow the buffer
-    @description Grow the storage allocated for content for the buffer. The new size must be less than the maximum
-        limit specified via #mprCreateBuf or #mprSetBufSize.
+    @description Grow the storage allocated for content for the buffer. A bounded buffer never grows beyond the maximum
+        limit specified via #mprCreateBuf or #mprSetBufSize, so it may grow by less than the requested count. Use
+ #mprGetBufSpace to check the space available after growing.
     @param buf Buffer created via mprCreateBuf
     @param count Count of bytes by which to grow the buffer content size.
-    @return Zero if successful and otherwise a negative error code
+    @return Zero if the buffer grew and otherwise a negative error code
     @ingroup MprBuf
     @stability Stable.
  */
@@ -3384,11 +3475,11 @@ PUBLIC ssize mprPutFmtToWideBuf(MprBuf *buf, cchar *fmt, ...) PRINTF_ATTRIBUTE(2
     Macros for speed
  */
 #define mprGetBufLength(bp) ((bp) ? ((ssize) ((bp)->end - (bp)->start)) : 0)
-#define mprGetBufSize(bp)   ((bp)->buflen)
+#define mprGetBufSize(bp)   ((bp) ? (bp)->buflen : 0)
 #define mprGetBufSpace(bp)  ((bp) ? ((bp)->endbuf - (bp)->end) : 0)
-#define mprGetBuf(bp)       ((bp)->data)
-#define mprGetBufStart(bp)  ((bp)->start)
-#define mprGetBufEnd(bp)    ((bp)->end)
+#define mprGetBuf(bp)       ((bp) ? (bp)->data : 0)
+#define mprGetBufStart(bp)  ((bp) ? (bp)->start : 0)
+#define mprGetBufEnd(bp)    ((bp) ? (bp)->end : 0)
 
 /*
     Prototype
@@ -3397,8 +3488,30 @@ PUBLIC uint mprGetUint16FromBuf(MprBuf *buf);
 PUBLIC uint mprGetUint24FromBuf(MprBuf *buf);
 PUBLIC uint mprGetUint32FromBuf(MprBuf *buf);
 PUBLIC uint mprPeekUint32FromBuf(MprBuf *buf);
-PUBLIC void mprPutUint16ToBuf(MprBuf *buf, uint16 num);
-PUBLIC void mprPutUint32ToBuf(MprBuf *buf, uint32 num);
+
+/**
+    Put a 16-bit integer to the buffer in network byte order
+    @description Append the integer at the end position and increment the end pointer. Consumed space is reclaimed
+        and the buffer grown as required. Nothing is written if the integer does not fit.
+    @param buf Buffer created via mprCreateBuf
+    @param num Integer to write
+    @return Zero if successful and otherwise MPR_ERR_WONT_FIT
+    @ingroup MprBuf
+    @stability Evolving
+ */
+PUBLIC int mprPutUint16ToBuf(MprBuf *buf, uint16 num);
+
+/**
+    Put a 32-bit integer to the buffer in network byte order
+    @description Append the integer at the end position and increment the end pointer. Consumed space is reclaimed
+        and the buffer grown as required. Nothing is written if the integer does not fit.
+    @param buf Buffer created via mprCreateBuf
+    @param num Integer to write
+    @return Zero if successful and otherwise MPR_ERR_WONT_FIT
+    @ingroup MprBuf
+    @stability Evolving
+ */
+PUBLIC int mprPutUint32ToBuf(MprBuf *buf, uint32 num);
 
 /******************************** Date and Time *******************************/
 /**
@@ -4263,7 +4376,8 @@ typedef void (*MprLogHandler)(cchar *tags, int level, cchar *msg);
 /**
     Output an assure assertion failed message.
     @description This will emit an assure assertion failed message to the standard error output.
-        It may bypass the logging system.
+        It may bypass the logging system. Assertions are compiled in when ME_MPR_DEBUG_LOGGING is set. If
+        ME_MPR_ASSERT_FATAL is also set, the process aborts after the message is logged.
     @param loc Source code location string. Use MPR_LOC to define a file name and line number string suitable for this
         parameter.
     @param msg Simple string message to output
@@ -4352,7 +4466,7 @@ PUBLIC MprLogHandler mprGetLogHandler(void);
            are null, the message is output raw, without any any prefixes.
         \n\n
         Logging typically is enabled in both debug and release builds and may be controlled via the build define
-           ME_MPR_LOGGING which is typically set via the MakeMe setting "logging: true".
+           ME_MPR_LOGGING. With ME_MPR_LOGGING set to zero, only level zero messages are emitted.
         \n\n
         The #mprDebug API may be used to emit log messages only in debug builds.
         \n\n
@@ -4374,7 +4488,7 @@ PUBLIC MprLogHandler mprGetLogHandler(void);
     @ingroup MprLog
     @stability Stable
  */
-PUBLIC void mprLog(cchar *tags, int level, cchar *fmt, ...);
+PUBLIC void mprLog(cchar *tags, int level, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 #endif
 PUBLIC void mprLogProc(cchar *tags, int level, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 
@@ -4449,10 +4563,8 @@ PUBLIC int mprStartLogging(cchar *logSpec, int flags);
     @ingroup MprLog
     @stability Stable
  */
-PUBLIC void mprDebug(cchar *tags, int level, cchar *fmt, ...);
+PUBLIC void mprDebug(cchar *tags, int level, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 #endif
-
-PUBLIC void mprLogProc(cchar *tags, int level, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 
 /**
     Determine if the app is using the default MPR log handler.
@@ -4472,7 +4584,11 @@ PUBLIC int mprUsingDefaultLogHandler(void);
 #if ME_MPR_LOGGING
     #define mprLog(tags, l, ...)   if ((l) <= MPR->logLevel) { mprLogProc(tags, l, __VA_ARGS__); } else {}
 #else
-    #define mprLog(tags, l, ...)   if (1); else {}
+/*
+    Level 0 carries errors and security evidence: configuration failures, controls not compiled in, defence
+    remedies. ME_MPR_LOGGING=0 drops verbose logging only.
+ */
+    #define mprLog(tags, l, ...)   if ((l) == 0) { mprLogProc(tags, l, __VA_ARGS__); } else {}
 #endif
 
 /************************************ Hash ************************************/
@@ -4489,8 +4605,8 @@ typedef struct MprKey {
     struct MprKey *next;                /**< Next symbol in hash chain */
     char *key;                          /**< Hash key */
     cvoid *data;                        /**< Pointer to symbol data (managed) */
-    int type : 4;                       /**< Data type */
-    int bucket : 28;                    /**< Hash bucket index */
+    uint type : 12;                     /**< Data type. Holds every MPR_JSON_* type (mask 0xFF8) */
+    uint bucket : 20;                   /**< Hash bucket index */
 } MprKey;
 
 /**
@@ -4894,6 +5010,13 @@ PUBLIC void mprSetPathSeparators(cchar *path, cchar *separators);
 PUBLIC void mprSetPathNewline(cchar *path, cchar *newline);
 
 PUBLIC MprList *mprGetDirList(cchar *path);
+
+/*
+    Open flag refusing a symbolic link as the final path component, where the platform has one
+ */
+#ifndef O_NOFOLLOW
+    #define O_NOFOLLOW 0
+#endif
 
 /**
     File I/O Module
@@ -5353,8 +5476,9 @@ PUBLIC char *mprGetPathDir(cchar *path);
 
 /**
     Get the file extension portion of a path
-    @description Get the file extension portion of a path. The file extension is the portion starting with the last "."
-        in the path. It thus does not include the "." as the first charcter.
+    @description Get the file extension portion of a path. The file extension is the run of alphanumeric
+        characters after the last "." in the final path segment. It does not include the "." and stops at the first
+        other character, so "shortcut.lnk::$DATA" and "page.html;id" yield "lnk" and "html".
     @param path Path name to examine
     @return A path extension without the ".". Returns null if no extension exists.
     @ingroup MprPath
@@ -5515,7 +5639,8 @@ PUBLIC char *mprGetRealPath(cchar *path);
 
 /**
     Make a temporary file.
-    @description Thread-safe way to make a unique temporary file.
+    @description Thread-safe way to make a unique temporary file. The file is created exclusively with a random name
+        and is readable and writable only by the current user.
     @param tmpDir Base directory in which the temp file will be allocated.
     @return An allocated string containing the path of the temp file.
     @ingroup MprPath
@@ -5570,6 +5695,20 @@ PUBLIC bool mprIsPathContained(cchar *path, cchar *dir);
     @stability Stable
  */
 PUBLIC bool mprIsAbsPathContained(cchar *path, cchar *dir);
+
+/**
+    Determine if an absolute path is within a directory, comparing with a given case sensitivity
+    @description Use this when the case sensitivity of the file system holding dir is known, for example from a
+        probe of that directory. mprIsAbsPathContained uses the platform default, which a mounted file system
+        may not share.
+    @param path Absolute path name to examine
+    @param dir Absolute directory to examine if it is a parent of path or equal to path
+    @param caseSensitive True to compare with case, false to fold case
+    @return True if directory is a parent of the path or is the same as the given path.
+    @ingroup MprPath
+    @stability Evolving
+ */
+PUBLIC bool mprIsAbsPathContainedCase(cchar *path, cchar *dir, bool caseSensitive);
 
 /**
     Determine if a path is absolute
@@ -6686,6 +6825,7 @@ PUBLIC MprXml *mprXmlOpen(ssize initialSize, ssize maxSize);
 
 /**
     Run the XML parser
+    @description Elements may nest at most ME_MPR_XML_MAX_DEPTH deep. A deeper document fails with MPR_ERR_WONT_FIT.
     @param xp XML parser instance returned from mprXmlOpen
     @return Zero if successful. Otherwise returns a negative MPR error code.
     @ingroup MprXml
@@ -7571,15 +7711,17 @@ typedef long (*MprMsgCallback)(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 typedef struct MprWaitService {
     MprList *handlers;                      /* List of handlers */
     int needRecall;                         /* A handler needs a recall due to buffered data */
-    int wakeRequested;                      /* Wakeup of the wait service has been requested */
+    volatile int wakeRequested;             /* Wakeup of the wait service has been requested (set in signal handlers) */
     MprList *handlerMap;                    /* Map of fds to handlers */
-#if ME_EVENT_NOTIFIER == MPR_EVENT_ASYNC
+#if ME_WIN_LIKE
     ATOM wclass;                            /* Window class */
     HWND hwnd;                              /* Window handle */
-    int nfd;                                /* Last used entry in the handlerMap array */
-    int fdmax;                              /* Size of the fds array */
     int socketMessage;                      /* Message id for socket events */
     MprMsgCallback msgCallback;             /* Message handler callback */
+#endif
+#if ME_EVENT_NOTIFIER == MPR_EVENT_ASYNC
+    int nfd;                                /* Last used entry in the handlerMap array */
+    int fdmax;                              /* Size of the fds array */
 #elif ME_EVENT_NOTIFIER == MPR_EVENT_EPOLL
     int epoll;                              /* Epoll descriptor */
     int breakFd[2];                         /* Event or pipe to wakeup */
@@ -7625,6 +7767,7 @@ PUBLIC void mprDestroyWindow(HWND hwnd);
 PUBLIC void mprDestroyWindowClass(ATOM wclass);
 PUBLIC HWND mprGetWindow(bool *created);
 PUBLIC HWND mprSetWindowsThread(MprThread *tp);
+PUBLIC void mprServiceWinMessages(void);
 #else
     #define mprSetWindowsThread(tp)
 #endif
@@ -7673,9 +7816,11 @@ PUBLIC int mprWaitForSingleIO(int fd, int mask, MprTicks timeout);
 typedef struct MprWaitHandler {
     int desiredMask;                    /**< Mask of desired events */
     int presentMask;                    /**< Mask of current events */
+    int missedMask;                     /**< Events that arrived while not desired, delivered when desired again */
     int fd;                             /**< O/S File descriptor (sp->sock) */
     int notifierIndex;                  /**< Index for notifier */
     int flags;                          /**< Control flags */
+    uint generation;                    /**< Registration identity, so an event for a reused descriptor is ignored */
     void *handlerData;                  /**< Argument to pass to proc - managed reference */
     MprWaitService *service;            /**< Wait service pointer */
     MprDispatcher *dispatcher;          /**< Event dispatcher to use for I/O events */
@@ -7903,6 +8048,7 @@ typedef struct MprSocketService {
     MprMutex *mutex;                            /**< Multithread locking */
     int maxAccept;                              /**< Maximum number of accepted client socket connections */
     int numAccept;                              /**< Count of client socket connections */
+    int numLinger;                              /**< Count of server sockets in a lingering close */
     int hasIPv6;                                /**< System has supoprt for IPv6 */
     int loaded;                                 /**< Provider loaded */
 } MprSocketService;
@@ -7926,6 +8072,8 @@ PUBLIC bool mprHasSecureSockets(void);
 
 /**
     Set the maximum number of accepted client connections that are permissable
+    @description A connection accepted beyond this is closed at once, before any protocol state is created for it.
+        The default is unlimited.
     @param max New maximum number of accepted client connections.
     @ingroup MprSocket
     @stability Stable
@@ -7943,36 +8091,51 @@ PUBLIC void mprSetSocketPrebindCallback(MprSocketPrebind callback);
 /*
     Socket close flags
  */
-#define MPR_SOCKET_GRACEFUL       1         /**< Do a graceful shutdown */
+#define MPR_SOCKET_GRACEFUL  1              /**< Do a graceful shutdown */
 
 /*
     Socket event types
  */
-#define MPR_SOCKET_READABLE       MPR_READABLE
-#define MPR_SOCKET_WRITABLE       MPR_WRITABLE
+#define MPR_SOCKET_READABLE  MPR_READABLE
+#define MPR_SOCKET_WRITABLE  MPR_WRITABLE
+
+/**
+    Milliseconds a listener stops accepting after accept() fails for lack of descriptors or memory
+ */
+#ifndef MPR_ACCEPT_PAUSE
+    #define MPR_ACCEPT_PAUSE 250
+#endif
+
+/**
+    Milliseconds before retrying a disconnect of a socket another thread holds
+ */
+#ifndef MPR_DISCONNECT_RETRY
+    #define MPR_DISCONNECT_RETRY  10
+#endif
 
 /*
     Socket Flags
  */
-#define MPR_SOCKET_BLOCK          0x1     /**< Use blocking I/O */
-#define MPR_SOCKET_BROADCAST      0x2     /**< Broadcast mode */
-#define MPR_SOCKET_CLOSED         0x4     /**< MprSocket has been closed */
-#define MPR_SOCKET_CONNECTING     0x8     /**< MprSocket is connecting */
-#define MPR_SOCKET_DATAGRAM       0x10    /**< Use datagrams */
-#define MPR_SOCKET_EOF            0x20    /**< Seen end of file */
-#define MPR_SOCKET_LISTENER       0x40    /**< MprSocket is server listener */
-#define MPR_SOCKET_NOREUSE        0x80    /**< Don't set SO_REUSEADDR option */
-#define MPR_SOCKET_NODELAY        0x100   /**< Disable Nagle algorithm */
-#define MPR_SOCKET_THREAD         0x200   /**< Process callbacks on a worker thread */
-#define MPR_SOCKET_SERVER         0x400   /**< Socket is on the server-side */
-#define MPR_SOCKET_BUFFERED_READ  0x800   /**< Socket has buffered read data (in SSL stack) */
-#define MPR_SOCKET_BUFFERED_WRITE 0x1000  /**< Socket has buffered write data (in SSL stack) */
-#define MPR_SOCKET_DISCONNECTED   0x4000  /**< The mprDisconnectSocket has been called */
-#define MPR_SOCKET_HANDSHAKING    0x8000  /**< Doing an SSL handshake */
-#define MPR_SOCKET_CERT_ERROR     0x10000 /**< Error when validating peer certificate */
-#define MPR_SOCKET_ERROR          0x20000 /**< Hard error (not just eof) */
-#define MPR_SOCKET_REUSE_PORT     0x40000 /**< Set SO_REUSEPORT option */
-#define MPR_SOCKET_INHERIT        0x80000 /**< Allow children processes to inherit */
+#define MPR_SOCKET_BLOCK          0x1      /**< Use blocking I/O */
+#define MPR_SOCKET_BROADCAST      0x2      /**< Broadcast mode */
+#define MPR_SOCKET_CLOSED         0x4      /**< MprSocket has been closed */
+#define MPR_SOCKET_CONNECTING     0x8      /**< MprSocket is connecting */
+#define MPR_SOCKET_DATAGRAM       0x10     /**< Use datagrams */
+#define MPR_SOCKET_EOF            0x20     /**< Seen end of file */
+#define MPR_SOCKET_LISTENER       0x40     /**< MprSocket is server listener */
+#define MPR_SOCKET_NOREUSE        0x80     /**< Don't set SO_REUSEADDR option */
+#define MPR_SOCKET_NODELAY        0x100    /**< Disable Nagle algorithm */
+#define MPR_SOCKET_THREAD         0x200    /**< Process callbacks on a worker thread */
+#define MPR_SOCKET_SERVER         0x400    /**< Socket is on the server-side */
+#define MPR_SOCKET_BUFFERED_READ  0x800    /**< Socket has buffered read data (in SSL stack) */
+#define MPR_SOCKET_BUFFERED_WRITE 0x1000   /**< Socket has buffered write data (in SSL stack) */
+#define MPR_SOCKET_DISCONNECTED   0x4000   /**< The mprDisconnectSocket has been called */
+#define MPR_SOCKET_HANDSHAKING    0x8000   /**< Doing an SSL handshake */
+#define MPR_SOCKET_CERT_ERROR     0x10000  /**< Error when validating peer certificate */
+#define MPR_SOCKET_ERROR          0x20000  /**< Hard error (not just eof) */
+#define MPR_SOCKET_REUSE_PORT     0x40000  /**< Set SO_REUSEPORT option */
+#define MPR_SOCKET_INHERIT        0x80000  /**< Allow children processes to inherit */
+#define MPR_SOCKET_LINGERING      0x100000 /**< Lingering close; no longer counted as an accepted socket */
 
 /**
     Socket Service
@@ -7985,7 +8148,7 @@ PUBLIC void mprSetSocketPrebindCallback(MprSocketPrebind callback);
     by threads from the worker thread pool for scalable, multithreaded applications.
     @stability Stable
     @see MprSocket MprSocketPrebind MprSocketProc MprSocketProvider MprSocketService mprAddSocketHandler
-        mprCloseSocket mprConnectSocket mprCreateSocket mprCreateSocketService mprCreateSsl mprCloneSsl
+        mprCloseSocket mprLingerSocket mprConnectSocket mprCreateSocket mprCreateSocketService mprCreateSsl mprCloneSsl
         mprDisconnectSocket mprEnableSocketEvents mprFlushSocket mprGetSocketBlockingMode mprGetSocketError
         mprGetSocketHandle mprGetSocketInfo mprGetSocketPort mprGetSocketState mprHasSecureSockets mprIsSocketEof
         mprIsSocketSecure mprListenOnSocket mprLoadSsl mprParseIp mprReadSocket mprSendFileToSocket mprSetSecureProvider
@@ -7998,28 +8161,28 @@ PUBLIC void mprSetSocketPrebindCallback(MprSocketPrebind callback);
     @stability Internal
  */
 typedef struct MprSocket {
-    MprSocketService *service;            /**< Socket service */
-    MprWaitHandler *handler;              /**< Wait handler */
-    char *acceptIp;                       /**< Server address that accepted a new connection (actual interface) */
-    char *ip;                             /**< Server listen address or remote client address */
-    char *errorMsg;                       /**< Connection related error messages */
-    int acceptPort;                       /**< Server port doing the listening */
-    int port;                             /**< Port to listen or connect on */
-    Socket fd;                            /**< Actual socket file handle */
-    int flags;                            /**< Current state flags */
-    MprSocketProvider *provider;          /**< Socket implementation provider */
-    struct MprSocket *listenSock;         /**< Listening socket */
-    void *sslSocket;                      /**< Extended SSL socket state */
-    struct MprSsl *ssl;                   /**< Selected SSL configuration */
-    cchar *protocol;                      /**< Selected SSL protocol */
-    cchar *cipher;                        /**< Selected SSL cipher */
-    cchar *session;                       /**< SSL session ID (dependent on SSL provider) */
-    cchar *peerName;                      /**< Peer common SSL name */
-    cchar *peerCert;                      /**< Peer SSL certificate */
-    cchar *peerCertIssuer;                /**< Issuer of peer certificate */
-    bool secured;                         /**< SSL Peer verified */
-    MprMutex *mutex;                      /**< Multi-thread sync */
-    void *data;                           /**< Custom user data (unmanaged) */
+    MprSocketService *service;             /**< Socket service */
+    MprWaitHandler *handler;               /**< Wait handler */
+    char *acceptIp;                        /**< Server address that accepted a new connection (actual interface) */
+    char *ip;                              /**< Server listen address or remote client address */
+    char *errorMsg;                        /**< Connection related error messages */
+    int acceptPort;                        /**< Server port doing the listening */
+    int port;                              /**< Port to listen or connect on */
+    Socket fd;                             /**< Actual socket file handle */
+    int flags;                             /**< Current state flags */
+    MprSocketProvider *provider;           /**< Socket implementation provider */
+    struct MprSocket *listenSock;          /**< Listening socket */
+    void *sslSocket;                       /**< Extended SSL socket state */
+    struct MprSsl *ssl;                    /**< Selected SSL configuration */
+    cchar *protocol;                       /**< Selected SSL protocol */
+    cchar *cipher;                         /**< Selected SSL cipher */
+    cchar *session;                        /**< SSL session ID (dependent on SSL provider) */
+    cchar *peerName;                       /**< Peer common SSL name */
+    cchar *peerCert;                       /**< Peer SSL certificate */
+    cchar *peerCertIssuer;                 /**< Issuer of peer certificate */
+    bool secured;                          /**< SSL Peer verified */
+    MprMutex *mutex;                       /**< Multi-thread sync */
+    void *data;                            /**< Custom user data (unmanaged) */
 } MprSocket;
 
 
@@ -8080,6 +8243,19 @@ PUBLIC MprSocket *mprCloneSocket(MprSocket *sp);
     @stability Stable
  */
 PUBLIC void mprCloseSocket(MprSocket *sp, bool graceful);
+
+/**
+    Close a socket after the peer has read the response
+    @description Shut down the sending side so the peer receives all written data and then end of file. Input is read
+        and discarded until the peer closes or the timeout expires, and the socket is then closed. Closing a socket
+        with unread input sends a reset, which can make the peer discard a final response it has received but not
+        read. This routine does not block: the draining runs on the MPR dispatcher. A TLS socket is closed at once.
+    @param sp Socket object returned from #mprCreateSocket
+    @param timeout Maximum time in milliseconds to wait for the peer to close
+    @ingroup MprSocket
+    @stability Evolving
+ */
+PUBLIC void mprLingerSocket(MprSocket *sp, MprTicks timeout);
 
 /**
     Connect a client socket
@@ -8342,7 +8518,6 @@ PUBLIC ssize mprReadSocket(MprSocket *sp, void *buf, ssize size);
  */
 PUBLIC void mprRemoveSocketHandler(MprSocket *sp);
 
-#if !ME_ROM
 /**
     Send a file to a socket
     @description Write the contents of a file to a socket. If the socket is in non-blocking mode (the default), the
@@ -8363,7 +8538,6 @@ PUBLIC void mprRemoveSocketHandler(MprSocket *sp);
  */
 PUBLIC MprOff mprSendFileToSocket(MprSocket *sock, MprFile *file, MprOff offset, MprOff bytes, MprIOVec *beforeVec,
                                   int beforeCount, MprIOVec *afterVec, int afterCount);
-#endif
 
 /**
     Set the socket blocking mode.
@@ -8520,25 +8694,9 @@ PUBLIC ssize mprWriteSocketVector(MprSocket *sp, MprIOVec *iovec, int count);
     Root certificates for verifying peer certs.
  */
 #ifndef ME_SSL_ROOTS_CERT
-    #define ME_SSL_ROOTS_CERT      "roots.crt"
+    #define ME_SSL_ROOTS_CERT "roots.crt"
 #endif
-#ifndef ME_MPR_SSL_CACHE
-    #define ME_MPR_SSL_CACHE       512
-#endif
-#ifndef ME_MPR_SSL_LOG_LEVEL
-    #define ME_MPR_SSL_LOG_LEVEL   7
-#endif
-#ifndef ME_MPR_SSL_RENEGOTIATE
-    #define ME_MPR_SSL_RENEGOTIATE 1
-#endif
-#ifndef ME_MPR_SSL_TICKET
-    #define ME_MPR_SSL_TICKET      1
-#endif
-#ifndef ME_MPR_SSL_TIMEOUT
-    #define ME_MPR_SSL_TIMEOUT     86400
-#endif
-#define ME_MPR_HAS_ALPN            1
-#define MPR_HAS_CRPTO_ENGINE       1
+#define MPR_HAS_CRPTO_ENGINE  1
 
 /**
     Callback function for SNI connections.
@@ -8597,6 +8755,18 @@ typedef struct MprSsl {
     @stability Stable
  */
 PUBLIC void mprAddSslCiphers(struct MprSsl *ssl, cchar *ciphers);
+
+/**
+    Find a cipher that selects insecure suites
+    @description Checks a cipher string for suites with no encryption, no authentication or export or low strength,
+        and for OpenSSL keywords that select them. Entries that remove suites, such as "!aNULL", are permitted.
+        The SSL providers refuse a configuration containing such a cipher.
+    @param ciphers Cipher string of IANA, OpenSSL or MbedTLS names separated by colons, commas or white space
+    @return The first insecure cipher found, or null if there is none
+    @ingroup MprSsl
+    @stability Evolving
+ */
+PUBLIC cchar *mprGetSslInsecureCipher(cchar *ciphers);
 
 /**
     Create the SSL control structure
@@ -8727,6 +8897,7 @@ PUBLIC void mprSetSslMatch(struct MprSsl *ssl, MprMatchSsl match);
 
 /**
     Set the SSL protocol to use
+    @description The default is TLS 1.2 and TLS 1.3. Earlier versions are deprecated by RFC 8996.
     @param ssl SSL instance returned from #mprCreateSsl
     @param protocols SSL protocols mask
     @ingroup MprSsl
@@ -8744,8 +8915,10 @@ PUBLIC void mprSetSslProvider(MprSocketProvider *provider);
 
 /**
     Control SSL session renegotiation
+    @description Renegotiation applies to TLS 1.2 and earlier. When disabled, a peer request to renegotiate is
+        refused by the TLS library.
     @param ssl SSL instance returned from #mprCreateSsl
-    @param enable Set to true to enable renegotiation (enabled by default)
+    @param enable Set to true to enable renegotiation (disabled by default)
     @ingroup MprSsl
     @stability Internal
  */
@@ -8786,7 +8959,7 @@ PUBLIC void mprSetSslTicket(MprSsl *ssl, bool enable);
 /**
     Control the depth of SSL SSL certificate verification
     @param ssl SSL instance returned from #mprCreateSsl
-    @param depth Set to the number of intermediate certificates to verify. Defaults to 1.
+    @param depth Set to the number of intermediate certificates to verify. Defaults to 10.
     @ingroup MprSsl
     @stability Stable
  */
@@ -8794,6 +8967,10 @@ PUBLIC void mprVerifySslDepth(struct MprSsl *ssl, int depth);
 
 /**
     Control the verification of SSL certificate issuers
+    @description Issuer verification requires the peer certificate chain to reach a trusted certificate authority.
+        It is enabled by default for servers (once peer verification requests client certificates) and for clients
+        (unless MPR->verifySsl has been cleared). Disabling it accepts self-signed and otherwise untrusted peer
+        certificates. Issuer verification is separate from #mprVerifySslPeer.
     @param ssl SSL instance returned from #mprCreateSsl
     @param on Set to true to enable SSL certificate issuer verification.
     @ingroup MprSsl
@@ -8803,6 +8980,9 @@ PUBLIC void mprVerifySslIssuer(struct MprSsl *ssl, bool on);
 
 /**
     Require verification of peer certificates
+    @description Peer verification controls whether a peer certificate is requested and required. Servers default to
+        none and clients to required. Whether the certificate must chain to a trusted issuer is controlled separately
+        by #mprVerifySslIssuer.
     @param ssl SSL instance returned from #mprCreateSsl
     @param mode Set to none, optional or required.
     @ingroup MprSsl
@@ -8999,8 +9179,8 @@ PUBLIC int mprStartWorker(MprWorkerProc proc, void *data);
 
 /********************************** Crypto ************************************/
 /**
-    Return a random number
-    @return A random integer
+    Return a random number from the system entropy source
+    @return A non-negative random integer, or a negative MPR error code if no entropy source is available.
     @ingroup Mpr
     @stability Stable
  */
@@ -9103,6 +9283,24 @@ PUBLIC char *mprGetSHAWithPrefix(cchar *buf, ssize len, cchar *prefix);
  */
 PUBLIC char *mprGetSHABase64(cchar *str);
 
+/*
+    BF1 keys salt:input; BF2 keys salt:SHA1(input). Limit BF2 salt so the full 40-character digest fits
+    MPR_BF_KEY_WINDOW.
+ */
+#define MPR_BF_KEY_WINDOW  ((16 + 2) * 4)                                      /**< Key bytes the Blowfish schedule
+                                                                                  consumes */
+#define MPR_BF_SALT_LENGTH 16                                                  /**< Default salt length for password
+                                                                                  hashes */
+#define MPR_BF2_DIGEST_LEN 40                                                  /**< Length of the SHA1 hex digest in a
+                                                                                  BF2 key */
+#define MPR_BF2_MAX_SALT   ((MPR_BF_KEY_WINDOW - 1 - MPR_BF2_DIGEST_LEN) & ~3) /**< Longest BF2 salt */
+
+/*
+    Reserve 16 key bytes to reduce matches against truncated BF1 keys.
+    Callers must check this margin because only they know the composite key's field boundaries.
+ */
+#define MPR_BF_KEY_MARGIN  16
+
 /**
     Encrypt a password using the Blowfish algorithm
     @param password User's password to encrypt
@@ -9135,9 +9333,11 @@ PUBLIC char *mprMakeSalt(ssize size);
 /**
     Make a password hash for a plain-text password using the Blowfish algorithm.
     @param password User's password to encrypt
-    @param saltLength Length of salt text to add to password. Helps to make each user's password unique.
+    @param saltLength Length of salt text to add to password. Helps to make each user's password unique. Set to
+        zero for the default of MPR_BF_SALT_LENGTH. Must not exceed MPR_BF2_MAX_SALT.
     @param rounds Number of times to encrypt. More times, makes the routine slower and passwords harder to crack.
-    @return The encrypted password.
+        Set to zero for the default of ME_MPR_BF_ROUNDS.
+    @return The encrypted password, or null if the salt length is too long.
     @ingroup Mpr
     @stability Stable
  */
@@ -9219,6 +9419,17 @@ PUBLIC char *mprUriEncode(cchar *uri, int map);
 PUBLIC char *mprUriDecode(cchar *uri);
 
 /**
+    Decode a URI path
+    @description Decode a URI path per RFC 3986: percent escapes are decoded but "+" is a literal character,
+        unlike #mprUriDecode which applies the query and form rule that "+" is a space.
+    @param uri URI path to decode
+    @return A decoded, allocated string
+    @ingroup MprString
+    @stability Evolving
+ */
+PUBLIC char *mprUriDecodePath(cchar *uri);
+
+/**
     Decode a URI string by de-scaping URI characters
     @description Decode a string with www-encoded characters that have meaning for URIs.
         This routines operates in-situ and modifies the buffer.
@@ -9253,7 +9464,7 @@ typedef void (*MprSignalProc)(void *arg, struct MprSignal *sp);
     @stability Internal
  */
 typedef struct MprSignalInfo {
-    int triggered;                          /**< Set to true when triggered */
+    volatile int triggered;                 /**< Set to true when triggered (set in the signal handler) */
 } MprSignalInfo;
 
 
@@ -9283,7 +9494,7 @@ typedef struct MprSignalService {
     MprList *standard;                      /**< Standard signal handlers */
     MprMutex *mutex;                        /**< Multithread sync */
     MprSignalInfo info[MPR_MAX_SIGNALS];    /**< Actual signal info and arg */
-    int hasSignals;                         /**< Signal sent to process */
+    volatile int hasSignals;                /**< Signal sent to process (set in the signal handler) */
 #if ME_UNIX_LIKE
     struct sigaction prior[MPR_MAX_SIGNALS];/**< Prior sigaction handler before hooking */
 #endif
@@ -9647,7 +9858,8 @@ PUBLIC int mprRun(MprDispatcher *dispatcher, cchar *command, cchar *input, char 
     @param err Reference to a string to receive the stderr from the command.
     @param timeout Time in milliseconds to wait for the command to complete and exit.
     @param flags Flags to modify execution. Valid flags are:
-        MPR_CMD_NEW_SESSION     Create a new session on Unix
+        MPR_CMD_NEW_SESSION     Create a new session on Unix. The command leads its own process group, and
+                                mprStopCmd signals the whole group.
         MPR_CMD_SHOW            Show the commands window on Windows
         MPR_CMD_IN              Connect to stdin
         MPR_CMD_OUT             Capture stdout
@@ -9673,7 +9885,8 @@ PUBLIC int mprRunCmd(MprCmd *cmd, cchar *command, cchar **envp, cchar *in, char 
     @param err Reference to a string to receive the stderr from the command.
     @param timeout Time in milliseconds to wait for the command to complete and exit.
     @param flags Flags to modify execution. Valid flags are:
-        MPR_CMD_NEW_SESSION     Create a new session on Unix
+        MPR_CMD_NEW_SESSION     Create a new session on Unix. The command leads its own process group, and
+                                mprStopCmd signals the whole group.
         MPR_CMD_SHOW            Show the commands window on Windows
         MPR_CMD_IN              Connect to stdin
         MPR_CMD_OUT             Capture stdout
@@ -9698,10 +9911,22 @@ PUBLIC int mprRunCmdV(MprCmd *cmd, int argc, cchar **argv, cchar **envp, cchar *
 PUBLIC void mprSetCmdCallback(MprCmd *cmd, MprCmdProc callback, void *data);
 
 /**
+    Close every file descriptor from a given descriptor up
+    @description For use in a forked child before exec, so the new program inherits only the descriptors it
+        needs. It makes system calls only and is safe to call between fork and exec. The command module calls it
+        for every child it starts.
+    @param first First descriptor to close
+    @ingroup MprCmd
+    @stability Evolving
+ */
+PUBLIC void mprCloseFilesFrom(int first);
+
+/**
     Set the default environment to use for commands.
-    @description  This environment is used if one is not defined via #mprStartCmd
+    @description  This environment is used if one is not defined via #mprStartCmd. The array and its strings are
+        copied, so the caller's array need not persist.
     @param cmd MprCmd object created via mprCreateCmd
-    @param env Array of environment "KEY=VALUE" strings. Null terminated.
+    @param env Array of environment "KEY=VALUE" strings. Null terminated. Set to null to clear.
     @ingroup MprCmd
     @stability Stable
     @internal
@@ -9746,7 +9971,8 @@ PUBLIC void mprSetCmdSearchPath(MprCmd *cmd, cchar *search);
     @param envp Array of environment strings. Each environment string should be of the form: "KEY=VALUE". The array
         must be null terminated.
     @param flags Flags to modify execution. Valid flags are:
-        MPR_CMD_NEW_SESSION     Create a new session on Unix
+        MPR_CMD_NEW_SESSION     Create a new session on Unix. The command leads its own process group, and
+                                mprStopCmd signals the whole group.
         MPR_CMD_SHOW            Show the commands window on Windows
         MPR_CMD_IN              Connect to stdin
     @return Zero if successful. Otherwise a negative MPR error code.
@@ -9810,6 +10036,7 @@ PUBLIC ssize mprWriteCmdBlock(MprCmd *cmd, int channel, cchar *buf, ssize bufsiz
 #define MPR_CACHE_SET           0x4     /**< mprWriteCache option to update key value, create if required */
 #define MPR_CACHE_APPEND        0x8     /**< mprWriteCache option to set and append if already existing */
 #define MPR_CACHE_PREPEND       0x10    /**< mprWriteCache option to set and prepend if already existing */
+#define MPR_CACHE_UPDATE        0x20    /**< mprWriteCache option to write only if the key already exists */
 
 /*
     Notification events
@@ -9830,11 +10057,25 @@ PUBLIC ssize mprWriteCmdBlock(MprCmd *cmd, int channel, cchar *buf, ssize bufsiz
 typedef void (*MprCacheProc)(struct MprCache *cache, cchar *key, cchar *data, int event);
 
 /**
+    Cache item eviction filter. Invoked by #mprEvictCache for each candidate item while the cache is locked, so it
+    must not call back into the cache.
+    @param cache Cache object
+    @param key Cached item key
+    @param data Cached item data
+    @param arg Opaque argument supplied to #mprEvictCache
+    @return True if the item may be evicted
+    @ingroup MprCache
+    @stability Evolving
+ */
+typedef bool (*MprCacheFilter)(struct MprCache *cache, cchar *key, cchar *data, void *arg);
+
+/**
     In-memory caching. The MprCache provides a fast, in-memory caching of cache items. Cache items are string key /
        value
     pairs. Cache items have a configurable lifespan and the Cache manager will automatically prune expired items.
     Items also have an associated version number that can be used when writing to do transactional writes.
-    @see mprCreateCache mprDestroyCache mprExpireCache mprIncCache mprReadCache mprRemoveCache mprSetCacheLimits
+    @see mprCreateCache mprDestroyCache mprEvictCache mprExpireCache mprIncCache mprReadCache mprRemoveCache
+       mprSetCacheLimits
         mprWriteCache
     @stability Internal
  */
@@ -9887,6 +10128,19 @@ PUBLIC void *mprDestroyCache(MprCache *cache);
     @stability Stable
  */
 PUBLIC int mprExpireCacheItem(MprCache *cache, cchar *key, MprTicks expires);
+
+/**
+    Evict the least recently accessed cache item that the filter accepts. Expired items are removed first,
+    regardless of the filter. Items are read via #mprReadCache or written via #mprWriteCache to count as accessed;
+ #mprLookupCache does not. The notify callback is invoked with #MPR_CACHE_NOTIFY_REMOVE for the evicted item.
+    @param cache The cache instance object returned from #mprCreateCache.
+    @param filter Optional callback to select eligible items. If null, all items are eligible.
+    @param arg Opaque argument passed to the filter callback
+    @return True if an item was evicted, false if no eligible item was found.
+    @ingroup MprCache
+    @stability Evolving
+ */
+PUBLIC bool mprEvictCache(MprCache *cache, MprCacheFilter filter, void *arg);
 
 /**
     Get the Cache statistics
@@ -10024,10 +10278,12 @@ PUBLIC int mprSetCacheLink(MprCache *cache, cchar *key, void *link);
     @param options Options to control how the item value is updated. Use #MPR_CACHE_SET to update the cache item and
         create if it does not exist. Use #MPR_CACHE_ADD to add the item only if it does not already exits. Use
  #MPR_CACHE_APPEND to append the parameter value to any existing cache item value. Use #MPR_CACHE_PREPEND to
-        prepend the value.
+        prepend the value. Use #MPR_CACHE_UPDATE to write only if the item already exists and has not expired, so that a
+        write cannot recreate an item that was removed or has expired since it was read.
     @return If writing the cache item was successful this call returns the number of bytes written. Otherwise a negative
         MPR error code is returned. #MPR_ERR_BAD_STATE will be returned if an invalid version number is supplied.
  #MPR_ERR_ALREADY_EXISTS will be returned if #MPR_CACHE_ADD is specified and the cache item already exists.
+ #MPR_ERR_CANT_FIND will be returned if #MPR_CACHE_UPDATE is specified and the cache item does not exist.
     @ingroup MprCache
     @stability Stable
  */
@@ -10176,6 +10432,7 @@ typedef struct Mpr {
     MprTime start;                          /**< When the MPR started */
     MprTicks exitTimeout;                   /**< Request timeout when exiting */
     ssize logSize;                          /**< Maximum log size */
+    MprOff logLength;                       /**< Current log file length, seeded from the file when it is set */
     cchar *appPath;                         /**< Path name of application executable */
     cchar *appDir;                          /**< Path of directory containing app executable */
     cchar **argv;                           /**< Application command line args (not alloced) */
@@ -10197,6 +10454,7 @@ typedef struct Mpr {
     int logLevel;                           /**< Log trace level */
     int logBackup;                          /**< Number of log files preserved when backing up */
     int verifySsl;                          /**< Default verification of SSL certificates */
+    bool coreDumps;                         /**< Core dumps are enabled (see mprSetCoreDumps) */
     bool debugMode;                         /**< Run in debug mode (no timers) */
 
     /*
@@ -10664,7 +10922,9 @@ PUBLIC int mprParseArgs(char *command, char **argv, int maxArgs);
 /**
     Restart the application
     @description This call immediately restarts the application. The standard input, output and error I/O channels are
-    preserved. All other open file descriptors are closed.
+    preserved. All other open file descriptors are closed. If the application cannot be executed, the process
+    exits rather than returning. The application restarts with the current user and group, so one that has
+    dropped privileges cannot reacquire them. To run terminators first, use mprShutdown with MPR_EXIT_RESTART.
     \n\n
     If the application is started via a monitoring launch daemon such as launchd or appman, the application should not
        use
@@ -10785,6 +11045,19 @@ PUBLIC void mprSetError(int error);
 PUBLIC void mprSetExitTimeout(MprTicks timeout);
 
 /**
+    Control whether the process may write a core file
+    @description Core dumps are disabled when the MPR starts, since a core file holds TLS private keys, session ids
+        and credentials. Enable them only to diagnose a crash, and write them to a directory others cannot read.
+        On Unix this sets the soft RLIMIT_CORE, and on Linux the dumpable flag. Other platforms ignore it. The
+        setting is kept in MPR->coreDumps so it can be applied again after a change of user.
+    @param enable True to allow core dumps
+    @return Zero if successful, otherwise a negative MPR error code
+    @ingroup Mpr
+    @stability Evolving
+ */
+PUBLIC int mprSetCoreDumps(bool enable);
+
+/**
     Set the maximum number of open file/socket descriptors
     @param limit Limit to enforce
     @ingroup Mpr
@@ -10818,8 +11091,9 @@ PUBLIC void mprSetIpAddr(cchar *ip);
 
 /**
     Store a key/value pair
+    @description The key is copied. The value is marked by the garbage collector for as long as it is stored.
     @param key String key value
-    @param value Manage object reference
+    @param value Managed object reference allocated by the MPR, or null. Must not be static, stack or malloc memory.
     @ingroup Mpr
     @stability Stable
  */
@@ -11035,6 +11309,16 @@ PUBLIC int mprWriteRegistry(cchar *key, cchar *name, cchar *value);
 #if VXWORKS
 PUBLIC int mprFindVxSym(SYMTAB_ID sid, char *name, char **pvalue);
 PUBLIC pid_t mprGetPid(void);
+
+/**
+    Convert milliseconds to VxWorks system clock ticks for semTake and taskDelay
+    @description Rounds up so a short positive timeout never becomes a zero-tick poll.
+    @param ms Milliseconds. A negative value means wait forever.
+    @return Clock ticks, or WAIT_FOREVER if ms is negative.
+    @ingroup Mpr
+    @stability Evolving
+ */
+PUBLIC int mprMsToTicks(MprTicks ms);
     #ifndef getpid
         #define getpid mprGetPid
     #endif
@@ -11051,7 +11335,7 @@ PUBLIC void mprWriteToOsLog(cchar *msg, int level);
 #endif /* _h_MPR */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

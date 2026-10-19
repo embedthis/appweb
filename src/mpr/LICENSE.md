@@ -28,6 +28,6 @@ documentation and/or software.
 
 Trademarks and Copyrights
 ---
-Copyright (c) Embedthis Software. All Rights Reserved.
-Embedthis is a trademark of Embedthis Software, LLC. Other brands and their 
+Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
+Embedthis is a trademark of Embedthis Pty Ltd. Other brands and their 
 products are trademarks of their respective holders.
