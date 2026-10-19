@@ -333,13 +333,16 @@ PUBLIC void httpStopNetworks(void *data)
     if ((http = HTTP) == 0) {
         return;
     }
-    lock(http->networks);
+    /*
+        Not locked across httpDestroyNet, which can take the global lock. httpFindStream takes the global lock
+        before this list's lock.
+     */
     for (ITERATE_ITEMS(http->networks, net, next)) {
-        if (data == 0 || net->data == data) {
+        if (!net->destroyed && (data == 0 || net->data == data)) {
             httpDestroyNet(net);
+            next--;
         }
     }
-    unlock(http->networks);
 }
 
 
@@ -717,6 +720,8 @@ static void httpTimer(Http *http, MprEvent *event)
             }
         }
     }
+    //  Release before mprGC and the module and monitor work below, which can take the global lock
+    unlock(http->networks);
 
     /*
         Check for unloadable modules
@@ -758,7 +763,6 @@ static void httpTimer(Http *http, MprEvent *event)
     } else {
         mprGC(MPR_GC_NO_BLOCK);
     }
-    unlock(http->networks);
 }
 
 
@@ -15288,6 +15292,8 @@ PUBLIC HttpAddress *httpMonitorAddress(HttpNet *net, int counterIndex)
         return 0;
     }
     address->seqno = ++seqno;
+    //  Not prunable until the caller has counted its connection
+    address->updated = mprGetTicks();
     mprAddKey(http->addresses, net->ip, address);
 
     net->address = address;
@@ -27683,6 +27689,9 @@ PUBLIC HttpStream *httpFindStream(uint64 seqno, HttpEventProc proc, void *data)
         WARNING: If called from a foreign thread that has not yielded, the GC can be running
         here in another thread. So the network list and streams list must be locked to ensure
         that networks and streams are not destroyed while traversing the lists.
+        Lock order: the global lock, then the list locks, as the GC marker takes them. Code holding the networks
+        or a streams list lock must not call anything that takes the global lock (mprGC, mprRelease, or
+        mprCreateEvent with a held event).
      */
     stream = 0;
     rooted = 0;
