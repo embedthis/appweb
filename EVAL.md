@@ -1,14 +1,14 @@
 
-# Embedthis Software Evaluation License
+# Embedthis Pty Ltd Evaluation License
 
-This is a License Agreement between Embedthis Software LLC. ("Embedthis") and you ("You"), the Licensee.
+This is a License Agreement between Embedthis Pty Ltd. ("Embedthis") and you ("You"), the Licensee.
 
 PLEASE READ THESE TERMS AND CONDITIONS CAREFULLY BEFORE INSTALLING OR USING THE SOFTWARE. YOUR USE OF THE SOFTWARE INDICATES YOUR FULL ACCEPTANCE AND YOU ARE AGREEING TO BE BOUND BY ALL THE TERMS AND CONDITIONS IN THIS AGREEMENT. FAILURE TO COMPLY WITH THE TERMS OF THIS AGREEMENT VOIDS THE AGREEMENT, DISALLOWS LICENSEE USE OF THE SOFTWARE AND MAY GIVE RISE TO UNSPECIFIED DAMAGES.
 
 ### Definitions
 
 **"Integrated Product"** means a single product that incorporate(s) the Software in binary form only, together with other hardware or software of significant value-add.
-**"Software"** means the Embedthis software including source code, headers, documentation and data files.
+**"Software"** means the Embedthis Pty Ltd including source code, headers, documentation and data files.
 
 ### 1\. License to Use
 

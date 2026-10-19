@@ -5,7 +5,7 @@ NAME
 
 SYNOPSIS
        authpass [--cipher blowfish|md5] [--file filename] [--password
-       password] realm username roles...
+       password] [--rounds count] realm username roles...
 
 
 DESCRIPTION
@@ -30,22 +30,33 @@ OPTIONS
               used for digest authentication.
 
        --password password
-              Specifies a password to use to for the user.
+              Specifies a password to use to for the user. Omit this option to
+              be prompted for the password: a password on the command line is
+              visible to other local users and is kept in the shell history.
 
        --file filename
               Update the specified password configuration file.
 
+       --rounds count
+              Number of Blowfish hashing rounds. Each round adds cost to every
+              login and to every password guess made by an attacker who
+              obtains the password file. The default is set when Appweb is
+              built (ME_MPR_BF_ROUNDS). Use fewer rounds on very slow devices
+              where login latency matters, or more where it does not. Existing
+              passwords keep the rounds they were created with.
+
 DESCRIPTION
        The authpass program is used to create and manage user passwords.
        Appweb uses the same authorization file and format for Basic, Digest
-       and Post authentication stores. This simplifies administration.
+       and form authentication. This simplifies administration.  Keep the
+       password file readable only by the server account.
 
 REPORTING BUGS
        Report bugs to dev@embedthis.com.
 
 COPYRIGHT
-       Copyright © Embedthis Software.
+       Copyright © Embedthis Pty Ltd.
 
 SEE ALSO
 
-auth                             February 2014                         AUTH(1)
+auth                             October 2026                          AUTH(1)

@@ -7,7 +7,7 @@ This software is distributed under three licenses:
 * [Embedthis Commercial License](https://www.embedthis.com/about/terms/)
 * [Embedthis Evaluation License](./EVAL.md)
 
-The GPL License does not generally permit incorporating this software into non-open source programs. Commercial licenses for this   software and support services are available from Embedthis Software.
+The GPL License does not generally permit incorporating this software into non-open source programs. Commercial licenses for this   software and support services are available from Embedthis Pty Ltd.
 
 The commercial license enables you to embed the software and distribute and sell your products containing the software. With a paid-up subscription you can incorporate new releases, updates and patches for the software into your products. If you do not have an active subscription, you cannot apply commercial patches for the software to your products.
 
@@ -16,6 +16,10 @@ The eval license is for shorter-term commercial evaluations.
 Please read the following document for more information or contact [sales@embedthis.com](mailto:sales@embedthis.com) if you have questions.
 
 - [Embedthis License Plans](https://www.embedthis.com/builder/doc/plans/overview/)
+
+## EU Cyber Resilience Act
+
+The GPL release of this software is provided without CRA conformity documentation. A manufacturer that incorporates it in a product placed on the EU market is responsible for that product's conformity with the Cyber Resilience Act. CRA conformity, including the Declaration of Conformity, user information, software bill of materials and vulnerability handling, is offered with the commercial license.
 
 ## Third Party Licenses
 ---
@@ -59,6 +63,6 @@ SUCH DAMAGE.
 
 Trademarks and Copyrights
 ---
-Copyright (c) Embedthis Software. All Rights Reserved.
-Embedthis and Embedthis Appweb are trademarks of Embedthis Software, LLC.
+Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
+Embedthis and Embedthis Appweb are trademarks of Embedthis Pty Ltd.
 Other brands and their products are trademarks of their respective holders.

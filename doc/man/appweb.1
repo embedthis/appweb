@@ -1,4 +1,4 @@
-.TH APPWEB "1" "March 2014" "appweb" "User Commands"
+.TH APPWEB "1" "October 2026" "appweb" "User Commands"
 .SH NAME
 appweb\- Embedded HTTP Web Server
 .SH SYNOPSIS
@@ -25,7 +25,8 @@ portable server developed for use by embedded devices and applications.  It can 
 web server or the Appweb library can be embedded in applications.
 .P
 Appweb supports HTTP/1.1, SSL, digest and basic authentication, virtual hosting, ranged requests, chunked transfers,
-file upload and security limits.  Appweb has an Apache style configuration file and supports the ESP and PHP web frameworks. 
+file upload and security limits.  Appweb has an Apache style configuration file. It serves static files, CGI, FastCGI
+(including PHP) and reverse-proxied applications. ESP is available as a separate add-on.
 .P
 Appweb normally reads the \fBappweb.conf\fR file for configuration directives. However, if appweb is invoked with
 an IP address or port number on the command line, Appweb will not read the configuration file. Rather it will
@@ -37,11 +38,13 @@ SIGINFO|SIGPWR signal and emits operational stats to the trace log.
 .SH OPTIONS
 .TP
 \fB\--config filename\fR
-Define the name of the Appweb configuration file. This is by default \fBappweb\fR.
+Define the name of the Appweb configuration file. Without this option, Appweb looks for \fBappweb.json\fR
+or \fBappweb.conf\fR in the server home directory, then in the directory above the executable. The current
+directory is searched only when it is the server home.
 .TP
 \fB\--chroot directory\fR
-Change the system root directory for Appweb. This creates a chroot jail so that the Appweb process cannot access
-any files outside the given directory.
+Change the system root directory for Appweb. Root can leave a chroot, so Appweb stops at startup unless the
+UserAccount directive names an account other than root. A chroot jail is one layer of defense, not containment.
 .TP
 \fB\--debugger\fR
 Run Appweb in debug mode and disable all timeouts. This disables request and session timeouts.
@@ -95,7 +98,7 @@ Output the product version number.
 .SH "REPORTING BUGS"
 Report bugs to dev@embedthis.com.
 .SH COPYRIGHT
-Copyright \(co Embedthis Software.
+Copyright \(co Embedthis Pty Ltd.
 .br
 .SH "SEE ALSO"
-appman authpass esp http
+appman authpass http

@@ -221,6 +221,6 @@ REPORTING BUGS
        Report bugs to dev@embedthis.com.
 
 COPYRIGHT
-       Copyright © Embedthis Software.
+       Copyright © Embedthis Pty Ltd.
 
 http                               July 2014                           HTTP(1)

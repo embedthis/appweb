@@ -13,7 +13,7 @@ Appweb is a compact, fast and secure embedded web server supporting HTTP/1, HTTP
 - **Security First**: Sandboxing, authentication (Basic, Digest, Form), SSL/TLS, defensive countermeasures
 - **Modular Architecture**: Loadable handlers for CGI, FastCGI, PHP, Proxy
 - **Production Ready**: Widely deployed in networking equipment, telephony, mobile devices
-- **Cross-Platform**: Linux, macOS, Windows, VxWorks
+- **Cross-Platform**: Linux, macOS and Windows, built and tested in CI. VxWorks is supported from source but is not built or tested by the manufacturer
 
 ## Status
 
@@ -53,6 +53,12 @@ The European Union has introduced the Cyber Resilience Act (CRA), a regulation a
 
 To meet this need, the [EmbedThis Builder](https://www.embedthis.com/builder/) can be used to publish, distribute, manage and track software updates for your Appweb devices.
 
+## EU Cyber Resilience Act
+
+The open source release of Appweb, published in the public GitHub repository, does not carry CRA conformity documentation. A manufacturer that integrates Appweb into a product placed on the EU market is responsible for that product's conformity with the Cyber Resilience Act (Regulation (EU) 2024/2847).
+
+CRA conformity is offered with the commercial Appweb product. Its source distribution includes the EU Declaration of Conformity, the Annex II user information and a software bill of materials, backed by Embedthis vulnerability handling over a stated support period. Contact [sales@embedthis.com](mailto:sales@embedthis.com).
+
 
 ## Licensing
 
@@ -69,7 +75,8 @@ See [LICENSE.md](LICENSE.md) for details.
 **Local Documentation (included in the source archive):**
 - API Reference: `doc/api/appweb.html`, `doc/api/http.html`, `doc/api/mpr.html`, `doc/api/osdep.html`
 - Manual pages: `doc/man/`
-- Release notes, CRA user information and Declaration of Conformity: `doc/`
+- Release notes: `doc/release-notes.md`
+- CRA user information, Declaration of Conformity and SBOM: `doc/` (commercial distribution only)
 
 ## Building from Source
 
@@ -93,7 +100,7 @@ You can pass make variables to tailor the build. For a list of targets and varia
 
 make
 
-The make.bat runs projects/windows.bat to locate the Visual Studio compiler. If you have setup
+This builds the release configuration. Use "make debug" or "make test" for the others. The make.bat runs projects/windows.bat to locate the Visual Studio compiler. If you have setup
 your CMD environment for Visual Studio by running the Visual Studio vsvarsall.bat, then that edition of
 Visual Studio will be used. If not, windows.bat will attempt to locate the most recent Visual Studio version.
 
@@ -140,7 +147,7 @@ Click Project -> Run to run.
 
 ## To Run:
 
-The src/server directory contains a minimal appweb.conf suitable for production use without SSL. The test directory contains an appweb.conf that is fully configured for testing. When using the src/server/appweb.conf, change to the src/server directory to run. When using the test/appweb.conf, change to the test directory to run.
+The src/server directory contains a minimal appweb.conf that serves static files, with commented examples for TLS, CGI, FastCGI, the reverse proxy and uploads. It serves plaintext HTTP on the loopback interface only: configure TLS before configuring any credentials. It is a starting point for a production configuration, not a finished one: review it against the deployment checklist in the user information (doc/user-information.md in the release archive) before deploying it. The test directory contains an appweb.conf that is fully configured for testing. When using the src/server/appweb.conf, change to the src/server directory to run. When using the test/appweb.conf, change to the test directory to run.
 
 ## Testing
 

@@ -31,8 +31,9 @@ DESCRIPTION
 
        Appweb supports HTTP/1.1, SSL, digest and basic authentication, virtual
        hosting, ranged requests, chunked transfers, file upload and security
-       limits.  Appweb has an Apache style configuration file and supports the
-       ESP and PHP web frameworks.
+       limits.  Appweb has an Apache style configuration file. It serves
+       static files, CGI, FastCGI (including PHP) and reverse-proxied
+       applications. ESP is available as a separate add-on.
 
        Appweb normally reads the appweb.conf file for configuration
        directives. However, if appweb is invoked with an IP address or port
@@ -48,13 +49,17 @@ DESCRIPTION
 
 OPTIONS
        --config filename
-              Define the name of the Appweb configuration file. This is by
-              default appweb.
+              Define the name of the Appweb configuration file. Without this
+              option, Appweb looks for appweb.json or appweb.conf in the
+              server home directory, then in the directory above the
+              executable. The current directory is searched only when it
+              is the server home.
 
        --chroot directory
-              Change the system root directory for Appweb. This creates a
-              chroot jail so that the Appweb process cannot access any files
-              outside the given directory.
+              Change the system root directory for Appweb. Root can leave a
+              chroot, so Appweb stops at startup unless the UserAccount
+              directive names an account other than root. A chroot jail is one
+              layer of defense, not containment.
 
        --debugger
               Run Appweb in debug mode and disable all timeouts. This disables
@@ -90,12 +95,12 @@ REPORTING BUGS
        Report bugs to dev@embedthis.com.
 
 COPYRIGHT
-       Copyright © Embedthis Software.
+       Copyright © Embedthis Pty Ltd.
 
 SEE ALSO
-       appman authpass esp http
+       appman authpass http
 
-appweb                            March 2014                         <B>APPWEB(1)</B>
+appweb                           October 2026                        <B>APPWEB(1)</B>
 </PRE>
 <HR>
 <ADDRESS>
